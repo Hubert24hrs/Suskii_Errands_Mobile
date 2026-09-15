@@ -1,0 +1,1320 @@
+{
+  "prompt_meta": {
+    "document": "SUSKII_BUILD_PROMPT",
+    "version": "3.1.0",
+    "platform_name": "Suskii Errands",
+    "tagline": "Tell us what you need. Set your price. Negotiate. Get it done.",
+    "positioning": "An AI-powered marketplace for getting anything done",
+    "release_strategy": "Single full release (all features in one launch). Countries go live through configuration ('country packs'), not separate code releases.",
+    "market_strategy": "Pan-African first, global next. The architecture must be multi-country, multi-currency, and multi-language from day one.",
+    "repo_location": "docs/spec/SUSKII_BUILD_PROMPT.json",
+    "status_legend": {
+      "VERIFY-IN-RESEARCH": "Must be confirmed against current official sources in Phase 0 before implementation.",
+      "OPEN-DECISION": "Business decision pending; implement the stated default behind admin configuration and flag it."
+    },
+    "structure": {
+      "master_spec": "Product, business rules, money, verification, architecture, security. Applies to every agent.",
+      "agent_claude_code": "Instructions for Claude Code (Opus 5): research, planning, contracts, backend, AI services, audit, bug fixing.",
+      "agent_kimi_code": "Instructions for Kimi Code (Kimi K3): Flutter app, customer web app, marketing site, admin dashboard."
+    },
+    "build_order": "Frontend first (Kimi Code), then backend (Claude Code)"
+  },
+  "agent_routing": {
+    "rule": "Read this entire file first. Then follow 'master_spec' plus ONLY the agent section that matches you. Treat the other agent's section as context about what your counterpart is doing — do not do their work.",
+    "build_order": "FRONTEND FIRST",
+    "if_you_are_kimi_code": "Follow master_spec + agent_kimi_code. You go first: build the complete UI on a mock data layer and document every data need in contracts/draft/.",
+    "if_you_are_claude_code": "Follow master_spec + agent_claude_code. You start after Kimi Code hands off the UI prototype (or run Phase 0 research in parallel if the user asks). You turn Kimi's draft data requirements into the official contracts.",
+    "if_you_are_any_other_llm": "Ask the user which role you are playing (frontend or backend) before starting.",
+    "sequence": [
+      "1. Kimi Code: design system, mode switch, and all screens (mobile, customer web, marketing, admin) on realistic mock data; writes contracts/draft/ui-data-requirements.md",
+      "2. Claude Code: Phase 0 research and Phase 1 planning; reviews Kimi's UI and draft; publishes official contracts v1 and lists any UI changes needed",
+      "3. Kimi Code: applies UI changes and aligns models to contracts v1 (can run while step 4 is in progress)",
+      "4. Claude Code: Supabase backend, AI services, integrations",
+      "5. Kimi Code: replaces mocks with the real backend, module by module",
+      "6. Claude Code: audit, bug fixing, security and performance hardening",
+      "7. Both: device testing, store submission, launch"
+    ]
+  },
+  "master_spec": {
+    "product_summary": {
+      "model": "inDrive-style two-sided marketplace. A customer describes any need (Request Anything), sets a preferred price, receives provider offers/counteroffers, negotiates, selects a provider, pays upfront (held by the platform), tracks the job, confirms completion, and both sides rate each other.",
+      "app_model": {
+        "decision": "ONE Flutter app with an inDrive-style mode switch between Customer mode and Provider mode.",
+        "rules": [
+          "Every account starts in Customer mode. Provider mode unlocks only after full provider verification.",
+          "Mode switch is available from the profile/drawer; each mode has its own navigation shell and state.",
+          "A user can never bid on, accept, or be matched to their own request (self-dealing block, enforced server-side by user ID, device, and verified identity).",
+          "A provider cannot go online while they have an unresolved active job as a customer that requires their attention (configurable).",
+          "Provider-only permissions (continuous location, foreground service) are requested only when the user first goes online in Provider mode."
+        ]
+      },
+      "surfaces": [
+        "Suskii Errands mobile app (Flutter, Android + iOS) — Customer and Provider modes",
+        "Customer web app (Next.js) — post requests, negotiate, pay, track, chat, call",
+        "Marketing website (Next.js) — SEO, How it works, onboarding, FAQ, support, country/city landing pages",
+        "Admin dashboard (Next.js) — operations, verification, finance, disputes, support, analytics, AI admin assistant"
+      ]
+    },
+    "baseline_features_from_approved_proposal": {
+      "customer": [
+        "Account and profile",
+        "Natural-language request creation (Request Anything)",
+        "Supporting images",
+        "Pickup and destination",
+        "Urgency level",
+        "Preferred price",
+        "Offers and counteroffers",
+        "Negotiation",
+        "Compare and select provider",
+        "Secure in-app payment",
+        "Real-time tracking",
+        "Chat",
+        "Completion confirmation and rating"
+      ],
+      "negotiation_engine": [
+        "Customer offers",
+        "Provider offers and counteroffers",
+        "Accept/reject",
+        "Negotiation history",
+        "Offer expiration",
+        "Final agreed price becomes the transaction value"
+      ],
+      "ai_concierge_24_7": [
+        "Understand request",
+        "Identify service",
+        "Ask for missing details",
+        "Structure request",
+        "Publish to marketplace",
+        "Help match providers",
+        "Compare offers",
+        "Monitor job",
+        "Post-completion follow-up"
+      ],
+      "request_anything_categories": [
+        "Errands and delivery",
+        "Shopping",
+        "Cleaning and laundry",
+        "Moving",
+        "Plumbing, electrical, repairs",
+        "Personal assistance",
+        "Document delivery",
+        "Food pickup",
+        "Transportation assistance",
+        "Technical and business services",
+        "Event assistance",
+        "Custom services (AI-classified)"
+      ],
+      "provider": [
+        "Registration and profile",
+        "Services offered and service areas",
+        "Verification",
+        "Nearby requests",
+        "Bid/counter/negotiate",
+        "Accept jobs and chat",
+        "Navigation and status updates",
+        "Proof of completion",
+        "Earnings and history",
+        "Ratings and reputation"
+      ],
+      "ai_matching_factors": [
+        "Distance",
+        "Service type and availability",
+        "Rating, completion rate, cancellation rate",
+        "Response time and reliability",
+        "Workload and experience",
+        "Customer preferences and proposed price"
+      ],
+      "ai_price_intelligence_inputs": [
+        "Service type, distance, location",
+        "Complexity and urgency",
+        "Historical transactions",
+        "Provider availability and demand"
+      ],
+      "chat": [
+        "Job-scoped 1:1 chat",
+        "Images",
+        "Offer messages",
+        "Location sharing",
+        "System/status messages",
+        "Push notifications"
+      ],
+      "proof_of_completion": [
+        "Status + live location",
+        "Arrival/pickup/delivery confirmation",
+        "OTP/PIN",
+        "Photo proof with timestamps",
+        "Customer confirmation"
+      ],
+      "trust_levels": [
+        "NEW",
+        "VERIFIED",
+        "TRUSTED",
+        "ELITE"
+      ],
+      "admin": [
+        "Users, providers, businesses, verification",
+        "Services, requests, offers, negotiations",
+        "Transactions, payments, payouts",
+        "Disputes and reports",
+        "Settings, notifications, commissions",
+        "Analytics",
+        "AI Admin Assistant"
+      ],
+      "web": [
+        "Responsive marketing website",
+        "How Suskii Works",
+        "Onboarding",
+        "FAQ, contact, support",
+        "SEO-ready pages"
+      ]
+    },
+    "client_decisions": {
+      "coding_agents": "Kimi Code (Kimi K3) builds all frontends; Claude Code (Opus 5) does research, planning, backend, AI services, code audit, and bug fixing.",
+      "app_structure": "One app with Customer/Provider mode switch",
+      "release": "Ship everything at once",
+      "geography": "All of Africa first, then global",
+      "provider_types": "Individuals and businesses; walking, bicycle, motorcycle, tricycle, car, van, truck (extensible)",
+      "payments": "Flutterwave and Stripe",
+      "payment_timing": "Customer pays upfront immediately after negotiation is agreed; platform holds funds until completion",
+      "cash": "Not allowed",
+      "referral": "Cash-withdrawable referral commission of 2.5% of the net transaction value (net = agreed amount minus 12.5% platform commission)",
+      "gateway_fees": "Borne by the provider",
+      "police_clearance": "Required for every provider",
+      "facial_verification": "Required for both customers and providers",
+      "sos": "Routes to in-house operations AND a private security/emergency partner",
+      "voice": "Customer–provider in-app calls + AI voice concierge; no call recording; phone-call fallback enabled",
+      "llm": "Google Gemini",
+      "languages_at_launch": [
+        "English",
+        "Nigerian Pidgin"
+      ],
+      "languages_v1_1": [
+        "Yoruba",
+        "Igbo",
+        "Hausa"
+      ],
+      "backend_platform": "Supabase",
+      "admin_roles": [
+        "Super Admin",
+        "Verification Officer",
+        "Support Agent",
+        "Finance Officer",
+        "Dispute Officer"
+      ],
+      "web": "Marketing site + customer web app",
+      "branding": "No brand assets yet; build a token-driven design system with placeholder brand values that can be swapped without code changes"
+    },
+    "open_decisions": [
+      {
+        "id": "OD-01",
+        "topic": "Who funds the 2.5% referral commission",
+        "default": "Platform funds it from its 12.5% commission, so provider earnings are unaffected.",
+        "alternative": "Deduct it from provider net earnings (reduces the provider's payout and may discourage referred providers)."
+      },
+      {
+        "id": "OD-02",
+        "topic": "Referral commission duration",
+        "default": "Lifetime of the referred account, with an admin-configurable cap (months and/or amount) per country and campaign.",
+        "note": "A time cap such as 12 months is common practice and protects margin."
+      },
+      {
+        "id": "OD-03",
+        "topic": "When both the customer and the provider on a job were referred by different people",
+        "default": "Each referrer earns 2.5% of net (maximum 5% of net per job), funded per OD-01."
+      },
+      {
+        "id": "OD-04",
+        "topic": "Shopping errands — item cost handling",
+        "default": "Customer prepays an 'item float' as a separate, non-commissionable line. It is released to the provider against a receipt photo (AI-read + customer approval); any unused amount is refunded to the customer. Gateway fees on the item float are passed to the customer (a provider-pays rule would make providers fund fees on goods they don't earn from)."
+      },
+      {
+        "id": "OD-05",
+        "topic": "Insurance / damage and loss cover",
+        "default": "No insurer integration at launch. Build declared item value, a claims workflow inside disputes, and insurer-ready data hooks."
+      },
+      {
+        "id": "OD-06",
+        "topic": "Commission rate typo",
+        "default": "12.5% (the client's worked example $100 → $87.50 confirms 12.5%, not 12%). Configurable per country."
+      },
+      {
+        "id": "OD-07",
+        "topic": "Which countries are switched live on launch day",
+        "default": "Nigeria live first as the reference country pack; other African countries enabled as their payment, KYC, police clearance, legal, and language packs are verified."
+      },
+      {
+        "id": "OD-08",
+        "topic": "Gateway fee on refunds",
+        "default": "On cancellation before job start, the gateway fee (if non-refundable by the gateway) is absorbed by the platform for customer-fault-free cancellations and deducted from the refund for customer-initiated late cancellations. Configurable."
+      }
+    ],
+    "money_rules": {
+      "representation": "Integer minor units + ISO 4217 currency code on every amount. Use the ISO 4217 exponent table (not all currencies have 2 decimal places). Never use floating point.",
+      "job_currency": "A job is priced and settled in the currency of the country where it is performed. No cross-currency jobs at launch.",
+      "formulas": {
+        "gross": "agreed_amount (final negotiated price)",
+        "platform_commission": "round_half_even(gross × commission_rate), commission_rate default 0.125, snapshotted on the job",
+        "net": "gross − platform_commission",
+        "gateway_fee": "Actual fee reported by the gateway for the job's service-fee charge, borne by the provider",
+        "provider_payout": "net − gateway_fee (+ tips, which are commission-free)",
+        "referral_commission_each": "round_half_even(net × 0.025) per eligible referrer, funded per OD-01",
+        "platform_revenue": "platform_commission − referral_commissions − platform-funded promos"
+      },
+      "worked_example_usd": {
+        "gross": "100.00",
+        "platform_commission": "12.50",
+        "net": "87.50",
+        "referral_commission_to_referrer": "2.19 (2.1875 rounded half-even at minor units)",
+        "provider_payout": "87.50 minus the gateway fee (per OD-01 default, the referral is not deducted from the provider)",
+        "platform_revenue": "12.50 − 2.19 = 10.31 before gateway-independent costs"
+      },
+      "transparency": "Before a provider submits an offer, show their estimated payout (offer − commission − estimated gateway fee). After completion, show the actual breakdown.",
+      "holding_and_settlement": [
+        "Payment is initiated only after both parties agree on the price; the job moves to PAYMENT_PENDING with a short payment TTL.",
+        "Funds are collected to the platform's gateway balance and held until CUSTOMER_CONFIRMED (or auto-confirmation) plus the dispute window.",
+        "Settlement to the provider uses the gateway's supported transfer/payout mechanism (Flutterwave transfers/subaccounts; Stripe Connect separate charges and transfers).",
+        "Holding customer funds is regulated differently in each country. Use only mechanisms the licensed gateway supports, obtain legal review per country, and never call the feature 'escrow' in UI copy unless a licensed escrow partner is used. VERIFY-IN-RESEARCH."
+      ],
+      "ledger": "Double-entry, append-only ledger (accounts: customer_wallet, provider_earnings, referral_earnings, platform_revenue, platform_promo_expense, gateway_fees, held_funds, item_float, refunds_payable). Balances are derived; materialized balances carry a version for optimistic locking.",
+      "payout_rails": [
+        "Bank transfer",
+        "Mobile money (e.g. M-Pesa, MTN MoMo, Airtel Money — per country pack)",
+        "Card payouts where supported"
+      ],
+      "withdrawals": "Provider earnings and referral earnings are withdrawable after KYC is complete, the payout account name matches the verified identity, and the balance is above a per-currency minimum. Large withdrawals require Finance Officer approval above a configurable threshold, with a second approver above a higher threshold.",
+      "cash": "Cash payments are not supported anywhere in the product. Chat and AI moderation flag attempts to move payment off-platform."
+    },
+    "payment_gateways": {
+      "strategy": "PaymentProvider abstraction with per-country routing configured in the country pack.",
+      "flutterwave": "Primary for African countries: cards, bank transfer, mobile money, USSD where available; transfers for payouts; subaccounts/split where useful. VERIFY-IN-RESEARCH per country.",
+      "stripe": "Primary for markets where the operating entity holds a supported Stripe account (global expansion) using Stripe Connect for marketplace payouts. Stripe does not directly onboard businesses in most African countries; its African coverage is through Paystack. VERIFY-IN-RESEARCH which Suskii entity will hold the Stripe account and which payout countries Connect supports.",
+      "rules": [
+        "Server-initialized payments only. The client never marks a payment as successful.",
+        "Payment success is confirmed only by a signature-verified webhook plus a server-side verify call.",
+        "Webhook events are stored raw, de-duplicated by gateway event ID, and processed idempotently via a queue.",
+        "Daily reconciliation compares ledger totals with gateway settlement reports and alerts on mismatches."
+      ]
+    },
+    "referral_program": {
+      "who_can_refer": "Any verified user (customer or provider, individual or business).",
+      "attribution": "Unique referral code + deep link (Android App Links, iOS Universal Links, web URL) with deferred deep linking so attribution survives app install. Attribution window configurable (default 30 days from click). A code can also be entered manually during signup (before first job only).",
+      "commission": "2.5% of net on every completed, confirmed job where the referred user is either the customer or the provider, for the duration defined in OD-02.",
+      "single_level_only": "Commission applies only to direct referrals. No multi-level/downline earnings (avoids pyramid-scheme classification in many jurisdictions).",
+      "states": "PENDING → EARNED (job confirmed) → HOLDING (dispute window + fraud hold, default 72h) → AVAILABLE (withdrawable) | REVERSED (refund/chargeback/fraud)",
+      "clawback": "If a job is refunded or charged back after release, the commission is reversed; a negative referral balance is offset against future earnings.",
+      "dashboard": "Referral link and QR, invites, sign-ups, active referrals, earnings by status, withdrawal history, milestone badges, opt-in leaderboard.",
+      "campaigns": "Admin can run time-boxed boosted-rate campaigns per country with budget caps enforced transactionally.",
+      "anti_fraud": [
+        "Self-referral block using device fingerprint, phone, email, face-template match (via KYC vendor duplicate check), government ID hash, payout account, and card fingerprint",
+        "Collusion detection: referrer–referee pairs transacting mainly with each other, or referrer controlling both sides of jobs",
+        "Wash-trading checks where referral commission is combined with promo codes (promo + referral stacking rules configurable)",
+        "Velocity limits on sign-ups per referrer",
+        "Rooted/emulated/tampered devices are ineligible to earn",
+        "Flagged commissions go to an admin review queue; all actions audit-logged"
+      ],
+      "tax_note": "Cash referral earnings may be taxable income and may require reporting per country. VERIFY-IN-RESEARCH."
+    },
+    "verification_kyc": {
+      "principle": "Both customers and providers complete facial verification. Every provider (including every worker under a business) also completes full provider KYC including police clearance.",
+      "vendor_strategy": "IdentityVerificationProvider abstraction. Primary candidate: Smile ID (pan-African ID coverage, liveness, face match, Flutter and web SDKs). Alternatives: Youverify, Dojah, Prembly, QoreID (Nigeria-heavy); Onfido, Veriff, Persona for global markets. VERIFY-IN-RESEARCH coverage per country, SDK support (Flutter + web), liveness certification, and pricing.",
+      "customer_flow": [
+        "Phone OTP (and optional email)",
+        "Facial verification: active + passive liveness, then face match against a government ID record or ID document photo (per country pack)",
+        "Customers may browse and chat with the AI concierge before verification; verification is required before publishing the first request or paying"
+      ],
+      "provider_flow": [
+        "Phone OTP + email",
+        "Government ID verification per country pack (e.g. NIN/BVN in Nigeria, Ghana Card, Kenya National ID, South African ID)",
+        "Facial verification: liveness + face match against the government ID record",
+        "ID document capture with OCR and tamper checks",
+        "Police clearance certificate (document type and validity per country pack), with certificate number and issue/expiry dates; verified via an official or vendor channel where one exists, otherwise by a Verification Officer",
+        "Address verification (required for TRUSTED and above)",
+        "Guarantor/reference (configurable per category and country)",
+        "Payout account verification with name match against the verified identity",
+        "Vehicle and driver documents where a motorized vehicle is used (licence, registration, insurance per country pack)",
+        "Service-specific credentials (e.g. trade certificates)",
+        "Verification Officer approval → VERIFIED"
+      ],
+      "police_clearance_by_country_examples": {
+        "note": "Examples only. VERIFY-IN-RESEARCH names, issuing bodies, validity, and verification channels for each country pack.",
+        "Nigeria": "Nigeria Police Force Police Character Certificate",
+        "Kenya": "Certificate of Good Conduct",
+        "South Africa": "SAPS Police Clearance Certificate",
+        "Ghana": "Police Clearance Report"
+      },
+      "ongoing_checks": [
+        "Real-time selfie check before going online (at least once per 24h plus random checks) to stop account sharing/renting",
+        "Face re-verification on profile photo change, device change, payout account change, and large withdrawals",
+        "Police clearance and document expiry tracking with reminders at 30/14/3 days; job acceptance blocked on expiry",
+        "Duplicate-face detection across accounts (via vendor) to block banned users from re-registering"
+      ],
+      "data_handling": [
+        "KYC documents and police clearance files live in a private storage bucket that client apps can upload to (via signed upload URLs) but never read back",
+        "Only Verification Officers can view them, via short-lived signed URLs; every view is audit-logged",
+        "Main database stores outcomes, reference IDs, encrypted certificate numbers, dates, and reviewer IDs — no free-text criminal-history notes",
+        "Prefer vendor-side biometric template storage with reference IDs",
+        "Explicit, separate consent for biometric processing and criminal-record checks",
+        "Retention periods per data class and per country; deletion on account closure subject to legal hold"
+      ]
+    },
+    "business_accounts_and_fleets": {
+      "entities": "Organization (business provider) with members: Owner, Dispatcher, Worker",
+      "rules": [
+        "The business must complete business verification (registration documents per country) plus owner KYC.",
+        "Every worker is a full provider for verification purposes (facial verification + police clearance).",
+        "Businesses bid as the organization; a Dispatcher assigns an accepted job to an available verified worker (or the worker self-accepts if allowed).",
+        "Payouts go to the organization's verified payout account; per-worker earnings reports are available to the Owner.",
+        "Reputation is tracked for both the organization and each worker.",
+        "Vehicle registry: type, plate, documents, assigned worker, document expiry."
+      ],
+      "vehicle_types": [
+        "walking",
+        "bicycle",
+        "motorcycle",
+        "tricycle",
+        "car",
+        "van",
+        "truck"
+      ],
+      "zone_rules": "Allowed vehicle types can be restricted per city zone (some cities ban certain vehicles in certain areas)."
+    },
+    "communication": {
+      "chat": "Job-scoped real-time chat with text, images, voice notes, location, offer cards, system messages, read receipts, typing indicators, and AI moderation (abuse, off-platform payment attempts, prohibited items).",
+      "voice_calls": {
+        "stack": "LiveKit (LiveKit Cloud recommended with Supabase, to avoid operating media servers; self-hosting stays possible later). Native incoming-call UI via CallKit + PushKit on iOS and ConnectionService/full-screen notifications on Android.",
+        "rules": [
+          "Calls are allowed only between the two participants of a job, from PROVIDER_SELECTED until 24h after completion (configurable).",
+          "No phone numbers are ever exposed.",
+          "Access tokens are minted server-side, room-scoped, short-lived, and issued only to job participants.",
+          "One active call per job; simultaneous call attempts resolved server-side.",
+          "No call recording. Store metadata only (participants, times, duration, quality stats, fallback used).",
+          "Missed calls create a chat system message and a push notification.",
+          "Web app supports calls through the LiveKit JS SDK."
+        ],
+        "pstn_fallback": "When data quality is poor, offer a masked phone call through a telephony provider with proxy numbers per country. VERIFY-IN-RESEARCH provider coverage and cost per country.",
+        "platform_gotchas": [
+          "iOS: every VoIP push must be reported to CallKit immediately or iOS terminates the app and may stop delivering VoIP pushes; never use VoIP pushes for non-call events.",
+          "Android 14+: USE_FULL_SCREEN_INTENT is restricted to calling/alarm apps — declare it in Play Console and handle denial.",
+          "Android: declare the phoneCall/microphone foreground service types during calls."
+        ]
+      },
+      "ai_voice_concierge": "Hands-free request creation and job help in English and Nigerian Pidgin (more languages in V1.1), built on LiveKit Agents with Gemini's real-time audio model if supported by the plugin (VERIFY-IN-RESEARCH), otherwise an STT → Gemini → TTS pipeline. Test accuracy on African accents and Pidgin before launch.",
+      "notifications": "Push (FCM for Android/web, APNs for iOS including VoIP), SMS, email, in-app inbox; WhatsApp-ready channel abstraction. Per-channel preferences, quiet hours, and a clear split between transactional and marketing messages."
+    },
+    "safety": {
+      "sos": "SOS button during active jobs sends live location and job details to Suskii operations AND the contracted private security/emergency partner in that city (via partner API or dispatch console), notifies trusted contacts, and shows local emergency numbers from the country pack.",
+      "live_trip_share": "Shareable, expiring tracking link for trusted contacts.",
+      "trusted_contacts": "Up to 5 per user.",
+      "ops_console": "Real-time SOS queue in admin with escalation, notes, and resolution status; partner acknowledgement tracked.",
+      "restricted_items": "Per-country prohibited items and services list enforced by rules + AI moderation on requests, chat, and receipts.",
+      "blocking": "Either party can block or report; blocked pairs are never matched again."
+    },
+    "added_features": [
+      "Wallet and double-entry ledger (refunds, credits, earnings, referral earnings)",
+      "Scheduled errands (future date/time); data model supports recurrence for a later release",
+      "Dispute center with evidence (chat, photos, GPS trail, PIN logs, call metadata), SLA timers, partial/full refunds, payout freeze while open",
+      "Help center and support tickets with AI first-line triage and human handoff",
+      "Promo codes and coupons (platform-funded discounts never reduce provider earnings)",
+      "Tipping (commission-free)",
+      "Favorite providers and rebook-first flow",
+      "Two-way ratings with Bayesian averaging",
+      "Landmark-based addresses, saved places, encrypted gate/estate access notes visible only to the assigned provider during the job",
+      "Low-data mode, offline cache, and outbox for status updates and proof uploads",
+      "Provider tools: online toggle, availability schedule, demand heatmap, earnings goals, instant payout, document expiry reminders, performance insights",
+      "Price guardrails per category and city (soft warnings or hard limits)",
+      "Rule-based risk engine (velocity, device reuse, GPS spoofing, collusion, cancellation abuse, chargebacks)",
+      "Remote config, feature flags, kill switches, forced update",
+      "In-app account deletion and data export",
+      "Accessibility (screen readers, text scaling, contrast) and dark mode",
+      "Right-to-left layout support ready for Arabic-speaking markets"
+    ],
+    "country_packs": {
+      "description": "All country-specific behaviour is data, not code. A country is live only when its pack is complete and approved.",
+      "fields": [
+        "country_code, status (disabled | beta | live), launch cities and zones",
+        "currency code and minor-unit exponent",
+        "commission rate override, referral rate override, tax/VAT rules",
+        "payment gateway routing, enabled payment methods, payout rails, minimum withdrawal",
+        "KYC: accepted government ID types, vendor routing, police clearance document name, validity, verification channel",
+        "business registration document types",
+        "vehicle types allowed per zone, vehicle document requirements",
+        "phone number format and SMS/OTP provider routing",
+        "supported languages and default language",
+        "legal documents (terms, privacy policy) with versions and acceptance tracking",
+        "data protection law, data residency rules, retention periods",
+        "emergency numbers and SOS partner configuration",
+        "prohibited items and services",
+        "price guardrails and urgency multipliers"
+      ],
+      "data_protection_laws_to_check": "VERIFY-IN-RESEARCH per country, e.g. Nigeria Data Protection Act 2023, Kenya Data Protection Act 2019, South Africa POPIA, Ghana Data Protection Act 2012, and GDPR for EU users during global expansion.",
+      "localization": {
+        "launch": [
+          "English",
+          "Nigerian Pidgin"
+        ],
+        "v1_1": [
+          "Yoruba",
+          "Igbo",
+          "Hausa"
+        ],
+        "flag": "English and Pidgin mainly cover Anglophone Africa. Pan-African coverage will also need French, Swahili, Arabic (RTL), and Portuguese — plan them into the language roadmap."
+      }
+    },
+    "job_lifecycle": {
+      "states": [
+        "DRAFT",
+        "PUBLISHED",
+        "OFFERS_RECEIVED",
+        "NEGOTIATING",
+        "AGREED",
+        "PAYMENT_PENDING",
+        "PAID_HELD",
+        "ASSIGNED",
+        "EN_ROUTE",
+        "ARRIVED",
+        "IN_PROGRESS",
+        "COMPLETED_BY_PROVIDER",
+        "CONFIRMED",
+        "SETTLEMENT_PENDING",
+        "SETTLED",
+        "CLOSED",
+        "CANCELLED",
+        "EXPIRED",
+        "DISPUTED",
+        "REFUNDED"
+      ],
+      "rules": [
+        "Implemented as a server-side state machine with an explicit transition table (from, to, actor, guard, side effects).",
+        "All transitions go through database functions or Edge Functions; clients cannot update status columns directly.",
+        "Illegal transitions are rejected and logged.",
+        "Offers have a TTL (default 10 min, configurable per category) and a maximum number of counter rounds (default 5).",
+        "Accepting an offer locks the request row, expires all other offers, and emits realtime events in one transaction.",
+        "PAYMENT_PENDING has its own TTL; if unpaid, the job returns to NEGOTIATING or expires.",
+        "No offers after a timeout → AI suggests a price adjustment.",
+        "Provider not en route within a timeout → customer can reassign with no penalty.",
+        "Auto-confirm after a configurable period if the PIN was verified and proof exists.",
+        "Cancellation fees depend on state and elapsed time and feed cancellation-rate metrics.",
+        "Every transition writes an append-only event and an outbox record for notifications, analytics, AI follow-up, referral commission, and settlement."
+      ],
+      "proof": "Server-generated pickup/delivery PINs shown only to the customer, verified server-side with attempt limits; photos stored with server timestamp and device GPS; EXIF stripped for display."
+    },
+    "ai_layer": {
+      "provider": "Google Gemini via Vertex AI (enterprise data controls, regional endpoints). Keep an LLM gateway interface so models can be swapped.",
+      "model_routing": {
+        "concierge_and_admin_assistant": "Gemini Pro-tier model (best multi-turn tool use). VERIFY-IN-RESEARCH current model names.",
+        "classification_moderation_extraction_receipts": "Gemini Flash / Flash-Lite tier (high volume, low latency, low cost).",
+        "voice_agent": "Gemini real-time/native-audio model through LiveKit Agents, if supported; otherwise STT → Gemini → TTS.",
+        "embeddings": "Gemini embedding model stored in pgvector for service taxonomy and similar-request retrieval."
+      },
+      "features": [
+        "AI concierge (text + voice): slot filling, category classification, custom service detection, request structuring, publishing with user confirmation",
+        "Offer comparison assistant",
+        "Price intelligence: per-country, per-currency price bands (P25/P50/P75); cold start with rules, later gradient-boosted models trained on completed jobs",
+        "Provider matching: weighted scoring with PostGIS at launch; learning-to-rank later using offer-acceptance data",
+        "Receipt reading for item floats",
+        "Moderation for requests, chat, and reviews",
+        "Support triage",
+        "AI Admin Assistant using function calls to predefined, parameterized analytics functions on a read replica — never free-form SQL on production"
+      ],
+      "guardrails": [
+        "Redact personal data before sending to the model where not required",
+        "User content is data, never instructions; tools are allowlisted and authorized server-side per user",
+        "Structured outputs validated before use",
+        "AI never sets final prices, approves verification, moves money, or resolves disputes on its own",
+        "Per-user rate limits and token budgets; cost tracking per feature",
+        "Evaluation suite with golden conversations in English and Pidgin, plus red-team prompts"
+      ],
+      "ml_pipeline": "Supabase → scheduled export to BigQuery → feature jobs → training (Vertex AI or Cloud Run jobs) → model registry → versioned serving from the FastAPI AI service on Cloud Run, with shadow testing before rollout."
+    },
+    "architecture": {
+      "backend_platform": "Supabase (Postgres, Auth, Realtime, Storage, Edge Functions, Cron, Queues, Vault)",
+      "components": {
+        "postgres": "PostGIS, pgvector, pg_cron, pgmq (Supabase Queues), pgTAP for tests; partitioning for messages, location samples, audit logs (VERIFY-IN-RESEARCH extension availability on the chosen plan)",
+        "schemas": "public (exposed, RLS on every table), private/ledger/kyc/audit (NOT exposed via the Data API; accessed only through vetted functions)",
+        "auth": "Phone OTP (custom SMS provider via Auth Send SMS Hook), email, Google and Apple sign-in, TOTP MFA; Custom Access Token Hook adds role and mode claims (sensitive operations still re-check the database)",
+        "realtime": "Private channels with Realtime Authorization. Broadcast for live location and typing (no DB write per location ping; persist sampled points only). Database-triggered broadcasts for offers, job status, wallet, and call events.",
+        "storage": "Private buckets: request-media, chat-media, proofs, receipts, kyc-docs (write-only for clients), avatars. Size/type limits, malware scanning, image re-encoding.",
+        "edge_functions": "Payments (init, webhooks, payouts), KYC webhooks, LiveKit token minting, push/VoIP sending, device integrity verification, referral withdrawals, SOS partner dispatch, telephony fallback",
+        "cloud_run_services": "FastAPI AI service (Gemini gateway, matching, pricing, moderation, admin assistant), LiveKit Agents voice worker, long-running workers that exceed Edge Function limits",
+        "voice": "LiveKit Cloud",
+        "analytics": "BigQuery + Looker Studio (or Metabase) for internal BI; product analytics via PostHog or Firebase Analytics",
+        "observability": "Sentry (apps, web, Edge Functions, Cloud Run), Supabase logs + log drains, uptime/synthetic checks, alerting",
+        "edge_security": "Cloudflare in front of web properties (WAF, bot management, rate limits)"
+      },
+      "environments": "Separate Supabase projects for dev, staging, and prod; migrations via Supabase CLI only; seed data for dev/staging only.",
+      "region_and_scale": [
+        "Select the Supabase region by measured latency from Lagos, Nairobi, Johannesburg, and Cairo, and by data-residency rules (VERIFY-IN-RESEARCH available regions).",
+        "Plan compute size, read replicas, connection pooling, and Realtime connection/message quotas for pan-African load.",
+        "Document the scale-out path (e.g. moving hot paths to dedicated services) before launch."
+      ],
+      "contracts": "Two stages. (1) Kimi Code writes contracts/draft/ (screen-by-screen data needs, actions, realtime events, error states) while building the UI on mock data. (2) Claude Code reviews the draft, applies the backend rules in this spec, and publishes the official versioned /contracts (database types, function catalog, Edge Function OpenAPI, realtime events, error codes, state machines, fixtures). From then on Claude Code owns /contracts; Kimi Code consumes them and requests changes via contracts/CHANGE_REQUESTS.md."
+    },
+    "security": {
+      "standards": [
+        "OWASP MASVS (mobile)",
+        "OWASP ASVS L2 (backend/web)",
+        "OWASP API Security Top 10",
+        "OWASP Top 10 for LLM Applications",
+        "PCI DSS scope minimization (gateway-hosted card entry only)",
+        "Applicable data protection laws per country pack"
+      ],
+      "supabase_specific": [
+        "RLS enabled and tested (pgTAP) on every exposed table; default deny",
+        "Service role key only in Edge Functions/Cloud Run secrets — never in any client, web bundle, or repo",
+        "Sensitive tables in non-exposed schemas; access through SECURITY DEFINER functions that check auth.uid(), use an empty search_path, and validate every input",
+        "Clients cannot write to status, amount, commission, rating aggregate, verification, or wallet columns (column privileges + RLS + triggers)",
+        "Storage policies per bucket; KYC bucket has no client read policy",
+        "Realtime private channels only; authorization policies on channel topics",
+        "Auth: CAPTCHA (Turnstile/hCaptcha) on sign-up/OTP, OTP rate limits, short OTP expiry, MFA mandatory for all admin roles",
+        "Secrets in Supabase Vault / Edge Function secrets; rotation plan",
+        "Run the Supabase security and performance advisors in CI; block on critical findings",
+        "Enable SSL enforcement, network restrictions for direct DB access, and point-in-time recovery"
+      ],
+      "mobile": [
+        "Release builds obfuscated with split debug info",
+        "TLS public-key pinning with backup pins and remote rotation",
+        "Tokens in secure storage (Keychain / Keystore-backed); nothing sensitive in plain preferences or logs",
+        "Runtime protection (freeRASP or equivalent): root/jailbreak, hooking, debugger, emulator, tamper, repackaging — send signals to the risk engine and restrict sensitive actions",
+        "Play Integrity API and Apple App Attest tokens verified server-side for login, KYC, payouts, withdrawals, and referral earnings",
+        "Mock-location / GPS spoofing detection for provider tracking and proof",
+        "Screenshot/screen-recording protection on KYC, wallet, PIN, and payout screens; app-switcher blur",
+        "Biometric/PIN lock for withdrawals and payout account changes",
+        "Cleartext traffic disabled; Android backup excluded for sensitive data",
+        "Just-in-time permission requests with rationale screens"
+      ],
+      "web": [
+        "Strict CSP, HSTS, secure cookies, CSRF protection",
+        "Admin behind SSO/MFA, IP allowlist or zero-trust access, session timeouts",
+        "Four-eyes approval for large payouts, commission changes, and country pack changes"
+      ],
+      "platform": [
+        "Webhook signature verification, replay protection, idempotent processing",
+        "Idempotency keys on offers, payments, payouts, withdrawals, refunds, and state transitions",
+        "Field-level encryption (Vault/pgsodium or application-level envelope encryption) for ID numbers, payout details, certificate numbers, and access notes, with blind indexes for lookups",
+        "Rate limiting per IP, device, user, and endpoint",
+        "Append-only, hash-chained audit logs for admin actions, KYC document access, money movement, and settings changes",
+        "Personal-data redaction in logs",
+        "SAST, dependency scanning, secret scanning, and DAST in CI",
+        "Encrypted backups, restore drills, documented RPO/RTO",
+        "Incident response and breach-notification runbooks per country",
+        "Independent penetration test before launch"
+      ],
+      "privacy": [
+        "Separate consents for location, biometrics, police clearance processing, and marketing",
+        "Data minimization and retention schedules",
+        "Access, correction, deletion, and export requests",
+        "Data protection impact assessment before launch",
+        "Terms and privacy policy reviewed by counsel in each live country"
+      ]
+    },
+    "performance_targets": {
+      "rpc_p95_ms": 300,
+      "nearby_provider_query_p95_ms": 50,
+      "realtime_event_delivery_p95_ms": 1000,
+      "cold_start_low_end_android_s": 3,
+      "app_size": "≤ 35 MB per-ABI download",
+      "crash_free_sessions": "≥ 99.5%",
+      "availability_slo": "99.9% for core flows",
+      "device_floor": "Low-end Android devices with 2–3 GB RAM on slow networks; minimum OS versions set in planning"
+    },
+    "store_readiness": [
+      "Apple: account deletion, privacy labels, Sign in with Apple when Google sign-in is offered, VoIP push only for calls, location usage justification",
+      "Google Play: Data safety form, foreground service type declarations, full-screen intent declaration, location justification, financial features declaration if applicable"
+    ],
+    "definition_of_done": [
+      "Acceptance criteria met on physical low-end and high-end devices",
+      "Tests pass in CI (unit, widget/golden, integration, pgTAP RLS tests, Edge Function tests)",
+      "No critical/high security findings",
+      "Contracts updated and consumed without drift",
+      "Logging, metrics, and alerts in place",
+      "Feature flag and rollback path defined",
+      "Admin tooling exists to operate the feature",
+      "Docs and runbooks updated"
+    ]
+  },
+  "agent_claude_code": {
+    "agent_meta": {
+      "version": "2.0.0",
+      "agent": "Claude Code (Opus 5)",
+      "responsibilities": [
+        "Deep research",
+        "Detailed planning and architecture",
+        "Contracts (the API/data agreement both agents build against)",
+        "Supabase backend",
+        "AI/ML services",
+        "Integrations (payments, KYC, voice, telephony, notifications, SOS partners)",
+        "Admin backend logic",
+        "Code audit of all frontends",
+        "Bug fixing",
+        "Security hardening",
+        "Release readiness"
+      ],
+      "must_read_first": [
+        "docs/spec/SUSKII_BUILD_PROMPT.json (master_spec section)",
+        "HANDOFF.md",
+        "contracts/draft/ (Kimi Code's data requirements)",
+        "The UI code in apps/"
+      ],
+      "counterpart": "Kimi Code (Kimi K3) builds the Flutter app and all Next.js web apps using the agent_kimi_code section of docs/spec/SUSKII_BUILD_PROMPT.json"
+    },
+    "role": {
+      "identity": "You are a principal engineer with 25+ years of experience building mobile-first marketplaces, ride-hailing and delivery platforms, and payment systems across African and global markets. You are the technical lead: you own architecture, contracts, backend, security, and final quality.",
+      "principles": [
+        "The server is the source of truth for prices, money, job states, verification, and permissions.",
+        "Think in systems: scalability, security, cost, observability, and CI/CD impact for every decision.",
+        "Design for African realities: unstable networks, low-end Android devices, mobile money, landmark addresses, differing regulations per country.",
+        "Never fabricate vendor APIs, SDK methods, model names, or legal requirements. Mark uncertain items VERIFY-IN-RESEARCH and confirm them from official documentation.",
+        "Flag bugs, edge cases, and risks proactively."
+      ]
+    },
+    "repo_setup": {
+      "layout": {
+        "apps/mobile": "Flutter app (owned by Kimi Code)",
+        "apps/web-customer": "Next.js customer web app (Kimi Code)",
+        "apps/web-marketing": "Next.js marketing site (Kimi Code)",
+        "apps/web-admin": "Next.js admin dashboard (Kimi Code)",
+        "supabase/migrations": "SQL migrations (Claude Code)",
+        "supabase/functions": "Edge Functions in TypeScript/Deno (Claude Code)",
+        "supabase/tests": "pgTAP tests (Claude Code)",
+        "supabase/seed": "Dev/staging seed data only (Claude Code)",
+        "services/ai": "FastAPI AI service on Cloud Run (Claude Code)",
+        "services/voice-agent": "LiveKit Agents worker (Claude Code)",
+        "services/workers": "Long-running workers (Claude Code)",
+        "contracts": "Owned by Claude Code; read-only for Kimi Code",
+        "packages/design-tokens": "Owned by Kimi Code",
+        "infra": "Terraform for GCP (Cloud Run, BigQuery, secrets), Cloudflare, and monitoring (Claude Code)",
+        "docs/spec": "The single build prompt (SUSKII_BUILD_PROMPT.json)",
+        "docs/adr": "Architecture decision records",
+        "docs/runbooks": "Operations runbooks",
+        "HANDOFF.md": "Shared log of what each agent delivered, open questions, and next steps",
+        "contracts/CHANGE_REQUESTS.md": "Where Kimi Code requests contract changes"
+      },
+      "agent_instruction_files": "Create CLAUDE.md at the repo root pointing to docs/spec/SUSKII_BUILD_PROMPT.json, coding standards, and commands. Create an equivalent instructions file for Kimi Code pointing to the same file.",
+      "tooling": [
+        "Supabase CLI (local stack, migrations, type generation)",
+        "pnpm + Turborepo for TypeScript workspaces",
+        "Melos for Dart packages",
+        "uv or Poetry for Python",
+        "Pre-commit hooks: formatting, linting, secret scanning"
+      ]
+    },
+    "workflow_with_kimi_code": [
+      {
+        "step": 1,
+        "owner": "Kimi Code",
+        "action": "Builds the full UI on mock data and writes contracts/draft/ui-data-requirements.md and HANDOFF.md."
+      },
+      {
+        "step": 2,
+        "owner": "Claude Code",
+        "action": "Phase 0 research and Phase 1 planning. Review Kimi's UI and draft against master_spec: reject any client-side business logic, fill missing states, and publish official contracts v1 with fixtures. List required UI changes in HANDOFF.md."
+      },
+      {
+        "step": 3,
+        "owner": "Claude Code",
+        "action": "Build the Supabase backend, Edge Functions, AI service, and integrations exactly to contracts v1."
+      },
+      {
+        "step": 4,
+        "owner": "Kimi Code",
+        "action": "Align to contracts v1, then swap mocks for the real backend module by module."
+      },
+      {
+        "step": 5,
+        "owner": "Claude Code",
+        "action": "Audit all frontend and backend code, fix bugs, run security review, performance and load tests."
+      },
+      {
+        "step": 6,
+        "owner": "Both",
+        "action": "End-to-end testing on physical devices, store submission, production launch."
+      },
+      {
+        "rule": "Kimi's draft is input, not authority. When it conflicts with master_spec (money, security, state machine), master_spec wins and the UI changes."
+      }
+    ],
+    "phases": [
+      {
+        "phase": 0,
+        "name": "Deep Research",
+        "no_code": true,
+        "tasks": [
+          "Competitor teardown: inDrive, Bolt, Uber, Glovo, Chowdeck, Gokada, SafeBoda, Yango, TaskRabbit, Thumbtack, Urban Company — negotiation UX, trust and safety, onboarding, pricing, referral programs",
+          "Market analysis for the first 5 candidate African countries: demand, pricing norms, payment habits (cards vs mobile money), trust barriers",
+          "Payments: Flutterwave coverage, payment methods, payout rails, holding/delayed settlement options, fees, webhooks per country; Stripe Connect availability for the operating entity and payout countries; legal position on holding customer funds per country",
+          "KYC: Smile ID and alternatives — ID coverage per country, liveness certification, duplicate-face detection, Flutter and web SDKs, pricing",
+          "Police clearance per candidate country: document name, issuing body, validity, and whether any official or vendor verification channel exists",
+          "Voice: LiveKit Cloud pricing and African latency, Flutter + JS SDK maturity, LiveKit Agents support for Gemini real-time audio; PSTN masked-number providers per country",
+          "SMS/OTP providers per country with delivery rates and support for Supabase Send SMS Hook",
+          "SOS: private security/emergency response partners with APIs or dispatch consoles in candidate cities",
+          "Gemini on Vertex AI: current model names, tool-use quality, real-time audio support, regional availability, data handling terms, pricing; test Pidgin understanding",
+          "Supabase: available regions and latency from major African cities, plan limits (Realtime connections/messages, Edge Function limits, storage), extension availability (PostGIS, pgvector, pg_cron, pgmq, pgTAP, partitioning), read replicas, compliance posture",
+          "Data protection, consumer protection, tax (VAT, withholding on referral income), and platform-worker regulations per candidate country",
+          "App Store and Google Play policies for VoIP, full-screen intents, foreground services, location, account deletion, user-generated content, financial features",
+          "Flutter and npm package due diligence (maintenance, license, platform support)"
+        ],
+        "deliverables": [
+          "docs/research/REPORT.md with sources",
+          "Vendor decision matrix (score, recommendation, fallback) per category and per country",
+          "Country pack drafts for candidate countries",
+          "Compliance checklist and DPIA outline",
+          "Risk register",
+          "Monthly running-cost model at 1k, 10k, 100k, and 1M monthly active users",
+          "Spike plan: VoIP incoming call with app killed (iOS/Android), provider background location on low-end Android (Tecno/Infinix/itel battery restrictions), liveness SDK on 2 GB RAM devices, PostGIS nearest-provider query at 100k providers, concurrent offer acceptance, Realtime load for location broadcast"
+        ]
+      },
+      {
+        "phase": 1,
+        "name": "Detailed Planning & Architecture",
+        "no_code": true,
+        "deliverables": [
+          "PRD with user stories and acceptance criteria for Customer mode, Provider mode, Business/fleet, web app, marketing site, and admin",
+          "Review of Kimi Code's UI prototype and contracts/draft/: gaps, missing states, and any client-side logic that must move to the server",
+          "Official contracts v1 (see 'contracts' section) reconciled from Kimi's draft, with fixtures matching Kimi's mock data where possible",
+          "UI change list for Kimi Code in HANDOFF.md",
+          "C4 architecture diagrams",
+          "Complete ERD with indexes, constraints, partitioning, RLS policy matrix (role × table × operation)",
+          "Job lifecycle and negotiation state machines (transition tables with guards, timeouts, side effects)",
+          "Money flow diagrams per gateway, including refunds, disputes, item floats, tips, referral commissions, and clawbacks",
+          "Threat model (STRIDE) per component",
+          "Data flow diagram marking personal, biometric, criminal-record, and financial data",
+          "AI design: prompts, tools, guardrails, eval sets, cost budget",
+          "Infrastructure and CI/CD plan",
+          "Test strategy and device/network matrix",
+          "Revised timeline for the single full release, with critical path and dependencies",
+          "ADRs for every major decision"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Backend Foundation",
+        "tasks": [
+          "Supabase projects (dev/staging/prod), CLI workflow, migrations pipeline",
+          "Extensions and schemas (public, private, ledger, kyc, audit)",
+          "Auth: phone OTP via Send SMS Hook with per-country routing, email, Google/Apple sign-in, TOTP MFA, CAPTCHA, Custom Access Token Hook",
+          "Users, profiles, modes, devices, sessions, consents, country packs, feature flags, remote config",
+          "Audit logging (hash-chained) and outbox pattern",
+          "Device integrity verification Edge Function (Play Integrity, App Attest)",
+          "Observability (Sentry, log drains, alerts)"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Marketplace Core",
+        "tasks": [
+          "Service taxonomy with embeddings; custom service handling",
+          "Requests (media, locations, urgency, scheduled time, item float, declared value)",
+          "PostGIS matching and provider notification fan-out",
+          "Offers and negotiation engine (TTL, rounds, optimistic concurrency, row locking, idempotency)",
+          "Job state machine functions and triggers",
+          "Realtime private channels and database broadcasts",
+          "Chat with moderation hooks; storage buckets and policies",
+          "Favorites, blocks, reports, two-way ratings, reputation jobs",
+          "Business accounts, members, dispatch, vehicles, zone rules"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Verification & Safety",
+        "tasks": [
+          "IdentityVerificationProvider abstraction and primary vendor integration (customer + provider flows)",
+          "Police clearance workflow, expiry tracking, reminders, auto-suspension",
+          "Ongoing selfie checks and re-verification triggers",
+          "Verification Officer review queue backend",
+          "SOS flow with ops queue and partner dispatch integration, trusted contacts, trip share links",
+          "Restricted items and moderation rules",
+          "Risk engine rules and fraud cases"
+        ]
+      },
+      {
+        "phase": 5,
+        "name": "Money",
+        "tasks": [
+          "PaymentProvider abstraction; Flutterwave and Stripe Connect integrations with per-country routing",
+          "Payment initiation after agreement, webhook processing, verification, payment TTL",
+          "Double-entry ledger, wallets, holds, settlements, provider payouts (bank + mobile money)",
+          "Commission and gateway fee calculation per money_rules",
+          "Item float flow with receipt reading and refund of unused amounts",
+          "Refunds, cancellations, dispute freezes",
+          "Promo codes and tips",
+          "Referral program: attribution, commission accrual, holds, clawbacks, withdrawals, campaigns, anti-fraud",
+          "Finance approvals (single and four-eyes) and daily reconciliation"
+        ]
+      },
+      {
+        "phase": 6,
+        "name": "Communication",
+        "tasks": [
+          "LiveKit Cloud integration: token minting Edge Function, call records, call state events",
+          "VoIP push via APNs and high-priority FCM for incoming calls",
+          "PSTN masked-number fallback",
+          "Notification service (push, SMS, email, in-app inbox) with preferences and quiet hours",
+          "Scheduled errands publishing via queues/cron"
+        ]
+      },
+      {
+        "phase": 7,
+        "name": "AI Services",
+        "tasks": [
+          "FastAPI service on Cloud Run with Gemini (Vertex AI) gateway, model routing, retries, cost tracking",
+          "Concierge tools (create draft request, classify, estimate price band, find providers, compare offers, check job status) — all authorized per user",
+          "LiveKit Agents voice concierge (English + Pidgin)",
+          "Price intelligence (rules first, model pipeline to BigQuery/Vertex later)",
+          "Matching scoring and ranking",
+          "Moderation, receipt reading, support triage",
+          "AI Admin Assistant with predefined analytics functions on a read replica",
+          "Eval suites and red-team tests in CI"
+        ]
+      },
+      {
+        "phase": 8,
+        "name": "Admin Backend & Analytics",
+        "tasks": [
+          "Role-based permissions for the five admin roles (Super Admin, Verification Officer, Support Agent, Finance Officer, Dispute Officer) enforced in RLS and functions",
+          "Admin functions for users, businesses, verification, requests, offers, jobs, payments, payouts, disputes, referrals, promos, country packs, settings",
+          "BigQuery export and analytics views; operational dashboards"
+        ]
+      },
+      {
+        "phase": 9,
+        "name": "Audit, Bug Fixing & Hardening",
+        "tasks": "See 'audit_responsibilities'"
+      },
+      {
+        "phase": 10,
+        "name": "Launch",
+        "tasks": [
+          "Production configuration, secrets, backups, PITR, alerts",
+          "Load tests at target scale",
+          "Independent penetration test and fixes",
+          "Store submission support (review mode, demo accounts, declarations)",
+          "Runbooks: incidents, payments failures, KYC vendor outage, SOS escalation, data breach, country go-live checklist",
+          "Handover documentation"
+        ]
+      }
+    ],
+    "contracts": {
+      "location": "/contracts",
+      "contents": [
+        "db-types: generated TypeScript types from Supabase, plus JSON Schemas used to generate Dart models",
+        "rpc-catalog: every database function the clients may call — name, input schema, output schema, errors, required role/mode, idempotency requirement",
+        "edge-functions.openapi.yaml: every Edge Function endpoint",
+        "realtime-events: channel naming, authorization rules, event names, payload schemas",
+        "state-machines: job and offer transition tables",
+        "error-codes: stable codes with user-facing message keys (localizable)",
+        "storage: bucket names, path conventions, allowed types and sizes, upload method",
+        "fixtures: realistic mock data for every screen, including edge cases (expired offers, failed payment, disputed job, suspended provider)",
+        "CHANGELOG.md with semantic versions"
+      ],
+      "rules": [
+        "Contracts are versioned; breaking changes require a new version and a migration note in HANDOFF.md",
+        "Clients may call only functions and endpoints listed in the contracts"
+      ]
+    },
+    "backend_rules": [
+      "All writes that affect money, state, verification, ratings, or permissions go through database functions or Edge Functions — never direct table writes from clients.",
+      "SECURITY DEFINER functions: set search_path to empty, check auth.uid() and role/mode, validate inputs, and raise stable error codes.",
+      "Every exposed table has RLS with pgTAP tests covering allow and deny cases for each role.",
+      "Use row locking or optimistic versioning for offer acceptance, wallet movements, withdrawals, and campaign budgets.",
+      "Idempotency keys stored and enforced for all create/transition/money operations.",
+      "Background work uses Supabase Queues + Cron or Cloud Run workers; never long-running work inside a request.",
+      "Location pings travel over Realtime Broadcast; persist only sampled points for tracking history and disputes.",
+      "Secrets live only in Supabase secrets/Vault and GCP Secret Manager.",
+      "Write comments only for non-obvious logic."
+    ],
+    "audit_responsibilities": {
+      "when": "After each Kimi Code integration milestone and before release",
+      "frontend_audit_checklist": [
+        "No service role key, private keys, or secrets in any client bundle or repo history",
+        "No client-side calculation treated as authoritative for prices, commissions, fees, or statuses",
+        "Only contract-listed functions/endpoints are called; no direct writes to protected tables",
+        "Token storage, certificate pinning, runtime protection, integrity tokens, screenshot protection correctly implemented",
+        "Permission requests are just-in-time with rationale and handle denial",
+        "Payment flow never shows success before server confirmation",
+        "VoIP/CallKit and Android full-screen call flows correct with app killed, locked, and in background",
+        "Deep links and referral attribution cannot be spoofed to grant rewards",
+        "Offline outbox handles retries idempotently",
+        "Memory leaks, stream/subscription disposal, rebuild performance, jank on low-end Android",
+        "Accessibility, localization completeness (English, Pidgin), RTL readiness",
+        "Web: CSP, cookie security, SSR data leaks, admin route protection, XSS/CSRF",
+        "Dependency vulnerabilities and license issues"
+      ],
+      "backend_self_audit": [
+        "RLS coverage and tests",
+        "Function privilege review",
+        "Webhook security",
+        "Ledger invariants (sum of entries per transaction is zero)",
+        "Race-condition tests",
+        "Rate limits",
+        "Log redaction",
+        "Backup and restore drill"
+      ],
+      "output": "docs/audit/AUDIT-<date>.md with findings (severity, location, fix, status). Fix critical and high issues directly or file precise tasks for Kimi Code in HANDOFF.md."
+    },
+    "testing": {
+      "database": "pgTAP for RLS, functions, state machines, ledger invariants",
+      "edge_functions": "Deno tests with mocked vendors; contract tests against the OpenAPI spec",
+      "ai_service": "pytest, eval suites, latency/cost regression checks",
+      "integration": "Local Supabase stack in CI; gateway and KYC sandboxes for end-to-end flows including failures and webhook retries",
+      "load": "k6 for request publishing, offers, chat, location broadcast, and payment webhooks",
+      "security": "Semgrep/CodeQL, dependency and secret scanning, OWASP ZAP against web and function endpoints"
+    },
+    "ci_cd": [
+      "GitHub Actions: lint, typecheck, tests, security scans, Supabase advisors",
+      "Migrations applied to staging automatically after merge; production requires manual approval",
+      "Edge Functions and Cloud Run services deployed per environment with rollback",
+      "Expand/contract migrations for zero downtime",
+      "Contract drift check: fail CI if generated types differ from committed contracts"
+    ],
+    "output_instructions": [
+      "Work in phase order. Phases 0 and 1 produce documents only.",
+      "Start each phase with a short objective; end with a CHECKPOINT: delivered, decisions made, open decisions, risks, next steps. Update HANDOFF.md.",
+      "Provide complete files, not fragments, for anything claimed as implemented.",
+      "After each module list: migrations, functions, tests, environment variables, security notes, known limitations.",
+      "Write an ADR for every major decision.",
+      "Keep OPEN-DECISION defaults from the master spec configurable and list them in every checkpoint until the client resolves them."
+    ]
+  },
+  "agent_kimi_code": {
+    "agent_meta": {
+      "version": "2.0.0",
+      "agent": "Kimi Code (Kimi K3)",
+      "responsibilities": [
+        "Flutter mobile app (Customer + Provider modes)",
+        "Next.js customer web app",
+        "Next.js marketing website",
+        "Next.js admin dashboard",
+        "Design system and design tokens",
+        "Frontend tests",
+        "Drafting UI data requirements (contracts/draft/) for Claude Code"
+      ],
+      "must_read_first": [
+        "docs/spec/SUSKII_BUILD_PROMPT.json (master_spec and agent_kimi_code sections)",
+        "HANDOFF.md if it exists"
+      ],
+      "counterpart": "Claude Code (Opus 5) owns research, planning, contracts, backend, AI services, audits, and bug fixing."
+    },
+    "role": {
+      "identity": "You are a principal mobile and frontend engineer with 25+ years of experience shipping consumer apps used on low-end Android devices and slow networks across Africa, plus polished iOS apps and high-traffic web products.",
+      "principles": [
+        "Build against the contracts exactly. Never invent endpoints, fields, or events.",
+        "The client displays and requests; the server decides. Never compute authoritative prices, fees, commissions, statuses, or verification results on the client.",
+        "Every screen handles loading, empty, error, offline, and permission-denied states.",
+        "Performance on 2–3 GB RAM Android phones is a requirement, not a nice-to-have.",
+        "Accessible, localizable, and theme-driven from the first widget."
+      ]
+    },
+    "working_agreement": [
+      "You go first. No backend or official contracts exist yet. Build every screen on a mock data layer.",
+      "Use the screen lists in this section as your screen inventory.",
+      "Once Claude Code publishes official /contracts, do not edit them; request changes in contracts/CHANGE_REQUESTS.md.",
+      "Do not create or edit /supabase or /services.",
+      "Record delivered modules, known issues, assumptions, and questions in HANDOFF.md at the end of every milestone.",
+      "Claude Code will review and audit your code; fix findings assigned to you in HANDOFF.md before starting new work."
+    ],
+    "flutter_app": {
+      "location": "apps/mobile (+ shared Dart packages under packages/)",
+      "sdk": "Flutter latest stable, pinned with FVM; Dart with strict analysis options",
+      "architecture": {
+        "pattern": "Feature-first clean architecture: presentation → application (use cases) → domain (entities, repository interfaces) → data (Supabase and mock data sources)",
+        "state_management": "Riverpod with code generation",
+        "navigation": "go_router with typed routes; two navigation shells (CustomerShell, ProviderShell) and guards for auth, verification level, mode, and country availability",
+        "models": "freezed + json_serializable generated from contract JSON Schemas",
+        "backend_client": "supabase_flutter (auth, database functions, realtime, storage); Edge Functions called through a typed client generated from the OpenAPI contract",
+        "local_data": "Drift (SQLite) for cache and an outbox for status updates, proof uploads, and chat messages",
+        "secure_storage": "flutter_secure_storage for session data and keys",
+        "flavors": [
+          "dev",
+          "staging",
+          "prod"
+        ],
+        "config": "--dart-define-from-file per flavor; only the public anon key and URLs in the app — never a service role key"
+      },
+      "packages": {
+        "packages/suskii_design": "Design tokens, themes (light/dark), typography, components, icons, motion",
+        "packages/suskii_core": "Environment, errors (mapped from contract error codes), logging, analytics, security wrappers, connectivity",
+        "packages/suskii_domain": "Shared entities and value objects (Money with currency + minor units, GeoPoint, JobStatus, OfferStatus)",
+        "packages/suskii_data": "Repositories: mock and Supabase implementations",
+        "packages/suskii_chat": "Chat feature",
+        "packages/suskii_calls": "VoIP calling feature",
+        "packages/suskii_maps": "Maps, tracking, address search",
+        "packages/suskii_l10n": "ARB files and generated localizations"
+      },
+      "plugins_to_evaluate": {
+        "note": "Check maintenance status, license, and platform support before adding. Record choices in HANDOFF.md.",
+        "list": [
+          "google_maps_flutter",
+          "geolocator",
+          "flutter_background_geolocation (commercial license needed for Android release) or a custom location foreground service",
+          "livekit_client",
+          "flutter_callkit_incoming or equivalent",
+          "firebase_messaging + flutter_local_notifications",
+          "Smile ID Flutter SDK (or the vendor chosen in research)",
+          "freerasp",
+          "local_auth",
+          "app_links",
+          "camera / image_picker + flutter_image_compress",
+          "sentry_flutter",
+          "widgetbook",
+          "patrol"
+        ]
+      },
+      "mode_switch": {
+        "behaviour": [
+          "Default mode is Customer. The switch lives in the profile/drawer and animates between the two shells.",
+          "Switching to Provider mode when not verified opens provider onboarding instead.",
+          "Each mode keeps its own navigation stack and state; switching back restores it.",
+          "Active-job banners show across modes so a user never loses track of an ongoing job.",
+          "Provider permissions (continuous location, notifications, foreground service) are requested only when first going online."
+        ]
+      },
+      "customer_mode_screens": [
+        "Splash, onboarding carousel, country and language selection",
+        "Sign up / sign in (phone OTP, email, Google, Apple), MFA prompt",
+        "Facial verification flow (consent → liveness → ID capture/lookup → result)",
+        "Home: AI concierge entry (text + voice), quick categories, active jobs, favorites, promos",
+        "AI concierge chat and voice screens",
+        "Create request: description, category/custom, photos, pickup/destination with landmark notes, urgency, schedule, item float, declared value, preferred price with AI price band hint",
+        "Live offers board: offer cards with provider rating, level, distance, ETA, price; accept, decline, counter; countdown timers; AI compare",
+        "Provider profile (reviews, badges, verification level, business info)",
+        "Payment: summary with breakdown from server, gateway checkout, pending and failure states",
+        "Live tracking: map, provider location, ETA, status timeline, pickup/delivery PIN, call, chat, SOS, share trip",
+        "Chat and in-call screen",
+        "Completion: proof review, receipt approval for item float, confirm, rate, tip",
+        "Disputes: create, add evidence, timeline",
+        "Wallet: balance, credits, refunds, history",
+        "Referral hub: link/QR, share sheet, referral list, earnings by status, withdrawals, milestones",
+        "Promos, saved places, trusted contacts, favorites, blocked users",
+        "Notifications inbox and preferences",
+        "Help center and support tickets",
+        "Settings: language, theme, security (biometric lock, sessions, MFA), privacy consents, data export, account deletion"
+      ],
+      "provider_mode_screens": [
+        "Provider onboarding: individual vs business, services and service areas, vehicle type",
+        "Provider KYC: ID verification, facial verification, ID document capture, police clearance upload (certificate number, dates), address, guarantor, payout account, vehicle documents, credentials, status tracker with per-step feedback",
+        "Go-online screen with selfie check",
+        "Request feed (list + map), filters, demand heatmap",
+        "Request detail with estimated payout calculator (values from server) and offer/counter composer",
+        "My offers with timers and status",
+        "Active job: navigation hand-off, status updates, PIN entry, photo proof, receipt upload, chat, call, SOS",
+        "Earnings: balance, payout breakdown per job (gross, commission, gateway fee, tip), withdrawals to bank or mobile money, history",
+        "Reputation: level, completion rate, cancellation rate, response time, reviews",
+        "Availability schedule, earnings goals, insights",
+        "Document expiry center",
+        "Business console (Owner/Dispatcher): workers, invite and verification status, vehicles, job dispatch, per-worker earnings"
+      ],
+      "calls_implementation": [
+        "Incoming calls ring natively with the app killed, in background, or on a locked screen (CallKit/PushKit on iOS; ConnectionService/full-screen notification on Android).",
+        "Report every VoIP push to CallKit immediately on iOS.",
+        "Handle Android 14+ full-screen intent permission denial with a fallback heads-up notification.",
+        "In-call UI: mute, speaker, Bluetooth, open chat, report; reconnect on network change.",
+        "Offer the phone-call fallback when the server signals poor connectivity."
+      ],
+      "location_implementation": [
+        "Provider tracking runs in a foreground service with a persistent notification while online.",
+        "Adaptive update frequency (faster while en route, slower while idle), batching on poor networks.",
+        "Detect mock locations and report them to the server.",
+        "Handle aggressive OEM battery optimizations with a guided settings screen."
+      ],
+      "security_implementation": [
+        "Obfuscated release builds with split debug info uploaded to Sentry",
+        "TLS public-key pinning for Supabase, Edge Functions, and AI endpoints with backup pins",
+        "freeRASP (or equivalent) signals forwarded to the backend; sensitive actions disabled on compromised devices",
+        "Play Integrity / App Attest tokens attached to login, KYC, payouts, withdrawals, and referral actions",
+        "Screenshot/screen-recording protection and app-switcher blur on KYC, wallet, PIN, and payout screens",
+        "Biometric/PIN confirmation for withdrawals and payout account changes",
+        "No sensitive data in logs, analytics events, or crash reports",
+        "Cleartext traffic disabled; sensitive data excluded from Android backups"
+      ],
+      "performance_rules": [
+        "Cold start ≤ 3s on low-end Android; defer non-critical initialization",
+        "const widgets, selective Riverpod watching, list virtualization, image caching and resizing",
+        "Compress images before upload; lite map mode on low-end devices",
+        "Per-ABI builds; keep download size ≤ 35 MB",
+        "Profile on a real low-end device before each milestone"
+      ]
+    },
+    "web_apps": {
+      "stack": "Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + TanStack Query + @supabase/ssr + zod (schemas from contracts)",
+      "shared": "Design tokens from packages/design-tokens exported for Tailwind so web and mobile share one brand source",
+      "customer_web_app": {
+        "location": "apps/web-customer",
+        "scope": "Everything in Customer mode that works on the web: AI concierge (text and voice), request creation, offers and negotiation, payment, tracking, chat, calls (LiveKit JS), disputes, wallet, referrals, settings. Facial verification via the vendor's web SDK (VERIFY availability). Web push for notifications.",
+        "note": "Provider mode is mobile-only at launch (it needs continuous location and native call handling)."
+      },
+      "marketing_site": {
+        "location": "apps/web-marketing",
+        "scope": "Home, How Suskii Works (customers and providers), services, become a provider, businesses, safety, referral program, country/city landing pages, FAQ, blog, contact/support, legal pages per country, app download links with deep-link handling",
+        "seo": "Static generation/ISR, metadata, structured data, sitemap, hreflang for languages, Core Web Vitals budgets"
+      },
+      "admin_dashboard": {
+        "location": "apps/web-admin",
+        "roles": [
+          "Super Admin",
+          "Verification Officer",
+          "Support Agent",
+          "Finance Officer",
+          "Dispute Officer"
+        ],
+        "modules": [
+          "Overview dashboard with live metrics per country",
+          "Users, providers, businesses, workers, vehicles",
+          "Verification queues (ID, facial, police clearance, documents) with short-lived document viewing",
+          "Requests, offers, negotiations, jobs with state timeline and live map",
+          "Payments, holds, settlements, payouts, withdrawals with single and two-person approvals",
+          "Referral program: attributions, commissions, flagged cases, campaigns",
+          "Promos",
+          "Disputes with evidence viewer and resolution actions",
+          "Support tickets",
+          "SOS operations console (real-time)",
+          "Risk and fraud cases",
+          "Country packs, commissions, settings, feature flags (with approval flow)",
+          "Analytics and AI Admin Assistant chat",
+          "Audit log viewer",
+          "Admin users, roles, MFA enforcement"
+        ],
+        "rules": [
+          "Every screen and action checks role permissions from the backend; hidden buttons are not security",
+          "Session timeout and re-authentication for sensitive actions"
+        ]
+      },
+      "web_security": [
+        "Strict CSP, HSTS, secure cookies",
+        "No secrets in client bundles; only the public anon key",
+        "Server components must not leak other users' data",
+        "Sanitize any user-generated content before rendering"
+      ]
+    },
+    "design_system": {
+      "status": "No brand assets yet. Build a complete token-driven system with placeholder values that can be replaced by editing only the token files.",
+      "tokens": [
+        "Color (brand primary/secondary, semantic success/warning/error/info, surfaces, text) for light and dark",
+        "Typography scale",
+        "Spacing",
+        "Radius",
+        "Elevation",
+        "Motion durations and curves",
+        "Iconography"
+      ],
+      "components": [
+        "Buttons",
+        "Inputs (including phone with country code, currency amount input using minor units)",
+        "Offer card",
+        "Provider card",
+        "Status timeline",
+        "Price breakdown",
+        "Countdown timer",
+        "Map sheet",
+        "Chat bubbles",
+        "Call UI",
+        "Verification step tracker",
+        "Empty/error/offline states",
+        "Skeleton loaders",
+        "Toasts and dialogs",
+        "Rating input",
+        "Badge/level chips"
+      ],
+      "catalog": "Widgetbook for Flutter components; Storybook (optional) for web",
+      "accessibility": "WCAG AA contrast, minimum 48dp touch targets, semantic labels, text scaling up to 200%",
+      "rtl": "Use directional padding/alignment everywhere so RTL languages work without layout changes"
+    },
+    "localization": {
+      "launch": [
+        "English",
+        "Nigerian Pidgin"
+      ],
+      "v1_1": [
+        "Yoruba",
+        "Igbo",
+        "Hausa"
+      ],
+      "rules": [
+        "No hardcoded user-facing strings",
+        "Error messages come from contract error-code keys",
+        "Currency and number formatting per locale and currency",
+        "Dates and times in the user's time zone"
+      ]
+    },
+    "testing": {
+      "flutter": [
+        "Unit tests for use cases and controllers",
+        "Widget and golden tests (light/dark, text scale, RTL)",
+        "Patrol integration tests for permissions, notifications, calls, KYC SDK hand-off",
+        "Device matrix: low-end Android (Tecno/Infinix/itel), mid-range Samsung, Pixel, older and current iPhones; network throttling and offline"
+      ],
+      "web": [
+        "Vitest/React Testing Library",
+        "Playwright end-to-end for customer web app and admin (including role permissions)",
+        "Lighthouse budgets for the marketing site"
+      ]
+    },
+    "ci_cd": [
+      "GitHub Actions: format, analyze/lint, tests, golden tests, dependency scan",
+      "Mobile builds per flavor with code signing (Codemagic or Fastlane)",
+      "Distribution: Firebase App Distribution / TestFlight / Play internal testing, then staged production rollout gated on crash rate",
+      "Web deployments with preview environments per pull request"
+    ],
+    "milestones": [
+      {
+        "id": "M1",
+        "name": "Design system, app shell, mode switch, navigation, localization setup, mock data layer and repository interfaces"
+      },
+      {
+        "id": "M2",
+        "name": "Auth, onboarding, facial verification UI, provider KYC UI"
+      },
+      {
+        "id": "M3",
+        "name": "Request creation, AI concierge UI (text + voice), offers and negotiation"
+      },
+      {
+        "id": "M4",
+        "name": "Payments UI, tracking, chat, calls, SOS, completion and ratings"
+      },
+      {
+        "id": "M5",
+        "name": "Wallet, earnings, withdrawals, referrals, promos, disputes, support, settings, account deletion"
+      },
+      {
+        "id": "M6",
+        "name": "Provider tools and business console"
+      },
+      {
+        "id": "M7",
+        "name": "Customer web app and marketing site"
+      },
+      {
+        "id": "M8",
+        "name": "Admin dashboard"
+      },
+      {
+        "id": "M8.5",
+        "name": "Hand-off: finalize contracts/draft/ui-data-requirements.md, update HANDOFF.md, and produce a demo build (Android APK + iOS TestFlight) and web preview links"
+      },
+      {
+        "id": "M9",
+        "name": "After Claude Code publishes contracts v1: apply UI change list, align models, connect every module to the real Supabase backend, fix audit findings, performance pass, store assets and submission"
+      }
+    ],
+    "output_instructions": [
+      "Start each milestone with a file tree, then complete files.",
+      "After each milestone list: screens delivered, contract functions used, tests added, known issues, change requests.",
+      "Update HANDOFF.md at the end of every milestone.",
+      "Do not remove or weaken any security item in this section to make something work; raise it in HANDOFF.md instead."
+    ],
+    "frontend_first_rules": [
+      "Define a repository interface per feature in the domain layer; provide a Mock implementation now and leave the Supabase implementation for later. Screens must depend only on the interfaces.",
+      "Mock data must be realistic and cover edge cases: expired offers, failed payment, disputed job, suspended provider, expired police clearance, unverified user, offline, empty lists, multiple currencies (NGN, KES, GHS, ZAR, USD).",
+      "Simulate realtime (offer arrivals, status changes, provider movement, incoming calls) with mock streams so the UI is fully demoable.",
+      "Never implement business logic in the UI. Prices, commission, gateway fee, payout, and referral amounts must come from a server-style 'quote/breakdown' object, even in mocks. Status changes must be requested actions, never local assignments.",
+      "Put vendor-dependent features behind interfaces with placeholder adapters: KYC/facial verification, payment checkout (Flutterwave/Stripe), VoIP calls, maps, AI concierge. Do not lock in a paid SDK without noting it in HANDOFF.md.",
+      "For every screen, record in contracts/draft/ui-data-requirements.md: data displayed (fields and types), user actions and their inputs, realtime events needed, error cases, pagination, and permissions/role requirements.",
+      "Use Money (integer minor units + currency code), GeoPoint, and status enums from the domain package everywhere.",
+      "Keep the app demo-ready at the end of every milestone (mock build installable for client review)."
+    ]
+  },
+  "first_instruction": {
+    "kimi_code": "Save this file to docs/spec/SUSKII_BUILD_PROMPT.json if it is not already there, and create your agent instructions file pointing to it. You are the frontend agent and you go first. Read master_spec and agent_kimi_code in full, set up the monorepo folders for apps/ and packages/, create HANDOFF.md and contracts/draft/ui-data-requirements.md, then begin Milestone M1. End each milestone with the summary described in output_instructions.",
+    "claude_code": "Start only after Kimi Code's hand-off (Milestone M8.5), unless the user asks you to run Phase 0 research in parallel. Create CLAUDE.md pointing to docs/spec/SUSKII_BUILD_PROMPT.json. Read master_spec, agent_claude_code, HANDOFF.md, contracts/draft/, and the UI code. Then begin PHASE 0 — DEEP RESEARCH. Do not write application code. End with the Phase 0 CHECKPOINT."
+  }
+}

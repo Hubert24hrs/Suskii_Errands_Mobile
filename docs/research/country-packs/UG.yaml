@@ -1,0 +1,121 @@
+# Country pack DRAFT — Uganda. Phase 0 research artefact, not seed data.
+# NOTE: UGX has ISO 4217 exponent 0 — minor units == shillings.
+country_code: UG
+status: beta
+launch:
+  cities:
+    - code: KLA
+      name: Kampala
+      zones:
+        - code: KLA-GENERAL
+          name: Kampala metro
+          vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+          notes: KCCA boda boda registration and zoning rules change often; confirm the current regime.
+currency:
+  code: UGX
+  minor_unit_exponent: 0
+commercial:
+  commission_rate: "0.125"
+  referral_rate: "0.025"
+  referral_max_duration_months: null
+  promo_referral_stacking: false
+tax:
+  vat_rate: "0.18"
+  vat_components: [{ name: VAT, rate: "0.18" }]
+  platform_vat_collection_agent: counsel_required
+  withholding_on_referral_payouts: counsel_required
+payments:
+  collection_routing:
+    - { method: mobile_money, primary: flutterwave, fallback: null, notes: "FW 3%; MTN, Airtel. Single vendor — Paystack not in UG" }
+    - { method: card,         primary: flutterwave, fallback: null, notes: "FW 4.8%" }
+  enabled_methods: [mobile_money, card]
+  fee_bearer_setting: merchant
+  payout_rails:
+    - { rail: mobile_money, networks: [MTN, AIRTEL], primary: flutterwave, fallback: null, notes: "UGX 1,000 (<125k) or 1.2%" }
+    - { rail: bank, networks: [EFT], primary: flutterwave, fallback: null, notes: "UGX 5,000" }
+  min_withdrawal_minor: 5000         # UGX 5,000
+  withdrawal_approval_thresholds_minor:
+    single_approver: 2000000         # UGX 2,000,000
+    second_approver: 8000000         # UGX 8,000,000
+  funds_holding_model: gateway_merchant_balance_with_collection_agent_terms   # National Payment Systems Act 2020 — counsel (OD-12)
+kyc:
+  vendor_routing: { primary: smile_id, fallback: null }
+  customer:
+    accepted_id_types: [NATIONAL_ID, PASSPORT]
+    facial_verification: biometric_kyc_against_id_authority
+  provider:
+    accepted_id_types: [NATIONAL_ID]
+    police_clearance:
+      document_name: Certificate of Good Conduct (Police Clearance Certificate)
+      issuer: Interpol National Central Bureau Kampala — Directorate of Interpol & International Relations, Uganda Police Force
+      portal: https://service.upf.go.ug
+      fee_note: 5–14 working days after fingerprint appointment [P23c]
+      validity_months: 6
+      accept_issued_within_months: 6
+      revalidate_every_months: 12
+      verification_channel: manual_officer_review
+    address_verification: required_for_trusted_and_above
+    guarantor: configurable_per_category
+  business_registration_documents: [URSB_CERTIFICATE_OF_INCORPORATION_OR_BUSINESS_NAME, URA_TIN]
+vehicles:
+  types_allowed_default: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+  documents:
+    motorcycle: [DRIVING_PERMIT, VEHICLE_REGISTRATION, THIRD_PARTY_INSURANCE, KCCA_BODA_REGISTRATION_WHERE_REQUIRED]
+    tricycle:   [DRIVING_PERMIT, VEHICLE_REGISTRATION, THIRD_PARTY_INSURANCE]
+    car:        [DRIVING_PERMIT, VEHICLE_REGISTRATION, THIRD_PARTY_INSURANCE]
+    van:        [DRIVING_PERMIT, VEHICLE_REGISTRATION, THIRD_PARTY_INSURANCE]
+    truck:      [DRIVING_PERMIT_COMMERCIAL_CLASS, VEHICLE_REGISTRATION, THIRD_PARTY_INSURANCE]
+phone:
+  e164_prefix: "+256"
+  nsn_length: 9
+  indicative_mobile_regex: '^\+2567\d{8}$'
+  otp_routing: { primary: africas_talking, fallback: infobip, whatsapp_otp: true }
+languages:
+  supported: [en]            # Luganda / Swahili later (OD-16)
+  default: en
+legal:
+  documents:
+    - { type: terms_customer,  version: "0.0-draft", url_placeholder: /legal/ug/terms-customer, requires_acceptance: true }
+    - { type: terms_provider,  version: "0.0-draft", url_placeholder: /legal/ug/terms-provider, requires_acceptance: true }
+    - { type: privacy_policy,  version: "0.0-draft", url_placeholder: /legal/ug/privacy,        requires_acceptance: true }
+    - { type: biometric_consent, version: "0.0-draft", url_placeholder: /legal/ug/biometrics,  requires_acceptance: true }
+    - { type: criminal_record_check_consent, version: "0.0-draft", url_placeholder: /legal/ug/police-clearance, requires_acceptance: true }
+    - { type: referral_terms,  version: "0.0-draft", url_placeholder: /legal/ug/referrals,      requires_acceptance: true }
+data_protection:
+  law: Data Protection and Privacy Act 2019 + Regulations 2021
+  regulator: Personal Data Protection Office (PDPO)
+  registration: required, renewed annually; applies to offshore entities [P46b]
+  breach_notice_hours: counsel_required
+  residency: offshore_permitted_with_records   # no per-transfer approval; keep records of the legal basis and safeguards [P46b]
+  retention_days: { kyc_files_after_closure: 1825, ledger_entries: 2555, chat_messages: 365, location_samples: 90, call_metadata: 365, proof_photos: 730 }
+safety:
+  emergency_numbers: { general: "999", alt: "112" }
+  sos_partners:
+    - { city: KLA, partner: rescue_co, integration: api, scope: medical }   # [P27]
+restricted:
+  prohibited_items: [firearms_ammunition, explosives, illegal_drugs, prescription_drugs_without_prescription, alcohol_to_minors, counterfeit_goods, stolen_goods, cash_courier, hazardous_chemicals, government_ids_of_others]
+  prohibited_services: [debt_collection_by_force, sex_work, betting_agents, exam_impersonation, document_forgery, unlicensed_medical_procedures]
+pricing:
+  guardrails:   # UGX, exponent 0
+    - { category: errands_delivery, soft_min_minor: 3000, soft_max_minor: 150000,  hard_max_minor: 1500000 }
+    - { category: moving,           soft_min_minor: 30000, soft_max_minor: 1500000, hard_max_minor: 15000000 }
+  urgency_multipliers: { standard: "1.00", priority: "1.20", urgent: "1.50" }
+  offer_ttl_seconds_default: 600
+  max_counter_rounds: 5
+_status:
+  launch: assumption
+  currency: verified
+  commercial: verified
+  tax.vat_rate: assumption
+  payments.collection_routing: verified   # FW UG pricing [P11]
+  payments.payout_rails: verified
+  payments.funds_holding_model: assumption
+  kyc.customer.accepted_id_types: secondary
+  kyc.provider.police_clearance: secondary
+  vehicles: assumption
+  phone.otp_routing: assumption
+  data_protection: secondary
+  safety.emergency_numbers: assumption
+  safety.sos_partners: secondary
+  restricted: assumption
+  pricing: placeholder

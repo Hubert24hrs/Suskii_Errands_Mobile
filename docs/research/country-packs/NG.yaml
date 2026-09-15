@@ -1,0 +1,149 @@
+# Country pack DRAFT — Nigeria (reference pack). Phase 0 research artefact, not seed data.
+# Evidence: docs/research/REPORT.md (source IDs in comments).
+country_code: NG
+status: live            # proposed first live country (OD-07); gated on the go-live checklist
+launch:
+  cities:
+    - code: LOS
+      name: Lagos
+      zones:
+        - code: LOS-OKADA-RESTRICTED
+          name: LGAs/highways where commercial motorcycles and tricycles are banned
+          vehicle_types_allowed: [walking, bicycle, car, van, truck]
+          notes: Lagos State restrictions on okada/keke cover several LGAs and major highways; exact polygons must come from the current state gazette.
+        - code: LOS-GENERAL
+          name: Rest of Lagos
+          vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+    - code: ABV
+      name: Abuja (FCT)
+      zones:
+        - code: ABV-CITY
+          name: Abuja city centre (commercial motorcycle restrictions)
+          vehicle_types_allowed: [walking, bicycle, car, van, truck]
+currency:
+  code: NGN
+  minor_unit_exponent: 2
+commercial:
+  commission_rate: "0.125"          # OD-06
+  referral_rate: "0.025"
+  referral_max_duration_months: null   # OD-02: lifetime with admin cap; set per campaign
+  promo_referral_stacking: false
+tax:
+  vat_rate: "0.075"                 # unchanged under the Nigeria Tax Act 2025 [P58]
+  vat_components: [{ name: VAT, rate: "0.075" }]
+  platform_vat_collection_agent: possible   # NTA 2025 lets NRS appoint digital platforms as collection agents [P58]
+  withholding_on_referral_payouts: counsel_required   # WHT Regs 2024: brokerage 5% resident; small-company exemption <= NGN 25m [P58b]
+  stamp_duty_note: NGN 50 stamp duty on qualifying transfers >= NGN 10,000 (gateway-applied) [P11][P42b]
+payments:
+  collection_routing:
+    - { method: card,          primary: flutterwave, fallback: paystack, notes: "FW 2.0% uncapped; Paystack 1.5% + NGN100 capped NGN2,000 — consider Paystack-primary above NGN100k" }
+    - { method: bank_transfer, primary: flutterwave, fallback: paystack }
+    - { method: ussd,          primary: flutterwave, fallback: null }
+    - { method: opay_wallet,   primary: flutterwave, fallback: null }
+  enabled_methods: [card, bank_transfer, ussd, opay_wallet]
+  fee_bearer_setting: merchant      # FW default is customer-bears; must switch [P11]
+  payout_rails:
+    - { rail: bank, networks: [NIP], primary: flutterwave, fallback: paystack }   # covers PSB/MMO NUBANs (OPay, Moniepoint)
+  min_withdrawal_minor: 100000      # NGN 1,000
+  withdrawal_approval_thresholds_minor:
+    single_approver: 50000000       # NGN 500,000
+    second_approver: 200000000      # NGN 2,000,000
+  funds_holding_model: gateway_merchant_balance_with_collection_agent_terms   # OD-12; counsel confirms vs CBN framework [P40]
+kyc:
+  vendor_routing: { primary: smile_id, fallback: youverify_or_dojah_server_api }
+  customer:
+    accepted_id_types: [NIN, NIN_SLIP, BVN, VOTER_ID, DRIVERS_LICENSE, PASSPORT]
+    facial_verification: biometric_kyc_against_id_authority   # Smile ID Biometric KYC with NIN/BVN [P19]
+  provider:
+    accepted_id_types: [NIN, BVN]
+    police_clearance:
+      document_name: Police Character Certificate
+      issuer: Nigeria Police Force
+      portal: https://possap.gov.ng
+      fee_note: "NGN 30,000 domestic; ~USD 75 diaspora (2026)"   # [P21]
+      validity_months: 3                 # per issuer guidance [P21]
+      accept_issued_within_months: 6     # OD-09
+      revalidate_every_months: 12        # OD-09
+      verification_channel: manual_officer_review_with_qr_decode   # QR validation code on certificate; no public verify API found
+    address_verification: required_for_trusted_and_above
+    guarantor: configurable_per_category   # default required for moving, cleaning (in-home access)
+  business_registration_documents: [CAC_CERTIFICATE, CAC_STATUS_REPORT, TIN]
+vehicles:
+  types_allowed_default: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+  documents:
+    motorcycle: [DRIVERS_LICENSE, VEHICLE_LICENSE, PROOF_OF_OWNERSHIP, THIRD_PARTY_INSURANCE, STATE_PERMIT_WHERE_REQUIRED]
+    tricycle:   [DRIVERS_LICENSE, VEHICLE_LICENSE, PROOF_OF_OWNERSHIP, THIRD_PARTY_INSURANCE, STATE_PERMIT_WHERE_REQUIRED]
+    car:        [DRIVERS_LICENSE, VEHICLE_LICENSE, PROOF_OF_OWNERSHIP, ROADWORTHINESS, THIRD_PARTY_INSURANCE]
+    van:        [DRIVERS_LICENSE, VEHICLE_LICENSE, PROOF_OF_OWNERSHIP, ROADWORTHINESS, THIRD_PARTY_INSURANCE]
+    truck:      [DRIVERS_LICENSE_COMMERCIAL_CLASS, VEHICLE_LICENSE, PROOF_OF_OWNERSHIP, ROADWORTHINESS, THIRD_PARTY_INSURANCE, GOODS_IN_TRANSIT_INSURANCE_OPTIONAL]
+phone:
+  e164_prefix: "+234"
+  nsn_length: 10
+  indicative_mobile_regex: '^\+234[789][01]\d{8}$'
+  otp_routing: { primary: termii, fallback: africas_talking, whatsapp_otp: true }
+  sender_id_note: Register the alphanumeric sender ID with MTN, Airtel, Glo and 9mobile, and whitelist it for the DND route (CAC cert, address, samples, website). This takes weeks — start in Phase 1 [P24]
+languages:
+  supported: [en, pcm]
+  default: en
+legal:
+  documents:
+    - { type: terms_customer,  version: "0.0-draft", url_placeholder: /legal/ng/terms-customer,  requires_acceptance: true }
+    - { type: terms_provider,  version: "0.0-draft", url_placeholder: /legal/ng/terms-provider,  requires_acceptance: true }
+    - { type: privacy_policy,  version: "0.0-draft", url_placeholder: /legal/ng/privacy,         requires_acceptance: true }
+    - { type: biometric_consent, version: "0.0-draft", url_placeholder: /legal/ng/biometrics,   requires_acceptance: true }
+    - { type: criminal_record_check_consent, version: "0.0-draft", url_placeholder: /legal/ng/police-clearance, requires_acceptance: true }
+    - { type: referral_terms,  version: "0.0-draft", url_placeholder: /legal/ng/referrals,       requires_acceptance: true }
+data_protection:
+  law: Nigeria Data Protection Act 2023 + GAID 2025 (effective 2025-09-19)
+  regulator: Nigeria Data Protection Commission (NDPC)
+  registration: Data Controller of Major Importance — tier TBD (UHL NGN250k / EHL NGN100k / OHL NGN10k); annual CAR for UHL/EHL   # [P42]
+  breach_notice_hours: 72
+  residency: offshore_permitted_with_safeguards   # counsel to confirm the GAID transfer basis
+  retention_days:            # proposals, counsel to confirm
+    kyc_files_after_closure: 1825      # 5 years (AML practice)
+    ledger_entries: 2555               # 7 years
+    chat_messages: 365
+    location_samples: 90               # longer if attached to a dispute (legal hold)
+    call_metadata: 365
+    proof_photos: 730
+safety:
+  emergency_numbers: { general: "112", police: "199", lagos_emergency: "767" }
+  sos_partners:
+    - { city: LOS, partner: halogen_or_era_rfp, integration: dispatch_console_plus_phone_bridge }   # [P28]
+    - { city: ABV, partner: halogen_or_era_rfp, integration: dispatch_console_plus_phone_bridge }
+restricted:
+  prohibited_items: [firearms_ammunition, explosives, illegal_drugs, prescription_drugs_without_prescription, alcohol_to_minors, tobacco_to_minors, counterfeit_goods, stolen_goods, cash_or_foreign_currency_courier, hazardous_chemicals, human_remains, live_wild_animals, sim_cards_preregistered, government_ids_of_others]
+  prohibited_services: [debt_collection_by_force, sex_work, gambling_agents, exam_impersonation, document_forgery, unlicensed_medical_procedures, security_escort_with_weapons]
+pricing:
+  guardrails:   # minor units; placeholders to calibrate with pilot data
+    - { category: errands_delivery,   soft_min_minor: 100000, soft_max_minor: 5000000,  hard_max_minor: 50000000 }
+    - { category: shopping,           soft_min_minor: 100000, soft_max_minor: 5000000,  hard_max_minor: 50000000 }
+    - { category: cleaning_laundry,   soft_min_minor: 300000, soft_max_minor: 10000000, hard_max_minor: 100000000 }
+    - { category: moving,             soft_min_minor: 1000000, soft_max_minor: 50000000, hard_max_minor: 500000000 }
+    - { category: repairs_trades,     soft_min_minor: 300000, soft_max_minor: 20000000, hard_max_minor: 200000000 }
+  urgency_multipliers: { standard: "1.00", priority: "1.20", urgent: "1.50" }   # AI price-band hint only; price is negotiated
+  offer_ttl_seconds_default: 600
+  max_counter_rounds: 5
+_status:
+  launch.cities: assumption
+  launch.zones: assumption            # needs Lagos/FCT gazette polygons
+  currency: verified
+  commercial: verified                # client decisions in spec
+  tax.vat_rate: secondary
+  tax.withholding_on_referral_payouts: assumption
+  payments.collection_routing: verified   # FW methods and fees [P11]; Paystack fees secondary [P42b]
+  payments.fee_bearer_setting: verified
+  payments.min_withdrawal_minor: assumption
+  payments.withdrawal_approval_thresholds_minor: assumption
+  payments.funds_holding_model: assumption   # OD-12
+  kyc.customer.accepted_id_types: secondary  # Smile ID matrix to confirm
+  kyc.provider.police_clearance: secondary
+  kyc.business_registration_documents: assumption
+  vehicles.documents: assumption
+  phone.otp_routing: assumption          # S-09
+  data_protection: secondary
+  data_protection.retention_days: assumption
+  safety.emergency_numbers: assumption
+  safety.sos_partners: assumption
+  restricted: assumption                 # counsel
+  pricing: placeholder

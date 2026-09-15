@@ -1,0 +1,129 @@
+# Country pack DRAFT — Ghana. Phase 0 research artefact, not seed data.
+country_code: GH
+status: beta
+launch:
+  cities:
+    - code: ACC
+      name: Accra
+      zones:
+        - code: ACC-GENERAL
+          name: Greater Accra
+          vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+          notes: The legal status of commercial motorcycles (okada) has changed recently; confirm before enabling motorcycle for paid carriage of goods.
+    - code: KMS
+      name: Kumasi
+      zones:
+        - { code: KMS-GENERAL, name: Kumasi, vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck] }
+currency:
+  code: GHS
+  minor_unit_exponent: 2
+commercial:
+  commission_rate: "0.125"
+  referral_rate: "0.025"
+  referral_max_duration_months: null
+  promo_referral_stacking: false
+tax:
+  vat_rate: "0.20"                   # effective rate from 2026-01-01 under the VAT Act 2025 (Act 1151) [P59]
+  vat_components:
+    - { name: VAT, rate: "0.15" }
+    - { name: NHIL, rate: "0.025" }
+    - { name: GETFund, rate: "0.025" }
+  platform_vat_collection_agent: counsel_required
+  withholding_on_referral_payouts: counsel_required
+payments:
+  collection_routing:
+    - { method: mobile_money, primary: flutterwave, fallback: paystack, notes: "FW 2%; MTN, Telecel, AirtelTigo" }
+    - { method: card,         primary: flutterwave, fallback: paystack, notes: "FW 2.6%" }
+    - { method: bank_transfer, primary: flutterwave, fallback: null, notes: "FW 2%" }
+  enabled_methods: [mobile_money, card, bank_transfer]
+  fee_bearer_setting: merchant
+  payout_rails:
+    - { rail: mobile_money, networks: [MTN, TELECEL, AIRTELTIGO], primary: flutterwave, fallback: paystack, notes: "FW 1.5%" }
+    - { rail: bank, networks: [GHIPSS], primary: flutterwave, fallback: paystack, notes: "FW GHS 10" }
+  min_withdrawal_minor: 2000        # GHS 20
+  withdrawal_approval_thresholds_minor:
+    single_approver: 500000         # GHS 5,000
+    second_approver: 2000000        # GHS 20,000
+  funds_holding_model: gateway_merchant_balance_with_collection_agent_terms   # Payment Systems and Services Act 2019 (Act 987) — counsel (OD-12)
+kyc:
+  vendor_routing: { primary: smile_id, fallback: null }
+  customer:
+    accepted_id_types: [GHANA_CARD, PASSPORT]
+    facial_verification: biometric_kyc_against_id_authority
+  provider:
+    accepted_id_types: [GHANA_CARD]
+    police_clearance:
+      document_name: Police Clearance Certificate (Police Clearance Report)
+      issuer: Ghana Police Service — CID Criminal Data Services Bureau
+      portal: https://eservices.police.gov.gh
+      fee_note: Paid via Ghana.Gov; ~10 working days [P23]
+      validity_months: null
+      accept_issued_within_months: 6
+      revalidate_every_months: 12
+      verification_channel: manual_officer_review
+    address_verification: required_for_trusted_and_above   # GhanaPostGPS digital address supported as an input
+    guarantor: configurable_per_category
+  business_registration_documents: [ORC_CERTIFICATE_OF_INCORPORATION_OR_BUSINESS_NAME, TIN]
+vehicles:
+  types_allowed_default: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+  documents:
+    motorcycle: [DVLA_DRIVING_LICENSE, VEHICLE_REGISTRATION, ROADWORTHY_CERTIFICATE, THIRD_PARTY_INSURANCE]
+    tricycle:   [DVLA_DRIVING_LICENSE, VEHICLE_REGISTRATION, ROADWORTHY_CERTIFICATE, THIRD_PARTY_INSURANCE]
+    car:        [DVLA_DRIVING_LICENSE, VEHICLE_REGISTRATION, ROADWORTHY_CERTIFICATE, THIRD_PARTY_INSURANCE]
+    van:        [DVLA_DRIVING_LICENSE, VEHICLE_REGISTRATION, ROADWORTHY_CERTIFICATE, THIRD_PARTY_INSURANCE]
+    truck:      [DVLA_DRIVING_LICENSE_COMMERCIAL_CLASS, VEHICLE_REGISTRATION, ROADWORTHY_CERTIFICATE, THIRD_PARTY_INSURANCE]
+phone:
+  e164_prefix: "+233"
+  nsn_length: 9
+  indicative_mobile_regex: '^\+233(2[0-9]|5[0-9])\d{7}$'
+  otp_routing: { primary: africas_talking, fallback: infobip, whatsapp_otp: true }
+languages:
+  supported: [en]
+  default: en
+legal:
+  documents:
+    - { type: terms_customer,  version: "0.0-draft", url_placeholder: /legal/gh/terms-customer, requires_acceptance: true }
+    - { type: terms_provider,  version: "0.0-draft", url_placeholder: /legal/gh/terms-provider, requires_acceptance: true }
+    - { type: privacy_policy,  version: "0.0-draft", url_placeholder: /legal/gh/privacy,        requires_acceptance: true }
+    - { type: biometric_consent, version: "0.0-draft", url_placeholder: /legal/gh/biometrics,  requires_acceptance: true }
+    - { type: criminal_record_check_consent, version: "0.0-draft", url_placeholder: /legal/gh/police-clearance, requires_acceptance: true }
+    - { type: referral_terms,  version: "0.0-draft", url_placeholder: /legal/gh/referrals,      requires_acceptance: true }
+data_protection:
+  law: Data Protection Act 2012 (Act 843); Data Protection Bill 2025 pending (would create a Data Protection Authority and mandate localisation of biometric data) [P45]
+  regulator: Data Protection Commission (DPC)
+  registration: required before processing begins
+  breach_notice_hours: counsel_required
+  residency: watch   # if the 2025 Bill passes with biometric localisation, vendor-side templates must be stored in Ghana or an approved location — OD-15
+  retention_days: { kyc_files_after_closure: 1825, ledger_entries: 2555, chat_messages: 365, location_samples: 90, call_metadata: 365, proof_photos: 730 }
+safety:
+  emergency_numbers: { general: "112", police: "191", fire: "192", ambulance: "193" }
+  sos_partners:
+    - { city: ACC, partner: aura, integration: api }   # [P37]
+restricted:
+  prohibited_items: [firearms_ammunition, explosives, illegal_drugs, prescription_drugs_without_prescription, alcohol_to_minors, counterfeit_goods, stolen_goods, cash_courier, hazardous_chemicals, government_ids_of_others]
+  prohibited_services: [debt_collection_by_force, sex_work, betting_agents, exam_impersonation, document_forgery, unlicensed_medical_procedures]
+pricing:
+  guardrails:
+    - { category: errands_delivery, soft_min_minor: 1000, soft_max_minor: 50000,  hard_max_minor: 500000 }
+    - { category: moving,           soft_min_minor: 10000, soft_max_minor: 500000, hard_max_minor: 5000000 }
+  urgency_multipliers: { standard: "1.00", priority: "1.20", urgent: "1.50" }
+  offer_ttl_seconds_default: 600
+  max_counter_rounds: 5
+_status:
+  launch: assumption
+  launch.zones: assumption      # motorcycle legality to confirm
+  currency: verified
+  commercial: verified
+  tax.vat_rate: secondary
+  payments.collection_routing: verified
+  payments.payout_rails: verified
+  payments.funds_holding_model: assumption
+  kyc.customer.accepted_id_types: secondary
+  kyc.provider.police_clearance: secondary
+  vehicles: assumption
+  phone.otp_routing: assumption
+  data_protection: secondary
+  safety.emergency_numbers: assumption
+  safety.sos_partners: secondary
+  restricted: assumption
+  pricing: placeholder

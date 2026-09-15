@@ -1,0 +1,131 @@
+# Country pack DRAFT — Kenya. Phase 0 research artefact, not seed data.
+country_code: KE
+status: beta
+launch:
+  cities:
+    - code: NBO
+      name: Nairobi
+      zones:
+        - code: NBO-CBD
+          name: Nairobi CBD (boda boda restrictions have applied in the CBD)
+          vehicle_types_allowed: [walking, bicycle, car, van]
+        - code: NBO-GENERAL
+          name: Rest of Nairobi
+          vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+    - code: MBA
+      name: Mombasa
+      zones:
+        - { code: MBA-GENERAL, name: Mombasa, vehicle_types_allowed: [walking, bicycle, motorcycle, tricycle, car, van, truck] }
+currency:
+  code: KES
+  minor_unit_exponent: 2
+commercial:
+  commission_rate: "0.125"
+  referral_rate: "0.025"
+  referral_max_duration_months: null
+  promo_referral_stacking: false
+  regulatory_note: The 18% ride-hailing commission cap (TNC Regulations 2022) was suspended by the High Court on 2026-09-03; government has 12 months to redo it. Keep the rate configurable with an audit trail [P33]
+tax:
+  vat_rate: "0.16"
+  vat_components: [{ name: VAT, rate: "0.16" }]
+  platform_vat_collection_agent: counsel_required
+  withholding_on_referral_payouts: counsel_required   # Finance Bill 2024 proposed 5% resident / 20% non-resident WHT on digital marketplace payments; confirm what was enacted [P56]
+  sep_tax_note: The Significant Economic Presence Tax replaced DST for non-residents (per Finance Bill 2024); applies if the operating entity is non-resident [P56]
+payments:
+  collection_routing:
+    - { method: mpesa, primary: flutterwave, fallback: paystack, notes: "FW 2.9%; direct Daraja STK push is a later cost optimisation" }
+    - { method: card,  primary: flutterwave, fallback: paystack, notes: "FW 3.2%" }
+  enabled_methods: [mpesa, card]
+  fee_bearer_setting: merchant
+  payout_rails:
+    - { rail: mobile_money, networks: [MPESA], primary: flutterwave, fallback: paystack, notes: "M-Pesa transfer requires sender name/country/mobile in meta" }
+    - { rail: bank, networks: [PESALINK_OR_EFT], primary: flutterwave, fallback: paystack }
+  min_withdrawal_minor: 20000       # KES 200 (transfer fee is KES 100 flat [P11])
+  withdrawal_approval_thresholds_minor:
+    single_approver: 5000000        # KES 50,000
+    second_approver: 20000000       # KES 200,000
+  funds_holding_model: gateway_merchant_balance_with_collection_agent_terms   # NPS Act / CBK — counsel (OD-12)
+kyc:
+  vendor_routing: { primary: smile_id, fallback: null }
+  customer:
+    accepted_id_types: [NATIONAL_ID, ALIEN_ID, PASSPORT]
+    facial_verification: biometric_kyc_against_id_authority
+  provider:
+    accepted_id_types: [NATIONAL_ID, ALIEN_ID]
+    police_clearance:
+      document_name: Certificate of Good Conduct (Police Clearance Certificate)
+      issuer: Directorate of Criminal Investigations (DCI)
+      portal: https://dci.ecitizen.go.ke
+      fee_note: Set by eCitizen; confirm the current fee
+      validity_months: null              # no statutory expiry published; 3–6 months commonly accepted
+      accept_issued_within_months: 6     # OD-09
+      revalidate_every_months: 12
+      verification_channel: official_online_verify   # dci.ecitizen.go.ke/verify; SMS DCI to 21546 / *512# [P22]
+    address_verification: required_for_trusted_and_above
+    guarantor: configurable_per_category
+  business_registration_documents: [CERTIFICATE_OF_INCORPORATION_OR_BUSINESS_NAME, CR12, KRA_PIN_CERTIFICATE]
+vehicles:
+  types_allowed_default: [walking, bicycle, motorcycle, tricycle, car, van, truck]
+  documents:
+    motorcycle: [NTSA_DRIVING_LICENSE, LOGBOOK, THIRD_PARTY_INSURANCE, COUNTY_BODA_REGISTRATION_WHERE_REQUIRED]
+    tricycle:   [NTSA_DRIVING_LICENSE, LOGBOOK, THIRD_PARTY_INSURANCE]
+    car:        [NTSA_DRIVING_LICENSE, LOGBOOK, THIRD_PARTY_INSURANCE]
+    van:        [NTSA_DRIVING_LICENSE, LOGBOOK, THIRD_PARTY_INSURANCE, INSPECTION_CERTIFICATE_COMMERCIAL]
+    truck:      [NTSA_DRIVING_LICENSE_COMMERCIAL_CLASS, LOGBOOK, THIRD_PARTY_INSURANCE, INSPECTION_CERTIFICATE_COMMERCIAL]
+phone:
+  e164_prefix: "+254"
+  nsn_length: 9
+  indicative_mobile_regex: '^\+254(7\d|1[01])\d{7}$'
+  otp_routing: { primary: africas_talking, fallback: infobip, whatsapp_otp: true }
+languages:
+  supported: [en]            # Swahili planned (OD-16)
+  default: en
+legal:
+  documents:
+    - { type: terms_customer,  version: "0.0-draft", url_placeholder: /legal/ke/terms-customer, requires_acceptance: true }
+    - { type: terms_provider,  version: "0.0-draft", url_placeholder: /legal/ke/terms-provider, requires_acceptance: true }
+    - { type: privacy_policy,  version: "0.0-draft", url_placeholder: /legal/ke/privacy,        requires_acceptance: true }
+    - { type: biometric_consent, version: "0.0-draft", url_placeholder: /legal/ke/biometrics,  requires_acceptance: true }
+    - { type: criminal_record_check_consent, version: "0.0-draft", url_placeholder: /legal/ke/police-clearance, requires_acceptance: true }
+    - { type: referral_terms,  version: "0.0-draft", url_placeholder: /legal/ke/referrals,      requires_acceptance: true }
+data_protection:
+  law: Data Protection Act 2019 + Data Protection (General) Regulations 2021
+  regulator: Office of the Data Protection Commissioner (ODPC)
+  registration: required (turnover > KES 5M, > 10 employees, or mandatory sector)   # [P44]
+  breach_notice_hours: 72
+  residency: counsel_required   # local serving-copy expectations for some processing; DPIA for high-risk transfers; ODPC 2026 standard clauses [P44] — OD-15
+  retention_days: { kyc_files_after_closure: 1825, ledger_entries: 2555, chat_messages: 365, location_samples: 90, call_metadata: 365, proof_photos: 730 }
+safety:
+  emergency_numbers: { general: "999", alt: "112" }
+  sos_partners:
+    - { city: NBO, partner: aura, integration: api }           # [P26]
+    - { city: NBO, partner: rescue_co, integration: api, scope: medical }   # [P27]
+    - { city: MBA, partner: rescue_co, integration: api, scope: medical }
+restricted:
+  prohibited_items: [firearms_ammunition, explosives, illegal_drugs, prescription_drugs_without_prescription, alcohol_to_minors, counterfeit_goods, stolen_goods, cash_courier, hazardous_chemicals, single_use_plastic_carrier_bags, wildlife_products, government_ids_of_others]
+  prohibited_services: [debt_collection_by_force, sex_work, betting_agents, exam_impersonation, document_forgery, unlicensed_medical_procedures]
+pricing:
+  guardrails:
+    - { category: errands_delivery, soft_min_minor: 10000, soft_max_minor: 500000,  hard_max_minor: 5000000 }
+    - { category: moving,           soft_min_minor: 100000, soft_max_minor: 5000000, hard_max_minor: 50000000 }
+  urgency_multipliers: { standard: "1.00", priority: "1.20", urgent: "1.50" }
+  offer_ttl_seconds_default: 600
+  max_counter_rounds: 5
+_status:
+  launch: assumption
+  currency: verified
+  commercial: verified
+  tax: secondary
+  payments.collection_routing: verified    # FW KE fees [P11]
+  payments.payout_rails: verified          # FW M-Pesa transfer rules [P8]
+  payments.min_withdrawal_minor: assumption
+  payments.funds_holding_model: assumption
+  kyc.customer.accepted_id_types: secondary
+  kyc.provider.police_clearance: verified  # DCI page [P22]; validity secondary
+  vehicles: assumption
+  phone.otp_routing: assumption
+  data_protection: secondary
+  data_protection.residency: assumption
+  safety: secondary
+  restricted: assumption
+  pricing: placeholder

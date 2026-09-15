@@ -1,0 +1,123 @@
+# Country pack DRAFT — South Africa. Phase 0 research artefact, not seed data.
+# Go-live blockers: POPIA prior authorisation (criminal-behaviour info) and PASA TPPP registration.
+country_code: ZA
+status: beta
+launch:
+  cities:
+    - code: JNB
+      name: Johannesburg
+      zones:
+        - { code: JNB-GENERAL, name: Johannesburg metro, vehicle_types_allowed: [walking, bicycle, motorcycle, car, van, truck] }
+    - code: CPT
+      name: Cape Town
+      zones:
+        - { code: CPT-GENERAL, name: Cape Town metro, vehicle_types_allowed: [walking, bicycle, motorcycle, car, van, truck] }
+currency:
+  code: ZAR
+  minor_unit_exponent: 2
+commercial:
+  commission_rate: "0.125"
+  referral_rate: "0.025"
+  referral_max_duration_months: null
+  promo_referral_stacking: false
+  labour_note: A proposed employment-law amendment presumes service providers are employees unless proven otherwise — classification risk [P57b]
+tax:
+  vat_rate: "0.15"               # planned increases to 15.5%/16% were reversed [P57]
+  vat_components: [{ name: VAT, rate: "0.15" }]
+  platform_vat_collection_agent: watch   # 2026 Budget proposes a default platform-operator liability for e-services [P57]
+  withholding_on_referral_payouts: counsel_required
+payments:
+  collection_routing:
+    - { method: card, primary: flutterwave, fallback: paystack, notes: "FW 2.9% + ZAR 1" }
+    - { method: eft,  primary: flutterwave, fallback: paystack, notes: "FW 2.5%" }
+  enabled_methods: [card, eft]
+  fee_bearer_setting: merchant
+  payout_rails:
+    - { rail: bank, networks: [EFT_RTC], primary: flutterwave, fallback: paystack, notes: "FW R10; no mobile money payout" }
+  min_withdrawal_minor: 10000        # ZAR 100
+  withdrawal_approval_thresholds_minor:
+    single_approver: 1000000         # ZAR 10,000
+    second_approver: 5000000         # ZAR 50,000
+  funds_holding_model: tppp_registration_required   # SARB Directive 1 of 2007 via a sponsoring bank (PASA) [P41] — OD-12
+kyc:
+  vendor_routing: { primary: smile_id, fallback: null }
+  customer:
+    accepted_id_types: [SA_ID_SMART_CARD, SA_ID_GREEN_BOOK, PASSPORT]
+    facial_verification: biometric_kyc_against_id_authority
+  provider:
+    accepted_id_types: [SA_ID_SMART_CARD, SA_ID_GREEN_BOOK]
+    police_clearance:
+      document_name: Police Clearance Certificate
+      issuer: South African Police Service — Criminal Record Centre
+      portal: null                      # fingerprints in person; no fully online route [P23b]
+      fee_note: 7–21 working days
+      validity_months: null             # no formal validity; <6 months commonly required
+      accept_issued_within_months: 6
+      revalidate_every_months: 12
+      verification_channel: manual_officer_review   # evaluate accredited background-check bureaus
+    address_verification: required_for_trusted_and_above
+    guarantor: not_required_default
+  business_registration_documents: [CIPC_REGISTRATION_CERTIFICATE, SARS_TAX_NUMBER]
+vehicles:
+  types_allowed_default: [walking, bicycle, motorcycle, car, van, truck]
+  documents:
+    motorcycle: [DRIVERS_LICENSE, LICENSE_DISC, PROOF_OF_OWNERSHIP, INSURANCE_RECOMMENDED]
+    car:        [DRIVERS_LICENSE, LICENSE_DISC, PROOF_OF_OWNERSHIP, INSURANCE_RECOMMENDED]
+    van:        [DRIVERS_LICENSE, LICENSE_DISC, PROOF_OF_OWNERSHIP, INSURANCE_RECOMMENDED, PRDP_WHERE_REQUIRED]
+    truck:      [DRIVERS_LICENSE_COMMERCIAL_CLASS, LICENSE_DISC, PROOF_OF_OWNERSHIP, PRDP_WHERE_REQUIRED, GOODS_IN_TRANSIT_INSURANCE_OPTIONAL]
+phone:
+  e164_prefix: "+27"
+  nsn_length: 9
+  indicative_mobile_regex: '^\+27[6-8]\d{8}$'
+  otp_routing: { primary: infobip, fallback: africas_talking, whatsapp_otp: true }
+languages:
+  supported: [en]
+  default: en
+legal:
+  documents:
+    - { type: terms_customer,  version: "0.0-draft", url_placeholder: /legal/za/terms-customer, requires_acceptance: true }
+    - { type: terms_provider,  version: "0.0-draft", url_placeholder: /legal/za/terms-provider, requires_acceptance: true }
+    - { type: privacy_policy,  version: "0.0-draft", url_placeholder: /legal/za/privacy,        requires_acceptance: true }
+    - { type: paia_manual,     version: "0.0-draft", url_placeholder: /legal/za/paia-manual,    requires_acceptance: false }
+    - { type: biometric_consent, version: "0.0-draft", url_placeholder: /legal/za/biometrics,  requires_acceptance: true }
+    - { type: criminal_record_check_consent, version: "0.0-draft", url_placeholder: /legal/za/police-clearance, requires_acceptance: true }
+    - { type: referral_terms,  version: "0.0-draft", url_placeholder: /legal/za/referrals,      requires_acceptance: true }
+data_protection:
+  law: Protection of Personal Information Act (POPIA)
+  regulator: Information Regulator
+  registration: Information Officer registration; prior authorisation likely needed for criminal-behaviour information and unique identifiers [P46]
+  breach_notice_hours: as_soon_as_reasonably_possible   # report via the Information Regulator eServices portal (since 2025-04-01) [P46]
+  residency: offshore_permitted_if_adequate_or_consented   # transfers of special PI to inadequate countries may need authorisation
+  retention_days: { kyc_files_after_closure: 1825, ledger_entries: 2555, chat_messages: 365, location_samples: 90, call_metadata: 365, proof_photos: 730 }
+safety:
+  emergency_numbers: { police: "10111", ambulance: "10177", mobile_general: "112" }
+  sos_partners:
+    - { city: JNB, partner: aura, integration: api }   # [P26]
+    - { city: CPT, partner: aura, integration: api }
+restricted:
+  prohibited_items: [firearms_ammunition, explosives, illegal_drugs, prescription_drugs_without_prescription, alcohol_to_minors, alcohol_outside_licensed_hours, counterfeit_goods, stolen_goods, cash_courier, hazardous_chemicals, government_ids_of_others]
+  prohibited_services: [debt_collection_by_force, sex_work, betting_agents, exam_impersonation, document_forgery, unlicensed_medical_procedures, armed_security_services]
+pricing:
+  guardrails:
+    - { category: errands_delivery, soft_min_minor: 3000, soft_max_minor: 150000,  hard_max_minor: 1500000 }
+    - { category: moving,           soft_min_minor: 30000, soft_max_minor: 1500000, hard_max_minor: 15000000 }
+  urgency_multipliers: { standard: "1.00", priority: "1.20", urgent: "1.50" }
+  offer_ttl_seconds_default: 600
+  max_counter_rounds: 5
+_status:
+  launch: assumption
+  currency: verified
+  commercial: verified
+  tax.vat_rate: secondary
+  payments.collection_routing: verified
+  payments.payout_rails: verified
+  payments.funds_holding_model: verified   # TPPP requirement from PASA [P41]; applicability to our model needs counsel
+  kyc.customer.accepted_id_types: secondary
+  kyc.provider.police_clearance: secondary
+  vehicles: assumption
+  phone.otp_routing: assumption
+  data_protection: secondary
+  safety.emergency_numbers: assumption
+  safety.sos_partners: secondary
+  restricted: assumption
+  pricing: placeholder
