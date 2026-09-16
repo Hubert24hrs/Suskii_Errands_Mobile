@@ -7,7 +7,9 @@
 # based, whose security archive already returned 404s in CI.
 FROM postgres:17-trixie
 
-RUN apt-get update \n && apt-get install -y --no-install-recommends postgresql-17-postgis-3 \n && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-17-postgis-3 \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.15 /uv /bin/uv
 

@@ -112,7 +112,10 @@ jobs:
       - name: Prepare a source database with the Supabase migrations
         run: |
           set -euo pipefail
-          docker run --rm --network host -v "$PWD/supabase:/supabase:ro"             -e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGUSER=postgres -e PGPASSWORD=postgres             -e PSQL=psql -e SKIP_TESTS=1 --entrypoint bash suskii-backup:ci             /supabase/local-fallback/run-plain-postgres.sh
+          docker run --rm --network host -v "$PWD/supabase:/supabase:ro" \
+            -e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGUSER=postgres -e PGPASSWORD=postgres \
+            -e PSQL=psql -e SKIP_TESTS=1 --entrypoint bash suskii-backup:ci \
+            /supabase/local-fallback/run-plain-postgres.sh
       - name: The shipped image dumps, then verifies with its own throwaway PostgreSQL
         run: |
           set -euo pipefail
