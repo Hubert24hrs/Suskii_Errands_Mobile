@@ -29,10 +29,10 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 | | |
 |---|---|
 | Phase 0 — Deep research | **Complete.** See `docs/research/CHECKPOINT-PHASE-0.md` |
-| Phase 1 — Planning, contracts v1 | **Stage A in progress** (`docs/plan/`): backend truth that does not depend on the hand-off. Stage B (contracts v1 + fixtures) waits for M8.5 |
+| Phase 1 — Planning, contracts v1 | **Stage A complete** (`docs/plan/`, 2026-09-16): state machines, ERD, RLS matrix, money flows, C4, threat model, data flow, AI design, infra/CI-CD, test strategy, PRD (147 stories), timeline. Stage B (contracts v1 + fixtures) waits for M8.5 |
 | Spikes | S-06, S-10, S-13, S-14 passed. The rest need credentials or devices — `docs/research/spikes/README.md` |
 | Kimi | M1 + M2 committed (`e473c9b`), reviewed (C.1–C.8). M3 in progress; foundation reviewed from the working tree (M3.1–M3.6). C.1 idempotency keys still open |
-| Next Claude work | Phase 1 Stage A #13: revised timeline — the last Stage A deliverable (#1–#12 done, PRD in `docs/plan/prd/`) |
+| Next Claude work | Rolling review of Kimi's milestones (recheck C.1, M3.1 at M3 commit). Stage B at M8.5. Phase 2 foundation early only if the user approves Option B (`docs/plan/timeline.md` §6). Launch base case: week of 7 Jun 2027 (range late Apr–early Aug) |
 
 Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`.
 
@@ -43,7 +43,7 @@ Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branch
 | `docs/OPEN-DECISIONS.md` | OD-01…OD-21 awaiting the client or counsel. Quote it in every checkpoint |
 | `docs/adr/` | Architecture decision records, indexed in `docs/adr/README.md` |
 | `docs/research/` | Phase 0 evidence: report, vendor matrix, country packs, compliance and DPIA, risks, cost model, spikes |
-| `docs/plan/` | Phase 1: state machines, UI draft review, architecture documents feeding contracts v1 |
+| `docs/plan/` | Phase 1: state machines, UI draft review, architecture, AI design, infra, test strategy, PRD (`prd/`), timeline with the client action list |
 | `docs/runbooks/` | Operational procedures, one per failure mode |
 | `docs/audit/` | Dated audit findings after each integration milestone |
 | `contracts/README.md` | What contracts v1 will contain and the rules that bind both agents |

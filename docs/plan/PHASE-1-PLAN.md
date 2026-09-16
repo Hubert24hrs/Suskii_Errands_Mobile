@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code |
 | Started | 2026-09-16 |
-| Status | In progress |
+| Status | **Stage A complete (2026-09-16)** — deliverables #1–#13. Stage B (contracts v1 + fixtures, #14) waits for Kimi's M8.5; the UI change list (#15) is rolling |
 | Rule | Documents only. No application code, no migrations |
 | Inputs | [Phase 0 research](../research/README.md), [ADRs](../adr/README.md), [spike results](../research/spikes/README.md), `contracts/draft/ui-data-requirements.md` |
 
@@ -41,7 +41,7 @@ The spec lists fifteen. Ordered by what unblocks the most, with the Phase 0 evid
 | 10 | **Infrastructure and CI/CD plan** | A | ADR-0008, spec `ci_cd` | ✅ [infra-cicd.md](infra-cicd.md) |
 | 11 | **Test strategy** and device/network matrix | A | S-03/04/05 plan, spec `testing` | ✅ [test-strategy.md](test-strategy.md) |
 | 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | ✅ [prd/](prd/README.md) — 147 stories |
-| 13 | **Revised timeline**, critical path, dependencies | A | everything | **next** |
+| 13 | **Revised timeline**, critical path, dependencies | A | everything | ✅ [timeline.md](timeline.md) |
 | 14 | **Contracts v1** + fixtures | **B** | complete draft at M8.5 | blocked |
 | 15 | **UI change list** for Kimi in `HANDOFF.md` | **B**, rolling | draft review | rolling |
 
