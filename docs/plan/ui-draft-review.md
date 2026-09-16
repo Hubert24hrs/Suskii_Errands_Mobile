@@ -53,6 +53,19 @@ No client-side business logic was found in M1 or M2 that must move server-side. 
 | 2.B | **Police clearance needs expiry-aware states.** Per country-pack research, a Nigerian certificate is valid ~3 months and costs ₦30,000 (OD-09). The provider UI needs "expiring in N days" and "expired — job acceptance blocked" states, driven by server-supplied dates, plus the document-expiry centre from the spec's provider screens | **[CHANGE]** |
 | 2.C | **Consent version must be surfaced.** When legal text changes, a user must re-consent. The UI needs a "consent out of date" path, not only first-time consent | **[CHANGE]** |
 
+## Naming alignment with the domain package (checked 2026-09-16)
+
+Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
+
+| # | Finding | Type |
+|---|---|---|
+| N.1 | `JobStatus` has exactly the spec's 20 states, and `isTerminal` matches the lifecycle's terminal set | **[GOOD]** |
+| N.2 | `PaymentStatus.partiallyRefunded` resolves the job-lifecycle open question: partial refunds live on the payment, not a new job state | **[GOOD]** — adopted |
+| N.3 | `OfferStatus` uses `pending`/`declined`; the first state-machine draft said `ACTIVE`/`REJECTED`. **Backend adopts Kimi's names** | **[GOOD]** — no change for Kimi |
+| N.4 | `PriceBreakdown.commissionRateBps` stores the rate as integer basis points. **Backend adopts this** (`*_bps integer` in the ERD) — better than a numeric rate | **[GOOD]** — adopted |
+| N.5 | `Urgency` has four levels (`flexible`/`standard`/`urgent`/`emergency`); the country-pack drafts assumed three multipliers. Country packs get a fourth | **[CONTRACT]** — backend change |
+| N.6 | **Enum wire format.** Dart enums are camelCase (`offersReceived`); Postgres and Supabase-generated types use snake_case (`offers_received`). Recommend snake_case on the wire, with `@JsonValue` mappings in Dart — cheaper now than after M3 adds more enums | **[CHANGE]** |
+
 ## Cross-cutting, carried forward
 
 Recorded now so they are not rediscovered at M8.5:
@@ -63,6 +76,7 @@ Recorded now so they are not rediscovered at M8.5:
 4. **"Held by Suskii", never "escrow"** in any locale file (ADR-0002, a legal constraint per country). **[CHANGE]**
 5. **Trusted contacts must use the Android Contact Picker**, not `READ_CONTACTS` (Play policy, April 2026). **[CHANGE]**
 6. Realtime channels are private and per job/per user; a provider must never receive a rival's offer amount even in a payload the UI chooses not to render. **[CONTRACT]**
+7. **Enum wire values are `snake_case`** with `@JsonValue` mappings on the Dart enums (N.6). **[CHANGE]**
 
 ## Still to review
 

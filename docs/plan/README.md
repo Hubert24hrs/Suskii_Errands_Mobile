@@ -10,5 +10,7 @@ Start with [PHASE-1-PLAN.md](PHASE-1-PLAN.md), which explains the staging, the o
 | [state-machines/job-lifecycle.md](state-machines/job-lifecycle.md) | 20 states, 31 transitions with actors, guards, side effects and timeouts |
 | [state-machines/offer-negotiation.md](state-machines/offer-negotiation.md) | Offer states, negotiation thread rules, pricing guardrails, realtime events |
 | [ui-draft-review.md](ui-draft-review.md) | Rolling review of Kimi's draft against master_spec; source of the UI change list |
+| [erd.md](erd.md) | Tables, keys, constraints, indexes, partitioning, schema placement, encryption |
+| [rls-policy-matrix.md](rls-policy-matrix.md) | Role × table × operation × writable columns; storage and realtime authorisation; pgTAP obligations |
 
 Conventions match the rest of `docs/`: decisions are append-only, evidence tags `[V]`/`[S]`/`[A]`, and every document names its owner and date.

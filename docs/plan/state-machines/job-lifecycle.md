@@ -7,6 +7,8 @@
 | Status | Phase 1 draft — becomes `contracts/state-machines/` at M8.5 |
 | Evidence | Spec `job_lifecycle`; spike [S-10](../../research/spikes/S-10-results.md) (contention), [S-14](../../research/spikes/S-14-results.md) (money), [S-13](../../research/spikes/S-13-results.md) (who may call) |
 
+> **Naming.** States are written `UPPER_SNAKE` here, as in the spec. Database and wire values are lower `snake_case` (`offers_received`), per [erd.md](../erd.md#conventions); Dart enums map them.
+
 ## Rules that hold for every transition
 
 1. **The server owns status.** Clients call a function and receive the new state. No client writes a status column — enforced by column grants, not convention (S-13).
@@ -52,7 +54,7 @@ Actors: **C** customer, **P** provider (or assigned worker), **S** system/worker
 | 3 | `PUBLISHED` | `OFFERS_RECEIVED` | S | First offer created | Notify customer |
 | 4 | `OFFERS_RECEIVED` | `NEGOTIATING` | C or P | Counter within round limit (default 5) | Notify counterparty, reset offer TTL |
 | 5 | `NEGOTIATING` | `OFFERS_RECEIVED` | S | Counter accepted or withdrawn, other offers remain | — |
-| 6 | `OFFERS_RECEIVED` / `NEGOTIATING` | `AGREED` | C | Offer `ACTIVE`, not expired, provider still eligible (verified, not suspended, docs valid, not blocked) | Accept offer, **expire all sibling offers**, snapshot commission rate and agreed amount, create payment intent |
+| 6 | `OFFERS_RECEIVED` / `NEGOTIATING` | `AGREED` | C | Offer `PENDING`, not expired, provider still eligible (verified, not suspended, docs valid, not blocked) | Accept offer, **expire all sibling offers**, snapshot commission rate and agreed amount, create payment intent |
 | 7 | `AGREED` | `PAYMENT_PENDING` | C | Payment initialised server-side; gateway routed by country pack | Set payment TTL (default 15 min) |
 | 8 | `PAYMENT_PENDING` | `PAID_HELD` | S | **Signature-verified webhook plus server-side verify call** — never the client | Ledger: customer → `held_funds`; notify both; assign |
 | 9 | `PAYMENT_PENDING` | `NEGOTIATING` | S | Payment TTL elapsed, offer still valid | Release hold attempt, notify customer |
@@ -122,4 +124,4 @@ The transitions with actor **S** have no client entry point at all.
 
 1. Does `PAID_HELD → ASSIGNED` need to be visible to the UI as a separate state, or can the client treat `PAID_HELD` and `ASSIGNED` as one "waiting for provider" state? Kimi's M3/M4 screens will answer this.
 2. Reassignment (#26) returns to `PAID_HELD`. That keeps the payment intact but means the same job can visit `PAID_HELD` twice — the event log must make the second visit distinguishable for analytics.
-3. Partial refunds from a dispute (#29) leave the job `REFUNDED` even when the provider was paid part of the value. A separate `PARTIALLY_REFUNDED` state may read better in the UI; deferred until the dispute screens exist.
+3. ~~Partial refunds from a dispute (#29) leave the job `REFUNDED` even when the provider was paid part of the value.~~ **Resolved 2026-09-16:** partial refunds live on the **payment**, not the job. Kimi's `PaymentStatus` already has `partiallyRefunded`, so the job goes to `REFUNDED` and `payments.status = partially_refunded` carries the nuance. No new job state.

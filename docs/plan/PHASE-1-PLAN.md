@@ -31,9 +31,9 @@ The spec lists fifteen. Ordered by what unblocks the most, with the Phase 0 evid
 |---|---|---|---|---|
 | 1 | **Job lifecycle + negotiation state machines** (transition tables, guards, timeouts, side effects) | A | S-10, spec `job_lifecycle` | ✅ [state-machines/](state-machines/) |
 | 2 | **Review of Kimi's draft** — gaps, missing states, client-side logic to move server-side | A, rolling | draft M1–M2 | ✅ first pass: [ui-draft-review.md](ui-draft-review.md) |
-| 3 | **ERD** with indexes, constraints, partitioning | A | S-06, S-14, ADR-0009 | next |
-| 4 | **RLS policy matrix** (role × table × operation × writable columns) | A | S-13 | next |
-| 5 | **Money flow diagrams** per gateway: payment, refund, dispute, item float, tip, referral, clawback | A | S-14, ADR-0002, ADR-0003 | next |
+| 3 | **ERD** with indexes, constraints, partitioning | A | S-06, S-14, ADR-0009 | ✅ [erd.md](erd.md) |
+| 4 | **RLS policy matrix** (role × table × operation × writable columns) | A | S-13 | ✅ [rls-policy-matrix.md](rls-policy-matrix.md) |
+| 5 | **Money flow diagrams** per gateway: payment, refund, dispute, item float, tip, referral, clawback | A | S-14, ADR-0002, ADR-0003 | **next** |
 | 6 | **C4 architecture diagrams** (context, container, component) | A | Phase 0 §10 | then |
 | 7 | **Threat model (STRIDE)** per component | A | spec `security`, S-13 | then |
 | 8 | **Data flow diagram** marking personal, biometric, criminal-record and financial data | A | DPIA outline | then |
