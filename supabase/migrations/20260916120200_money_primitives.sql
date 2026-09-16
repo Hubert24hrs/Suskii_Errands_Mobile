@@ -50,7 +50,7 @@ AS $$
 BEGIN
   IF rate_bps < 0 OR rate_bps > 10000 THEN
     RAISE EXCEPTION 'ERR_INVALID_RATE' USING ERRCODE = '22023',
-      DETAIL = format('rate_bps must be between 0 and 10000, got %s', rate_bps);
+      DETAIL = 'rate_bps must be between 0 and 10000, got ' || rate_bps::text;
   END IF;
   RETURN private.round_half_even(amount_minor::numeric * rate_bps / 10000)::bigint;
 END $$;

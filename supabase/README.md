@@ -36,7 +36,7 @@ With Docker (CI and normal development):
 npx supabase@2.117.0 start
 npx supabase@2.117.0 db reset --local
 npx supabase@2.117.0 test db --local supabase/tests/database
-npx supabase@2.117.0 db lint --local --level warning --fail-on error
+npx supabase@2.117.0 db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
 npx supabase@2.117.0 gen types --local --lang typescript --schema public
 ```

@@ -38,8 +38,9 @@ jobs:
       - name: pgTAP
         run: supabase test db --local supabase/tests/database
 
+      # Our schemas only: extension code (PostGIS in `extensions`) is not ours to fix.
       - name: Lint (plpgsql_check)
-        run: supabase db lint --local --level warning --fail-on error
+        run: supabase db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 
       - name: Security and performance advisors
         run: supabase db advisors --local --type all --level warn --fail-on error
