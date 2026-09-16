@@ -21,7 +21,7 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 - **Never `git checkout` or `git switch` here** — it moves `HEAD` under Kimi, and Kimi's next commit lands on your branch.
 - Commit from a throwaway worktree instead: `git worktree add -b <branch> <scratch>/wt origin/main`, copy in your paths, commit, push, `git worktree remove`.
 - Stage only Claude-owned paths. Do not commit `HANDOFF.md`, `apps/`, `packages/` or Kimi's config; edit `HANDOFF.md` in place and let Kimi commit it.
-- Remote: `https://github.com/Hubert24hrs/Suskii_Errands_Mobile`. Phase 0 and the backend docs are merged into `main` (fast-forward, 2026-09-16); branch `claude/phase-0-research` is kept as a record.
+- Remote: `https://github.com/Hubert24hrs/Suskii_Errands_Mobile`. Phase 0 and the backend docs are merged into `main` (fast-forward, 2026-09-16); the working branch was deleted, so `main` is the only branch. Work from a fresh worktree branch off `origin/main` each time.
 - After merging, fast-forward the shared tree with `git reset --mixed origin/main` rather than `git pull`: it moves the ref and the index without rewriting files Kimi may be editing.
 
 ## Status
