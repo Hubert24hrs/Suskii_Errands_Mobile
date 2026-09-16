@@ -49,7 +49,7 @@ REVOKE ALL ON public.admin_users FROM anon, authenticated;
 GRANT SELECT ON public.admin_users TO authenticated;
 GRANT ALL ON public.admin_users TO service_role;
 CREATE POLICY admin_users_super_admin_read ON public.admin_users FOR SELECT TO authenticated
-  USING (private.has_admin_role(ARRAY['super_admin']::public.admin_role[]));
+  USING ((SELECT private.has_admin_role(ARRAY['super_admin']::public.admin_role[])));
 
 -- Four eyes means two different people, enforced by the table itself (RLS matrix §6).
 CREATE TABLE public.approvals (
@@ -75,7 +75,7 @@ REVOKE ALL ON public.approvals FROM anon, authenticated;
 GRANT SELECT ON public.approvals TO authenticated;
 GRANT ALL ON public.approvals TO service_role;
 CREATE POLICY approvals_read_own_or_admin ON public.approvals FOR SELECT TO authenticated
-  USING (requested_by = auth.uid() OR private.is_any_admin());
+  USING (requested_by = (SELECT auth.uid()) OR (SELECT private.is_any_admin()));
 
 -- ---------------------------------------------------------------------------
 -- Country packs. The full row holds vendor routing and thresholds, so clients never select
@@ -111,7 +111,7 @@ REVOKE ALL ON public.countries FROM anon, authenticated;
 GRANT SELECT ON public.countries TO authenticated;
 GRANT ALL ON public.countries TO service_role;
 CREATE POLICY countries_admin_read ON public.countries FOR SELECT TO authenticated
-  USING (private.is_any_admin());
+  USING ((SELECT private.is_any_admin()));
 
 CREATE TABLE public.cities (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -185,9 +185,9 @@ REVOKE ALL ON public.feature_flags, public.remote_config FROM anon, authenticate
 GRANT SELECT ON public.feature_flags, public.remote_config TO authenticated;
 GRANT ALL ON public.feature_flags, public.remote_config TO service_role;
 CREATE POLICY feature_flags_admin_read ON public.feature_flags FOR SELECT TO authenticated
-  USING (private.is_any_admin());
+  USING ((SELECT private.is_any_admin()));
 CREATE POLICY remote_config_admin_read ON public.remote_config FOR SELECT TO authenticated
-  USING (private.is_any_admin());
+  USING ((SELECT private.is_any_admin()));
 
 CREATE TRIGGER countries_touch BEFORE UPDATE ON public.countries
   FOR EACH ROW EXECUTE FUNCTION private.touch_updated_at();

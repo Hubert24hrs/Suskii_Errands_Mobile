@@ -31,13 +31,14 @@ GRANT SELECT ON public.profiles TO authenticated;
 GRANT UPDATE (display_name, language, avatar_path) ON public.profiles TO authenticated;
 GRANT ALL ON public.profiles TO service_role;
 
-CREATE POLICY profiles_read_own ON public.profiles FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-CREATE POLICY profiles_read_admin ON public.profiles FOR SELECT TO authenticated
-  USING (private.is_any_admin());
+-- Policies wrap auth.uid() and helpers in SELECT so they run once per query, not per row, and
+-- keep one permissive policy per action (Supabase advisors: auth_rls_initplan,
+-- multiple_permissive_policies).
+CREATE POLICY profiles_read ON public.profiles FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()) OR (SELECT private.is_any_admin()));
 CREATE POLICY profiles_update_own ON public.profiles FOR UPDATE TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 -- The app sends the country and language chosen before sign-in (PRD SH-01) as user metadata.
 -- That metadata is user-controlled, so it is validated rather than trusted.
@@ -152,10 +153,9 @@ ALTER TABLE public.user_devices FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON public.user_devices FROM anon, authenticated;
 GRANT SELECT (id, user_id, platform, app_version, created_at, last_seen_at) ON public.user_devices TO authenticated;
 GRANT ALL ON public.user_devices TO service_role;
-CREATE POLICY user_devices_read_own ON public.user_devices FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-CREATE POLICY user_devices_read_admin ON public.user_devices FOR SELECT TO authenticated
-  USING (private.has_admin_role(ARRAY['super_admin', 'support_agent']::public.admin_role[]));
+CREATE POLICY user_devices_read ON public.user_devices FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid())
+         OR (SELECT private.has_admin_role(ARRAY['super_admin', 'support_agent']::public.admin_role[])));
 
 CREATE FUNCTION public.register_device(
   p_platform public.device_platform,
@@ -215,10 +215,9 @@ ALTER TABLE public.consents FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON public.consents FROM anon, authenticated;
 GRANT SELECT ON public.consents TO authenticated;
 GRANT SELECT, INSERT ON public.consents TO service_role;
-CREATE POLICY consents_read_own ON public.consents FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-CREATE POLICY consents_read_admin ON public.consents FOR SELECT TO authenticated
-  USING (private.has_admin_role(ARRAY['super_admin', 'support_agent', 'verification_officer']::public.admin_role[]));
+CREATE POLICY consents_read ON public.consents FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid())
+         OR (SELECT private.has_admin_role(ARRAY['super_admin', 'support_agent', 'verification_officer']::public.admin_role[])));
 
 CREATE TRIGGER consents_append_only
   BEFORE UPDATE OR DELETE ON public.consents
@@ -308,14 +307,13 @@ REVOKE ALL ON public.notification_preferences FROM anon, authenticated;
 GRANT SELECT, INSERT ON public.notification_preferences TO authenticated;
 GRANT UPDATE (enabled, quiet_start, quiet_end) ON public.notification_preferences TO authenticated;
 GRANT ALL ON public.notification_preferences TO service_role;
-CREATE POLICY notification_preferences_read_own ON public.notification_preferences FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
+CREATE POLICY notification_preferences_read ON public.notification_preferences FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid())
+         OR (SELECT private.has_admin_role(ARRAY['super_admin', 'support_agent']::public.admin_role[])));
 CREATE POLICY notification_preferences_insert_own ON public.notification_preferences FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (SELECT auth.uid()));
 CREATE POLICY notification_preferences_update_own ON public.notification_preferences FOR UPDATE TO authenticated
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-CREATE POLICY notification_preferences_read_admin ON public.notification_preferences FOR SELECT TO authenticated
-  USING (private.has_admin_role(ARRAY['super_admin', 'support_agent']::public.admin_role[]));
+  USING (user_id = (SELECT auth.uid())) WITH CHECK (user_id = (SELECT auth.uid()));
 
 -- ---------------------------------------------------------------------------
 -- Function privileges: nothing is callable unless granted here.

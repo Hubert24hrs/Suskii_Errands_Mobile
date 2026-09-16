@@ -87,7 +87,7 @@ Backend (details and rules in `supabase/README.md`; CLI pinned to 2.117.0):
 npx supabase@2.117.0 start                         # needs Docker
 npx supabase@2.117.0 db reset --local              # all migrations + dev seed from zero
 npx supabase@2.117.0 test db --local supabase/tests/database  # pgTAP
-npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
+npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on warn
 bash supabase/local-fallback/run-plain-postgres.sh # no-Docker fallback (PSQL, PG* env vars)
 ```
 

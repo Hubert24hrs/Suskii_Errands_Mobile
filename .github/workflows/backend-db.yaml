@@ -43,7 +43,7 @@ jobs:
         run: supabase db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 
       - name: Security and performance advisors
-        run: supabase db advisors --local --type all --level warn --fail-on error
+        run: supabase db advisors --local --type all --level warn --fail-on warn
 
       # Contract drift check lands with contracts v1 (Stage B); until then the generated types
       # are published as an artifact so both agents can inspect them.

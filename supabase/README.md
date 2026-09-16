@@ -37,7 +37,7 @@ npx supabase@2.117.0 start
 npx supabase@2.117.0 db reset --local
 npx supabase@2.117.0 test db --local supabase/tests/database
 npx supabase@2.117.0 db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
-npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
+npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on warn
 npx supabase@2.117.0 gen types --local --lang typescript --schema public
 ```
 
@@ -52,6 +52,7 @@ The fallback emulates Supabase's roles, `auth` helpers and permissive default gr
 ## Rules for new migrations
 
 - Every table in `public`: `ENABLE` and `FORCE ROW LEVEL SECURITY`, `REVOKE ALL … FROM anon, authenticated`, then the exact grants from the RLS matrix. Client-writable columns are column grants.
+- Policies wrap `auth.uid()` and helper calls in `(SELECT …)` and keep one permissive policy per role and action (advisors fail CI on warnings).
 - Every function: `SET search_path = ''`, `REVOKE ALL … FROM PUBLIC`, explicit `GRANT EXECUTE`. Client-callable ones go on the allowlist in `00_structure_test.sql`.
 - Money columns are `*_minor bigint` with a currency code; rates are `*_bps integer`; rounding goes through `private.apply_bps`.
 - Creates, transitions and money operations take an idempotency key via `private.idempotency_claim` / `private.idempotency_complete`.
