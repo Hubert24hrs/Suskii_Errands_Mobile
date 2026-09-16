@@ -34,10 +34,10 @@ The spec lists fifteen. Ordered by what unblocks the most, with the Phase 0 evid
 | 3 | **ERD** with indexes, constraints, partitioning | A | S-06, S-14, ADR-0009 | ✅ [erd.md](erd.md) |
 | 4 | **RLS policy matrix** (role × table × operation × writable columns) | A | S-13 | ✅ [rls-policy-matrix.md](rls-policy-matrix.md) |
 | 5 | **Money flow diagrams** per gateway: payment, refund, dispute, item float, tip, referral, clawback | A | S-14, ADR-0002, ADR-0003 | ✅ [money-flows.md](money-flows.md) + ADR-0011 |
-| 6 | **C4 architecture diagrams** (context, container, component) | A | Phase 0 §10 | **next** |
-| 7 | **Threat model (STRIDE)** per component | A | spec `security`, S-13 | then |
-| 8 | **Data flow diagram** marking personal, biometric, criminal-record and financial data | A | DPIA outline | then |
-| 9 | **AI design**: prompts, tools, guardrails, eval sets, cost budget | A | ADR-0006, S-07 (blocked), cost model §3 | then |
+| 6 | **C4 architecture diagrams** (context, container, component) | A | Phase 0 §10 | ✅ [architecture-c4.md](architecture-c4.md) + ADR-0012 |
+| 7 | **Threat model (STRIDE)** per component | A | spec `security`, S-13 | ✅ [threat-model.md](threat-model.md) (+ R-31, R-32) |
+| 8 | **Data flow diagram** marking personal, biometric, criminal-record and financial data | A | DPIA outline | ✅ [data-flow.md](data-flow.md) |
+| 9 | **AI design**: prompts, tools, guardrails, eval sets, cost budget | A | ADR-0006, ADR-0012, S-07 (blocked), cost model §3 | **next** |
 | 10 | **Infrastructure and CI/CD plan** | A | ADR-0008, spec `ci_cd` | then |
 | 11 | **Test strategy** and device/network matrix | A | S-03/04/05 plan, spec `testing` | then |
 | 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | then |

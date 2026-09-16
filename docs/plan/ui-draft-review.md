@@ -4,7 +4,7 @@
 |---|---|
 | Reviewer | Claude Code |
 | Rolling document | Updated as Kimi appends each milestone |
-| Covered so far | M1 (app shell, mode switch), M2 (verification + KYC) |
+| Covered so far | M1 (app shell, mode switch), M2 (verification + KYC, including screens) |
 | Rule | Kimi's draft is **input, not authority**. Where it conflicts with `master_spec` on money, security or the state machine, the spec wins and the UI changes |
 
 Items marked **[CHANGE]** go to Kimi in `HANDOFF.md`. Items marked **[CONTRACT]** are captured for contracts v1. Items marked **[GOOD]** are recorded so a later refactor does not undo them.
@@ -52,6 +52,28 @@ No client-side business logic was found in M1 or M2 that must move server-side. 
 | 2.A | **The ongoing selfie check needs a UI state now, not later.** The draft covers onboarding verification but not the recurring check before going online (spec `ongoing_checks`; cost driver OD-13). Provider "go online" must handle `ERR_SELFIE_CHECK_REQUIRED` — which the M1 draft already lists — by launching a liveness session, not just showing an error | **[CHANGE]** |
 | 2.B | **Police clearance needs expiry-aware states.** Per country-pack research, a Nigerian certificate is valid ~3 months and costs ₦30,000 (OD-09). The provider UI needs "expiring in N days" and "expired — job acceptance blocked" states, driven by server-supplied dates, plus the document-expiry centre from the spec's provider screens | **[CHANGE]** |
 | 2.C | **Consent version must be surfaced.** When legal text changes, a user must re-consent. The UI needs a "consent out of date" path, not only first-time consent | **[CHANGE]** |
+
+### M2 screens (reviewed 2026-09-16)
+
+Kimi extended M2 with screen-level detail: welcome/country selection, auth, customer facial verification, provider onboarding and the KYC checklist.
+
+| # | Finding | Type |
+|---|---|---|
+| 2.10 | `ERR_OTP_RATE_LIMITED` is a first-class error | **[GOOD]** — supports the SMS-pumping control in the threat model (R-31) |
+| 2.11 | Social sign-in buttons shown disabled rather than hidden | **[GOOD]** |
+| 2.12 | Police clearance submits certificate number + issue/expiry dates + upload ref + a **separate** criminal-record consent | **[GOOD]** matches the ERD's `kyc.police_clearances` and the DPIA |
+| 2.13 | Payout account shows the server-resolved name and `nameMatch` **before** submit | **[GOOD]** — also the key control against payout redirection (R-32) |
+| 2.14 | **Verification is enforced on `createRequest`** with `ERR_PERMISSION_DENIED`. The spec lets unverified customers browse and use the AI concierge, and blocks only **publishing** a request and paying. Enforcing at create would stop the concierge drafting a request for an unverified user | **[CHANGE]** — enforce on publish (job lifecycle #2), with a specific code `ERR_VERIFICATION_REQUIRED` so the UI can route to `/verify/customer` instead of showing a generic denial |
+| 2.15 | ID types hardcoded to the Nigerian set | **[CONTRACT]** — country pack carries `accepted_id_types` (already in the country-pack drafts) |
+| 2.16 | Service-area catalog, bank list and `mfaEnabled` requested | **[CONTRACT]** — accepted: `list_service_areas(country)`, `list_payout_institutions(country, rail)` (covering mobile money, not only banks), `mfa_enrolled` on the session model |
+| 2.17 | MFA prompt is skippable for users | **[GOOD]** for customers and providers; **admins cannot skip** — enforced as `aal2` in the database (RLS matrix) |
+
+### From the data-flow review
+
+| # | Change | Why |
+|---|---|---|
+| D.1 | **Push notification payloads carry no message text, addresses or amounts** — only an id; the app fetches content after the device is unlocked | Push payloads transit Google and Apple (data-flow flow 18); a chat preview in a notification discloses conversation content to a third party and on the lock screen |
+| D.2 | **KYC captures are never cached on the device** after upload | Data-flow flows 2, 4, 5 |
 
 ## Naming alignment with the domain package (checked 2026-09-16)
 

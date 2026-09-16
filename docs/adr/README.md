@@ -33,5 +33,6 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0009](0009-location-transport.md) | Realtime Broadcast for live location; sparse DB heartbeat | Accepted | D-09 | Validated by S-11 |
 | [0010](0010-client-package-exclusions.md) | Client packages we will not adopt | Accepted | D-10 | — |
 | [0011](0011-chart-of-accounts.md) | Extend the spec's ledger accounts with gateway assets and two expense accounts | Accepted | Phase 1 money flows | — |
+| [0012](0012-ai-tools-act-as-user.md) | The AI service and voice agent act with the end user's JWT, never the service role | Accepted | Phase 1 C4 / threat model | — |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).
