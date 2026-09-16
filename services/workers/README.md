@@ -1,6 +1,6 @@
 # services/workers — scheduled backend jobs
 
-Owner: Claude Code. Python 3.13, managed with uv. CI: `.github/workflows/services-workers.yaml`.
+Owner: Claude Code. Python 3.13, managed with uv. CI: `.github/workflows/services-workers.yaml`. Image: `postgres:17-trixie` + PostGIS from the PostgreSQL apt repository.
 
 ## Backups (`suskii-backup`)
 

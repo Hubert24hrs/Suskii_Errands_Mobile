@@ -1,8 +1,8 @@
 name: services-workers
 
-# Backend workers CI (docs/plan/infra-cicd.md §5). The integration job runs inside the same
-# PostgreSQL 17 + PostGIS image the worker ships in, against a second container that has the real
-# Supabase migrations applied, so dump, restore and verification are exercised for real.
+# Backend workers CI (docs/plan/infra-cicd.md §5). The integration job runs with PostgreSQL 17
+# client tools against a PostGIS server that has the real Supabase migrations applied, so dump,
+# restore and verification are exercised for real. The image job builds the shipped container.
 on:
   push:
     branches: [main]
@@ -47,7 +47,8 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    container: postgis/postgis:17-3.5
+    # Client tools only: the restore runs on the `source` server, which has PostGIS.
+    container: postgres:17-trixie
     services:
       source:
         image: postgis/postgis:17-3.5
@@ -64,8 +65,6 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: postgres
     steps:
-      - name: Tools the base image lacks
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
