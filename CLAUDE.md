@@ -10,7 +10,7 @@ Claude Code is the **backend agent and technical lead**. Follow `master_spec` + 
 
 | Path | Owner |
 |---|---|
-| `supabase/` (migrations, functions, tests, seed), `services/` (ai, voice-agent, workers), `contracts/` (except `draft/`), `infra/`, `docs/adr/`, `docs/runbooks/`, `docs/research/`, `docs/audit/`, `docs/OPEN-DECISIONS.md`, `CLAUDE.md` | Claude Code |
+| `supabase/` (migrations, functions, tests, seed), `services/` (ai, voice-agent, workers), `contracts/` (except `draft/`), `infra/`, `.github/workflows/backend-*.yaml`, `docs/adr/`, `docs/runbooks/`, `docs/research/`, `docs/audit/`, `docs/OPEN-DECISIONS.md`, `CLAUDE.md` | Claude Code |
 | `apps/` (mobile, web-customer, web-marketing, web-admin), `packages/`, `contracts/draft/`, `contracts/CHANGE_REQUESTS.md`, `AGENTS.md`, `.github/workflows/frontend-ci.yaml` | Kimi Code. **Do not edit.** Audit and file findings in `HANDOFF.md` instead |
 | `HANDOFF.md`, `README.md` | Shared. Append; never rewrite the other agent's entries |
 
@@ -32,9 +32,10 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 | Phase 1 — Planning, contracts v1 | **Stage A complete** (`docs/plan/`, 2026-09-16): state machines, ERD, RLS matrix, money flows, C4, threat model, data flow, AI design, infra/CI-CD, test strategy, PRD (147 stories), timeline. Stage B (contracts v1 + fixtures) waits for M8.5 |
 | Spikes | S-06, S-10, S-13, S-14 passed. The rest need credentials or devices — `docs/research/spikes/README.md` |
 | Kimi | M1 + M2 committed (`e473c9b`), reviewed (C.1–C.8). M3 in progress; foundation reviewed from the working tree (M3.1–M3.6). C.1 idempotency keys still open |
-| Next Claude work | Rolling review of Kimi's milestones (recheck C.1, M3.1 at M3 commit). Stage B at M8.5. Phase 2 foundation early only if the user approves Option B (`docs/plan/timeline.md` §6). Launch base case: week of 7 Jun 2027 (range late Apr–early Aug) |
+| Phase 2 — Backend foundation | **Started 2026-09-16** before contracts v1 (ADR-0013, user-approved). Database foundation done: 8 migrations, 107 pgTAP assertions passing locally, `backend-db.yaml` CI. Next: Edge Functions (send-SMS hook, device integrity), Terraform, observability. Needs GCP billing + a Supabase org for deployed environments |
+| Next Claude work | Phase 2 Edge Functions; rolling review of Kimi's milestones (recheck C.1, M3.1 at M3 commit); Stage B at M8.5. Launch base case: week of 7 Jun 2027 |
 
-Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`.
+Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`. From Phase 2, `supabase/` holds production code — see `supabase/README.md` for its rules.
 
 ## Document map
 
@@ -80,6 +81,18 @@ Two rules: never delete a decision or a finding, supersede it; and every factual
 
 ## Commands
 
-Backend commands arrive in Phase 2, when `supabase/` and `services/` are created. Tooling: Supabase CLI (local stack, migrations, type generation), pnpm + Turborepo for TypeScript, uv for Python, Melos for Dart, pre-commit hooks for formatting, linting and secret scanning.
+Backend (details and rules in `supabase/README.md`; CLI pinned to 2.117.0):
+
+```bash
+npx supabase@2.117.0 start                         # needs Docker
+npx supabase@2.117.0 db reset --local              # all migrations + dev seed from zero
+npx supabase@2.117.0 test db --local               # pgTAP
+npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
+bash supabase/tests/local/run-plain-postgres.sh    # no-Docker fallback (PSQL, PG* env vars)
+```
+
+This dev machine has no Docker: use the fallback with the portable PostgreSQL 17 + PostGIS + pgTAP install (`spikes/postgres/setup-local-windows.sh`; antivirus has deleted its binaries twice — re-extract from the cached zip). CI on GitHub is the authority.
+
+Tooling still to come: pnpm + Turborepo for TypeScript, uv for Python, pre-commit hooks for formatting, linting and secret scanning.
 
 Frontend commands are Kimi's and live in `README.md`.

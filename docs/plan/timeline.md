@@ -165,7 +165,7 @@ The spec's sequence has Claude start the backend after contracts v1 (Option A). 
 | Risk | None new | Low: foundation work is reversible, and no application tables or functions that contracts v1 would define are created before it |
 | Prerequisites | — | Client actions 1 and 8 (GCP billing, Supabase organisation) |
 
-Option B changes the agreed sequence, so it needs the user's go-ahead. Until then this timeline assumes Option A.
+**Decided 2026-09-16: Option B, approved by the user** ([ADR-0013](../adr/0013-backend-foundation-before-contracts-v1.md)). Phase 2 foundation started the same day. The §3 table keeps the Option A base case until the next re-baseline at M8.5, when the ~2-week gain is applied if Phase 3 does start on contracts v1 publication.
 
 ## 7. Fixed external dates inside the window
 

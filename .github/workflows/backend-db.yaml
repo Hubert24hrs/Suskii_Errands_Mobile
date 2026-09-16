@@ -1,0 +1,59 @@
+name: backend-db
+
+# Database CI (docs/plan/infra-cicd.md §5). Path-filtered so it never runs for frontend-only
+# changes and never overlaps frontend-ci.yaml, which belongs to Kimi Code.
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/backend-db.yaml']
+  pull_request:
+    paths: ['supabase/**', '.github/workflows/backend-db.yaml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+
+      # Auth (gotrue) stays up so the hook wiring in config.toml is exercised against real
+      # functions; services the database tests do not need are skipped.
+      - name: Start local stack
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,storage-api,postgres-meta
+
+      - name: Apply every migration and the seed from zero
+        run: supabase db reset --local
+
+      - name: pgTAP
+        run: supabase test db --local
+
+      - name: Lint (plpgsql_check)
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Security and performance advisors
+        run: supabase db advisors --local --type all --level warn --fail-on error
+
+      # Contract drift check lands with contracts v1 (Stage B); until then the generated types
+      # are published as an artifact so both agents can inspect them.
+      - name: Generate TypeScript types
+        run: supabase gen types --local --lang typescript --schema public > database.types.ts
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: database-types
+          path: database.types.ts
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
