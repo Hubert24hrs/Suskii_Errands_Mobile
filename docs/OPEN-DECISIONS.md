@@ -19,7 +19,7 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-07 | Countries live on launch day | Nigeria first; others as their packs are verified | Open | Client | Phase 1 (contracts), Phase 10 |
 | OD-08 | Gateway fee on refunds | Platform absorbs it for fault-free cancellations; deducted for late customer cancellations | Open | Client | Phase 5 |
 
-## Raised by Phase 0 research (OD-09 … OD-18)
+## Raised by Phase 0 research and Phase 1 planning (OD-09 … OD-19)
 
 | ID | Topic | Proposed default | Status | Owner | Needed by | Evidence |
 |---|---|---|---|---|---|---|
@@ -33,6 +33,7 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-16 | Swahili / Luganda for KE and UG | English only at launch in KE/UG; Swahili in V1.2 | Proposed | Client | Phase 1 (l10n scope) | REPORT §2 |
 | OD-17 | Nigerian Pidgin voice concierge | Ship Pidgin voice only if it passes the S-08 eval gate; otherwise Pidgin text + English voice | Proposed | Client | Phase 7 | REPORT §6.2 — Live API does not list `pcm` |
 | OD-18 | Tax on referral payouts | Ledger supports per-country withholding and annual statements; tax counsel rules per country | Proposed | Client + counsel | Phase 5 | REPORT §3.5 |
+| OD-19 | Who receives a cancellation fee | Provider, net of commission, when the customer cancels after the provider committed or travelled; platform keeps nothing extra. The spec says fees depend on state and time but not who receives them | Proposed | Client | Phase 5 (money) | [money-flows.md](plan/money-flows.md) scenario 5a |
 
 ## Resolved
 

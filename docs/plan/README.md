@@ -12,5 +12,6 @@ Start with [PHASE-1-PLAN.md](PHASE-1-PLAN.md), which explains the staging, the o
 | [ui-draft-review.md](ui-draft-review.md) | Rolling review of Kimi's draft against master_spec; source of the UI change list |
 | [erd.md](erd.md) | Tables, keys, constraints, indexes, partitioning, schema placement, encryption |
 | [rls-policy-matrix.md](rls-policy-matrix.md) | Role × table × operation × writable columns; storage and realtime authorisation; pgTAP obligations |
+| [money-flows.md](money-flows.md) | Chart of accounts and verified ledger postings for every money path: payment, tip, item float, promo, cancellations, disputes, chargeback, payout reversal, referral withdrawal |
 
 Conventions match the rest of `docs/`: decisions are append-only, evidence tags `[V]`/`[S]`/`[A]`, and every document names its owner and date.
