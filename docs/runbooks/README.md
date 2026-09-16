@@ -6,23 +6,23 @@ Write for someone under pressure at 3 a.m.: numbered steps, exact commands, exac
 
 ## Planned runbooks
 
-Owned by Claude Code, written in the phase shown. Nothing here is required before Phase 2 opens, but the list is the checklist.
+Owned by Claude Code, written in the phase shown. Nothing here is required before Phase 2 opens, but the list is the checklist. **Written** means the procedure exists; every runbook still needs its first rehearsal (see each file's *Last rehearsed*), and RB-09 records which backup layers are not built yet.
 
 | # | Runbook | Phase | Trigger it covers |
 |---|---|---|---|
-| RB-01 | Incident response and severity ladder | 2 | Any production incident; defines SEV levels, comms, roles |
+| [RB-01](RB-01-incident-response.md) | Incident response and severity ladder | 2 | Any production incident; defines SEV levels, comms, roles. **Written** |
 | RB-02 | Payment failures and stuck jobs | 5 | Gateway outage, webhook gap, PAYMENT_PENDING pile-up |
 | RB-03 | Reconciliation mismatch | 5 | Daily ledger vs gateway settlement mismatch |
 | RB-04 | Payout and withdrawal failures | 5 | Failed or reversed transfers, frozen balances |
 | RB-05 | KYC vendor outage | 4 | Smile ID unavailable; queueing and the no-auto-approve rule |
 | RB-06 | SOS escalation | 4 | SOS raised; partner dispatch, acknowledgement, follow-up |
-| RB-07 | Data breach and regulator notification | 2 | Per-country clocks (NG 72 h, ZA eServices portal, KE, GH, UG) |
+| [RB-07](RB-07-data-breach.md) | Data breach and regulator notification | 2 | Per-country clocks (NG 72 h, ZA eServices portal, KE, GH, UG). **Written** |
 | RB-08 | Country go-live | 10 | Running the go-live checklist and flipping a pack to `live` |
-| RB-09 | Backup restore and PITR drill | 2 | Rehearsed restore; documented RPO/RTO |
-| RB-10 | Key rotation | 2 | Rotating envelope-encryption keys and vendor secrets (ADR-0007) |
+| [RB-09](RB-09-backup-restore.md) | Backup restore and PITR drill | 2 | Rehearsed restore; documented RPO/RTO. **Written** |
+| [RB-10](RB-10-key-rotation.md) | Key rotation | 2 | Rotating envelope-encryption keys and vendor secrets (ADR-0007). **Written** |
 | RB-11 | Model swap and rollback | 7 | Changing an LLM model ID in remote config (ADR-0006) |
 | RB-12 | Realtime or quota saturation | 3 | Connection and message limits, Enterprise quota requests |
-| RB-13 | Forced update and kill switch | 2 | Disabling a feature or forcing a client upgrade |
+| [RB-13](RB-13-kill-switch-and-forced-update.md) | Forced update and kill switch | 2 | Disabling a feature or forcing a client upgrade. **Written** |
 | [RB-14](RB-14-backend-deploy-and-rollback.md) | Backend deploy failed or release rollback | 2 | Red deploy run, unhealthy release, failed migration; one-time environment setup checklist. **Written** |
 
 ## Template
