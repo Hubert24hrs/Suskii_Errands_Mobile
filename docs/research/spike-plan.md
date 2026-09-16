@@ -27,6 +27,13 @@ The six spikes required by the spec are **S-03, S-04, S-05, S-06, S-10 and S-11*
 | S-11 | **Realtime load for location broadcast** | Channel design, quotas, cost | CC | 3 d | Tracking design | P1 |
 | S-12 | Payment hold → payout end-to-end in sandboxes | Flutterwave/Paystack flows, webhooks, refunds | CC | 4 d | Money design | P0 |
 
+**Added after the first run (2026-09-16).** Both need no credentials and ran locally:
+
+| ID | Spike | Answers | Owner | Effort |
+|---|---|---|---|---|
+| S-13 | RLS default-deny, column privileges, SECURITY DEFINER | Do the spec's access-control rules hold on plain Postgres? | CC | 1 d |
+| S-14 | Money rounding and double-entry ledger invariants | Does half-even rounding, the exponent table and the zero-sum rule behave as the spec assumes? | CC | 1 d |
+
 **Device matrix for S-03, S-04 and S-05** (buy or rent; OEM builds matter more than OS version):
 - **Tecno Spark** (2–3 GB);
 - **Infinix Hot/Smart** (2–3 GB);

@@ -18,13 +18,16 @@ Last updated 2026-09-16.
 | S-10 | Concurrent offer acceptance | **Passed** | — (re-run on Supabase later) | [S-10-results.md](S-10-results.md) |
 | S-11 | Realtime load for location broadcast | Not started | A Supabase project + k6 | — |
 | S-12 | Payment hold to payout, end to end | Not started | Flutterwave and Paystack sandbox credentials | — |
+| S-13 | RLS default-deny and SECURITY DEFINER patterns *(added)* | **Passed 17/17** | — | [S-13-results.md](S-13-results.md) |
+| S-14 | Money rounding and ledger invariants *(added)* | **Passed 24/24** | — | [S-14-results.md](S-14-results.md) |
 
 ## What this run established
 
 1. **S-06 and S-10 are done and passed.** Docker would not install, so they ran on portable PostgreSQL 17.5 + PostGIS 3.6 (no installer, no admin) via `spikes/postgres/setup-local-windows.sh`. R-11 and R-12 are downgraded from High/Critical to Medium on measured evidence.
 2. **S-01 needs real vantage points, not this machine.** The development machine sits behind a VPN egressing in Europe, so its latency ordering reflects distance from that egress, not from Lagos. Details and the reusable harness are in the result file.
 3. **S-07 needs an open billing account.** The Vertex API is now enabled on the project, and the first diagnosis ("API not enabled") was wrong — those 403s came from a missing quota project. With that fixed, Vertex says billing is required, and both billing accounts on the Google account are closed. Reopening one is a payment matter for the client.
-4. **Everything else needs hardware or vendor accounts** that do not exist yet. The device spikes (S-03, S-04, S-05) also need Kimi's app, which reached M1 on 2026-09-16.
+4. **Two spikes were added because they need no credentials.** S-13 proves the access-control rules (RLS default-deny, column privileges, SECURITY DEFINER) on plain Postgres; S-14 proves the money rules (half-even rounding, currency exponents, zero-sum ledger). Both found real fixes, listed in their results.
+5. **Everything else needs hardware or vendor accounts** that do not exist yet. The device spikes (S-03, S-04, S-05) also need Kimi's app, which reached M2 on 2026-09-16.
 
 ## Order to run them in
 
