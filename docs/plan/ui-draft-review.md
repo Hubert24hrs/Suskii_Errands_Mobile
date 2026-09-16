@@ -75,6 +75,23 @@ Kimi extended M2 with screen-level detail: welcome/country selection, auth, cust
 | D.1 | **Push notification payloads carry no message text, addresses or amounts** — only an id; the app fetches content after the device is unlocked | Push payloads transit Google and Apple (data-flow flow 18); a chat preview in a notification discloses conversation content to a third party and on the lock screen |
 | D.2 | **KYC captures are never cached on the device** after upload | Data-flow flows 2, 4, 5 |
 
+### M2 code review — `suskii_domain` and mock data layer (commit `e473c9b`, reviewed 2026-09-16)
+
+Kimi committed M1 + M2. This pass reads the code rather than the draft, against the job lifecycle, offer machine, ERD and data flow. It is a milestone review, not the formal audit (that starts at M8.5, `docs/audit/README.md`).
+
+**Holding up well:** no money arithmetic anywhere in `apps/mobile` (all amounts come from a server `PriceBreakdown`); no "escrow" in either locale file; rejection reasons are keys, never free text; KYC files are opaque upload refs; criminal-record consent is separate; vendor SDKs sit behind `IdentityVerificationAdapter`; `requestStatusChange(jobId, target)` maps cleanly onto `set_job_status`.
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| C.1 | **No repository method carries an idempotency key** (`createRequest`, `cancelRequest`, `acceptOffer`/`declineOffer`/`counterOffer`, `submitOffer`, `requestStatusChange`, `confirmCompletion`, both `requestWithdrawal`s, `submitStep`, `submitForReview`, `sendMessage`). Every one of these server functions requires it. Add an `idempotencyKey` parameter now, generated once per user intent (UUIDv7) and reused on retry of that same intent — carried-forward item 2 | High | **[CHANGE]** |
+| C.2 | **`IdentityVerificationAdapter.matchGovernmentId` returns `matchedName`.** Government-ID lookup is server-to-vendor (data-flow flow 4), not a device call, and returning the registry name makes the app a *NIN → full name* lookup oracle for anyone who types someone else's number. Keep liveness capture on the device adapter; move ID lookup to `VerificationRepository.submitIdLookup` only, returning outcome + `reasonKey`, never a name. (The payout `resolvedName` is different and fine: it is the account holder confirmation users expect, shown for the caller's own submission and rate-limited server-side) | High | **[CHANGE]** |
+| C.3 | `RequestRepository` has no `publishRequest`. With 2.14 accepted, create saves a draft and `publish_request` is the verification gate | Medium | **[CHANGE]** (M3, already planned) |
+| C.4 | No `withdrawOffer` for providers, though `OfferStatus.withdrawn` exists (offer machine: `withdraw_offer`) | Medium | **[CHANGE]** |
+| C.5 | `requestStatusChange` has no evidence argument; `set_job_status` takes proof refs for `ARRIVED` and `COMPLETED_BY_PROVIDER` | Medium | **[CONTRACT]** |
+| C.6 | `Money` exponents are a client table **defaulting to 2** for unknown codes. A zero-exponent currency missing from the table would render 100× too small. The server `currencies` table is authoritative: ship exponents in the country pack, and make an unknown code throw in debug rather than default | Medium | **[CHANGE]** + **[CONTRACT]** |
+| C.7 | `Money` JSON keys are `minorUnits`/`currency`; the ERD uses `amount_minor` + `currency`. Settle in contracts v1 together with N.6 (snake_case) | Low | **[CONTRACT]** |
+| C.8 | `mediaPaths` / `uploadRefs` are local paths in the mock; on the wire they are Storage object keys returned by the signed-upload call | Low | **[CONTRACT]** |
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.

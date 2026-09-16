@@ -31,7 +31,8 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 | Phase 0 — Deep research | **Complete.** See `docs/research/CHECKPOINT-PHASE-0.md` |
 | Phase 1 — Planning, contracts v1 | **Stage A in progress** (`docs/plan/`): backend truth that does not depend on the hand-off. Stage B (contracts v1 + fixtures) waits for M8.5 |
 | Spikes | S-06, S-10, S-13, S-14 passed. The rest need credentials or devices — `docs/research/spikes/README.md` |
-| Next Claude work | Phase 1 Stage A: ERD, RLS policy matrix, money flows, then C4/threat model/AI design |
+| Kimi | M1 + M2 committed (`e473c9b`); code-reviewed 2026-09-16 (`docs/plan/ui-draft-review.md`, C.1–C.8). M3 next |
+| Next Claude work | Phase 1 Stage A #9–#13: AI design, infra/CI-CD plan, test strategy, PRD, revised timeline |
 
 Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`.
 
