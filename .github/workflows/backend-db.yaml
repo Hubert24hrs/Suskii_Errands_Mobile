@@ -36,7 +36,7 @@ jobs:
         run: supabase db reset --local
 
       - name: pgTAP
-        run: supabase test db --local
+        run: supabase test db --local supabase/tests/database
 
       - name: Lint (plpgsql_check)
         run: supabase db lint --local --level warning --fail-on error

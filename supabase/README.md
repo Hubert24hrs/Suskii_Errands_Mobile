@@ -10,7 +10,7 @@ Owner: Claude Code. Design sources: [ERD](../docs/plan/erd.md), [RLS policy matr
 | `migrations/` | Timestamped SQL, applied in order by the Supabase CLI. Pre-contract migrations are editable until a shared environment applies them (ADR-0013) |
 | `seed/` | **Dev and staging only.** Countries, cities, legal document placeholders, flags, remote config |
 | `tests/database/` | pgTAP suites. `00_structure_test.sql` guards grants, RLS, `search_path` and money column types for every future migration |
-| `tests/local/` | Fallback runner for machines without Docker: a Supabase shim plus a script for plain PostgreSQL 17 + PostGIS |
+| `local-fallback/` | Runner for machines without Docker: a Supabase shim plus a script for plain PostgreSQL 17 + PostGIS. Kept outside `tests/` because `supabase test db` runs every `.sql` file under it |
 | `functions/` | Edge Functions (Deno) — next |
 
 ## What exists (Phase 2 foundation)
@@ -35,7 +35,7 @@ With Docker (CI and normal development):
 ```bash
 npx supabase@2.117.0 start
 npx supabase@2.117.0 db reset --local
-npx supabase@2.117.0 test db --local
+npx supabase@2.117.0 test db --local supabase/tests/database
 npx supabase@2.117.0 db lint --local --level warning --fail-on error
 npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
 npx supabase@2.117.0 gen types --local --lang typescript --schema public
@@ -44,7 +44,7 @@ npx supabase@2.117.0 gen types --local --lang typescript --schema public
 Without Docker (plain PostgreSQL 17 + PostGIS with the pgTAP extension files installed):
 
 ```bash
-PSQL=/path/to/psql PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGPASSWORD=... bash supabase/tests/local/run-plain-postgres.sh
+PSQL=/path/to/psql PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGPASSWORD=... bash supabase/local-fallback/run-plain-postgres.sh
 ```
 
 The fallback emulates Supabase's roles, `auth` helpers and permissive default grants, but it is not the real stack: CI (`.github/workflows/backend-db.yaml`) is the authority.

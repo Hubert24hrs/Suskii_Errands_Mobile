@@ -86,9 +86,9 @@ Backend (details and rules in `supabase/README.md`; CLI pinned to 2.117.0):
 ```bash
 npx supabase@2.117.0 start                         # needs Docker
 npx supabase@2.117.0 db reset --local              # all migrations + dev seed from zero
-npx supabase@2.117.0 test db --local               # pgTAP
+npx supabase@2.117.0 test db --local supabase/tests/database  # pgTAP
 npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on error
-bash supabase/tests/local/run-plain-postgres.sh    # no-Docker fallback (PSQL, PG* env vars)
+bash supabase/local-fallback/run-plain-postgres.sh # no-Docker fallback (PSQL, PG* env vars)
 ```
 
 This dev machine has no Docker: use the fallback with the portable PostgreSQL 17 + PostGIS + pgTAP install (`spikes/postgres/setup-local-windows.sh`; antivirus has deleted its binaries twice — re-extract from the cached zip). CI on GitHub is the authority.

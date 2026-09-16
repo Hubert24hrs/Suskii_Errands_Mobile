@@ -10,11 +10,11 @@
 #
 # Usage:
 #   PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGPASSWORD=... \
-#     bash supabase/tests/local/run-plain-postgres.sh [test-file-glob]
+#     bash supabase/local-fallback/run-plain-postgres.sh [test-file-glob]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SUPABASE_DIR="$(cd "$HERE/../.." && pwd)"
+SUPABASE_DIR="$(cd "$HERE/.." && pwd)"
 PSQL="${PSQL:-psql}"
 DB="${SUSKII_TEST_DB:-suskii_test}"
 PATTERN="${1:-*.sql}"
