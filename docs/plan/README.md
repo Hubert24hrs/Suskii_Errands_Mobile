@@ -19,5 +19,6 @@ Start with [PHASE-1-PLAN.md](PHASE-1-PLAN.md), which explains the staging, the o
 | [ai-design.md](ai-design.md) | AI features, gateway and model routing, tool allowlist, prompt structure, guardrails, voice, eval sets, cost budget |
 | [infra-cicd.md](infra-cicd.md) | Environments, IaC, secrets, CI workflows, promote-don't-rebuild delivery, expand/contract migrations, observability and SLOs, backups |
 | [test-strategy.md](test-strategy.md) | Test layers and catalogue (pgTAP, concurrency, money properties, webhooks, integration, load, security), device and network matrix, quality gates |
+| [prd/](prd/README.md) | PRD: personas, non-functional requirements, 147 user stories with acceptance criteria across shared, customer, provider, business, web, marketing and admin |
 
 Conventions match the rest of `docs/`: decisions are append-only, evidence tags `[V]`/`[S]`/`[A]`, and every document names its owner and date.

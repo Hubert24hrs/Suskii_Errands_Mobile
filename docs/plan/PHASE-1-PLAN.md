@@ -40,8 +40,8 @@ The spec lists fifteen. Ordered by what unblocks the most, with the Phase 0 evid
 | 9 | **AI design**: prompts, tools, guardrails, eval sets, cost budget | A | ADR-0006, ADR-0012, S-07 (blocked), cost model §3 | ✅ [ai-design.md](ai-design.md) (+ OD-20, OD-21) |
 | 10 | **Infrastructure and CI/CD plan** | A | ADR-0008, spec `ci_cd` | ✅ [infra-cicd.md](infra-cicd.md) |
 | 11 | **Test strategy** and device/network matrix | A | S-03/04/05 plan, spec `testing` | ✅ [test-strategy.md](test-strategy.md) |
-| 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | **next** |
-| 13 | **Revised timeline**, critical path, dependencies | A | everything | last of Stage A |
+| 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | ✅ [prd/](prd/README.md) — 147 stories |
+| 13 | **Revised timeline**, critical path, dependencies | A | everything | **next** |
 | 14 | **Contracts v1** + fixtures | **B** | complete draft at M8.5 | blocked |
 | 15 | **UI change list** for Kimi in `HANDOFF.md` | **B**, rolling | draft review | rolling |
 
