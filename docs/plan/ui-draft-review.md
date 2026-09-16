@@ -108,6 +108,26 @@ Kimi reported the M3 foundation verified (domain 21/21, data 58/58, core 7/7, an
 | M3.5 | `ServerClock` measures elapsed time with `DateTime.now()`, which jumps when the user or the network changes the device clock. Use a monotonic `Stopwatch` started at sync, re-sync on later responses, and subtract half the request round trip | Low | **[CHANGE]** |
 | M3.6 | `PriceBand` has `confidence` + `sampleSize`; the backend also returns `basis` (`rules`/`history`), and `getPriceBand` needs `urgency` (the band function takes category, city, urgency, distance). Contracts v1 will carry all of them | Low | **[CONTRACT]** |
 
+## M3 progress check (working tree, 2026-09-16 23:05 — Kimi mid-edit, nothing committed)
+
+**State:** M3 is still uncommitted. The last Kimi commit is `e473c9b` (M1 + M2). The domain, data and core packages were being edited minutes before this check; **no M3 screens exist yet under `apps/`**, so request creation, concierge and offer UI cannot be reviewed. This pass covers the interface and mock changes that respond to the M3 foundation review.
+
+**Landed well:**
+- **C.1 (was High):** `idempotencyKey` is now required on 25 method signatures across requests, offers, provider actions, job progress, chat, wallet, referrals, concierge and KYC. `newIdempotencyKey()` is documented as one key per user intent, reused only on retry. **[GOOD]**
+- **M3.1:** `publishDraft` is gone. `ConciergeDraft.requestId` exists, and the doc comment states that the concierge holds no publish capability. **[GOOD]**
+- **M3.2:** `ConciergeMessage.proposedAction` uses exactly the five ai-design values with snake_case wire names. **[GOOD]**
+- **M3.4:** voice availability comes from bootstrap (`AppBootstrap.voiceLanguages`), not the adapter. **[GOOD]**
+- **M3.5:** `ServerClock` extrapolates with a monotonic `Stopwatch`. **[GOOD]**
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| M3.7 | **`newIdempotencyKey()` always throws.** It calls `Random.secure().nextInt(1 << 62)`, but Dart's `nextInt` accepts a maximum of at most 2³². Reproduced: `RangeError (max): Must be positive and <= 2^32`. Every mutating action that generates a key would crash, and on web `1 << 62` is not even representable. Fix: draw the 74 random bits from several `nextInt(1 << 32)` calls (or 10 random bytes), keeping the version nibble `7` and variant bits `10`. The existing regex test will catch it once `flutter test` runs on `suskii_core` | **High** | **[CHANGE]** |
+| M3.8 | **The mock's idempotency is looser than the backend's.** It keys results by `operation:key` and ignores the payload, so `counterOffer` with the same key and a *different amount* silently replays the old result. The backend keys by user + key, stores a request hash, and refuses a mismatched payload or operation with `ERR_IDEMPOTENCY_KEY_REUSED` (pgTAP `02_internals_test.sql`). Store a hash of the arguments and throw that code on mismatch, so a UI that accidentally reuses a key fails in mocks rather than first in staging | Medium | **[CHANGE]** |
+| M3.9 | `verifyHandoverPin(jobId, pin)` has no idempotency key. The job lifecycle defines `verify_pin(request_id, pin, idempotency_key)`, because attempts are counted server-side: a network retry must not spend a second attempt towards lockout | Medium | **[CHANGE]** |
+| M3.10 | `ConciergeDraft.requestId` is set "once every slot is filled". ai-design §4.1 and PRD CU-01 save the server-side draft **as details are gathered**, so a customer who leaves mid-conversation resumes with their draft. The field can stay; the comment and the mock should set it from the first saved slot | Low | **[CONTRACT]** |
+| M3.6 | Still open: `getPriceBand` takes no `urgency`, and the band carries no `basis` | Low | **[CONTRACT]** |
+| M3.11 | `voiceLanguages` is a `Map<String, bool>` in bootstrap; the backend seed had `voice_languages` as a list (`["en"]`). **The backend changes to match**: `{"en": true, "pcm": false}` | — | Backend change, done |
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.

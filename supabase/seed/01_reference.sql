@@ -45,5 +45,5 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
   ('min_supported_app_version', NULL, '{"android": "0.1.0", "ios": "0.1.0", "web": "0.1.0"}', true),
   -- OD-17: Pidgin voice stays off until the S-08 gate passes (review M3.4).
-  ('voice_languages', NULL, '["en"]', true)
+  ('voice_languages', NULL, '{"en": true, "pcm": false}', true)
 ON CONFLICT DO NOTHING;
