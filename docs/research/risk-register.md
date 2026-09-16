@@ -20,9 +20,11 @@ Date 2026-09-15 · Maintained by Claude Code; review at every phase checkpoint.
 
 | Band | Count | IDs |
 |---|---|---|
-| 🔴 Critical | 8 | R-01 – R-07, R-12 |
-| 🟠 High | 16 | R-08 – R-11, R-13 – R-24 |
-| 🟡 Medium | 6 | R-25 – R-30 |
+| 🔴 Critical | 7 | R-01 – R-07 |
+| 🟠 High | 15 | R-08 – R-10, R-13 – R-24 |
+| 🟡 Medium | 8 | R-11, R-12, R-25 – R-30 |
+
+R-11 and R-12 were downgraded on 2026-09-16 after spikes S-06 and S-10 measured them; see the spike results for the residual risk that keeps them above Low.
 
 ## Register
 
@@ -38,8 +40,8 @@ Date 2026-09-15 · Maintained by Claude Code; review at every phase checkpoint.
 | R-08 | Incoming VoIP calls fail with the app killed (iOS PushKit/CallKit, Android OEM restrictions) | Mobile | 3 | 4 | 🟠 12 | KC + CC | Spike S-03 on the device matrix; PSTN masked fallback; missed-call push + chat message | Answer rate < 90% in S-03 | S-03 |
 | R-09 | Provider background location killed by Transsion (Tecno/Infinix/itel, ~48% of African handsets) battery management | Mobile | 4 | 3 | 🟠 12 | KC | FGS with `location` type; guided OEM settings screen; server staleness detection → prompt; S-04 | Ping gaps > 2 min on test devices | S-04 |
 | R-10 | Liveness SDK crashes or is slow on 2 GB RAM devices (Smile ID v12 is days old) | Mobile / KYC | 3 | 4 | 🟠 12 | KC + CC | S-05 benchmark v11 vs v12; web fallback for customers; retry UX | OOM/ANR in S-05 | S-05 |
-| R-11 | PostGIS nearest-provider query misses 50 ms p95 at 100k providers | Backend | 2 | 4 | 🟠 8 | CC | GiST/SP-GiST on geography, H3/geohash pre-bucketing, partial index on online providers; separate hot table for live positions | S-06 p95 | S-06 |
-| R-12 | Race conditions in offer acceptance → double booking or double charge | Backend | 3 | 5 | 🔴 15 | CC | Row lock on the request, idempotency keys, single-transaction accept; pgTAP concurrency tests | S-10 duplicate count > 0 | S-10 |
+| R-11 | PostGIS nearest-provider query misses 50 ms p95 at 100k providers | Backend | 1 | 4 | 🟡 4 | CC | **S-06 measured p95 1.87 ms at the production write rate; passes to ~10x.** Residual risk is bloat from heartbeat churn: movement-gated writes, fillfactor 70-80, aggressive autovacuum, alert on dead-tuple ratio. Re-measure on Supabase | Dead-tuple ratio on the hot table | S-06 done |
+| R-12 | Race conditions in offer acceptance → double booking or double charge | Backend | 1 | 5 | 🟡 5 | CC | **S-10 measured: 0 double acceptances in 750 concurrent attempts, 0 deadlocks**, including same-offer and same-key contention. Pattern confirmed (row lock + idempotency + single transaction). Assertions become pgTAP tests in Phase 3; re-run against Supabase with the pooler | Duplicate acceptance in tests or production | S-10 done |
 | R-13 | Realtime quotas: at 1M MAU ~60k peak connections vs 10k Team limit; message costs from tracking | Scale / cost | 4 | 3 | 🟠 12 | CC | Enterprise quota negotiation at 100k MAU; channel design (one channel per job, not per user); sparse pings when idle; S-11 load test | Peak connections > 5k | S-11 |
 | R-14 | Webhook spoofing/replay or missed webhooks → false "paid" or stuck jobs | Security / money | 2 | 5 | 🟠 10 | CC | Signature verify + store raw + dedupe + server verify call + reconciliation; payment TTL watchdog | Reconciliation mismatches | — |
 | R-15 | Referral fraud rings (fake accounts, collusion, self-referral) drain the platform | Fraud | 4 | 3 | 🟠 12 | CC | Single-level only; 72 h hold; device/face/payout/card de-dupe; velocity limits; review queue; campaign budget caps | Referral earnings per referrer outliers | — |

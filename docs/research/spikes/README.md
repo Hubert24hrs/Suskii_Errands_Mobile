@@ -11,17 +11,17 @@ Last updated 2026-09-16.
 | S-03 | VoIP call with the app killed | Not started | Physical iOS + Android devices, Kimi's app, APNs/FCM credentials | — |
 | S-04 | Background location on low-end Android | Not started | Tecno / Infinix / itel devices, 8-hour test shifts | — |
 | S-05 | Liveness SDK on 2 GB devices | Not started | Devices + Smile ID sandbox credentials | — |
-| S-06 | PostGIS nearest provider at 100k | **Harness ready, unrun** | Docker on the runner | `spikes/postgres/S-06/` |
+| S-06 | PostGIS nearest provider at 100k | **Passed** | — (re-run on Supabase later) | [S-06-results.md](S-06-results.md) |
 | S-07 | Gemini eval harness | **Attempted twice — blocked on billing** | Vertex API now enabled, but both GCP billing accounts are closed | [S-07-results.md](S-07-results.md) |
 | S-08 | Voice concierge, English + Pidgin | Not started | S-07 unblocked, LiveKit project, native Pidgin speakers | — |
 | S-09 | SMS/OTP delivery per MNO | Not started | Provider accounts; **Nigerian sender-ID and DND registration takes weeks — start it now** | — |
-| S-10 | Concurrent offer acceptance | **Harness ready, unrun** | Docker on the runner | `spikes/postgres/S-10/` |
+| S-10 | Concurrent offer acceptance | **Passed** | — (re-run on Supabase later) | [S-10-results.md](S-10-results.md) |
 | S-11 | Realtime load for location broadcast | Not started | A Supabase project + k6 | — |
 | S-12 | Payment hold to payout, end to end | Not started | Flutterwave and Paystack sandbox credentials | — |
 
 ## What this run established
 
-1. **Two spikes need only Docker.** S-06 and S-10 have complete harnesses in `spikes/postgres/` (branch `spike/phase-0-runs`). Install Docker and they run in minutes. S-10 covers risk R-12, a critical one.
+1. **S-06 and S-10 are done and passed.** Docker would not install, so they ran on portable PostgreSQL 17.5 + PostGIS 3.6 (no installer, no admin) via `spikes/postgres/setup-local-windows.sh`. R-11 and R-12 are downgraded from High/Critical to Medium on measured evidence.
 2. **S-01 needs real vantage points, not this machine.** The development machine sits behind a VPN egressing in Europe, so its latency ordering reflects distance from that egress, not from Lagos. Details and the reusable harness are in the result file.
 3. **S-07 needs an open billing account.** The Vertex API is now enabled on the project, and the first diagnosis ("API not enabled") was wrong — those 403s came from a missing quota project. With that fixed, Vertex says billing is required, and both billing accounts on the Google account are closed. Reopening one is a payment matter for the client.
 4. **Everything else needs hardware or vendor accounts** that do not exist yet. The device spikes (S-03, S-04, S-05) also need Kimi's app, which reached M1 on 2026-09-16.
@@ -30,7 +30,7 @@ Last updated 2026-09-16.
 
 | Priority | Spike | Why now |
 |---|---|---|
-| 1 | S-06, S-10 | Only need Docker; S-10 clears a critical risk and its asserts become permanent pgTAP tests |
+| 1 | ~~S-06, S-10~~ | **Done 2026-09-16.** Assertions carry into Phase 3 pgTAP tests |
 | 2 | S-09 sender-ID registration | Weeks of external lead time; start the paperwork before the test |
 | 3 | S-07 | Reopen a billing account; unblocks S-08 and the model routing table |
 | 4 | S-01, S-02, S-11 | Need a Supabase project; do all three against the same projects |
