@@ -1,0 +1,58 @@
+name: infra
+
+# Terraform CI (docs/plan/infra-cicd.md §5). Plans against real projects are added once the
+# client's GCP projects and the state bucket exist; until then this proves every root is
+# formatted, valid against the provider schemas and lint-clean.
+on:
+  push:
+    branches: [main]
+    paths: ['infra/**', '.github/workflows/infra.yaml']
+  pull_request:
+    paths: ['infra/**', '.github/workflows/infra.yaml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.3
+          terraform_wrapper: false
+
+      - uses: terraform-linters/setup-tflint@1cf010d3c7aef302051ccdb68c14c5dc2efa34ef # v6.3.1
+
+      - name: Format
+        run: terraform fmt -recursive -check -diff
+
+      - name: Validate every root
+        run: |
+          set -e
+          for dir in envs/dev envs/staging envs/prod bootstrap; do
+            echo "== $dir"
+            terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+          done
+
+      - name: TFLint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          tflint --init --config "$PWD/.tflint.hcl"
+          for dir in envs/dev envs/staging envs/prod bootstrap modules/environment modules/cloud_run_service; do
+            echo "== $dir"
+            tflint --config "$PWD/.tflint.hcl" --chdir "$dir"
+          done

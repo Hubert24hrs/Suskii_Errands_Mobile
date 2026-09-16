@@ -220,5 +220,5 @@ Retention of backups follows the DPIA: backups older than the longest retention 
 | I-3 | Supabase plan per environment and whether Branching and log drains are included [VERIFY-IN-RESEARCH] | Claude | Phase 2 |
 | I-4 | Voice agent hosting: Cloud Run vs LiveKit-hosted agents | Claude, via S-08 | Phase 7 |
 | I-5 | How the Supabase CLI wraps migrations in transactions (affects `CREATE INDEX CONCURRENTLY`) [VERIFY-IN-RESEARCH] | Claude | Phase 2 |
-| I-6 | Advisors in CI: exact CLI or Management API command [VERIFY-IN-RESEARCH] | Claude | Phase 2 |
+| I-6 | ~~Advisors in CI: exact CLI or Management API command~~ **Resolved 2026-09-16:** `supabase db advisors --local --type all --level warn --fail-on warn`, running in `backend-db.yaml` | Claude | Phase 2 |
 | I-7 | GCP billing (also blocks S-07) and organisation/project structure under the client's account | Client | Phase 2 |

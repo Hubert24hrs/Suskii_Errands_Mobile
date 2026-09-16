@@ -2,6 +2,7 @@
   "imports": {
     "@supabase/functions-js": "jsr:@supabase/functions-js@^2",
     "@supabase/server": "npm:@supabase/server@1.6.1",
-    "@supabase/server/core": "npm:@supabase/server@1.6.1/core"
+    "@supabase/server/core": "npm:@supabase/server@1.6.1/core",
+    "@sentry/deno": "npm:@sentry/deno@10.74.0"
   }
 }

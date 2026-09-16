@@ -26,6 +26,7 @@ Owner: Claude Code. Design sources: [ERD](../docs/plan/erd.md), [RLS policy matr
 | `…120500_reference_and_admin` | `admin_users`, `private.has_admin_role` (aal2 re-check), four-eyes `approvals`, `countries`, `cities`, `legal_documents`, `feature_flags`, `remote_config` |
 | `…120600_identity` | `profiles` (column grants), `set_active_mode`, `user_devices` + `register_device`, append-only `consents` + `record_consent`, `notification_preferences` |
 | `…120700_auth_hooks_and_bootstrap` | Custom Access Token Hook, Before User Created Hook (refuses unsupported calling codes, R-31), `get_bootstrap()` (PRE-CONTRACT) |
+| `…120900_health_checks` | `private.health_snapshot()` (outbox backlog with a remote-config threshold, audit partitions ahead, last audit-chain verification, failed pg_cron jobs), `public.get_health()` for the service role, daily `run_audit_chain_check()` that emits `ops.audit_chain_broken` |
 | `…120800_device_integrity` | Single-use integrity nonces bound to user + device + purpose: `request_integrity_nonce` (clients), `consume_integrity_nonce` (service role); pg_cron cleanup of nonces and idempotency keys |
 
 ## Edge Functions
@@ -33,9 +34,12 @@ Owner: Claude Code. Design sources: [ERD](../docs/plan/erd.md), [RLS policy matr
 | Function | Caller and auth | What it does | Not yet |
 |---|---|---|---|
 | `auth-send-sms` | Supabase Auth Send SMS Hook; Standard Webhooks signature (`SEND_SMS_HOOK_SECRETS`, `verify_jwt = false`) | Verifies the signature (cross-checked against the reference `standardwebhooks` library), routes by longest calling-code prefix to the ordered `countries.config.server.sms_providers` list, fails over within a 4 s share of Auth's 5 s hook budget, never returns 429/503 (Auth would retry and send duplicate OTPs), logs only masked numbers | Real SMS vendor adapters: chosen and measured by S-09, not written from memory. Only the `console` provider exists, and it refuses to run when `SUSKII_ENV=production` |
+| `health` | Cloud Monitoring uptime check, named secret API key `monitoring` | Calls `get_health()`; 200 for ok/warn, **503 when any check fails** so a plain uptime check alerts; reports DB latency and release | — |
 | `device-integrity` | Apps, user JWT (`withSupabase({ auth: 'user' })`) | Consumes the nonce for the caller, decodes Play Integrity tokens with Google (`decodeIntegrityToken`, service-account JWT bearer grant), applies the verdict policy (package, nonce, freshness, `PLAY_RECOGNIZED`, `MEETS_DEVICE_INTEGRITY`, `LICENSED`), stores the verdict on `user_devices` with the admin client | **iOS App Attest verification** — recorded as `unevaluated`, never as a pass. Android without credentials is also `unevaluated` |
 
-Environment: `SEND_SMS_HOOK_SECRETS`, `SUSKII_ENV`, `ANDROID_SMS_RETRIEVER_HASH`, `ANDROID_PACKAGE_NAME`, `GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT` (see `.env.example`). `SUPABASE_URL` and the API keys are provided by the platform.
+Every function is wrapped by `_shared/observability.ts`: an `x-request-id` response header, one structured `request.completed` log line (status, duration, region), and uncaught errors reported to Sentry when `SENTRY_DSN` is set — with request, user, breadcrumbs and extras stripped in `beforeSend` so tokens, OTPs and phone numbers never leave the function.
+
+Environment: `SENTRY_DSN`, `SUSKII_RELEASE`, `SEND_SMS_HOOK_SECRETS`, `SUSKII_ENV`, `ANDROID_SMS_RETRIEVER_HASH`, `ANDROID_PACKAGE_NAME`, `GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT` (see `.env.example`). `SUPABASE_URL` and the API keys are provided by the platform.
 
 Error convention for client-callable functions: `28000 ERR_UNAUTHENTICATED`, `42501 ERR_*` not allowed, `P0001 ERR_*` business rule, `22023 ERR_*` invalid argument. The message is the stable code the apps localise.
 

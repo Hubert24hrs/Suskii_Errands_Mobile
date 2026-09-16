@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (git-ignored). Budget figures are placeholders pending the cost model
+# review with the client; the health check API key is better passed as TF_VAR_health_check_api_key.
+project_id           = "suskii-prod"
+billing_account_id   = null # e.g. "000000-000000-000000" once billing is open
+alert_emails         = ["oncall@example.com"]
+supabase_project_ref = null # set once the Supabase project exists

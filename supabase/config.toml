@@ -436,6 +436,13 @@ entrypoint = "./functions/auth-send-sms/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/auth-send-sms/*.html" ]
 
+[functions.health]
+enabled = true
+# Authenticated by a named secret API key inside the function (withSupabase auth "secret:monitoring").
+verify_jwt = false
+import_map = "./functions/health/deno.json"
+entrypoint = "./functions/health/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false

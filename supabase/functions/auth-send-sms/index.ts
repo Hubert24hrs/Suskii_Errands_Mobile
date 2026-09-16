@@ -1,6 +1,9 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 import { createAdminClient } from "@supabase/server/core";
+import { hookError } from "../_shared/http.ts";
+import { instrument } from "../_shared/observability.ts";
+import { sentryReporterFromEnv } from "../_shared/sentry.ts";
 import { ConsoleSmsProvider, type SmsProvider } from "../_shared/sms/provider.ts";
 import { CachedRouteSource } from "../_shared/sms/routing.ts";
 import { createSendSmsHandler } from "./handler.ts";
@@ -31,5 +34,10 @@ const handler = createSendSmsHandler({
 });
 
 export default {
-  fetch: withSupabase({ auth: "none", cors: "disabled" }, (req) => handler(req)),
+  fetch: instrument(
+    "auth-send-sms",
+    withSupabase({ auth: "none", cors: "disabled" }, (req) => handler(req)),
+    // Auth reads hook errors in its own shape; 500 is not retried, so no duplicate OTPs.
+    { reporter: sentryReporterFromEnv(), onUnhandledError: () => hookError(500, "ERR_INTERNAL") },
+  ),
 };
