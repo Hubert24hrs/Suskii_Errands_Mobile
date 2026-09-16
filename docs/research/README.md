@@ -15,6 +15,8 @@ Output of Claude Code's Phase 0 (spec `agent_claude_code.phases[0]`), produced 2
 | [cost-model.md](cost-model.md) | Monthly running cost at 1k / 10k / 100k / 1M MAU, two scenarios, sensitivities |
 | [spike-plan.md](spike-plan.md) | 12 time-boxed spikes with methods and pass criteria |
 
+Related, outside this folder: [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md) (the live OD register), [docs/adr/](../adr/README.md) (decisions D-01…D-10 written up as ADR-0001…0010).
+
 ## Evidence tags
 
 | Tag | Meaning |

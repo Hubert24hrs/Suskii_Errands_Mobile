@@ -27,7 +27,7 @@ All 13 Phase 0 research tasks are covered in REPORT.md §1–§13, and every mat
 
 ## 2. Decisions made
 
-These are recommendations within the backend lead's remit. Each becomes an ADR in Phase 1. The client can overturn any of them.
+These are recommendations within the backend lead's remit. Each is now written up as an ADR ([docs/adr/](../adr/README.md), ADR-0001 to ADR-0010); those depending on a client answer or a spike are marked Proposed. The client can overturn any of them.
 
 | # | Decision | Basis |
 |---|---|---|
@@ -43,6 +43,8 @@ These are recommendations within the backend lead's remit. Each becomes an ADR i
 | D-10 | Avoid `flutterwave_standard`, `app_device_integrity`, `background_locator_2` and `prembly_identity_kyc`; use hosted checkout links and thin native channels | Package due diligence |
 
 ## 3. Open decisions (client)
+
+> Canonical register: [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md). Update that file when an answer arrives; this checkpoint is a snapshot.
 
 The spec defaults stay configurable and are implemented as stated until the client resolves them.
 
