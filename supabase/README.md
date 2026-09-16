@@ -49,6 +49,19 @@ PSQL=/path/to/psql PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGPASSWORD=... 
 
 The fallback emulates Supabase's roles, `auth` helpers and permissive default grants, but it is not the real stack: CI (`.github/workflows/backend-db.yaml`) is the authority.
 
+## Platform assumptions: what CI has confirmed
+
+ADR-0013 lists assumptions the no-Docker fallback cannot prove. Status on the Supabase CLI 2.117.0 local stack (CI run 35132940770, 2026-09-16):
+
+| Assumption | Status |
+|---|---|
+| All migrations and the seed apply from zero on the real stack | **Confirmed** |
+| The admin helper reads `admin_users` (FORCE RLS, self-referencing policy) without recursion from a `SECURITY DEFINER` function | **Confirmed** — identity tests with an `aal2` admin pass |
+| Auth starts with `[auth.hook.custom_access_token]` and `[auth.hook.before_user_created]` pointing at `private.*` functions | **Confirmed** at start-up; hook payloads through a real sign-in are not yet exercised |
+| `pg_cron` / `pgmq` available on the hosted plan | Open — S-02 on a hosted project |
+| `[auth.hook.send_sms]` config keys | Open — added with the Edge Function |
+| Zero Supabase advisor warnings (security and performance) | **Confirmed**, and enforced by CI |
+
 ## Rules for new migrations
 
 - Every table in `public`: `ENABLE` and `FORCE ROW LEVEL SECURITY`, `REVOKE ALL … FROM anon, authenticated`, then the exact grants from the RLS matrix. Client-writable columns are column grants.
