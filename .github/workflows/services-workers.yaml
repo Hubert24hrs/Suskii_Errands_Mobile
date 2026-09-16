@@ -83,6 +83,35 @@ jobs:
           uv sync --frozen
           uv run pytest -q -m integration
 
+  storage-sync-supabase:
+    name: storage sync against real Supabase Storage
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # CI-only placeholder so config.toml's send_sms hook validates; not a real secret.
+      SEND_SMS_HOOK_SECRETS: v1,whsec_Y2ktb25seS1wbGFjZWhvbGRlci1ub3QtYS1zZWNyZXQ=
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: 0.12.15
+      - name: Start Supabase with Storage
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,postgres-meta
+      - name: Sync a real bucket twice and check the copies
+        working-directory: services/workers
+        run: |
+          set -euo pipefail
+          uv sync --frozen
+          eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
+          export API_URL SECRET_KEY
+          bash tests/storage_sync_e2e.sh
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
+
   image:
     runs-on: ubuntu-latest
     timeout-minutes: 25

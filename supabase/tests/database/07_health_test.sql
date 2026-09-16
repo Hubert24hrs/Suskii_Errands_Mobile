@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(14);
+SELECT plan(15);
 
 DELETE FROM private.health_checks;
 DELETE FROM public.remote_config WHERE key = 'ops.outbox_max_age_seconds';
@@ -44,6 +44,8 @@ INSERT INTO private.health_checks (check_key, status) VALUES ('backup_verify', '
 SELECT is(public.get_health() #>> '{checks,backup_dump,status}', 'ok', 'a recent successful dump is ok');
 SELECT is(public.get_health() #>> '{checks,backup_verify,status}', 'warn',
   'a recent success followed by a failed verification is a warning');
+SELECT is(public.get_health() #>> '{checks,storage_sync,status}', 'fail',
+  'storage buckets that were never synced fail once the backup threshold is set');
 
 SET LOCAL ROLE authenticated;
 SELECT throws_ok($$SELECT public.get_health()$$, '42501', NULL, 'clients cannot read operational health');

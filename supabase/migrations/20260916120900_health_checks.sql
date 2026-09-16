@@ -135,7 +135,8 @@ BEGIN
   -- Backups (RB-09): the last successful dump and the last successful restore verification must
   -- be recent. Skipped until ops sets the threshold for an environment that runs the worker.
   checks := checks || private.backup_check('backup_dump', v_backup_max_h)
-                   || private.backup_check('backup_verify', v_backup_max_h);
+                   || private.backup_check('backup_verify', v_backup_max_h)
+                   || private.backup_check('storage_sync', v_backup_max_h);
 
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_cron') THEN
     EXECUTE $q$SELECT count(*) FROM cron.job_run_details

@@ -21,6 +21,10 @@ output "backup_bucket" {
   value = google_storage_bucket.backups.name
 }
 
+output "kyc_backup_bucket" {
+  value = google_storage_bucket.kyc_backups.name
+}
+
 output "secret_ids" {
   value = [for s in google_secret_manager_secret.runtime : s.secret_id]
 }

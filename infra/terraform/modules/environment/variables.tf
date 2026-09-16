@@ -69,6 +69,7 @@ variable "runtime_secret_ids" {
     "supabase-service-role-key",
     "supabase-db-password",
     "supabase-db-backup-url",
+    "supabase-storage-sync-key",
   ]
 }
 
@@ -122,4 +123,16 @@ variable "backup_verify_schedule" {
   description = "Cron (UTC) for the restore verification, after the dump has finished."
   type        = string
   default     = "15 4 * * *"
+}
+
+variable "backup_storage_sync_schedule" {
+  description = "Cron (UTC) for mirroring Supabase Storage buckets."
+  type        = string
+  default     = "15 3 * * *"
+}
+
+variable "storage_sync_buckets" {
+  description = "Supabase Storage bucket ids to mirror. kyc-docs goes to its own bucket."
+  type        = list(string)
+  default     = ["avatars", "request-media", "chat-media", "proofs", "receipts", "kyc-docs"]
 }

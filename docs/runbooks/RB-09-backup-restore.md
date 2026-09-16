@@ -16,10 +16,10 @@ Be honest about this during an incident: plan with what is actually there.
 | Supabase **point-in-time recovery (PITR)** on production | RPO ≤ 5 min [A — confirm granularity on the chosen plan] | Planned: enabled when the production project is created (client action). PITR is a paid add-on [S] |
 | Daily **logical backup** (`pg_dump`) to the EU backup bucket | Survives loss of the Supabase project or account | **Built** (`services/workers`, `suskii-backup dump`): snapshot-consistent dump plus manifest with exact row counts; Cloud Run Job at 02:15 UTC in Terraform. Not yet running anywhere: needs the GCP project and the `supabase-db-backup-url` secret |
 | Nightly **automated restore test** of the logical backup | Row counts and ledger balance check | **Built** (`suskii-backup verify`): checksum, full restore into a throwaway database, exact row counts, audit chain, ledger zero-sum; Cloud Run Job at 04:15 UTC; results in the `health` endpoint (`backup_dump`, `backup_verify`) once `ops.backup_max_age_hours` is set |
-| Storage bucket sync (private buckets, `kyc-docs` separately) | Nightly | Not built yet |
+| Storage bucket sync (private buckets, `kyc-docs` separately) | Nightly | **Built** (`suskii-backup storage-sync`): incremental, immutable copies with a per-run index; `kyc-docs` into its own bucket; Cloud Run Job at 03:15 UTC; tested against the real Storage API in CI |
 | Schema and configuration as code | Rebuild a project from git | **Exists**: migrations, `config.toml`, Terraform, deploy pipelines (RB-14) |
 
-**RTO target: ≤ 4 h [A].** The logical backup and its restore test are built but only protect production once they run there (GCP project, secret, `backup_worker_image`) and have passed for several nights. Until then production relies on PITR alone. Storage-bucket sync is still not built. Both remain launch blockers (Phase 10 "backups, PITR").
+**RTO target: ≤ 4 h [A].** The logical backup, its restore test and the storage sync are built, but only protect production once they run there (GCP project, secrets, `backup_worker_image`) and have passed for several nights. Until then production relies on PITR alone, which does not cover Storage objects. Running them in production remains a launch blocker (Phase 10 "backups, PITR").
 
 ## Symptoms
 
@@ -73,6 +73,12 @@ Restoring the whole database **rewinds everyone's data** to the chosen point: pa
 3. Create the replacement project and deploy schema-independent configuration through the pipeline (RB-14) **without** running migrations; the dump carries the schema.
 4. Restore with `pg_restore --no-owner --no-privileges --exit-on-error --single-transaction` into the new project's database, then apply any migrations newer than the dump through the pipeline.
 5. Run the same checks as `suskii-backup verify` (row counts, audit chain, ledger) and the health endpoint before reopening traffic.
+
+### Restore Storage objects
+
+1. In the backup bucket (or the KYC backup bucket for `kyc-docs`), open the newest `storage/<env>/<bucket>/index/<stamp>.json`, or an older one to go back in time.
+2. Each entry maps an object path to its backup key; skip entries with `deleted_at` unless the deletion itself is being undone (and never for account-deletion requests).
+3. Upload each object back to the bucket at its original path with the Storage API or `supabase storage cp`, using a service key in a trusted shell. KYC documents are restored only with the Verification lead's approval, and every restore is logged in the incident.
 
 ### Partial restore via a separate project
 

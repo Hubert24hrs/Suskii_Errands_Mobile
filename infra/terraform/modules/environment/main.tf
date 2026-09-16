@@ -216,6 +216,37 @@ resource "google_storage_bucket" "backups" {
   depends_on = [google_project_service.apis]
 }
 
+# KYC documents and police clearances are special personal data (data-flow classes B, C, G):
+# their copies live in a separate bucket that nothing but the backup identity can read.
+resource "google_storage_bucket" "kyc_backups" {
+  project                     = var.project_id
+  name                        = "${var.project_id}-kyc-backups"
+  location                    = upper(var.region)
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  labels                      = merge(local.labels, { data_class = "special" })
+
+  versioning {
+    enabled = true
+  }
+
+  retention_policy {
+    retention_period = var.backup_retention_days * 86400
+    is_locked        = false
+  }
+
+  lifecycle_rule {
+    condition {
+      age = var.backup_delete_after_days
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
 resource "google_service_account" "backup_worker" {
   project      = var.project_id
   account_id   = "backup-worker"
@@ -235,6 +266,20 @@ resource "google_storage_bucket_iam_member" "backup_reader" {
   member = "serviceAccount:${google_service_account.backup_worker.email}"
 }
 
+resource "google_storage_bucket_iam_member" "kyc_backup_access" {
+  for_each = toset(["roles/storage.objectCreator", "roles/storage.objectViewer"])
+  bucket   = google_storage_bucket.kyc_backups.name
+  role     = each.value
+  member   = "serviceAccount:${google_service_account.backup_worker.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backup_storage_key" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.runtime["supabase-storage-sync-key"].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backup_worker.email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "backup_db_url" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.runtime["supabase-db-backup-url"].secret_id
@@ -245,8 +290,9 @@ resource "google_secret_manager_secret_iam_member" "backup_db_url" {
 # Nightly dump and restore verification as Cloud Run Jobs (services/workers; RB-09).
 locals {
   backup_jobs = var.backup_worker_image == null ? {} : {
-    dump   = var.backup_dump_schedule
-    verify = var.backup_verify_schedule
+    dump           = var.backup_dump_schedule
+    "storage-sync" = var.backup_storage_sync_schedule
+    verify         = var.backup_verify_schedule
   }
 }
 
@@ -286,6 +332,30 @@ resource "google_cloud_run_v2_job" "backup" {
           value = "gs://${google_storage_bucket.backups.name}"
         }
         env {
+          name  = "BACKUP_KYC_STORAGE_URL"
+          value = "gs://${google_storage_bucket.kyc_backups.name}"
+        }
+        env {
+          name  = "STORAGE_SYNC_BUCKETS"
+          value = join(",", var.storage_sync_buckets)
+        }
+        dynamic "env" {
+          for_each = var.supabase_project_ref == null ? [] : [var.supabase_project_ref]
+          content {
+            name  = "SUPABASE_URL"
+            value = "https://${env.value}.supabase.co"
+          }
+        }
+        env {
+          name = "SUPABASE_SECRET_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.runtime["supabase-storage-sync-key"].secret_id
+              version = "latest"
+            }
+          }
+        }
+        env {
           name = "BACKUP_SOURCE_URL"
           value_source {
             secret_key_ref {
@@ -298,7 +368,11 @@ resource "google_cloud_run_v2_job" "backup" {
     }
   }
 
-  depends_on = [google_project_service.apis, google_secret_manager_secret_iam_member.backup_db_url]
+  depends_on = [
+    google_project_service.apis,
+    google_secret_manager_secret_iam_member.backup_db_url,
+    google_secret_manager_secret_iam_member.backup_storage_key,
+  ]
 }
 
 resource "google_service_account" "scheduler" {

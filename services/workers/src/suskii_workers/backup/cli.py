@@ -1,4 +1,4 @@
-"""suskii-backup dump | verify
+"""suskii-backup dump | verify | storage-sync
 
 Environment:
   SUSKII_ENV                  dev | staging | prod (required)
@@ -9,6 +9,12 @@ Environment:
   BACKUP_RESTORE_ADMIN_URL    server for the throwaway restore (verify)
   BACKUP_MANIFEST_KEY         verify a specific backup instead of the latest
   PG_BIN_DIR                  directory holding pg_dump / pg_restore (default: PATH)
+
+storage-sync:
+  SUPABASE_URL                project URL (https://<ref>.supabase.co)
+  SUPABASE_SECRET_KEY         secret API key used to list and download objects
+  STORAGE_SYNC_BUCKETS        comma-separated bucket ids to mirror
+  BACKUP_KYC_STORAGE_URL      separate destination, required when kyc-docs is listed
 
 Exit status 0 on success, 1 when the backup or its verification failed, 2 on bad configuration.
 Results are logged as one JSON line and, when BACKUP_SOURCE_URL is set, recorded in the source
@@ -28,6 +34,7 @@ import psycopg
 from .dump import DumpConfig, run_dump
 from .pgtools import PgTools
 from .storage import storage_from_url
+from .storage_sync import SupabaseStorageSource, sync_buckets
 from .verify import VerifyConfig, run_verify
 
 DEFAULT_SCHEMAS = "public,private,audit,ledger,kyc,auth"
@@ -66,7 +73,7 @@ def _record_health(source_url: str | None, key: str, ok: bool, detail: dict) -> 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 1 or argv[0] not in ("dump", "verify"):
+    if len(argv) != 1 or argv[0] not in ("dump", "verify", "storage-sync"):
         print(__doc__, file=sys.stderr)
         return 2
 
@@ -77,6 +84,32 @@ def main(argv: list[str] | None = None) -> int:
     tools = PgTools(Path(bin_dir) if bin_dir else None)
     source_url = os.environ.get("BACKUP_SOURCE_URL") or None
     now = datetime.now(UTC)
+
+    if argv[0] == "storage-sync":
+        buckets = [b.strip() for b in _require("STORAGE_SYNC_BUCKETS").split(",") if b.strip()]
+        kyc_url = os.environ.get("BACKUP_KYC_STORAGE_URL") or None
+        source = SupabaseStorageSource(_require("SUPABASE_URL"), _require("SUPABASE_SECRET_KEY"))
+        try:
+            results = sync_buckets(
+                source, storage, storage_from_url(kyc_url) if kyc_url else None, environment, buckets, now
+            )
+        except ValueError as exc:
+            return _config_error(str(exc))
+        ok = all(r.ok for r in results)
+        detail = {
+            "buckets": {
+                r.bucket: {
+                    "copied": r.copied,
+                    "unchanged": r.unchanged,
+                    "deleted_in_source": r.deleted_in_source,
+                    "failed": r.failed[:20],
+                }
+                for r in results
+            }
+        }
+        _log("backup.storage_sync_completed", ok=ok, **detail)
+        _record_health(source_url, "storage_sync", ok, detail)
+        return 0 if ok else 1
 
     if argv[0] == "dump":
         if not source_url:
