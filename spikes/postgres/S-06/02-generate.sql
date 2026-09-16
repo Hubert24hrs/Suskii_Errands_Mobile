@@ -9,13 +9,17 @@ SELECT
     random() < 0.30                                             AS online,
     (array[0,1,1,1,2,2,3])[1 + floor(random() * 7)::int]        AS trust_level,
     (array[0,1,2,2,3,3,4,4,4,5,6])[1 + floor(random() * 11)::int] AS vehicle_type,
-    (SELECT array_agg(DISTINCT (1 + floor(random() * 12))::smallint)
-     FROM generate_series(1, 1 + floor(random() * 3)::int))     AS service_ids,
+    -- NOTE: this sub-select must reference g. Without the correlation Postgres runs it
+    -- once as an InitPlan and every provider ends up with the SAME array, which silently
+    -- turns the benchmark into a measurement of empty result sets. (Found the hard way.)
+    ARRAY(SELECT DISTINCT (1 + floor(random() * 12))::smallint
+          FROM generate_series(1, 1 + (g % 3)))                 AS service_ids,
     3.5 + random() * 1.5                                        AS rating,
     random() < 0.03                                             AS suspended,
     ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography         AS home
 FROM (
     SELECT
+        g,
         CASE
             WHEN g <= 60000 THEN  3.3792 + (random() + random() + random() - 1.5) * 0.28   -- Lagos
             WHEN g <= 90000 THEN 36.8219 + (random() + random() + random() - 1.5) * 0.24   -- Nairobi
