@@ -1,0 +1,66 @@
+name: deploy-production
+
+# Promote, don't rebuild (docs/plan/infra-cicd.md §6.1): production receives a commit that is on
+# main and already deployed successfully to staging. The `production` GitHub environment adds
+# required reviewers where the plan supports it (infra-cicd I-1); RB-14 has the checklist.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit SHA already deployed to staging
+        required: true
+        type: string
+      pitr_confirmed:
+        description: I confirmed a fresh point-in-time recovery point exists for production (RB-09)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Commit is on main and passed staging
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ inputs.sha }}
+          PITR: ${{ inputs.pitr_confirmed }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha must be a full 40-character commit SHA"; exit 1; }
+          [ "$PITR" = "true" ] || { echo "::error::confirm a fresh PITR point before deploying (RB-09)"; exit 1; }
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main"; exit 1; }
+
+          ok=""
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=staging&sha=$SHA" --jq '.[].id'); do
+            state="$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses" --jq '.[0].state // empty')"
+            if [ "$state" = "success" ]; then ok="yes"; break; fi
+          done
+          [ -n "$ok" ] || { echo "::error::$SHA has no successful staging deployment"; exit 1; }
+          echo "$SHA is on main and succeeded on staging"
+
+  deploy:
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/_deploy-supabase.yaml
+    with:
+      environment: production
+      sha: ${{ inputs.sha }}
+    secrets: inherit

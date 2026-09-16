@@ -23,6 +23,7 @@ Owned by Claude Code, written in the phase shown. Nothing here is required befor
 | RB-11 | Model swap and rollback | 7 | Changing an LLM model ID in remote config (ADR-0006) |
 | RB-12 | Realtime or quota saturation | 3 | Connection and message limits, Enterprise quota requests |
 | RB-13 | Forced update and kill switch | 2 | Disabling a feature or forcing a client upgrade |
+| [RB-14](RB-14-backend-deploy-and-rollback.md) | Backend deploy failed or release rollback | 2 | Red deploy run, unhealthy release, failed migration; one-time environment setup checklist. **Written** |
 
 ## Template
 

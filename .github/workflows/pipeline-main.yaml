@@ -1,0 +1,61 @@
+name: pipeline-main
+
+# Every backend change on main: checks, then dev, then staging (docs/plan/infra-cicd.md §6.1).
+# A deploy stage runs only when its repository variable DEPLOY_<ENV>_ENABLED is "true", so the
+# checks keep running before any Supabase or GCP account exists. Production is never deployed
+# from here: see deploy-production.yaml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/pipeline-main.yaml'
+      - '.github/workflows/_deploy-supabase.yaml'
+      - '.github/workflows/backend-db.yaml'
+      - '.github/workflows/backend-functions.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-main
+  cancel-in-progress: false
+
+jobs:
+  database-checks:
+    uses: ./.github/workflows/backend-db.yaml
+
+  function-checks:
+    uses: ./.github/workflows/backend-functions.yaml
+
+  deploy-dev:
+    needs: [database-checks, function-checks]
+    if: vars.DEPLOY_DEV_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/_deploy-supabase.yaml
+    with:
+      environment: dev
+      sha: ${{ github.sha }}
+    secrets: inherit
+
+  deploy-staging:
+    needs: [database-checks, function-checks, deploy-dev]
+    # Staging follows dev when dev is enabled; if dev is not set up yet, staging still requires
+    # the checks to have passed.
+    if: >-
+      always() &&
+      vars.DEPLOY_STAGING_ENABLED == 'true' &&
+      needs.database-checks.result == 'success' &&
+      needs.function-checks.result == 'success' &&
+      (needs.deploy-dev.result == 'success' || needs.deploy-dev.result == 'skipped')
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/_deploy-supabase.yaml
+    with:
+      environment: staging
+      sha: ${{ github.sha }}
+    secrets: inherit

@@ -27,7 +27,7 @@ module "environment" {
 
   environment             = "prod"
   project_id              = var.project_id
-  github_deploy_condition = "assertion.environment == 'production' && assertion.ref == 'refs/heads/main'"
+  github_deploy_condition = "assertion.ref == 'refs/heads/main' && (assertion.environment == 'production' || assertion.environment == 'infra-prod')"
   billing_account_id      = var.billing_account_id
   monthly_budget_usd      = var.monthly_budget_usd
   alert_emails            = var.alert_emails
@@ -43,6 +43,10 @@ output "workload_identity_provider" {
 
 output "deployer_service_account" {
   value = module.environment.deployer_service_account
+}
+
+output "terraform_service_account" {
+  value = module.environment.terraform_service_account
 }
 
 output "artifact_registry" {

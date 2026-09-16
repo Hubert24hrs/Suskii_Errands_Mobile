@@ -1,19 +1,18 @@
 name: backend-functions
 
 # Edge Functions CI (docs/plan/infra-cicd.md §5). Path-filtered; never overlaps frontend-ci.yaml.
+# On main it runs as the first stage of pipeline-main.yaml, which deploys only if it passes.
 on:
-  push:
-    branches: [main]
-    paths: ['supabase/functions/**', '.github/workflows/backend-functions.yaml']
   pull_request:
     paths: ['supabase/functions/**', '.github/workflows/backend-functions.yaml']
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-functions-${{ github.ref }}
-  cancel-in-progress: true
+  group: backend-functions-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deno:

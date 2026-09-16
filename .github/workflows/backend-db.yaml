@@ -2,19 +2,18 @@ name: backend-db
 
 # Database CI (docs/plan/infra-cicd.md §5). Path-filtered so it never runs for frontend-only
 # changes and never overlaps frontend-ci.yaml, which belongs to Kimi Code.
+# On main it runs as the first stage of pipeline-main.yaml, which deploys only if it passes.
 on:
-  push:
-    branches: [main]
-    paths: ['supabase/**', '.github/workflows/backend-db.yaml']
   pull_request:
     paths: ['supabase/**', '.github/workflows/backend-db.yaml']
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-db-${{ github.ref }}
-  cancel-in-progress: true
+  group: backend-db-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   database:

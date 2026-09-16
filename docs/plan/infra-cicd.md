@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code (backend, infra, backend CI). Kimi Code owns app builds, store distribution, web deploys and `frontend-ci.yaml` |
 | Date | 2026-09-16 |
-| Status | Phase 1 draft. Nothing here is provisioned yet; Phase 2 builds it |
+| Status | Phase 1 draft; **Phase 2 implementation 2026-09-16**: CI (`backend-db`, `backend-functions`, `infra`), delivery (`pipeline-main`, `deploy-production`, `rollback-functions`, `infra-deploy`), Terraform in `infra/terraform`, runbook RB-14. Not yet provisioned: waits for GCP projects, a Supabase organisation and GitHub environments |
 | Inputs | spec `architecture` (environments, components), `agent_claude_code.ci_cd` + `repo_setup`, `agent_kimi_code.ci_cd`; ADR-0006, 0007, 0008, 0012; [architecture-c4.md](architecture-c4.md) deployment view; [threat-model.md](threat-model.md); cost model; runbooks RB-01…RB-13 |
 
 ## 1. Environments

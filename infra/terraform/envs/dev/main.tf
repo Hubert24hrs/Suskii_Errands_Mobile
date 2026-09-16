@@ -45,6 +45,10 @@ output "deployer_service_account" {
   value = module.environment.deployer_service_account
 }
 
+output "terraform_service_account" {
+  value = module.environment.terraform_service_account
+}
+
 output "artifact_registry" {
   value = module.environment.artifact_registry
 }

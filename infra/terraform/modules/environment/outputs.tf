@@ -8,6 +8,11 @@ output "deployer_service_account" {
   value       = google_service_account.deployer.email
 }
 
+output "terraform_service_account" {
+  description = "Identity for infra-deploy.yaml; add it to the state bucket admins in bootstrap."
+  value       = google_service_account.terraform.email
+}
+
 output "artifact_registry" {
   value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }

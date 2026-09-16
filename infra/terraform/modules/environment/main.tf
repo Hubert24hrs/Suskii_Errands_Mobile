@@ -81,6 +81,36 @@ resource "google_service_account_iam_member" "deployer_wif" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
 }
 
+# Terraform itself runs in CI as a separate, more privileged identity that only jobs in the
+# protected `infra-<env>` GitHub environment can impersonate (infra-deploy.yaml). The first apply
+# that creates it is run once by a named admin.
+resource "google_service_account" "terraform" {
+  project      = var.project_id
+  account_id   = "terraform-runner"
+  display_name = "Terraform runner (${var.environment})"
+}
+
+resource "google_service_account_iam_member" "terraform_wif" {
+  service_account_id = google_service_account.terraform.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/infra-${var.environment}"
+}
+
+resource "google_project_iam_member" "terraform" {
+  for_each = toset([
+    "roles/editor",
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/iam.serviceAccountAdmin",
+    "roles/iam.workloadIdentityPoolAdmin",
+    "roles/secretmanager.admin",
+    "roles/storage.admin",
+    "roles/monitoring.admin",
+  ])
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.terraform.email}"
+}
+
 resource "google_project_iam_member" "deployer" {
   for_each = toset([
     "roles/artifactregistry.writer",

@@ -18,7 +18,7 @@ Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, 
 | Area | Resources | Plan reference |
 |---|---|---|
 | APIs | Run, Artifact Registry, Secret Manager, BigQuery, Monitoring, Logging, IAM, STS, Play Integrity, Billing Budgets | §3 |
-| Keyless deploys | Workload Identity pool + GitHub OIDC provider restricted to this repository **and** `main` (dev, staging) or the protected `production` GitHub environment (prod); a `github-deployer` service account | §4 |
+| Keyless deploys | Workload Identity pool + GitHub OIDC provider restricted to this repository **and** `main` (dev, staging) or `main` plus the protected `production` / `infra-prod` GitHub environments (prod); a `github-deployer` service account for app deploys and a `terraform-runner` for `infra-deploy.yaml`, impersonable only from `infra-<env>` | §4 |
 | Images | Artifact Registry repository `suskii` (Docker) — prod receives the digests that passed staging | §6.1 |
 | Secrets | Secret Manager **names only**, replicated in `europe-west2`; values are added out of band and rotated per RB-10 | §4 |
 | Analytics | BigQuery datasets `analytics`, `ai_evals`, `ops` in the EU multi-region | OD-15, ai-design §10 |
@@ -39,6 +39,10 @@ export TF_VAR_health_check_api_key=...                           # the Supabase 
 terraform -chdir=envs/dev init -backend-config="bucket=<state bucket>"
 terraform -chdir=envs/dev plan
 ```
+
+## Applying from CI
+
+`infra-deploy.yaml` (manual: environment + `plan` or `apply`) runs in the protected GitHub environment `infra-<env>` as that environment's `terraform-runner` service account, which only jobs in that GitHub environment can impersonate. The first apply that creates this identity is run once by a named admin; afterwards add the runner to the state bucket's `state_admins`. Setup checklist: [RB-14](../../docs/runbooks/RB-14-backend-deploy-and-rollback.md#one-time-setup-per-environment-checklist).
 
 ## Deliberately not here yet
 

@@ -1,0 +1,104 @@
+name: infra-deploy
+
+# Terraform plan / apply for one environment (docs/plan/infra-cicd.md §3, infra/terraform/README.md).
+# Runs in the protected GitHub environment `infra-<env>` as that environment's terraform-runner
+# service account, reached through Workload Identity Federation — no keys.
+#
+# Repository variable: TF_STATE_BUCKET
+# Environment `infra-<env>` variables: GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER,
+#   GCP_TERRAFORM_SA, ALERT_EMAILS (JSON list), BILLING_ACCOUNT_ID (optional),
+#   SUPABASE_PROJECT_REF (optional)
+# Environment secret: HEALTH_CHECK_API_KEY (optional until the Supabase project exists)
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+      action:
+        required: true
+        type: choice
+        options: [plan, apply]
+        default: plan
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: infra-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: infra-${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/${{ inputs.environment }}
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
+    steps:
+      - name: Check configuration
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_TERRAFORM_SA: ${{ vars.GCP_TERRAFORM_SA }}
+        working-directory: .
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in TF_STATE_BUCKET GCP_WORKLOAD_IDENTITY_PROVIDER GCP_TERRAFORM_SA TF_VAR_project_id TF_VAR_alert_emails; do
+            [ -n "${!name:-}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::infra environment is missing: ${missing[*]}"
+            exit 1
+          fi
+
+      # Optional inputs are exported only when set: an empty environment variable reaches
+      # Terraform as "" rather than null and would, for example, create a budget with no account.
+      - name: Optional Terraform inputs
+        working-directory: .
+        env:
+          BILLING_ACCOUNT_ID: ${{ vars.BILLING_ACCOUNT_ID }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          HEALTH_CHECK_API_KEY: ${{ secrets.HEALTH_CHECK_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BILLING_ACCOUNT_ID" ]; then echo "TF_VAR_billing_account_id=$BILLING_ACCOUNT_ID" >> "$GITHUB_ENV"; fi
+          if [ -n "$SUPABASE_PROJECT_REF" ]; then echo "TF_VAR_supabase_project_ref=$SUPABASE_PROJECT_REF" >> "$GITHUB_ENV"; fi
+          if [ -n "$HEALTH_CHECK_API_KEY" ]; then echo "TF_VAR_health_check_api_key=$HEALTH_CHECK_API_KEY" >> "$GITHUB_ENV"; fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SA }}
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.3
+          terraform_wrapper: false
+
+      - name: Init
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: terraform init -input=false -lockfile=readonly -backend-config="bucket=$TF_STATE_BUCKET"
+
+      - name: Plan
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -out=tfplan
+          terraform show -no-color tfplan > "$RUNNER_TEMP/plan.txt"
+          { echo '### Terraform plan'; echo '```'; tail -c 60000 "$RUNNER_TEMP/plan.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false tfplan
