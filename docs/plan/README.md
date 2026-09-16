@@ -16,5 +16,8 @@ Start with [PHASE-1-PLAN.md](PHASE-1-PLAN.md), which explains the staging, the o
 | [architecture-c4.md](architecture-c4.md) | Context, container and component views; container responsibilities; regions; scale-out path |
 | [threat-model.md](threat-model.md) | STRIDE per component with controls and residual risk; owners for high and medium residuals |
 | [data-flow.md](data-flow.md) | Data classes, trust boundaries, 26 flows with protection and retention, cross-border transfers |
+| [ai-design.md](ai-design.md) | AI features, gateway and model routing, tool allowlist, prompt structure, guardrails, voice, eval sets, cost budget |
+| [infra-cicd.md](infra-cicd.md) | Environments, IaC, secrets, CI workflows, promote-don't-rebuild delivery, expand/contract migrations, observability and SLOs, backups |
+| [test-strategy.md](test-strategy.md) | Test layers and catalogue (pgTAP, concurrency, money properties, webhooks, integration, load, security), device and network matrix, quality gates |
 
 Conventions match the rest of `docs/`: decisions are append-only, evidence tags `[V]`/`[S]`/`[A]`, and every document names its owner and date.

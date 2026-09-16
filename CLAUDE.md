@@ -32,7 +32,7 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 | Phase 1 — Planning, contracts v1 | **Stage A in progress** (`docs/plan/`): backend truth that does not depend on the hand-off. Stage B (contracts v1 + fixtures) waits for M8.5 |
 | Spikes | S-06, S-10, S-13, S-14 passed. The rest need credentials or devices — `docs/research/spikes/README.md` |
 | Kimi | M1 + M2 committed (`e473c9b`); code-reviewed 2026-09-16 (`docs/plan/ui-draft-review.md`, C.1–C.8). M3 next |
-| Next Claude work | Phase 1 Stage A #9–#13: AI design, infra/CI-CD plan, test strategy, PRD, revised timeline |
+| Next Claude work | Phase 1 Stage A #12–#13: PRD, then revised timeline (#9–#11 AI design, infra/CI-CD, test strategy done) |
 
 Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`.
 
@@ -40,7 +40,7 @@ Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branch
 
 | File | What it is for |
 |---|---|
-| `docs/OPEN-DECISIONS.md` | OD-01…OD-18 awaiting the client or counsel. Quote it in every checkpoint |
+| `docs/OPEN-DECISIONS.md` | OD-01…OD-21 awaiting the client or counsel. Quote it in every checkpoint |
 | `docs/adr/` | Architecture decision records, indexed in `docs/adr/README.md` |
 | `docs/research/` | Phase 0 evidence: report, vendor matrix, country packs, compliance and DPIA, risks, cost model, spikes |
 | `docs/plan/` | Phase 1: state machines, UI draft review, architecture documents feeding contracts v1 |

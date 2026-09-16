@@ -37,10 +37,10 @@ The spec lists fifteen. Ordered by what unblocks the most, with the Phase 0 evid
 | 6 | **C4 architecture diagrams** (context, container, component) | A | Phase 0 §10 | ✅ [architecture-c4.md](architecture-c4.md) + ADR-0012 |
 | 7 | **Threat model (STRIDE)** per component | A | spec `security`, S-13 | ✅ [threat-model.md](threat-model.md) (+ R-31, R-32) |
 | 8 | **Data flow diagram** marking personal, biometric, criminal-record and financial data | A | DPIA outline | ✅ [data-flow.md](data-flow.md) |
-| 9 | **AI design**: prompts, tools, guardrails, eval sets, cost budget | A | ADR-0006, ADR-0012, S-07 (blocked), cost model §3 | **next** |
-| 10 | **Infrastructure and CI/CD plan** | A | ADR-0008, spec `ci_cd` | then |
-| 11 | **Test strategy** and device/network matrix | A | S-03/04/05 plan, spec `testing` | then |
-| 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | then |
+| 9 | **AI design**: prompts, tools, guardrails, eval sets, cost budget | A | ADR-0006, ADR-0012, S-07 (blocked), cost model §3 | ✅ [ai-design.md](ai-design.md) (+ OD-20, OD-21) |
+| 10 | **Infrastructure and CI/CD plan** | A | ADR-0008, spec `ci_cd` | ✅ [infra-cicd.md](infra-cicd.md) |
+| 11 | **Test strategy** and device/network matrix | A | S-03/04/05 plan, spec `testing` | ✅ [test-strategy.md](test-strategy.md) |
+| 12 | **PRD** with user stories and acceptance criteria | A | spec `baseline_features`, all of the above | **next** |
 | 13 | **Revised timeline**, critical path, dependencies | A | everything | last of Stage A |
 | 14 | **Contracts v1** + fixtures | **B** | complete draft at M8.5 | blocked |
 | 15 | **UI change list** for Kimi in `HANDOFF.md` | **B**, rolling | draft review | rolling |

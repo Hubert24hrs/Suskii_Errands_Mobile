@@ -13,13 +13,13 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-01 | Who funds the 2.5% referral commission | Platform funds it from its 12.5%, so provider earnings are unaffected | Open | Client | Phase 5 (money) |
 | OD-02 | Referral commission duration | Lifetime of the referred account, with an admin-configurable cap per country and campaign | Open | Client | Phase 5 |
 | OD-03 | Both sides of a job were referred by different people | Each referrer earns 2.5% of net, max 5% per job | Open | Client | Phase 5 |
-| OD-04 | Shopping errands: item cost handling | Prepaid item float as a separate non-commissionable line, released against a receipt; gateway fee passed to the customer | Open | Client | Phase 3 (requests), Phase 5 |
+| OD-04 | Shopping errands: item cost handling | Prepaid item float as a separate non-commissionable line, released against a receipt; gateway fee passed to the customer. **Sub-question (2026-09-16):** receipt total above the float — proposed: never charged automatically; the provider requests a top-up the customer approves in-app, otherwise the difference goes to the dispute path | Open | Client | Phase 3 (requests), Phase 5 |
 | OD-05 | Insurance / damage and loss cover | No insurer at launch; declared value, claims inside disputes, insurer-ready hooks | Open | Client | Phase 4 |
 | OD-06 | Commission rate | 12.5%, configurable per country | Open | Client | Phase 5 |
 | OD-07 | Countries live on launch day | Nigeria first; others as their packs are verified | Open | Client | Phase 1 (contracts), Phase 10 |
 | OD-08 | Gateway fee on refunds | Platform absorbs it for fault-free cancellations; deducted for late customer cancellations | Open | Client | Phase 5 |
 
-## Raised by Phase 0 research and Phase 1 planning (OD-09 … OD-19)
+## Raised by Phase 0 research and Phase 1 planning (OD-09 … OD-21)
 
 | ID | Topic | Proposed default | Status | Owner | Needed by | Evidence |
 |---|---|---|---|---|---|---|
@@ -34,6 +34,8 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-17 | Nigerian Pidgin voice concierge | Ship Pidgin voice only if it passes the S-08 eval gate; otherwise Pidgin text + English voice | Proposed | Client | Phase 7 | REPORT §6.2 — Live API does not list `pcm` |
 | OD-18 | Tax on referral payouts | Ledger supports per-country withholding and annual statements; tax counsel rules per country | Proposed | Client + counsel | Phase 5 | REPORT §3.5 |
 | OD-19 | Who receives a cancellation fee | Provider, net of commission, when the customer cancels after the provider committed or travelled; platform keeps nothing extra. The spec says fees depend on state and time but not who receives them | Proposed | Client | Phase 5 (money) | [money-flows.md](plan/money-flows.md) scenario 5a |
+| OD-20 | Pidgin evaluation data | Client recruits and pays native Nigerian Pidgin speakers (with recorded consent) to write and review 150 text conversations and record 40 voice tasks across 10+ speakers; Suskii owns the data | Proposed | Client | Phase 7 (blocks S-07 Pidgin half and S-08) | [ai-design.md](plan/ai-design.md) §8.1; R-03 |
+| OD-21 | AI moderation outage behaviour | Fail open with deterministic rules still enforced: requests and reviews publish into an async review queue, chat delivers; alert after 5 minutes. Alternative is fail closed (publishing blocked while moderation is down) | Proposed | Client | Phase 7 | [ai-design.md](plan/ai-design.md) §6.6 |
 
 ## Resolved
 
