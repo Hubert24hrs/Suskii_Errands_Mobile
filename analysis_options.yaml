@@ -1,0 +1,61 @@
+# Shared analysis options for all Dart/Flutter packages in this repo.
+# Self-contained on purpose (no external include) so every package resolves
+# identically regardless of its own dev dependencies.
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Treat hygiene issues as errors in CI.
+    unused_import: error
+    unused_local_variable: error
+    dead_code: error
+    todo: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/gen/**"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_catches_without_on_clauses
+    - avoid_empty_else
+    - avoid_escaping_inner_quotes
+    - avoid_print
+    - avoid_redundant_argument_values
+    - avoid_unnecessary_containers
+    - avoid_unused_constructor_parameters
+    - avoid_void_async
+    - await_only_futures
+    - camel_case_types
+    - cancel_subscriptions
+    - constant_identifier_names
+    - control_flow_in_finally
+    - directives_ordering
+    - discarded_futures
+    - empty_catches
+    - eol_at_end_of_file
+    - flutter_style_todos
+    - no_literal_bool_comparisons
+    - non_constant_identifier_names
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_final_locals
+    - prefer_is_empty
+    - prefer_is_not_empty
+    - prefer_single_quotes
+    - require_trailing_commas
+    - unawaited_futures
+    - unnecessary_underscores
+    - use_key_in_widget_constructors

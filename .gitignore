@@ -1,0 +1,64 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+pubspec.lock  # apps commit their lockfile; see note below
+!apps/mobile/pubspec.lock
+
+# Codegen
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Generated localization output
+packages/suskii_l10n/lib/src/gen/
+
+# Flutter platform build artifacts
+**/android/.gradle/
+**/android/app/build/
+**/android/local.properties
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/ephemeral/
+**/ios/build/
+
+# Secrets / env — NEVER commit
+.env
+.env.*
+!.env.example
+!.env.sample
+config/env/*.local.json
+**/secrets.json
+**/service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+*.keystore
+*.jks
+key.properties
+
+# Node (web apps land in M7/M8)
+node_modules/
+.next/
+out/
+pnpm-lock.yaml.tmp
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+.DS_Store
+Thumbs.db
+
+# Coverage / test
+coverage/
+*.lcov
+
+# FVM
+.fvm/

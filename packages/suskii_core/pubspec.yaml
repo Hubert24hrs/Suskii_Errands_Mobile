@@ -1,0 +1,12 @@
+name: suskii_core
+description: >-
+  Suskii Errands core utilities — environment/flavor config, errors mapped from
+  contract error codes, logging, result types, connectivity. Pure Dart.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dev_dependencies:
+  test: ^1.25.6

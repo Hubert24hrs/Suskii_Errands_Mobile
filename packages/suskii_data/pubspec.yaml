@@ -1,0 +1,19 @@
+name: suskii_data
+description: >-
+  Suskii Errands data layer — repository implementations. Mock implementations
+  with realistic fixtures and simulated realtime now; Supabase implementations
+  arrive at milestone M9 against official contracts. Pure Dart.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  suskii_core:
+    path: ../suskii_core
+  suskii_domain:
+    path: ../suskii_domain
+
+dev_dependencies:
+  test: ^1.25.6

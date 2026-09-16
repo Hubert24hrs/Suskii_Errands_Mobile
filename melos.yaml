@@ -1,0 +1,27 @@
+name: suskii_errands
+
+packages:
+  - apps/mobile
+  - packages/**
+
+command:
+  bootstrap:
+    usePubspecOverrides: true
+
+scripts:
+  analyze:
+    run: flutter analyze
+    description: Analyze all Dart/Flutter packages
+  test:
+    run: flutter test
+    description: Run tests in all packages that have them
+    exec:
+      concurrency: 2
+  format:
+    run: dart format .
+    description: Format the whole repo
+  codegen:
+    run: dart run build_runner build --delete-conflicting-outputs
+    description: Run build_runner where needed
+    packageFilters:
+      dependsOn: build_runner

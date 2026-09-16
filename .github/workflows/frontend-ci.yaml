@@ -1,0 +1,44 @@
+name: frontend-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml']
+  pull_request:
+    paths: ['apps/**', 'packages/**']
+
+jobs:
+  dart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+      - name: Pub get (all packages)
+        run: |
+          set -e
+          for dir in packages/suskii_domain packages/suskii_core packages/suskii_design packages/suskii_l10n packages/suskii_data apps/mobile; do
+            echo "== $dir =="
+            (cd "$dir" && flutter pub get)
+          done
+      - name: Localization codegen
+        run: cd packages/suskii_l10n && flutter gen-l10n
+      - name: build_runner codegen
+        run: |
+          set -e
+          for dir in packages/suskii_domain apps/mobile; do
+            (cd "$dir" && dart run build_runner build --delete-conflicting-outputs)
+          done
+      - name: Format check
+        run: dart format --set-exit-if-changed packages apps/mobile/lib apps/mobile/test
+      - name: Analyze
+        run: flutter analyze packages apps/mobile
+      - name: Tests
+        run: |
+          set -e
+          for dir in packages/suskii_domain packages/suskii_core packages/suskii_data apps/mobile; do
+            (cd "$dir" && flutter test)
+          done

@@ -1,0 +1,11 @@
+name: suskii_errands
+description: Suskii Errands monorepo — Flutter app, Next.js web apps, Supabase backend.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+
+# Per-package dependency management: each app/package has its own pubspec with
+# path dependencies between siblings. Melos (melos.yaml) is optional convenience
+# for running commands across packages; it is not required to build.

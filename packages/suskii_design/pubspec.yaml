@@ -1,0 +1,23 @@
+name: suskii_design
+description: >-
+  Suskii Errands design system — design tokens, light/dark themes, and shared
+  components. Placeholder brand values live ONLY in src/tokens/ and can be
+  swapped without touching components.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+  flutter: ^3.47.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  suskii_domain:
+    path: ../suskii_domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:

@@ -1,0 +1,39 @@
+import 'package:suskii_core/suskii_core.dart';
+
+/// Tunables for the mock layer: simulated latency, offline mode, and failure
+/// injection — so every screen's loading/empty/error/offline states are
+/// demoable without a backend.
+class MockBehavior {
+  MockBehavior({
+    this.latency = const Duration(milliseconds: 450),
+    this.offline = false,
+    this.failNextCalls = 0,
+    this.currentUserId = 'user-ada',
+    this.failLiveness = false,
+    this.kycReviewDelay = const Duration(seconds: 4),
+  });
+
+  Duration latency;
+  bool offline;
+  int failNextCalls;
+  String currentUserId;
+
+  /// When true, liveness capture fails with a localizable reason key —
+  /// demos the verification-failure path.
+  bool failLiveness;
+
+  /// Simulated review time before a submitted KYC step or verification
+  /// session flips from in-review to its outcome.
+  Duration kycReviewDelay;
+
+  Future<void> gate() async {
+    await Future<void>.delayed(latency);
+    if (offline) {
+      throw const AppError(ErrorCodes.network);
+    }
+    if (failNextCalls > 0) {
+      failNextCalls--;
+      throw const AppError(ErrorCodes.unknown);
+    }
+  }
+}
