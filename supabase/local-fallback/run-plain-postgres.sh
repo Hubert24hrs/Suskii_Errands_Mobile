@@ -39,6 +39,11 @@ for f in "$SUPABASE_DIR"/seed/*.sql; do
   run_sql -f "$f"
 done
 
+# SKIP_TESTS=1 stops after migrations and seed (used to prepare databases for other test suites).
+if [ "${SKIP_TESTS:-}" = "1" ]; then
+  exit 0
+fi
+
 run_sql -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions"
 
 failed=0

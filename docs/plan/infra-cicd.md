@@ -187,7 +187,7 @@ Alert routing, severity ladder and on-call follow RB-01.
 | Control | Setting | Target |
 |---|---|---|
 | Point-in-time recovery | Enabled on production | **RPO ≤ 5 min** [A — confirm PITR granularity on the chosen plan] |
-| Daily logical backup | Worker runs `pg_dump` of the production database to an EU GCS bucket with object versioning, CMEK and a retention lock; excludes nothing that PITR covers | Survives loss of the Supabase project or account |
+| Daily logical backup | Worker runs `pg_dump` of the production database to an EU GCS bucket with object versioning, CMEK and a retention lock; excludes nothing that PITR covers — **built 2026-09-16** in `services/workers` (Google-managed encryption for now; CMEK and a locked retention policy decided with the client) | Survives loss of the Supabase project or account |
 | Storage buckets | Nightly sync of private buckets to EU GCS; `kyc-docs` synced to a separate bucket with narrower access | Same |
 | Restore drill | Nightly automated restore of the logical backup into a scratch database with row-count and ledger-balance checks; quarterly full drill per RB-09 | **RTO ≤ 4 h** [A] |
 | Configuration | Terraform state, `config.toml`, migrations and remote-config exports in git or versioned buckets | Rebuild a project from code |

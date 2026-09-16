@@ -36,3 +36,8 @@ variable "ai_service_image" {
   type    = string
   default = null
 }
+
+variable "backup_worker_image" {
+  type    = string
+  default = null
+}

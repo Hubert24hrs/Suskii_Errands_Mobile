@@ -14,12 +14,12 @@ Be honest about this during an incident: plan with what is actually there.
 | Layer | Target (§8) | Status on 2026-09-16 |
 |---|---|---|
 | Supabase **point-in-time recovery (PITR)** on production | RPO ≤ 5 min [A — confirm granularity on the chosen plan] | Planned: enabled when the production project is created (client action). PITR is a paid add-on [S] |
-| Daily **logical backup** (`pg_dump`) to the EU backup bucket | Survives loss of the Supabase project or account | Bucket and `backup-worker` identity in Terraform; **the worker is not built yet** (services/workers) |
-| Nightly **automated restore test** of the logical backup | Row counts and ledger balance check | Not built yet — follows the worker |
+| Daily **logical backup** (`pg_dump`) to the EU backup bucket | Survives loss of the Supabase project or account | **Built** (`services/workers`, `suskii-backup dump`): snapshot-consistent dump plus manifest with exact row counts; Cloud Run Job at 02:15 UTC in Terraform. Not yet running anywhere: needs the GCP project and the `supabase-db-backup-url` secret |
+| Nightly **automated restore test** of the logical backup | Row counts and ledger balance check | **Built** (`suskii-backup verify`): checksum, full restore into a throwaway database, exact row counts, audit chain, ledger zero-sum; Cloud Run Job at 04:15 UTC; results in the `health` endpoint (`backup_dump`, `backup_verify`) once `ops.backup_max_age_hours` is set |
 | Storage bucket sync (private buckets, `kyc-docs` separately) | Nightly | Not built yet |
 | Schema and configuration as code | Rebuild a project from git | **Exists**: migrations, `config.toml`, Terraform, deploy pipelines (RB-14) |
 
-**RTO target: ≤ 4 h [A].** Until the logical backup and its restore test exist, production relies on PITR alone, and a lost Supabase project cannot be restored from Suskii-owned copies. This is a launch blocker, tracked in the timeline (Phase 10 "backups, PITR").
+**RTO target: ≤ 4 h [A].** The logical backup and its restore test are built but only protect production once they run there (GCP project, secret, `backup_worker_image`) and have passed for several nights. Until then production relies on PITR alone. Storage-bucket sync is still not built. Both remain launch blockers (Phase 10 "backups, PITR").
 
 ## Symptoms
 
@@ -44,7 +44,7 @@ Restoring the whole database **rewinds everyone's data** to the chosen point: pa
 | A few rows wrong, cause understood | Forward-fix migration or a reviewed one-off function through the pipeline; audit-logged |
 | A table's data damaged, rest fine | Restore to a **separate project** at the pinned time and copy back only the affected rows |
 | Widespread corruption, or the cause is unknown and ongoing | Full PITR restore of production to the pinned time |
-| Supabase project lost | Rebuild from code (RB-14 pipeline) + latest logical backup — **not possible until the backup worker exists** |
+| Supabase project lost | Rebuild from code (RB-14 pipeline), then restore the latest **verified** logical backup (below) |
 
 **Stop conditions:**
 - A full production restore needs the **IC and a second named approver**, recorded in the incident log.
@@ -65,6 +65,14 @@ Restoring the whole database **rewinds everyone's data** to the chosen point: pa
    - Ledger health check (RB-03) — zero unbalanced transactions.
 4. **Reconcile what was rewound**: payments confirmed by gateways after the pinned time (gateway dashboards and stored webhooks), verifications completed at the KYC vendor, payouts sent. Replay them through the normal functions; never re-insert rows by hand.
 5. Switch features back on one at a time; watch health and Sentry for 30 minutes.
+
+### Restore from a logical backup (project lost, or PITR unavailable)
+
+1. Pick the newest backup with a passing `.verify-*.json` next to its manifest in the backup bucket (`db/prod/…`). Never use a backup that has no manifest.
+2. Download the `.dump` and check its sha256 against the manifest.
+3. Create the replacement project and deploy schema-independent configuration through the pipeline (RB-14) **without** running migrations; the dump carries the schema.
+4. Restore with `pg_restore --no-owner --no-privileges --exit-on-error --single-transaction` into the new project's database, then apply any migrations newer than the dump through the pipeline.
+5. Run the same checks as `suskii-backup verify` (row counts, audit chain, ledger) and the health endpoint before reopening traffic.
 
 ### Partial restore via a separate project
 

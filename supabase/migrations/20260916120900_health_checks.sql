@@ -21,6 +21,19 @@ AS $$
   WHERE rc.key = p_key AND rc.country_code IS NULL AND jsonb_typeof(rc.value) = 'number';
 $$;
 
+-- Written by scheduled jobs outside the database (the backup worker records `backup_dump` and
+-- `backup_verify`). Service role and the database owner only.
+CREATE FUNCTION private.record_health_check(p_key text, p_status text, p_detail jsonb DEFAULT '{}'::jsonb)
+RETURNS bigint
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  INSERT INTO private.health_checks (check_key, status, detail)
+  VALUES (p_key, p_status, coalesce(p_detail, '{}'::jsonb))
+  RETURNING id;
+$$;
+
 -- Daily: re-verify the audit hash chain and record the result. A break is also emitted as an
 -- outbox event so the alerting path (RB-07) does not depend on someone reading this table.
 CREATE FUNCTION private.run_audit_chain_check()
@@ -42,6 +55,30 @@ BEGIN
   RETURN v_status;
 END $$;
 
+CREATE FUNCTION private.backup_check(p_key text, p_max_age_hours integer)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SET search_path = ''
+AS $$
+DECLARE
+  v_last_ok  timestamptz;
+  v_last     private.health_checks%ROWTYPE;
+BEGIN
+  SELECT max(h.checked_at) INTO v_last_ok FROM private.health_checks h
+  WHERE h.check_key = p_key AND h.status = 'ok';
+  SELECT * INTO v_last FROM private.health_checks h WHERE h.check_key = p_key ORDER BY h.id DESC LIMIT 1;
+
+  RETURN jsonb_build_object(p_key, jsonb_build_object(
+    'status', CASE
+      WHEN p_max_age_hours IS NULL THEN 'skipped'
+      WHEN v_last_ok IS NULL OR v_last_ok < now() - make_interval(hours => p_max_age_hours) THEN 'fail'
+      WHEN v_last.status <> 'ok' THEN 'warn'
+      ELSE 'ok' END,
+    'last_ok_at', v_last_ok,
+    'last_status', v_last.status));
+END $$;
+
 CREATE FUNCTION private.health_snapshot()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -52,6 +89,7 @@ AS $$
 DECLARE
   checks        jsonb := '{}'::jsonb;
   v_outbox_max  integer := private.remote_config_int('ops.outbox_max_age_seconds');
+  v_backup_max_h integer := private.remote_config_int('ops.backup_max_age_hours');
   v_oldest_s    integer;
   v_pending     bigint;
   v_ahead       integer;
@@ -94,6 +132,11 @@ BEGIN
       ELSE 'ok' END,
     'last_checked_at', v_audit.checked_at));
 
+  -- Backups (RB-09): the last successful dump and the last successful restore verification must
+  -- be recent. Skipped until ops sets the threshold for an environment that runs the worker.
+  checks := checks || private.backup_check('backup_dump', v_backup_max_h)
+                   || private.backup_check('backup_verify', v_backup_max_h);
+
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'pg_cron') THEN
     EXECUTE $q$SELECT count(*) FROM cron.job_run_details
                WHERE status = 'failed' AND start_time > now() - interval '1 hour'$q$
@@ -124,12 +167,15 @@ AS $$ SELECT private.health_snapshot(); $$;
 
 REVOKE ALL ON private.health_checks FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION
+  private.record_health_check(text, text, jsonb),
+  private.backup_check(text, integer),
   private.remote_config_int(text),
   private.run_audit_chain_check(),
   private.health_snapshot(),
   public.get_health()
 FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_health(), private.run_audit_chain_check() TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_health(), private.run_audit_chain_check(),
+  private.record_health_check(text, text, jsonb) TO service_role;
 
 DO $$
 BEGIN

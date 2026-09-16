@@ -12,6 +12,7 @@ locals {
     "artifactregistry.googleapis.com",
     "bigquery.googleapis.com",
     "billingbudgets.googleapis.com",
+    "cloudscheduler.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
@@ -202,6 +203,16 @@ resource "google_storage_bucket" "backups" {
     }
   }
 
+  # Backups must not outlive the data they hold (DPIA retention; infra-cicd.md §8).
+  lifecycle_rule {
+    condition {
+      age = var.backup_delete_after_days
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
   depends_on = [google_project_service.apis]
 }
 
@@ -215,6 +226,115 @@ resource "google_storage_bucket_iam_member" "backup_writer" {
   bucket = google_storage_bucket.backups.name
   role   = "roles/storage.objectCreator"
   member = "serviceAccount:${google_service_account.backup_worker.email}"
+}
+
+# Verification lists and downloads backups; it never deletes or overwrites them.
+resource "google_storage_bucket_iam_member" "backup_reader" {
+  bucket = google_storage_bucket.backups.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.backup_worker.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backup_db_url" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.runtime["supabase-db-backup-url"].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backup_worker.email}"
+}
+
+# Nightly dump and restore verification as Cloud Run Jobs (services/workers; RB-09).
+locals {
+  backup_jobs = var.backup_worker_image == null ? {} : {
+    dump   = var.backup_dump_schedule
+    verify = var.backup_verify_schedule
+  }
+}
+
+resource "google_cloud_run_v2_job" "backup" {
+  for_each            = local.backup_jobs
+  project             = var.project_id
+  name                = "backup-${each.key}"
+  location            = var.region
+  deletion_protection = var.environment == "prod"
+  labels              = local.labels
+
+  template {
+    task_count = 1
+
+    template {
+      service_account = google_service_account.backup_worker.email
+      timeout         = "3600s"
+      max_retries     = 1
+
+      containers {
+        image = var.backup_worker_image
+        args  = [each.key]
+
+        resources {
+          limits = {
+            cpu    = "2"
+            memory = "4Gi"
+          }
+        }
+
+        env {
+          name  = "SUSKII_ENV"
+          value = var.environment
+        }
+        env {
+          name  = "BACKUP_STORAGE_URL"
+          value = "gs://${google_storage_bucket.backups.name}"
+        }
+        env {
+          name = "BACKUP_SOURCE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.runtime["supabase-db-backup-url"].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [google_project_service.apis, google_secret_manager_secret_iam_member.backup_db_url]
+}
+
+resource "google_service_account" "scheduler" {
+  count        = var.backup_worker_image == null ? 0 : 1
+  project      = var.project_id
+  account_id   = "backup-scheduler"
+  display_name = "Cloud Scheduler trigger for backup jobs (${var.environment})"
+}
+
+resource "google_cloud_run_v2_job_iam_member" "scheduler_runs_backup" {
+  for_each = local.backup_jobs
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.backup[each.key].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.scheduler[0].email}"
+}
+
+resource "google_cloud_scheduler_job" "backup" {
+  for_each  = local.backup_jobs
+  project   = var.project_id
+  region    = var.region
+  name      = "backup-${each.key}"
+  schedule  = each.value
+  time_zone = "Etc/UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.backup[each.key].name}:run"
+
+    oauth_token {
+      service_account_email = google_service_account.scheduler[0].email
+    }
+  }
+
+  depends_on = [google_cloud_run_v2_job_iam_member.scheduler_runs_backup]
 }
 
 # ---------------------------------------------------------------------------

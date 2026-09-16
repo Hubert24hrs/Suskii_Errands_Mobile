@@ -24,6 +24,7 @@ Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, 
 | Analytics | BigQuery datasets `analytics`, `ai_evals`, `ops` in the EU multi-region | OD-15, ai-design §10 |
 | Backups | Versioned EU bucket, public access blocked, retention policy (35 days minimum), Coldline after 30 days; a `backup-worker` identity that can only create objects | §8 |
 | Alerting | Email notification channels; monthly budget alerts at 50/80/100% (when the billing account is set); an uptime check on the Supabase `health` function every 60 s with the API key header masked, and an alert policy when it fails | §7, §9 |
+| Backup jobs | Cloud Run Jobs `backup-dump` (02:15 UTC) and `backup-verify` (04:15 UTC) triggered by Cloud Scheduler, running as `backup-worker` (create and read objects only; never delete) with the database URL from Secret Manager; backups deleted after 120 days. Created only when `backup_worker_image` is set | §8, RB-09 |
 | AI service | Cloud Run service, only when `deploy_ai_service = true` (Phase 7) | C4 |
 
 ## Usage

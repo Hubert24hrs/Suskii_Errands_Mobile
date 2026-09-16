@@ -68,6 +68,7 @@ variable "runtime_secret_ids" {
     "sentry-dsn-ai-service",
     "supabase-service-role-key",
     "supabase-db-password",
+    "supabase-db-backup-url",
   ]
 }
 
@@ -93,4 +94,32 @@ variable "labels" {
   description = "Extra labels for every labelled resource."
   type        = map(string)
   default     = {}
+}
+
+variable "backup_worker_image" {
+  description = "Image digest of services/workers. Null keeps the backup jobs uncreated."
+  type        = string
+  default     = null
+}
+
+variable "backup_delete_after_days" {
+  description = "Backups older than this are deleted by lifecycle rule; must exceed backup_retention_days."
+  type        = number
+  default     = 120
+  validation {
+    condition     = var.backup_delete_after_days > var.backup_retention_days
+    error_message = "backup_delete_after_days must be greater than backup_retention_days."
+  }
+}
+
+variable "backup_dump_schedule" {
+  description = "Cron (UTC) for the nightly dump."
+  type        = string
+  default     = "15 2 * * *"
+}
+
+variable "backup_verify_schedule" {
+  description = "Cron (UTC) for the restore verification, after the dump has finished."
+  type        = string
+  default     = "15 4 * * *"
 }

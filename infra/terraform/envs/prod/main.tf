@@ -35,6 +35,7 @@ module "environment" {
   health_check_api_key    = var.health_check_api_key
   deploy_ai_service       = var.deploy_ai_service
   ai_service_image        = var.ai_service_image
+  backup_worker_image     = var.backup_worker_image
 }
 
 output "workload_identity_provider" {

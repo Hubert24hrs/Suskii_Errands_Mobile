@@ -1,0 +1,100 @@
+name: services-workers
+
+# Backend workers CI (docs/plan/infra-cicd.md §5). The integration job runs inside the same
+# PostgreSQL 17 + PostGIS image the worker ships in, against a second container that has the real
+# Supabase migrations applied, so dump, restore and verification are exercised for real.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/workers/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed/**'
+      - 'supabase/local-fallback/**'
+      - '.github/workflows/services-workers.yaml'
+  pull_request:
+    paths:
+      - 'services/workers/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed/**'
+      - 'supabase/local-fallback/**'
+      - '.github/workflows/services-workers.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: services-workers-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/workers
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: 0.12.15
+      - run: uv sync --frozen
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pytest -q -m "not integration"
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container: postgis/postgis:17-3.5
+    services:
+      source:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: source
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - name: Tools the base image lacks
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: 0.12.15
+      - name: Apply the Supabase migrations and seed to the source database
+        env:
+          PSQL: psql
+          SKIP_TESTS: "1"
+        run: bash supabase/local-fallback/run-plain-postgres.sh
+      - name: Backup, restore and verification tests
+        working-directory: services/workers
+        env:
+          BACKUP_TEST_SOURCE_URL: postgresql://postgres:postgres@source:5432/suskii_test
+          BACKUP_TEST_ADMIN_URL: postgresql://postgres:postgres@source:5432/postgres
+        run: |
+          uv sync --frozen
+          uv run pytest -q -m integration
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        run: docker build -t suskii-backup:ci services/workers
+      - name: The image runs and refuses to start without configuration
+        run: |
+          set +e
+          docker run --rm suskii-backup:ci dump
+          code=$?
+          set -e
+          [ "$code" -eq 2 ] || { echo "expected exit 2 for missing configuration, got $code"; exit 1; }
