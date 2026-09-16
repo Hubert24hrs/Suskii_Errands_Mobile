@@ -1,0 +1,92 @@
+name: security
+
+# Repository-wide security checks (docs/plan/infra-cicd.md §5). Runs on every push to main
+# and every pull request, whichever agent made the change, plus weekly so newly published
+# vulnerabilities surface without a code change. It audits Kimi Code's paths without editing them.
+#
+# CodeQL and dependency-review need GitHub Advanced Security on a private repository; they are
+# added if the plan changes (infra-cicd I-1). Tool binaries are downloaded from their official
+# releases and verified against the published checksums.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GITLEAKS_VERSION: 8.30.1
+  OSV_SCANNER_VERSION: 2.6.0
+
+jobs:
+  policy:
+    name: Project policy (ADR-0002, ADR-0010, client secrets, Android permissions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Unit tests for the policy checker
+        working-directory: infra/policy
+        run: python3 -m unittest -v test_policy_check
+      - name: Policy check
+        run: python3 infra/policy/policy_check.py .
+
+  secrets:
+    name: Secret scanning (gitleaks, full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSfLO "$base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfLO "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Scan git history
+        run: gitleaks git . --redact --no-banner --exit-code 1
+
+  dependencies:
+    name: Known vulnerabilities in lockfiles (osv-scanner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install osv-scanner
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}"
+          curl -sSfLO "$base/osv-scanner_linux_amd64"
+          curl -sSfLO "$base/osv-scanner_SHA256SUMS"
+          grep " osv-scanner_linux_amd64$" osv-scanner_SHA256SUMS | sha256sum -c -
+          chmod +x osv-scanner_linux_amd64
+          mv osv-scanner_linux_amd64 osv-scanner
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      # Deno's deno.lock is not a format osv-scanner reads; Edge Function npm dependencies are
+      # pinned exactly in deno.json and reviewed on upgrade until a scanner supports it.
+      - name: Scan lockfiles
+        run: |
+          set -euo pipefail
+          mapfile -t lockfiles < <(git ls-files '*pubspec.lock' '*package-lock.json' '*pnpm-lock.yaml' '*yarn.lock')
+          if [ "${#lockfiles[@]}" -eq 0 ]; then
+            echo "No supported lockfiles committed yet."
+            exit 0
+          fi
+          args=()
+          for f in "${lockfiles[@]}"; do args+=(-L "$f"); done
+          osv-scanner scan "${args[@]}"
