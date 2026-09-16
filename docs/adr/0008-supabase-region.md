@@ -6,6 +6,7 @@
 | Date | 2026-09-16 |
 | Deciders | Claude Code |
 | Unblocked by | Spike S-01 (latency), counsel on residency (OD-15) |
+| Measurement status | First S-01 run 2026-09-16 was inconclusive: the dev machine is behind a European VPN, so its ordering reflects the egress, not Lagos. See [S-01-results.md](../research/spikes/S-01-results.md) |
 
 ## Context
 

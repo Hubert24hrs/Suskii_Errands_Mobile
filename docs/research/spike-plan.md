@@ -8,6 +8,8 @@ Date 2026-09-15.
 
 The six spikes required by the spec are **S-03, S-04, S-05, S-06, S-10 and S-11**. The other six come from Phase 0 findings.
 
+> **Live status:** [spikes/README.md](spikes/README.md) tracks which spikes have run and what each is blocked on. This plan stays the method; the board carries the state.
+
 ## Summary and order
 
 | ID | Spike | Answers | Owner | Effort | Blocks | Priority |
