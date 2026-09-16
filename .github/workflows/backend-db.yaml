@@ -20,6 +20,9 @@ jobs:
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # CI-only placeholder so config.toml's send_sms hook validates; not a real secret.
+      SEND_SMS_HOOK_SECRETS: v1,whsec_Y2ktb25seS1wbGFjZWhvbGRlci1ub3QtYS1zZWNyZXQ=
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

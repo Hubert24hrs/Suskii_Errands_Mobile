@@ -8,15 +8,15 @@ INSERT INTO public.countries
 VALUES
   ('NG', 'Nigeria',      'live', 'NGN', '234', 'en', ARRAY['en', 'pcm'],
    '{"client": {"accepted_id_types": ["nin", "bvn", "voters_card", "drivers_licence", "passport"]},
-     "server": {}}'),
+     "server": {"sms_providers": ["console"]}}'),
   ('KE', 'Kenya',        'beta', 'KES', '254', 'en', ARRAY['en'],
-   '{"client": {"accepted_id_types": ["national_id", "passport"]}, "server": {}}'),
+   '{"client": {"accepted_id_types": ["national_id", "passport"]}, "server": {"sms_providers": ["console"]}}'),
   ('GH', 'Ghana',        'beta', 'GHS', '233', 'en', ARRAY['en'],
-   '{"client": {"accepted_id_types": ["ghana_card", "passport"]}, "server": {}}'),
+   '{"client": {"accepted_id_types": ["ghana_card", "passport"]}, "server": {"sms_providers": ["console"]}}'),
   ('ZA', 'South Africa', 'beta', 'ZAR', '27',  'en', ARRAY['en'],
-   '{"client": {"accepted_id_types": ["sa_id", "passport"]}, "server": {}}'),
+   '{"client": {"accepted_id_types": ["sa_id", "passport"]}, "server": {"sms_providers": ["console"]}}'),
   ('UG', 'Uganda',       'beta', 'UGX', '256', 'en', ARRAY['en'],
-   '{"client": {"accepted_id_types": ["national_id", "passport"]}, "server": {}}')
+   '{"client": {"accepted_id_types": ["national_id", "passport"]}, "server": {"sms_providers": ["console"]}}')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.cities (country_code, code, name, timezone, center) VALUES

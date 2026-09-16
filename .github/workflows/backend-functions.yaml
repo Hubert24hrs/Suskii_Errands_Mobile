@@ -1,0 +1,42 @@
+name: backend-functions
+
+# Edge Functions CI (docs/plan/infra-cicd.md §5). Path-filtered; never overlaps frontend-ci.yaml.
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**', '.github/workflows/backend-functions.yaml']
+  pull_request:
+    paths: ['supabase/functions/**', '.github/workflows/backend-functions.yaml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-functions-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deno:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.6
+
+      - name: Format
+        run: deno fmt --check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Type-check every function entry point
+        run: deno check */index.ts
+
+      - name: Tests
+        run: deno test --allow-env

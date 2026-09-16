@@ -1,0 +1,18 @@
+{
+  "workspace": ["./auth-send-sms", "./device-integrity"],
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "standardwebhooks": "npm:standardwebhooks@1.1.1",
+    "jose": "npm:jose@6.2.12"
+  },
+  "fmt": {
+    "lineWidth": 120
+  },
+  "lint": {
+    "rules": { "tags": ["recommended"] }
+  },
+  "tasks": {
+    "check": "deno check auth-send-sms/index.ts device-integrity/index.ts",
+    "test": "deno test --allow-env --allow-net=127.0.0.1"
+  }
+}

@@ -50,7 +50,8 @@ SELECT is(
      AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
      AND n.nspname || '.' || p.proname NOT IN (
        'public.get_bootstrap', 'public.set_active_mode', 'public.register_device',
-       'public.record_consent', 'private.has_admin_role', 'private.is_any_admin')),
+       'public.record_consent', 'public.request_integrity_nonce',
+       'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
 
 -- Money is integer minor units (spec money_rules; S-14).

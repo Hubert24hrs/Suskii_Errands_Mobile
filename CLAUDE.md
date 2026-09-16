@@ -32,8 +32,8 @@ Kimi edits **this same working tree at the same time**. Untracked files that are
 | Phase 1 — Planning, contracts v1 | **Stage A complete** (`docs/plan/`, 2026-09-16): state machines, ERD, RLS matrix, money flows, C4, threat model, data flow, AI design, infra/CI-CD, test strategy, PRD (147 stories), timeline. Stage B (contracts v1 + fixtures) waits for M8.5 |
 | Spikes | S-06, S-10, S-13, S-14 passed. The rest need credentials or devices — `docs/research/spikes/README.md` |
 | Kimi | M1 + M2 committed (`e473c9b`), reviewed (C.1–C.8). M3 in progress; foundation reviewed from the working tree (M3.1–M3.6). C.1 idempotency keys still open |
-| Phase 2 — Backend foundation | **Started 2026-09-16** before contracts v1 (ADR-0013, user-approved). Database foundation done: 8 migrations, 107 pgTAP assertions passing locally, `backend-db.yaml` CI. Next: Edge Functions (send-SMS hook, device integrity), Terraform, observability. Needs GCP billing + a Supabase org for deployed environments |
-| Next Claude work | Phase 2 Edge Functions; rolling review of Kimi's milestones (recheck C.1, M3.1 at M3 commit); Stage B at M8.5. Launch base case: week of 7 Jun 2027 |
+| Phase 2 — Backend foundation | **Started 2026-09-16** before contracts v1 (ADR-0013, user-approved). Done and green in CI: 9 migrations, 117 pgTAP assertions (`backend-db.yaml`); Edge Functions `auth-send-sms` and `device-integrity`, 33 Deno tests (`backend-functions.yaml`). Open: SMS vendor adapters (S-09), iOS App Attest verification. Next: Terraform, observability. Needs GCP billing + a Supabase org for deployed environments |
+| Next Claude work | Phase 2 Terraform + observability; rolling review of Kimi's milestones (recheck C.1, M3.1 at M3 commit); Stage B at M8.5. Launch base case: week of 7 Jun 2027 |
 
 Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branches, under `spikes/`, never in `apps/`, `supabase/` or `services/`. From Phase 2, `supabase/` holds production code — see `supabase/README.md` for its rules.
 
@@ -89,6 +89,7 @@ npx supabase@2.117.0 db reset --local              # all migrations + dev seed f
 npx supabase@2.117.0 test db --local supabase/tests/database  # pgTAP
 npx supabase@2.117.0 db advisors --local --type all --level warn --fail-on warn
 bash supabase/local-fallback/run-plain-postgres.sh # no-Docker fallback (PSQL, PG* env vars)
+cd supabase/functions && npx deno@2.9.6 test --allow-env   # Edge Functions (also fmt --check, lint, check */index.ts)
 ```
 
 This dev machine has no Docker: use the fallback with the portable PostgreSQL 17 + PostGIS + pgTAP install (`spikes/postgres/setup-local-windows.sh`; antivirus has deleted its binaries twice — re-extract from the cached zip). CI on GitHub is the authority.
