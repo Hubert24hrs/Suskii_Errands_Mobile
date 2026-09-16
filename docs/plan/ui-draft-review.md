@@ -92,6 +92,22 @@ Kimi committed M1 + M2. This pass reads the code rather than the draft, against 
 | C.7 | `Money` JSON keys are `minorUnits`/`currency`; the ERD uses `amount_minor` + `currency`. Settle in contracts v1 together with N.6 (snake_case) | Low | **[CONTRACT]** |
 | C.8 | `mediaPaths` / `uploadRefs` are local paths in the mock; on the wire they are Storage object keys returned by the signed-upload call | Low | **[CONTRACT]** |
 
+## M3 foundation — domain, data, core (uncommitted work in the shared tree, reviewed 2026-09-16)
+
+Kimi reported the M3 foundation verified (domain 21/21, data 58/58, core 7/7, analyze clean). Reviewed from the working tree before commit.
+
+**Landed from earlier reviews:** C.2 (government-ID lookup removed from the device adapter, with a comment explaining why), C.3 (`publishRequest` with `ERR_VERIFICATION_REQUIRED`), C.4 (`withdrawOffer`), C.6 (unknown currency asserts instead of silently using exponent 2), N.6 (snake_case `@JsonValue` on every enum, with a wire-format test), cross-carried item 1 (`serverTime` in bootstrap + `ServerClock`). `ServiceCategory` defaults (offer TTL 600 s, 5 counter rounds) match the offer machine. **[GOOD]**
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| C.1 | **Still open, and wider:** no idempotency key on any mutating method, now including `publishRequest`, `withdrawOffer`, `publishDraft` and concierge `sendMessage` | High | **[CHANGE]** |
+| M3.1 | `ConciergeRepository.publishDraft(conversationId)` "performs create + publish server-side". That gives the concierge path a publish capability, which [ai-design.md](ai-design.md) §4.2 excludes. Instead the concierge saves a **server-side draft** as it goes (`save_request_draft`), `ConciergeDraft` carries its `requestId`, and the confirm button calls the same `RequestRepository.publishRequest(requestId, idempotencyKey)` as the form. One publish path, one verification gate | Medium | **[CHANGE]** |
+| M3.2 | `ConciergeDraft.readyToPublish` is one case of the turn's `proposed_action`. Model it as an enum on the assistant message: `none`, `show_publish_card`, `show_offer_comparison`, `show_sos_card`, `handoff_to_form` (ai-design §5.3). The SOS and hand-off-to-form cases need UI | Medium | **[CHANGE]** |
+| M3.3 | `ConciergeDraft` has `preferredPrice`, `itemFloat`, `declaredValue`. Fine for display, but they are only ever set from UI controls on the publish card — the server rejects them from the model (ai-design §5.3). Do not build a flow where the assistant "fills in" a price | Low | **[GOOD]** with a constraint |
+| M3.4 | `VoiceConciergeAdapter` throws `ERR_UNSUPPORTED_LANGUAGE` for `pcm` inside the adapter. The fallback is right, but whether Pidgin voice is available is decided by S-08 and may change without a release; read it from a per-language flag in bootstrap/remote config | Low | **[CHANGE]** |
+| M3.5 | `ServerClock` measures elapsed time with `DateTime.now()`, which jumps when the user or the network changes the device clock. Use a monotonic `Stopwatch` started at sync, re-sync on later responses, and subtract half the request round trip | Low | **[CHANGE]** |
+| M3.6 | `PriceBand` has `confidence` + `sampleSize`; the backend also returns `basis` (`rules`/`history`), and `getPriceBand` needs `urgency` (the band function takes category, city, urgency, distance). Contracts v1 will carry all of them | Low | **[CONTRACT]** |
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
