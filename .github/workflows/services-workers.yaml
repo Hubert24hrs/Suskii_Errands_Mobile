@@ -85,7 +85,19 @@ jobs:
 
   image:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      source:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build
@@ -97,3 +109,17 @@ jobs:
           code=$?
           set -e
           [ "$code" -eq 2 ] || { echo "expected exit 2 for missing configuration, got $code"; exit 1; }
+      - name: Prepare a source database with the Supabase migrations
+        run: |
+          set -euo pipefail
+          docker run --rm --network host -v "$PWD/supabase:/supabase:ro"             -e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGUSER=postgres -e PGPASSWORD=postgres             -e PSQL=psql -e SKIP_TESTS=1 --entrypoint bash suskii-backup:ci             /supabase/local-fallback/run-plain-postgres.sh
+      - name: The shipped image dumps, then verifies with its own throwaway PostgreSQL
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/backups" && chmod 0777 "$RUNNER_TEMP/backups"
+          common=(--rm --network host -v "$RUNNER_TEMP/backups:/backups"
+                  -e SUSKII_ENV=ci -e BACKUP_STORAGE_URL=file:///backups
+                  -e BACKUP_SOURCE_URL=postgresql://postgres:postgres@127.0.0.1:5432/suskii_test)
+          docker run "${common[@]}" suskii-backup:ci dump
+          docker run "${common[@]}" suskii-backup:ci verify
+          ls "$RUNNER_TEMP"/backups/db/ci/*/*/*/ | grep -E '\.verify-.*\.json$'
