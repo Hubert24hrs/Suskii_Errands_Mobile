@@ -17,7 +17,7 @@ Each audit is a dated file, `AUDIT-YYYY-MM-DD.md`, listing findings with severit
 
 | Date | Scope | Critical | High | Status |
 |---|---|---|---|---|
-| [2026-09-17](AUDIT-2026-09-17.md) | Whole repository, at the user's request (Kimi Code mid-M3) | 0 | 1 — M3.15 sign-in dead end, **fixed** | Closed; Medium and Low items filed in `HANDOFF.md` |
+| [2026-09-17](AUDIT-2026-09-17.md) | Whole repository, at the user's request (Kimi Code mid-M3) | 0 | 1 — M3.15 sign-in dead end, **fixed** (`e5c2f6f`) | Closed; Medium and Low items filed in `HANDOFF.md` |
 
 ## Checklists
 
