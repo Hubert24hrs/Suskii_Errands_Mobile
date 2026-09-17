@@ -180,6 +180,30 @@ Not defects, noted while testing: the Google and Apple buttons correctly say "Co
 milestone" (the backend can now be configured for both, per-environment); deep links to a signed-in
 route bounce back to `/auth` as the redirect intends.
 
+## M3 screens review (working tree, 2026-09-18 — Kimi reports M3 complete, still uncommitted)
+
+Ran their checks on a copy: `dart format` clean, `flutter analyze packages apps/mobile` clean,
+94 package tests pass (core 9, domain 21, data 64). Then built the app for the web and drove it.
+
+Against the plan, the screens hold up. The concierge renders the publish card, the SOS card and the
+offer-comparison card as *cards the user taps* and publishes through `publishRequest` with the app's
+own key (A.1, ai-design §98); "Use the form instead" is always present and carries the slots over
+(A.3 / `handoff_to_form`); voice is gated on `bootstrap.voiceLanguages` for the current locale
+(OD-17). The offers board renders round, TTL against server time, and accept / counter / decline with
+one key per action and offer. Request detail shows a status timeline, publish for drafts and cancel
+with a localized reason. M3.14 is largely addressed in the new code: keys are held per intent
+(`_createKey ??=`, `_publishKey ??=`, `_keyFor(action, offerId)`) rather than minted inline.
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| M3.19 | **`newIdempotencyKey()` throws on web builds.** `_nextBits` composes wide values with `_secureRandom.nextInt(1 << take)` where `take` is 32; under dart2js `1 << 32` is `0`, so the call raises `RangeError: max must be in range 0 < max ≤ 2^32, was 0`. Found by opening the AI concierge in a web build: the screen shows "Something went wrong" and never starts a conversation, because `startConversation` needs a key. Every keyed action on web fails the same way. The VM is unaffected (64-bit ints), which is why the package tests pass — they only run on the VM, and `frontend-ci.yaml` has no web run either. Also note the 62-bit intermediate exceeds JavaScript's safe integer range, so even without the throw the randomness would be wrong. Fix: build the key from small draws that are safe on both platforms — e.g. ten `nextInt(256)` bytes, or 16-bit chunks — and hex-encode, then add a web run (`flutter test --platform chrome`) for `suskii_core` so this cannot come back | **High** (web only; the mobile app is unaffected) | **[BUG]** |
+| M3.20 | `create_request_page.dart:78` renders a prefilled price with `(price.minorUnits / 100)`, the one hardcoded divisor in the app (cross-cutting rule 3: currency exponent, never `/100`). In a zero-exponent currency — UGX is a wave-1 country — a UGX 5,000 prefill from the concierge hand-off shows as "50", and because `SMoneyField` then parses what is on screen, submitting it silently sends UGX 50. The input widget itself is correct (`Money.exponentOf`); only this prefill path is wrong | Medium | **[BUG]** |
+
+Unchanged from earlier reviews and still open: M3.16 (country fixtures omit Uganda and mark ZA
+disabled), M3.17 (provider feed mixes currencies), M3.6, M3.12, M3.13, and the contract items
+V.1–V.5 (`amount_minor`, `ERR_COUNTRY_NOT_SUPPORTED`, dropping `ERR_WITHDRAWAL_NEEDS_APPROVAL`, the
+missing codes, and reading errors per transport).
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
