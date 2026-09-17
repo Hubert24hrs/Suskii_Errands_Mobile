@@ -20,10 +20,10 @@ SELECT ok(
   (SELECT file_size_limit FROM storage.buckets WHERE id = 'kyc-docs') > 0,
   'kyc-docs has an upload size limit');
 SELECT ok(
-  'application/pdf' = ANY ((SELECT allowed_mime_types FROM storage.buckets WHERE id = 'kyc-docs')),
+  (SELECT 'application/pdf' = ANY (b.allowed_mime_types) FROM storage.buckets b WHERE b.id = 'kyc-docs'),
   'kyc-docs accepts PDFs as well as photos');
 SELECT ok(
-  NOT ('application/pdf' = ANY ((SELECT allowed_mime_types FROM storage.buckets WHERE id = 'avatars'))),
+  (SELECT NOT ('application/pdf' = ANY (b.allowed_mime_types)) FROM storage.buckets b WHERE b.id = 'avatars'),
   'avatars accepts images only');
 
 SELECT set_config('request.jwt.claims',
