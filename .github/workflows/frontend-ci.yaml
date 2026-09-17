@@ -26,12 +26,10 @@ jobs:
           done
       - name: Localization codegen
         run: cd packages/suskii_l10n && flutter gen-l10n
+      # Only suskii_domain has generated code (freezed / json_serializable). apps/mobile has no
+      # build_runner dependency, so running it there failed the job before any check ran (M3.18).
       - name: build_runner codegen
-        run: |
-          set -e
-          for dir in packages/suskii_domain apps/mobile; do
-            (cd "$dir" && dart run build_runner build --delete-conflicting-outputs)
-          done
+        run: cd packages/suskii_domain && dart run build_runner build
       - name: Format check
         run: dart format --set-exit-if-changed packages apps/mobile/lib apps/mobile/test
       - name: Analyze
@@ -40,5 +38,11 @@ jobs:
         run: |
           set -e
           for dir in packages/suskii_domain packages/suskii_core packages/suskii_data apps/mobile; do
-            (cd "$dir" && flutter test)
+            # apps/mobile has no tests yet; `flutter test` fails on a missing test directory.
+            if [ -d "$dir/test" ]; then
+              echo "== $dir =="
+              (cd "$dir" && flutter test)
+            else
+              echo "== $dir == no test directory, skipped"
+            fi
           done
