@@ -151,6 +151,19 @@ Remaining low-severity notes, for Stage B rather than now:
 
 **Still to review:** every M3 screen (request form, concierge text and voice, offers and negotiation) once they exist in `apps/mobile`.
 
+## M3 foundation hand-off (working tree, 2026-09-17 04:20 — still uncommitted, still no M3 screens)
+
+Kimi reports the M3 foundation complete. M3.7–M3.10 were already verified in the follow-up check. New since then: the
+M2 screens in `apps/mobile` now pass `idempotencyKey` at 8 call sites (`setActiveMode`, `setOnline`, `saveOnboarding`,
+`submitStep`, `submitForReview`, `giveBiometricConsent`, `startFacialVerification`, `submitIdLookup`). Double taps are
+already blocked by each page's `_busy` flag.
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| M3.14 | Every call site creates the key inline (`idempotencyKey: newIdempotencyKey()`), so tapping the button again after an error sends a **new** key. After a timeout where the server did finish, that repeats the operation: a second paid ID lookup (`submitIdLookup`), a duplicate KYC step, a second facial session. Keep one key per user intent in the page state: create it when the intent starts, reuse it on every retry, and replace it only after success or when the user changes the input. This is safe with the backend: a call that fails with an error rolls back its key claim, so the same key runs again; only a call that finished replays its result | Medium | **[CHANGE]** |
+
+Cross-cutting item 2 is corrected below (its "fresh per attempt" wording led here).
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
@@ -169,7 +182,7 @@ Checked Kimi's `suskii_domain` enums and entities against the ERD so names do no
 Recorded now so they are not rediscovered at M8.5:
 
 1. **`server_time` in bootstrap** and an offset applied to every countdown. **[CHANGE]**
-2. **Idempotency keys are per user action**, generated fresh per attempt — never per screen or per session. S-10 showed a reused key correctly replays, which in a UI would look like a tap that silently did nothing. **[CHANGE]**
+2. **Idempotency keys are per user intent** — never per screen or per session. S-10 showed a reused key correctly replays, which in a UI would look like a tap that silently did nothing, so a new intent (new input, or the previous call succeeded) needs a new key. **Superseded wording, 2026-09-17:** the original text said "generated fresh per attempt"; retries of the same intent must reuse the key (M3.14). **[CHANGE]**
 3. **Currency exponent, never `/100`.** Kimi's `Money` already carries an exponent table with UGX = 0; a golden test should lock that so a later refactor cannot reintroduce a hardcoded divisor. **[CHANGE]**
 4. **"Held by Suskii", never "escrow"** in any locale file (ADR-0002, a legal constraint per country). **[CHANGE]**
 5. **Trusted contacts must use the Android Contact Picker**, not `READ_CONTACTS` (Play policy, April 2026). **[CHANGE]**
