@@ -8,9 +8,11 @@ name: _deploy-supabase
 # Each GitHub environment (dev, staging, production) holds:
 #   vars:    SUPABASE_PROJECT_REF, SITE_URL, ADDITIONAL_REDIRECT_URLS, SUSKII_ENV,
 #            GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOYER_SA, ANDROID_PACKAGE_NAME,
-#            IOS_APP_ID, APP_ATTEST_ENVIRONMENT, APP_ATTEST_VALIDATION_CATEGORIES (optional)
+#            IOS_APP_ID, APP_ATTEST_ENVIRONMENT, APP_ATTEST_VALIDATION_CATEGORIES (optional),
+#            GOOGLE_CLIENT_IDS, GOOGLE_SKIP_NONCE_CHECK, APPLE_CLIENT_IDS (optional)
 #   secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, HEALTH_CHECK_API_KEY,
-#            SUPABASE_AUTH_CAPTCHA_SECRET (optional)
+#            SUPABASE_AUTH_CAPTCHA_SECRET, SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET,
+#            SUPABASE_AUTH_EXTERNAL_APPLE_SECRET (all optional)
 # Runtime secrets for functions come from GCP Secret Manager through Workload Identity (§4).
 
 on:
@@ -48,6 +50,8 @@ jobs:
       SITE_URL: ${{ vars.SITE_URL }}
       ADDITIONAL_REDIRECT_URLS: ${{ vars.ADDITIONAL_REDIRECT_URLS }}
       SUPABASE_AUTH_CAPTCHA_SECRET: ${{ secrets.SUPABASE_AUTH_CAPTCHA_SECRET }}
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET }}
+      SUPABASE_AUTH_EXTERNAL_APPLE_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_APPLE_SECRET }}
     steps:
       - name: Check inputs and environment configuration
         env:
@@ -151,6 +155,9 @@ jobs:
         if: inputs.mode == 'full'
         env:
           SEND_SMS_HOOK_SECRETS: ${{ steps.runtime.outputs.send_sms_hook_secrets }}
+          GOOGLE_CLIENT_IDS: ${{ vars.GOOGLE_CLIENT_IDS }}
+          GOOGLE_SKIP_NONCE_CHECK: ${{ vars.GOOGLE_SKIP_NONCE_CHECK }}
+          APPLE_CLIENT_IDS: ${{ vars.APPLE_CLIENT_IDS }}
         run: |
           set -euo pipefail
           bash supabase/deploy/write-remote-config.sh supabase/config.toml

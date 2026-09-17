@@ -29,6 +29,9 @@ jobs:
         with:
           version: 2.117.0
 
+      - name: Deploy config writer tests
+        run: bash supabase/deploy/write-remote-config_test.sh
+
       # Auth (gotrue) stays up so the hook wiring in config.toml is exercised against real
       # functions; services the database tests do not need are skipped.
       - name: Start local stack

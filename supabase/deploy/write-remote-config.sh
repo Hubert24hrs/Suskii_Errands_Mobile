@@ -7,9 +7,16 @@
 # project_id is not a real 20-letter project ref, which would break every local `supabase start`.
 #
 # Required env: SUPABASE_PROJECT_REF, SITE_URL
-# Optional env: ADDITIONAL_REDIRECT_URLS (comma-separated), SUPABASE_AUTH_CAPTCHA_SECRET
+# Optional env: ADDITIONAL_REDIRECT_URLS (comma-separated), SUPABASE_AUTH_CAPTCHA_SECRET,
+#   GOOGLE_CLIENT_IDS (comma-separated, web client first), GOOGLE_SKIP_NONCE_CHECK (true when an
+#   iOS client ID is listed), SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET (web OAuth only),
+#   APPLE_CLIENT_IDS (comma-separated bundle IDs, plus the Services ID for web),
+#   SUPABASE_AUTH_EXTERNAL_APPLE_SECRET (web OAuth only)
+# Native sign-in (signInWithIdToken) needs only the client IDs; secrets are for the web OAuth
+# flow (supabase.com/docs/guides/auth/social-login/auth-google and auth-apple, checked 2026-09-17).
 # Secrets referenced (resolved by the CLI from the environment at push time):
-#   SEND_SMS_HOOK_SECRETS, SUPABASE_AUTH_CAPTCHA_SECRET
+#   SEND_SMS_HOOK_SECRETS, SUPABASE_AUTH_CAPTCHA_SECRET, SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET,
+#   SUPABASE_AUTH_EXTERNAL_APPLE_SECRET
 set -euo pipefail
 
 CONFIG="${1:-supabase/config.toml}"
@@ -26,6 +33,30 @@ if ! [[ "$SITE_URL" =~ ^https:// ]]; then
 fi
 if grep -q '^\[remotes\.deploy\]' "$CONFIG"; then
   echo "[remotes.deploy] already present in $CONFIG" >&2
+  exit 1
+fi
+
+if [ -n "${GOOGLE_CLIENT_IDS:-}" ] &&
+   ! [[ "$GOOGLE_CLIENT_IDS" =~ ^[A-Za-z0-9-]+\.apps\.googleusercontent\.com(,[A-Za-z0-9-]+\.apps\.googleusercontent\.com)*$ ]]; then
+  echo "GOOGLE_CLIENT_IDS must be comma-separated *.apps.googleusercontent.com client IDs, web first" >&2
+  exit 1
+fi
+if [ -n "${GOOGLE_SKIP_NONCE_CHECK:-}" ] && ! [[ "$GOOGLE_SKIP_NONCE_CHECK" =~ ^(true|false)$ ]]; then
+  echo "GOOGLE_SKIP_NONCE_CHECK must be true or false" >&2
+  exit 1
+fi
+if [ -n "${APPLE_CLIENT_IDS:-}" ] && ! [[ "$APPLE_CLIENT_IDS" =~ ^[A-Za-z0-9.-]+(,[A-Za-z0-9.-]+)*$ ]]; then
+  echo "APPLE_CLIENT_IDS must be comma-separated bundle or Services IDs" >&2
+  exit 1
+fi
+if [ -n "${GOOGLE_CLIENT_IDS:-}" ] && [ -z "${APPLE_CLIENT_IDS:-}" ]; then
+  # Spec platform rule: Sign in with Apple wherever Google sign-in is offered.
+  echo "::warning::Google sign-in is enabled without Sign in with Apple (spec platform rule for iOS)"
+fi
+
+no_toml_breakers='^[^"\\[:space:]]+$'
+if [ -n "${ADDITIONAL_REDIRECT_URLS:-}" ] && ! [[ "$ADDITIONAL_REDIRECT_URLS" =~ $no_toml_breakers ]]; then
+  echo "ADDITIONAL_REDIRECT_URLS must be comma-separated URLs without quotes or spaces" >&2
   exit 1
 fi
 
@@ -54,6 +85,25 @@ fi
     echo "enabled = true"
     echo "provider = \"turnstile\""
     echo "secret = \"env(SUPABASE_AUTH_CAPTCHA_SECRET)\""
+  fi
+  if [ -n "${GOOGLE_CLIENT_IDS:-}" ]; then
+    echo ""
+    echo "[remotes.deploy.auth.external.google]"
+    echo "enabled = true"
+    echo "client_id = \"$GOOGLE_CLIENT_IDS\""
+    echo "skip_nonce_check = ${GOOGLE_SKIP_NONCE_CHECK:-false}"
+    if [ -n "${SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET:-}" ]; then
+      echo "secret = \"env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)\""
+    fi
+  fi
+  if [ -n "${APPLE_CLIENT_IDS:-}" ]; then
+    echo ""
+    echo "[remotes.deploy.auth.external.apple]"
+    echo "enabled = true"
+    echo "client_id = \"$APPLE_CLIENT_IDS\""
+    if [ -n "${SUPABASE_AUTH_EXTERNAL_APPLE_SECRET:-}" ]; then
+      echo "secret = \"env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)\""
+    fi
   fi
 } >> "$CONFIG"
 
