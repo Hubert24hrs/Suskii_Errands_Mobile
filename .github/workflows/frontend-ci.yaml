@@ -55,5 +55,7 @@ jobs:
           set -e
           for dir in packages/suskii_core packages/suskii_domain; do
             echo "== $dir (chrome) =="
-            (cd "$dir" && flutter test --platform chrome)
+            # `dart test -p chrome`, not `flutter test --platform chrome`: these are pure Dart
+            # packages, and the Flutter harness crashes its web compiler on them.
+            (cd "$dir" && dart test -p chrome)
           done
