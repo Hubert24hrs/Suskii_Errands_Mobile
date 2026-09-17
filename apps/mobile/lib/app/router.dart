@@ -83,7 +83,10 @@ bool _isKycFlowRoute(String loc) =>
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    refreshListenable: ref.read(_routerRefreshProvider),
+    // watch, not read: nothing else depends on _routerRefreshProvider, and a provider with no
+    // dependants keeps its ref.listen subscriptions paused, so authStateProvider was never
+    // subscribed and redirect kept seeing signedOut: sign-in never left /auth (M3.15).
+    refreshListenable: ref.watch(_routerRefreshProvider),
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final boot = ref.read(bootstrapProvider);
