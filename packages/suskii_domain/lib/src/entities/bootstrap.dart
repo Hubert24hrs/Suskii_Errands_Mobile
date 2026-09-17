@@ -55,8 +55,18 @@ abstract class AppBootstrap with _$AppBootstrap {
   const factory AppBootstrap({
     required CountryPack countryPack,
     required Map<String, bool> featureFlags,
+
+    /// Per-language voice-concierge availability, mirroring the backend's
+    /// `remote_config.voice_languages`. Absent/false means voice is not
+    /// offered for that language (OD-17: Pidgin may ship text-only if the
+    /// voice gate fails).
+    required Map<String, bool> voiceLanguages,
     required String minSupportedAppVersion,
     required int unreadNotifications,
+
+    /// Server clock (UTC) at response time. Feed it to `ServerClock.sync`
+    /// so countdowns render against server time, not the device clock.
+    required DateTime serverTime,
     AppUser? user,
     ActiveJobBanner? activeJobBanner,
   }) = _AppBootstrap;

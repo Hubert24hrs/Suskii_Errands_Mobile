@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -92,7 +93,7 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
     try {
       await ref
           .read(providerKycRepositoryProvider)
-          .submitStep(widget.kind, input);
+          .submitStep(widget.kind, input, idempotencyKey: newIdempotencyKey());
       if (mounted) Navigator.of(context).pop();
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);

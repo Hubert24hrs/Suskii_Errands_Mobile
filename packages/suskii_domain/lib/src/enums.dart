@@ -1,48 +1,124 @@
 /// Status and type enums shared across every Suskii surface.
-/// Names mirror the master spec; JSON wire format uses the camelCase `.name`.
+/// Names mirror the master spec; JSON wire format is lower snake_case via
+/// `@JsonValue` — the same values Postgres and the Supabase-generated types
+/// use (contracts v1, review item N.6).
 library;
 
-enum UserMode { customer, provider }
+import 'package:json_annotation/json_annotation.dart';
 
-enum CountryStatus { disabled, beta, live }
+enum UserMode {
+  @JsonValue('customer')
+  customer,
+  @JsonValue('provider')
+  provider,
+}
 
-enum Urgency { flexible, standard, urgent, emergency }
+enum CountryStatus {
+  @JsonValue('disabled')
+  disabled,
+  @JsonValue('beta')
+  beta,
+  @JsonValue('live')
+  live,
+}
 
-enum TrustLevel { new_, verified, trusted, elite }
+enum Urgency {
+  @JsonValue('flexible')
+  flexible,
+  @JsonValue('standard')
+  standard,
+  @JsonValue('urgent')
+  urgent,
+  @JsonValue('emergency')
+  emergency,
+}
 
-enum VehicleType { walking, bicycle, motorcycle, tricycle, car, van, truck }
+enum TrustLevel {
+  @JsonValue('new')
+  new_,
+  @JsonValue('verified')
+  verified,
+  @JsonValue('trusted')
+  trusted,
+  @JsonValue('elite')
+  elite,
+}
+
+enum VehicleType {
+  @JsonValue('walking')
+  walking,
+  @JsonValue('bicycle')
+  bicycle,
+  @JsonValue('motorcycle')
+  motorcycle,
+  @JsonValue('tricycle')
+  tricycle,
+  @JsonValue('car')
+  car,
+  @JsonValue('van')
+  van,
+  @JsonValue('truck')
+  truck,
+}
 
 enum VerificationStatus {
+  @JsonValue('unverified')
   unverified,
+  @JsonValue('pending')
   pending,
+  @JsonValue('in_review')
   inReview,
+  @JsonValue('verified')
   verified,
+  @JsonValue('rejected')
   rejected,
+  @JsonValue('suspended')
   suspended,
+  @JsonValue('expired')
   expired,
 }
 
 /// The 20 job lifecycle states from the master spec, in canonical order.
 enum JobStatus {
+  @JsonValue('draft')
   draft,
+  @JsonValue('published')
   published,
+  @JsonValue('offers_received')
   offersReceived,
+  @JsonValue('negotiating')
   negotiating,
+  @JsonValue('agreed')
   agreed,
+  @JsonValue('payment_pending')
   paymentPending,
+  @JsonValue('paid_held')
   paidHeld,
+  @JsonValue('assigned')
   assigned,
+  @JsonValue('en_route')
   enRoute,
+  @JsonValue('arrived')
   arrived,
+  @JsonValue('in_progress')
   inProgress,
+  @JsonValue('completed_by_provider')
   completedByProvider,
+  @JsonValue('confirmed')
   confirmed,
+  @JsonValue('settlement_pending')
   settlementPending,
+  @JsonValue('settled')
   settled,
+  @JsonValue('closed')
   closed,
+  @JsonValue('cancelled')
   cancelled,
+  @JsonValue('expired')
   expired,
+  @JsonValue('disputed')
   disputed,
+  @JsonValue('refunded')
   refunded;
 
   bool get isTerminal =>
@@ -64,65 +140,228 @@ enum JobStatus {
       this == JobStatus.disputed;
 }
 
-enum OfferStatus { pending, countered, accepted, declined, expired, withdrawn }
+enum OfferStatus {
+  @JsonValue('pending')
+  pending,
+  @JsonValue('countered')
+  countered,
+  @JsonValue('accepted')
+  accepted,
+  @JsonValue('declined')
+  declined,
+  @JsonValue('expired')
+  expired,
+  @JsonValue('withdrawn')
+  withdrawn,
+}
 
 enum PaymentStatus {
+  @JsonValue('unpaid')
   unpaid,
+  @JsonValue('pending')
   pending,
+  @JsonValue('held')
   held,
+  @JsonValue('failed')
   failed,
+  @JsonValue('refunded')
   refunded,
+  @JsonValue('partially_refunded')
   partiallyRefunded,
 }
 
-enum ReferralCommissionStatus { pending, earned, holding, available, reversed }
+enum ReferralCommissionStatus {
+  @JsonValue('pending')
+  pending,
+  @JsonValue('earned')
+  earned,
+  @JsonValue('holding')
+  holding,
+  @JsonValue('available')
+  available,
+  @JsonValue('reversed')
+  reversed,
+}
 
-enum ChatMessageType { text, image, voiceNote, location, offerCard, system }
+enum ChatMessageType {
+  @JsonValue('text')
+  text,
+  @JsonValue('image')
+  image,
+  @JsonValue('voice_note')
+  voiceNote,
+  @JsonValue('location')
+  location,
+  @JsonValue('offer_card')
+  offerCard,
+  @JsonValue('system')
+  system,
+}
 
 enum WalletTransactionKind {
+  @JsonValue('credit')
   credit,
+  @JsonValue('debit')
   debit,
+  @JsonValue('hold')
   hold,
+  @JsonValue('release')
   release,
+  @JsonValue('refund')
   refund,
+  @JsonValue('payout')
   payout,
+  @JsonValue('referral')
   referral,
+  @JsonValue('tip')
   tip,
+  @JsonValue('item_float')
   itemFloat,
 }
 
-enum WalletTransactionStatus { pending, completed, failed, reversed }
+enum WalletTransactionStatus {
+  @JsonValue('pending')
+  pending,
+  @JsonValue('completed')
+  completed,
+  @JsonValue('failed')
+  failed,
+  @JsonValue('reversed')
+  reversed,
+}
 
-enum ProviderKind { individual, business }
+enum ProviderKind {
+  @JsonValue('individual')
+  individual,
+  @JsonValue('business')
+  business,
+}
 
-enum BusinessRole { owner, dispatcher, worker }
+enum BusinessRole {
+  @JsonValue('owner')
+  owner,
+  @JsonValue('dispatcher')
+  dispatcher,
+  @JsonValue('worker')
+  worker,
+}
 
 /// Individual KYC/verification steps from the master spec. `customerFacial`
 /// is the customer flow; the rest belong to provider onboarding.
 enum KycStepKind {
+  @JsonValue('customer_facial')
   customerFacial,
+  @JsonValue('government_id')
   governmentId,
+  @JsonValue('provider_facial')
   providerFacial,
+  @JsonValue('id_document_capture')
   idDocumentCapture,
+  @JsonValue('police_clearance')
   policeClearance,
+  @JsonValue('address')
   address,
+  @JsonValue('guarantor')
   guarantor,
+  @JsonValue('payout_account')
   payoutAccount,
+  @JsonValue('vehicle_documents')
   vehicleDocuments,
+  @JsonValue('credentials')
   credentials,
 }
 
 enum KycStepStatus {
+  @JsonValue('not_started')
   notStarted,
+  @JsonValue('consent_pending')
   consentPending,
+  @JsonValue('in_progress')
   inProgress,
+  @JsonValue('in_review')
   inReview,
+  @JsonValue('verified')
   verified,
+  @JsonValue('rejected')
   rejected,
+  @JsonValue('expired')
   expired,
 }
 
 /// Server-style outcome of an identity-verification vendor call
-/// (liveness capture, government-ID match). `retry` means the user may
-/// try again; `failed` carries a localizable [reasonKey].
-enum IdentityCheckOutcome { success, retry, failed }
+/// (liveness capture). `retry` means the user may try again; `failed`
+/// carries a localizable reason key.
+enum IdentityCheckOutcome {
+  @JsonValue('success')
+  success,
+  @JsonValue('retry')
+  retry,
+  @JsonValue('failed')
+  failed,
+}
+
+/// Confidence of a server-computed [PriceBand] — depends on sample size.
+enum PriceBandConfidence {
+  @JsonValue('low')
+  low,
+  @JsonValue('medium')
+  medium,
+  @JsonValue('high')
+  high,
+}
+
+/// What a [PriceBand] is derived from (ai-design §9): a `rules` band is a
+/// rough guide until enough completed jobs exist for a `history` band.
+enum PriceBandBasis {
+  @JsonValue('rules')
+  rules,
+  @JsonValue('history')
+  history,
+}
+
+enum ConciergeRole {
+  @JsonValue('user')
+  user,
+  @JsonValue('assistant')
+  assistant,
+  @JsonValue('system')
+  system,
+}
+
+/// What the concierge assistant proposes the UI do next, carried on assistant
+/// messages: the publish card (user's tap calls publishRequest), the offers
+/// board, the SOS card, or a handoff to the prefilled request form.
+enum ConciergeProposedAction {
+  @JsonValue('none')
+  none,
+  @JsonValue('show_publish_card')
+  showPublishCard,
+  @JsonValue('show_offer_comparison')
+  showOfferComparison,
+  @JsonValue('show_sos_card')
+  showSosCard,
+  @JsonValue('handoff_to_form')
+  handoffToForm,
+}
+
+enum VoiceEventKind {
+  @JsonValue('session_state')
+  sessionState,
+  @JsonValue('transcript')
+  transcript,
+  @JsonValue('assistant_audio')
+  assistantAudio,
+}
+
+enum VoiceSessionState {
+  @JsonValue('connecting')
+  connecting,
+  @JsonValue('listening')
+  listening,
+  @JsonValue('thinking')
+  thinking,
+  @JsonValue('speaking')
+  speaking,
+  @JsonValue('ended')
+  ended,
+}

@@ -61,14 +61,23 @@ void main() {
   group('MockUserRepository', () {
     test('mode switch to provider allowed for verified provider', () async {
       final repo = MockUserRepository(db, behavior);
-      expect(await repo.setActiveMode(UserMode.provider), UserMode.provider);
+      expect(
+        await repo.setActiveMode(
+          UserMode.provider,
+          idempotencyKey: newIdempotencyKey(),
+        ),
+        UserMode.provider,
+      );
     });
 
     test('mode switch blocked for unverified provider', () async {
       behavior.currentUserId = 'user-chidi';
       final repo = MockUserRepository(db, behavior);
       expect(
-        () => repo.setActiveMode(UserMode.provider),
+        () => repo.setActiveMode(
+          UserMode.provider,
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,
@@ -85,7 +94,10 @@ void main() {
       'accept locks others and agrees the job with a server breakdown',
       () async {
         final repo = MockOfferRepository(db, behavior);
-        final accepted = await repo.acceptOffer('offer-1a');
+        final accepted = await repo.acceptOffer(
+          'offer-1a',
+          idempotencyKey: newIdempotencyKey(),
+        );
         expect(accepted.status, OfferStatus.accepted);
 
         final request = db.requests['req-1']!;
@@ -104,7 +116,7 @@ void main() {
     test('expired offers cannot be accepted', () async {
       final repo = MockOfferRepository(db, behavior);
       expect(
-        () => repo.acceptOffer('offer-1c'),
+        () => repo.acceptOffer('offer-1c', idempotencyKey: newIdempotencyKey()),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,
@@ -115,7 +127,7 @@ void main() {
       );
     });
 
-    test('negotiation rounds capped by country pack', () async {
+    test('negotiation rounds capped per category (default 5)', () async {
       final repo = MockOfferRepository(db, behavior);
       // offer-1b is at round 2; push it past the 5-round cap.
       final current = db.offers['req-1']![1];
@@ -124,6 +136,7 @@ void main() {
         () => repo.counterOffer(
           offerId: 'offer-1b',
           amount: const Money(560000, 'NGN'),
+          idempotencyKey: newIdempotencyKey(),
         ),
         throwsA(
           isA<AppError>().having(
@@ -143,6 +156,7 @@ void main() {
         () => repo.submitOffer(
           requestId: 'req-1',
           amount: const Money(500000, 'NGN'),
+          idempotencyKey: newIdempotencyKey(),
         ),
         throwsA(
           isA<AppError>().having(
@@ -156,11 +170,14 @@ void main() {
 
     test('busy-as-customer rule is configurable', () async {
       final repo = MockProviderRepository(db, behavior);
-      expect(await repo.setOnline(true), isTrue);
+      expect(
+        await repo.setOnline(true, idempotencyKey: newIdempotencyKey()),
+        isTrue,
+      );
       db.providerBusyRuleEnabled = true;
       // user-ada has req-6 in paymentPending → blocked.
       expect(
-        () => repo.setOnline(true),
+        () => repo.setOnline(true, idempotencyKey: newIdempotencyKey()),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,
@@ -176,13 +193,18 @@ void main() {
     test('illegal transitions are rejected', () async {
       final repo = MockJobProgressRepository(db, behavior);
       expect(
-        () => repo.requestStatusChange('req-2', JobStatus.completedByProvider),
+        () => repo.requestStatusChange(
+          'req-2',
+          JobStatus.completedByProvider,
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(isA<AppError>()),
       );
       // enRoute → arrived is legal.
       final updated = await repo.requestStatusChange(
         'req-2',
         JobStatus.arrived,
+        idempotencyKey: newIdempotencyKey(),
       );
       expect(updated.status, JobStatus.arrived);
     });
@@ -192,7 +214,11 @@ void main() {
     test('paid jobs cannot be cancelled by the client path', () async {
       final repo = MockRequestRepository(db, behavior);
       expect(
-        () => repo.cancelRequest('req-2', 'changedMind'),
+        () => repo.cancelRequest(
+          'req-2',
+          'changedMind',
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,
@@ -215,7 +241,10 @@ void main() {
     test('withdrawal below country minimum is rejected', () async {
       final repo = MockWalletRepository(db, behavior);
       expect(
-        () => repo.requestWithdrawal(const Money(500, 'NGN')),
+        () => repo.requestWithdrawal(
+          const Money(500, 'NGN'),
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,
@@ -229,7 +258,10 @@ void main() {
     test('withdrawal above balance is rejected', () async {
       final repo = MockWalletRepository(db, behavior);
       expect(
-        () => repo.requestWithdrawal(const Money(99999900, 'NGN')),
+        () => repo.requestWithdrawal(
+          const Money(99999900, 'NGN'),
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(
           isA<AppError>().having(
             (e) => e.code,

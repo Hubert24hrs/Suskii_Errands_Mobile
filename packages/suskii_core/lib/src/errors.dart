@@ -7,6 +7,7 @@ abstract final class ErrorCodes {
   static const String countryDisabled = 'ERR_COUNTRY_DISABLED';
   static const String unauthenticated = 'ERR_UNAUTHENTICATED';
   static const String permissionDenied = 'ERR_PERMISSION_DENIED';
+  static const String idempotencyKeyReused = 'ERR_IDEMPOTENCY_KEY_REUSED';
 
   // Mode / provider
   static const String providerNotVerified = 'ERR_PROVIDER_NOT_VERIFIED';
@@ -31,6 +32,7 @@ abstract final class ErrorCodes {
   static const String otpInvalid = 'ERR_OTP_INVALID';
   static const String otpRateLimited = 'ERR_OTP_RATE_LIMITED';
   static const String verificationFailed = 'ERR_VERIFICATION_FAILED';
+  static const String verificationRequired = 'ERR_VERIFICATION_REQUIRED';
   static const String consentRequired = 'ERR_CONSENT_REQUIRED';
   static const String verificationRejected = 'ERR_VERIFICATION_REJECTED';
   static const String kycStepInvalid = 'ERR_KYC_STEP_INVALID';
@@ -38,6 +40,7 @@ abstract final class ErrorCodes {
 
   // Features
   static const String featureUnavailable = 'ERR_FEATURE_UNAVAILABLE';
+  static const String unsupportedLanguage = 'ERR_UNSUPPORTED_LANGUAGE';
 }
 
 /// Error type surfaced to the app. [messageKey] is a localization key.

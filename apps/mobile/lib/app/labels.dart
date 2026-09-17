@@ -122,3 +122,37 @@ String kycRejectionReasonLabel(AppLocalizations l10n, String? key) =>
       'kycRejectPoliceClearanceExpired' => l10n.kycRejectPoliceClearanceExpired,
       _ => key ?? l10n.errUnknown,
     };
+
+String urgencyLabel(AppLocalizations l10n, Urgency urgency) =>
+    switch (urgency) {
+      Urgency.flexible => l10n.urgencyFlexible,
+      Urgency.standard => l10n.urgencyStandard,
+      Urgency.urgent => l10n.urgencyUrgent,
+      Urgency.emergency => l10n.urgencyEmergency,
+    };
+
+String offerStatusLabel(AppLocalizations l10n, OfferStatus status) =>
+    switch (status) {
+      OfferStatus.pending => l10n.offersPendingStatus,
+      OfferStatus.countered => l10n.offersCounter,
+      OfferStatus.accepted => l10n.offersAcceptedStatus,
+      OfferStatus.declined => l10n.offersDeclinedStatus,
+      OfferStatus.withdrawn => l10n.offersWithdrawnStatus,
+      OfferStatus.expired => l10n.offersExpired,
+    };
+
+/// Emergency-number labels arrive as localization keys from the country pack.
+String emergencyNumberLabel(AppLocalizations l10n, String key) => switch (key) {
+  'emergencyPolice' => l10n.emergencyPolice,
+  'emergencyAmbulance' => l10n.emergencyAmbulance,
+  _ => l10n.emergencyGeneral,
+};
+
+/// Request-cancellation reasons are localization keys sent to the server,
+/// never free text.
+String cancelReasonLabel(AppLocalizations l10n, String key) => switch (key) {
+  'changedMind' => l10n.cancelReasonChangedMind,
+  'priceTooHigh' => l10n.cancelReasonPriceTooHigh,
+  'foundElsewhere' => l10n.cancelReasonFoundElsewhere,
+  _ => l10n.cancelReasonOther,
+};

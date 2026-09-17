@@ -177,3 +177,77 @@ Conventions used below:
 
 ## Later milestones
 Sections for M3..M8 screens get appended here as those milestones are built.
+
+---
+
+## M3 — Request creation, concierge, offers (2026-09-17)
+
+### Create request (`/customer/requests/new`)
+- Data displayed: catalog categories (id, label key, icon key); country-pack currency for the money
+  fields; price band for the chosen category (`min`/`max`/`suggested` Money + `confidence` +
+  `basis: rules|history` — `basis` added to the domain `PriceBand` this milestone so the UI can
+  label "based on similar errands" vs "typical range"); optional prefill from concierge handoff
+  (categoryId, description, pickup label, preferred price Money).
+- Actions: `createRequest(input, idempotencyKey)` → draft JobRequest (one key per create intent,
+  held in screen state so a retried publish replays instead of double-creating);
+  `publishRequest(jobId, idempotencyKey)` → JobRequest | `ERR_VERIFICATION_REQUIRED` (UI routes to
+  `/verify/customer`), `ERR_VALIDATION`, `ERR_IDEMPOTENCY_KEY_REUSED`.
+- Input fields sent: categoryId, description, pickup PlaceRef (label + landmarkNote), optional
+  destination PlaceRef, urgency (flexible|standard|urgent|emergency), optional scheduledAt,
+  optional preferredPrice/itemFloat/declaredValue Money, photo refs (opaque upload refs at M9).
+- Edge cases: save-as-draft (creates the draft, no publish); schedule picker (urgency stays
+  `flexible` semantics server-side); permission/verification wall on publish.
+- Photos are local file paths in the mock; official contract needs an upload-ref flow like KYC docs.
+
+### Concierge chat (`/customer/concierge`)
+- Data displayed: conversation (id, status, turns with role user|assistant|system, localized
+  intent label keys, slot chips), streaming assistant text, extracted `ConciergeSlots` mirrored
+  into a draft JobRequest after the first turn.
+- Actions: `startConversation(language)` → conversation; `sendMessage(conversationId, text,
+  idempotencyKey)` → turn(s) | `ERR_UNSUPPORTED_LANGUAGE` (only `en` + `pcm`); publish/handoff from
+  the summary card reuses the same draft (`publishRequest`, or navigate to
+  `/customer/requests/new?...prefill`).
+- Realtime: assistant reply streams as partial text events (mock: chunked stream); draft syncs per
+  turn.
+- Languages: en + pcm from day one; other locales rejected with `ERR_UNSUPPORTED_LANGUAGE` so the
+  UI can fall back to the form.
+- SOS card surfaces the country-pack `emergencyNumbers` (label keys + numbers) — no new data need.
+
+### Voice concierge (`/customer/concierge/voice`)
+- Data displayed: session state (connecting|listening|thinking|speaking|ended), live transcript
+  lines, error state.
+- Actions: adapter `startSession(conversationId, language)` → VoiceSession |
+  `ERR_UNSUPPORTED_LANGUAGE` (pcm voice rejected in mock — UI offers text fallback);
+  `events(sessionId)` stream of VoiceEvent (state + partial text); `endSession(sessionId)`.
+- Open decision OD-17 still stands: real voice provider + barge-in semantics are backend's call;
+  the UI only depends on the adapter interface.
+
+### Offers board (inside request detail)
+- Data displayed: per offer — providerName/providerRating/providerTrustLevel, amount Money,
+  payoutEstimate Money (server-computed, display-only), status, round, createdAt, optional
+  message, distanceMeters, etaMinutes, expiresAt (countdown rendered against server-clock offset).
+- Actions: `acceptOffer(offerId, idempotencyKey)`, `declineOffer(offerId, idempotencyKey)`,
+  `counterOffer(offerId, amount, message?, idempotencyKey)` → updated offer/job |
+  `ERR_OFFER_EXPIRED`, `ERR_INVALID_STATE`, `ERR_IDEMPOTENCY_KEY_REUSED`.
+- Realtime: `watchOffers(jobId)` — new offers and status flips (accepted/declined/expired/
+  superseded-by-counter) push to the board.
+- Edge cases: empty (waiting state), expired offer (actions disabled, countdown at zero),
+  counter sheet validation (amount required, currency locked to the job's).
+
+### Request detail (`/customer/requests/:id`)
+- Data displayed: full JobRequest — status chip + milestone timeline (published → offers →
+  accepted → in progress → handover), description, pickup/destination (+ landmarkNote), urgency,
+  scheduledAt, preferred price/item float/declared value, cancel affordance while cancellable.
+- Actions: `publishRequest` (drafts), `cancelRequest(jobId, reasonKey, idempotencyKey)` |
+  `ERR_INVALID_STATE`; reason is a fixed key set (changeOfPlans|foundProvider|duplicate|
+  priceTooHigh|other) — localized client-side, server stores the key.
+- Realtime: `watchJob(jobId)`.
+
+### Open needs for the official contract (from M3 UI work)
+- `PriceBand.basis` (rules|history) is now in the domain model; please carry it into the pricing
+  contract so the UI label stays truthful.
+- Offer `expiresAt` semantics (who sets it, whether counters extend it) — mock uses a fixed TTL.
+- Concierge → draft sync: mock creates the draft from the first slot batch; official contract
+  should state whether drafts are server-side from turn one (preferred) or client-posted.
+- Photo upload-ref flow for request photos (same shape as KYC upload refs).
+- Voice session transport (WebSocket vs WebRTC) and partial-transcript event schema (OD-17).

@@ -50,6 +50,16 @@ void main() {
       const m = Money(8750, 'USD');
       expect(Money.fromJson(m.toJson()), m);
     });
+
+    test('UGX stays exponent 0 (golden: no hardcoded /100)', () {
+      expect(Money.exponentOf('UGX'), 0);
+      expect(Money.fromMajorUnits(4500, 'UGX').minorUnits, 4500);
+      expect(const Money(4500, 'UGX').format(), 'UGX 4,500');
+    });
+
+    test('unknown currency asserts in debug instead of defaulting to 2', () {
+      expect(() => Money.exponentOf('ZZZ'), throwsA(isA<AssertionError>()));
+    });
   });
 
   group('JobStatus', () {

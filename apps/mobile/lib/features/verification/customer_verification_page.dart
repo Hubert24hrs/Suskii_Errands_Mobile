@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -68,7 +69,9 @@ class _CustomerVerificationPageState
   }
 
   Future<void> _giveConsent() => _run(
-    () => ref.read(verificationRepositoryProvider).giveBiometricConsent(),
+    () => ref
+        .read(verificationRepositoryProvider)
+        .giveBiometricConsent(idempotencyKey: newIdempotencyKey()),
   );
 
   Future<void> _retryFlow() async {
@@ -77,7 +80,9 @@ class _CustomerVerificationPageState
       _livenessFailureKey = null;
     });
     await _run(
-      () => ref.read(verificationRepositoryProvider).startFacialVerification(),
+      () => ref
+          .read(verificationRepositoryProvider)
+          .startFacialVerification(idempotencyKey: newIdempotencyKey()),
     );
   }
 
@@ -109,7 +114,12 @@ class _CustomerVerificationPageState
   Future<void> _submitIdLookup(String sessionId) => _run(
     () => ref
         .read(verificationRepositoryProvider)
-        .submitIdLookup(sessionId, _idType, _idNumberController.text.trim()),
+        .submitIdLookup(
+          sessionId,
+          _idType,
+          _idNumberController.text.trim(),
+          idempotencyKey: newIdempotencyKey(),
+        ),
   );
 
   @override

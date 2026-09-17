@@ -162,7 +162,9 @@ class ModeController extends Notifier<UserMode> {
 
   /// Throws AppError (e.g. ERR_PROVIDER_NOT_VERIFIED) — callers localize.
   Future<void> switchMode(UserMode target) async {
-    final mode = await ref.read(userRepositoryProvider).setActiveMode(target);
+    final mode = await ref
+        .read(userRepositoryProvider)
+        .setActiveMode(target, idempotencyKey: newIdempotencyKey());
     state = mode;
   }
 }
@@ -239,4 +241,39 @@ final walletSummaryProvider = FutureProvider<WalletSummary>(
 
 final walletTransactionsProvider = FutureProvider<List<WalletTransaction>>(
   (ref) => ref.watch(walletRepositoryProvider).getTransactions(),
+);
+
+final voiceConciergeAdapterProvider = Provider<VoiceConciergeAdapter>(
+  (ref) => MockVoiceConciergeAdapter(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+/// Server-time clock, synced from bootstrap `serverTime`. Every countdown
+/// (offer TTL, request expiry) renders against this, never raw device time.
+final serverClockProvider = Provider<ServerClock>((ref) {
+  final clock = ServerClock();
+  final boot = ref.watch(bootstrapProvider).value;
+  if (boot != null) clock.sync(boot.serverTime);
+  return clock;
+});
+
+/// ---------------------------------------------------------------------------
+/// Screen-level data providers (M3: requests, concierge, offers)
+/// ---------------------------------------------------------------------------
+
+final requestDetailProvider = StreamProvider.family<JobRequest, String>(
+  (ref, jobId) => ref.watch(requestRepositoryProvider).watchJob(jobId),
+);
+
+final offersProvider = StreamProvider.family<List<Offer>, String>(
+  (ref, requestId) => ref.watch(offerRepositoryProvider).watchOffers(requestId),
+);
+
+/// Advisory price band per category — a hint next to the preferred-price
+/// field, never used to set a price.
+final priceBandProvider = FutureProvider.family<PriceBand, String>(
+  (ref, categoryId) =>
+      ref.watch(catalogRepositoryProvider).getPriceBand(categoryId: categoryId),
 );

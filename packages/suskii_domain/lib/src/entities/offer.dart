@@ -26,6 +26,9 @@ abstract class Offer with _$Offer {
     /// Distance in meters at offer time (server-computed).
     int? distanceMeters,
 
+    /// Estimated minutes for the provider to reach pickup (server-computed).
+    int? etaMinutes,
+
     /// Server-computed estimated payout shown to the provider before submitting.
     PriceBreakdown? payoutEstimate,
     DateTime? expiresAt,

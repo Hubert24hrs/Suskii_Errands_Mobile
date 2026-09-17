@@ -32,6 +32,9 @@ String localizedError(AppLocalizations l10n, Object error) {
     ErrorCodes.verificationRejected => l10n.errVerificationRejected,
     ErrorCodes.kycStepInvalid => l10n.errKycStepInvalid,
     ErrorCodes.kycIncomplete => l10n.errKycIncomplete,
+    ErrorCodes.verificationRequired => l10n.errVerificationRequired,
+    ErrorCodes.idempotencyKeyReused => l10n.errIdempotencyKeyReused,
+    ErrorCodes.unsupportedLanguage => l10n.errUnsupportedLanguage,
     _ => l10n.errUnknown,
   };
 }

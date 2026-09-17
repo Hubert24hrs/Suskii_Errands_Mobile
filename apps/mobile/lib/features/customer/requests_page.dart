@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -7,6 +8,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
+import '../../app/router.dart';
 import '../shared/job_card.dart';
 
 final _requestHistoryProvider = FutureProvider<List<JobRequest>>(
@@ -52,6 +54,8 @@ class CustomerRequestsPage extends ConsumerWidget {
               JobCard(
                 job: job,
                 categoryLabel: categoryLabelFor(job.categoryId),
+                onTap: () =>
+                    context.push(AppRoutes.customerRequestDetailPath(job.id)),
               ),
           ],
         ),

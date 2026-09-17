@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -64,6 +65,7 @@ class _ProviderOnboardingPageState
                   ? _businessNameController.text.trim()
                   : null,
             ),
+            idempotencyKey: newIdempotencyKey(),
           );
       if (mounted) context.go(AppRoutes.providerKyc);
     } on Object catch (error) {

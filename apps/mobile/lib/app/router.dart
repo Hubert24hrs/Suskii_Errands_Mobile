@@ -5,11 +5,15 @@ import 'package:suskii_domain/suskii_domain.dart';
 
 import '../features/auth/auth_page.dart';
 import '../features/auth/mfa_prompt_page.dart';
+import '../features/customer/concierge_page.dart';
+import '../features/customer/create_request_page.dart';
 import '../features/customer/customer_home_page.dart';
 import '../features/customer/customer_shell.dart';
 import '../features/customer/messages_page.dart';
 import '../features/customer/profile_page.dart';
+import '../features/customer/request_detail_page.dart';
 import '../features/customer/requests_page.dart';
+import '../features/customer/voice_concierge_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
 import '../features/provider/provider_feed_page.dart';
@@ -41,6 +45,14 @@ abstract final class AppRoutes {
   static const String customerRequests = '/customer/requests';
   static const String customerMessages = '/customer/messages';
   static const String customerProfile = '/customer/profile';
+
+  static const String customerRequestsNew = '/customer/requests/new';
+  static const String customerConcierge = '/customer/concierge';
+  static const String customerConciergeVoice = '/customer/concierge/voice';
+  static const String customerRequestDetail = '/customer/requests/:id';
+
+  static String customerRequestDetailPath(String id) =>
+      '/customer/requests/$id';
 
   static const String providerFeed = '/provider/feed';
   static const String providerJobs = '/provider/jobs';
@@ -181,6 +193,42 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.providerKyc,
         builder: (context, state) => const ProviderKycPage(),
+      ),
+      // M3: create-request, concierge and request detail. Declared before the
+      // shells so `/customer/requests/new` wins over `/customer/requests/:id`.
+      GoRoute(
+        path: AppRoutes.customerRequestsNew,
+        builder: (context, state) {
+          final q = state.uri.queryParameters;
+          final priceMinor = int.tryParse(q['priceMinor'] ?? '');
+          return CreateRequestPage(
+            prefill: q.isEmpty
+                ? null
+                : CreateRequestPrefill(
+                    categoryId: q['categoryId'],
+                    description: q['description'],
+                    pickupLabel: q['pickup'],
+                    preferredPrice: priceMinor == null
+                        ? null
+                        : Money(priceMinor, q['currency'] ?? 'NGN'),
+                  ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.customerConcierge,
+        builder: (context, state) => const ConciergePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerConciergeVoice,
+        builder: (context, state) => VoiceConciergePage(
+          conversationId: state.uri.queryParameters['conversationId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.customerRequestDetail,
+        builder: (context, state) =>
+            RequestDetailPage(jobId: state.pathParameters['id']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

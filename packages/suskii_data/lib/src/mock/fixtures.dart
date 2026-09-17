@@ -4,6 +4,15 @@ import 'package:suskii_domain/suskii_domain.dart';
 
 import 'server_sim.dart';
 
+/// Per-language voice-concierge availability for the mock backend, mirroring
+/// `remote_config.voice_languages` (OD-17: Pidgin ships text-only until the
+/// voice gate passes). Served on `AppBootstrap.voiceLanguages` and injected
+/// into `MockVoiceConciergeAdapter` so both read the same source.
+const Map<String, bool> kMockVoiceLanguages = <String, bool>{
+  'en': true,
+  'pcm': false,
+};
+
 /// In-memory mock "database". Mutable, seeded with realistic fixtures covering
 /// the spec's required edge cases: expired offers, failed payment, disputed
 /// job, suspended provider, expired police clearance, unverified user, empty
@@ -178,74 +187,76 @@ class MockDatabase {
       ),
     };
 
-    categories = const <ServiceCategory>[
-      ServiceCategory(
+    // Growable (not const) so tests/demo can override per-category
+    // negotiation config (offerTtlSeconds, maxCounterRounds).
+    categories = <ServiceCategory>[
+      const ServiceCategory(
         id: 'errands_delivery',
         labelKey: 'catErrandsDelivery',
         iconKey: 'package',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'shopping',
         labelKey: 'catShopping',
         iconKey: 'cart',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'cleaning_laundry',
         labelKey: 'catCleaningLaundry',
         iconKey: 'sparkles',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'moving',
         labelKey: 'catMoving',
         iconKey: 'truck',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'repairs',
         labelKey: 'catRepairs',
         iconKey: 'wrench',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'personal_assistance',
         labelKey: 'catPersonalAssistance',
         iconKey: 'person',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'document_delivery',
         labelKey: 'catDocumentDelivery',
         iconKey: 'document',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'food_pickup',
         labelKey: 'catFoodPickup',
         iconKey: 'food',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'transportation',
         labelKey: 'catTransportation',
         iconKey: 'car',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'tech_business',
         labelKey: 'catTechBusiness',
         iconKey: 'laptop',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'event_assistance',
         labelKey: 'catEventAssistance',
         iconKey: 'calendar',
         allowsCustom: false,
       ),
-      ServiceCategory(
+      const ServiceCategory(
         id: 'custom',
         labelKey: 'catCustom',
         iconKey: 'magic',

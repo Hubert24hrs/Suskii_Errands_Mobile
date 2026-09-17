@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -32,7 +33,9 @@ class ProviderKycPage extends ConsumerWidget {
 
   Future<void> _submitForReview(BuildContext context, WidgetRef ref) async {
     try {
-      await ref.read(providerKycRepositoryProvider).submitForReview();
+      await ref
+          .read(providerKycRepositoryProvider)
+          .submitForReview(idempotencyKey: newIdempotencyKey());
     } on Object catch (error) {
       if (context.mounted) {
         showSToast(

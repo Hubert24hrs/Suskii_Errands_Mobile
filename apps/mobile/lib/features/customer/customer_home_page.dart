@@ -88,6 +88,18 @@ class CustomerHomePage extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: SSpacing.xl),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  Icons.auto_awesome,
+                  color: theme.colorScheme.primary,
+                ),
+                title: Text(l10n.conciergeTitle),
+                subtitle: Text(l10n.conciergeHint),
+                onTap: () => context.push(AppRoutes.customerConcierge),
+              ),
+            ),
+            const SizedBox(height: SSpacing.xl),
             Text(l10n.homeActiveJobs, style: theme.textTheme.titleMedium),
             const SizedBox(height: SSpacing.sm),
             jobs.when(
@@ -118,6 +130,9 @@ class CustomerHomePage extends ConsumerWidget {
                           cats,
                           job.categoryId,
                         ),
+                        onTap: () => context.push(
+                          AppRoutes.customerRequestDetailPath(job.id),
+                        ),
                       ),
                   ],
                 );
@@ -146,24 +161,30 @@ class CustomerHomePage extends ConsumerWidget {
                 children: <Widget>[
                   for (final ServiceCategory category in data)
                     Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(SSpacing.sm),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Icon(
-                              _categoryIcon(category.iconKey),
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(height: SSpacing.xs),
-                            Text(
-                              categoryLabel(l10n, category.labelKey),
-                              style: theme.textTheme.labelSmall,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                      child: InkWell(
+                        onTap: () => context.push(
+                          '${AppRoutes.customerRequestsNew}'
+                          '?categoryId=${category.id}',
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(SSpacing.sm),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Icon(
+                                _categoryIcon(category.iconKey),
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(height: SSpacing.xs),
+                              Text(
+                                categoryLabel(l10n, category.labelKey),
+                                style: theme.textTheme.labelSmall,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

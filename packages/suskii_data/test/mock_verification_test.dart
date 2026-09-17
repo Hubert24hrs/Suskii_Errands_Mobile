@@ -43,16 +43,21 @@ void main() {
       },
     );
 
-    test('ID match resolves the verified name server-side', () async {
-      final adapter = MockIdentityVerificationAdapter(db, behavior);
-      final session = await adapter.startLivenessSession();
-      final result = await adapter.matchGovernmentId(
-        session.sessionId,
+    // Government-ID lookup is server-side only (review C.2): the adapter
+    // exposes liveness capture, never a NIN → name lookup on device.
+    test('ID lookup happens server-side via submitIdLookup', () async {
+      final repo = MockVerificationRepository(db, behavior);
+      final consented = await repo.giveBiometricConsent(
+        idempotencyKey: newIdempotencyKey(),
+      );
+      final inReview = await repo.submitIdLookup(
+        consented.id,
         'nin',
         '12345678901',
+        idempotencyKey: newIdempotencyKey(),
       );
-      expect(result.outcome, IdentityCheckOutcome.success);
-      expect(result.matchedName, 'Chidi Eze');
+      expect(inReview.status, KycStepStatus.inReview);
+      expect(inReview.rejectionReasonKey, isNull);
     });
   });
 
@@ -61,7 +66,7 @@ void main() {
       final repo = MockVerificationRepository(db, behavior);
       expect(await repo.getCustomerVerification(), isNull);
       expect(
-        repo.startFacialVerification,
+        () => repo.startFacialVerification(idempotencyKey: newIdempotencyKey()),
         throwsA(expectCode(ErrorCodes.consentRequired)),
       );
     });
@@ -70,17 +75,22 @@ void main() {
       'happy path: consent → start → ID lookup → in-review → verified',
       () async {
         final repo = MockVerificationRepository(db, behavior);
-        final consented = await repo.giveBiometricConsent();
+        final consented = await repo.giveBiometricConsent(
+          idempotencyKey: newIdempotencyKey(),
+        );
         expect(consented.status, KycStepStatus.inProgress);
         expect(consented.kind, KycStepKind.customerFacial);
 
-        final started = await repo.startFacialVerification();
+        final started = await repo.startFacialVerification(
+          idempotencyKey: newIdempotencyKey(),
+        );
         expect(started.status, KycStepStatus.inProgress);
 
         final inReview = await repo.submitIdLookup(
           started.id,
           'nin',
           '12345678901',
+          idempotencyKey: newIdempotencyKey(),
         );
         expect(inReview.status, KycStepStatus.inReview);
 
@@ -103,8 +113,15 @@ void main() {
           .map((VerificationSession? s) => s?.status)
           .take(4)
           .toList();
-      final consented = await repo.giveBiometricConsent();
-      await repo.submitIdLookup(consented.id, 'nin', '12345678901');
+      final consented = await repo.giveBiometricConsent(
+        idempotencyKey: newIdempotencyKey(),
+      );
+      await repo.submitIdLookup(
+        consented.id,
+        'nin',
+        '12345678901',
+        idempotencyKey: newIdempotencyKey(),
+      );
       expect(await statuses, <KycStepStatus?>[
         null,
         KycStepStatus.inProgress,
@@ -116,7 +133,12 @@ void main() {
     test('ID lookup on a fresh session is an invalid step', () async {
       final repo = MockVerificationRepository(db, behavior);
       expect(
-        () => repo.submitIdLookup('vs-user-chidi', 'nin', '12345678901'),
+        () => repo.submitIdLookup(
+          'vs-user-chidi',
+          'nin',
+          '12345678901',
+          idempotencyKey: newIdempotencyKey(),
+        ),
         throwsA(expectCode(ErrorCodes.kycStepInvalid)),
       );
     });
@@ -147,6 +169,7 @@ void main() {
           vehicleType: VehicleType.van,
           businessName: 'Chidi Logistics',
         ),
+        idempotencyKey: newIdempotencyKey(),
       );
       expect(profile.kind, ProviderKind.business);
       expect(profile.serviceCategoryIds, <String>['moving']);
@@ -162,6 +185,7 @@ void main() {
           phoneE164: '+2348011112222',
           relationship: 'brother',
         ),
+        idempotencyKey: newIdempotencyKey(),
       );
       final step = profile.steps.singleWhere(
         (KycStep s) => s.kind == KycStepKind.guarantor,
@@ -190,6 +214,7 @@ void main() {
             phoneE164: '+2348011112222',
             relationship: 'brother',
           ),
+          idempotencyKey: newIdempotencyKey(),
         ),
         throwsA(expectCode(ErrorCodes.kycStepInvalid)),
       );
@@ -204,6 +229,7 @@ void main() {
           city: 'Ikeja',
           state: 'Lagos',
         ),
+        idempotencyKey: newIdempotencyKey(),
       );
       expect(
         () => repo.submitStep(
@@ -213,6 +239,7 @@ void main() {
             city: 'Ikeja',
             state: 'Lagos',
           ),
+          idempotencyKey: newIdempotencyKey(),
         ),
         throwsA(expectCode(ErrorCodes.kycStepInvalid)),
       );
@@ -230,6 +257,7 @@ void main() {
             expiryDate: DateTime.now().subtract(const Duration(days: 35)),
             uploadRef: 'mock://uploads/pcc.pdf',
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
         final step = profile.steps.singleWhere(
           (KycStep s) => s.kind == KycStepKind.policeClearance,
@@ -270,7 +298,7 @@ void main() {
       () async {
         final repo = MockProviderKycRepository(db, behavior);
         expect(
-          repo.submitForReview,
+          () => repo.submitForReview(idempotencyKey: newIdempotencyKey()),
           throwsA(expectCode(ErrorCodes.kycIncomplete)),
         );
       },
@@ -287,12 +315,18 @@ void main() {
             serviceAreaIds: <String>['lagos-ikeja'],
             vehicleType: VehicleType.walking,
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
         await repo.submitStep(
           KycStepKind.governmentId,
           const IdDocumentInput(idType: 'nin', idNumber: '12345678901'),
+          idempotencyKey: newIdempotencyKey(),
         );
-        await repo.submitStep(KycStepKind.providerFacial, 'liveness-1');
+        await repo.submitStep(
+          KycStepKind.providerFacial,
+          'liveness-1',
+          idempotencyKey: newIdempotencyKey(),
+        );
         await repo.submitStep(
           KycStepKind.idDocumentCapture,
           const IdDocumentInput(
@@ -300,6 +334,7 @@ void main() {
             idNumber: '12345678901',
             uploadRef: 'mock://uploads/id.jpg',
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
         await repo.submitStep(
           KycStepKind.policeClearance,
@@ -309,6 +344,7 @@ void main() {
             expiryDate: DateTime.now().add(const Duration(days: 335)),
             uploadRef: 'mock://uploads/pcc.pdf',
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
         await repo.submitStep(
           KycStepKind.guarantor,
@@ -317,6 +353,7 @@ void main() {
             phoneE164: '+2348011112222',
             relationship: 'brother',
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
         await repo.submitStep(
           KycStepKind.payoutAccount,
@@ -324,8 +361,11 @@ void main() {
             bankCode: '058',
             accountNumber: '0123456789',
           ),
+          idempotencyKey: newIdempotencyKey(),
         );
-        final profile = await repo.submitForReview();
+        final profile = await repo.submitForReview(
+          idempotencyKey: newIdempotencyKey(),
+        );
         expect(profile.overallStatus, KycStepStatus.inReview);
         expect(profile.submittedForReviewAt, isNotNull);
         expect(
@@ -349,7 +389,7 @@ void main() {
           'kycRejectPoliceClearanceExpired',
         );
         expect(
-          repo.submitForReview,
+          () => repo.submitForReview(idempotencyKey: newIdempotencyKey()),
           throwsA(expectCode(ErrorCodes.kycIncomplete)),
         );
       },

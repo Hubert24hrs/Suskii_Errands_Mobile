@@ -24,8 +24,27 @@ final class Money implements Comparable<Money> {
     'BHD': 3, 'JOD': 3, 'KWD': 3, 'OMR': 3, 'TND': 3, 'LYD': 3, 'IQD': 3,
   };
 
-  static int exponentOf(String currencyCode) =>
-      _exponents[currencyCode.toUpperCase()] ?? 2;
+  /// Known two-exponent codes. An unknown code asserts in debug instead of
+  /// silently defaulting to 2 (review C.6: a missing zero-exponent currency
+  /// would render 100× too small). Exponents ship in the country pack in
+  /// contracts v1; until then, extend these tables when adding a currency.
+  static const Set<String> _twoExponent = <String>{
+    'NGN', 'KES', 'GHS', 'ZAR', 'USD', 'EUR', 'GBP', //
+    'CAD', 'AUD', 'NZD', 'CHF', 'SEK', 'NOK', 'DKK',
+    'INR', 'BRL', 'MXN', 'ZMW', 'TZS', 'EGP', 'MAD',
+  };
+
+  static int exponentOf(String currencyCode) {
+    final code = currencyCode.toUpperCase();
+    final known = _exponents[code];
+    if (known != null) return known;
+    assert(
+      _twoExponent.contains(code),
+      'Unknown currency exponent for $code — add it to the exponent table '
+      'instead of defaulting to 2.',
+    );
+    return 2;
+  }
 
   int get exponent => exponentOf(currencyCode);
 

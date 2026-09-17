@@ -26,6 +26,14 @@ class MockBehavior {
   /// session flips from in-review to its outcome.
   Duration kycReviewDelay;
 
+  /// Skew of the simulated server clock vs the device clock (bootstrap
+  /// `serverTime`). Non-zero by default to prove the ServerClock mechanism.
+  Duration serverClockSkew = const Duration(seconds: 7);
+
+  /// Overrides per-category offer TTL (tests use a short value so expiry is
+  /// observable fast). Null → use the category's `offerTtlSeconds`.
+  Duration? offerTtlOverride;
+
   Future<void> gate() async {
     await Future<void>.delayed(latency);
     if (offline) {

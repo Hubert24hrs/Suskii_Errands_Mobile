@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
@@ -26,7 +27,9 @@ class _ProviderFeedPageState extends ConsumerState<ProviderFeedPage> {
   Future<void> _setOnline(bool online) async {
     setState(() => _toggling = true);
     try {
-      await ref.read(providerRepositoryProvider).setOnline(online);
+      await ref
+          .read(providerRepositoryProvider)
+          .setOnline(online, idempotencyKey: newIdempotencyKey());
       ref.invalidate(providerHomeProvider);
     } on Object catch (error) {
       if (mounted) {
