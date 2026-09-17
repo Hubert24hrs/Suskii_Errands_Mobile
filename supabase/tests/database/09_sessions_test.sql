@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(12);
+SELECT plan(13);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b1111111-1111-4111-8111-111111111111', '2348000000021'),
@@ -47,7 +47,11 @@ SELECT throws_ok(
 SELECT throws_ok(
   $$SELECT public.revoke_session('c9999999-9999-4999-8999-999999999999')$$,
   'P0001', 'ERR_SESSION_NOT_FOUND', 'an unknown session id is refused');
+SELECT throws_ok($$SELECT count(*) FROM auth.sessions$$,
+  '42501', NULL, 'clients cannot read auth.sessions directly; the functions are the only way in');
+RESET ROLE;
 SELECT is((SELECT count(*)::int FROM auth.sessions), 3, 'nothing was deleted by the refused calls');
+SET LOCAL ROLE authenticated;
 
 SELECT lives_ok(
   $$SELECT public.revoke_session('c2222222-2222-4222-8222-222222222222')$$,
@@ -58,8 +62,10 @@ SELECT set_eq(
   'the revoked session is gone; the current one remains');
 
 -- Sign out everywhere else, from a second session of the same user.
+RESET ROLE;
 INSERT INTO auth.sessions (id, user_id, created_at, updated_at, aal)
 VALUES ('c4444444-4444-4444-8444-444444444444', 'b1111111-1111-4111-8111-111111111111', now(), now(), 'aal1');
+SET LOCAL ROLE authenticated;
 SELECT is(public.revoke_other_sessions(), 1, 'sign out everywhere else reports what it removed');
 SELECT set_eq(
   $$SELECT id FROM public.list_sessions()$$,
