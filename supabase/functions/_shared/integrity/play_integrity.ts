@@ -22,6 +22,10 @@ export interface IntegrityVerdict {
     deviceRecognition?: string[];
     licensing?: string;
     playProtect?: string;
+    appAttestKind?: "attestation" | "assertion";
+    appAttestEnvironment?: string;
+    validationCategory?: number;
+    bundleVersion?: string;
   };
 }
 

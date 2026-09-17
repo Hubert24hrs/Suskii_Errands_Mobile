@@ -112,6 +112,7 @@ Depends on the failed step:
 | Secret values added: `send-sms-hook-secrets`, `sentry-dsn-edge-functions`, `google-play-integrity-service-account` (optional), `supabase-db-password` | GCP Secret Manager |
 | Supabase project in the client organisation; named secret API key `monitoring` | Supabase dashboard |
 | GitHub environment `<env>` (`dev`, `staging`, `production`) with the variables and secrets listed at the top of `_deploy-supabase.yaml`; required reviewers on `production` (needs a paid GitHub plan on a private repo, infra-cicd I-1) | GitHub → Settings → Environments |
+| App Attest capability on the iOS App ID; `IOS_APP_ID` = `<team id>.<bundle id>`; `APP_ATTEST_ENVIRONMENT` matching the build the environment serves (`development` for Xcode builds; `production` for TestFlight and App Store, with `APP_ATTEST_VALIDATION_CATEGORIES=2,4` where TestFlight builds must pass). A mismatch shows as verdict reason `environment_mismatch` | Apple Developer account; GitHub environment variables |
 | GitHub environment `infra-<env>` with the variables listed in `infra-deploy.yaml` | GitHub → Settings → Environments |
 | Repository variables `DEPLOY_DEV_ENABLED` / `DEPLOY_STAGING_ENABLED` = `true`, and `TF_STATE_BUCKET` | GitHub → Settings → Variables |
 | First deploy watched end to end; rollback rehearsed once on staging | This runbook |

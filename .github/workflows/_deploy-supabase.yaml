@@ -7,7 +7,8 @@ name: _deploy-supabase
 #
 # Each GitHub environment (dev, staging, production) holds:
 #   vars:    SUPABASE_PROJECT_REF, SITE_URL, ADDITIONAL_REDIRECT_URLS, SUSKII_ENV,
-#            GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOYER_SA, ANDROID_PACKAGE_NAME
+#            GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_DEPLOYER_SA, ANDROID_PACKAGE_NAME,
+#            IOS_APP_ID, APP_ATTEST_ENVIRONMENT, APP_ATTEST_VALIDATION_CATEGORIES (optional)
 #   secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, HEALTH_CHECK_API_KEY,
 #            SUPABASE_AUTH_CAPTCHA_SECRET (optional)
 # Runtime secrets for functions come from GCP Secret Manager through Workload Identity (§4).
@@ -115,6 +116,9 @@ jobs:
           SENTRY_DSN: ${{ steps.runtime.outputs.sentry_dsn }}
           SUSKII_ENV: ${{ vars.SUSKII_ENV }}
           ANDROID_PACKAGE_NAME: ${{ vars.ANDROID_PACKAGE_NAME }}
+          IOS_APP_ID: ${{ vars.IOS_APP_ID }}
+          APP_ATTEST_ENVIRONMENT: ${{ vars.APP_ATTEST_ENVIRONMENT }}
+          APP_ATTEST_VALIDATION_CATEGORIES: ${{ vars.APP_ATTEST_VALIDATION_CATEGORIES }}
           SHA: ${{ inputs.sha }}
         run: |
           set -euo pipefail
@@ -131,6 +135,11 @@ jobs:
             printf "SENTRY_DSN='%s'\n" "$SENTRY_DSN"
             printf "ANDROID_PACKAGE_NAME='%s'\n" "$ANDROID_PACKAGE_NAME"
             printf "GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT='%s'\n" "$play_sa"
+            printf "IOS_APP_ID='%s'\n" "$IOS_APP_ID"
+            printf "APP_ATTEST_ENVIRONMENT='%s'\n" "${APP_ATTEST_ENVIRONMENT:-production}"
+            if [ -n "$APP_ATTEST_VALIDATION_CATEGORIES" ]; then
+              printf "APP_ATTEST_VALIDATION_CATEGORIES='%s'\n" "$APP_ATTEST_VALIDATION_CATEGORIES"
+            fi
           } > "$env_file"
           supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file "$env_file"
           rm -f "$env_file"
