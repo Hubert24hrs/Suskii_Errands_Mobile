@@ -19,7 +19,8 @@ SELECT ok((SELECT count(*) FROM public.service_categories WHERE active) >= 5,
 -- The catalogue is readable before sign-in: the request screen renders it.
 SET LOCAL ROLE anon;
 SELECT ok((SELECT count(*) FROM public.service_categories) > 0, 'anon reads the category list');
-SELECT is((SELECT count(*)::int FROM public.requests), 0, 'anon reads no requests');
+SELECT throws_ok($$SELECT count(*) FROM public.requests$$,
+  '42501', NULL, 'anon has no access to requests at all, not even an empty read');
 RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
