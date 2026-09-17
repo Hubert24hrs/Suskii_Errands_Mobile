@@ -128,6 +128,29 @@ Kimi reported the M3 foundation verified (domain 21/21, data 58/58, core 7/7, an
 | M3.6 | Still open: `getPriceBand` takes no `urgency`, and the band carries no `basis` | Low | **[CONTRACT]** |
 | M3.11 | `voiceLanguages` is a `Map<String, bool>` in bootstrap; the backend seed had `voice_languages` as a list (`["en"]`). **The backend changes to match**: `{"en": true, "pcm": false}` | — | Backend change, done |
 
+## M3 follow-up check (working tree, 2026-09-17 03:50 — still uncommitted, still no screens)
+
+Kimi fixed every open finding from the progress check about 25 minutes before this pass. Verified, not just read:
+
+| # | Finding | Status | How it was verified |
+|---|---|---|---|
+| M3.7 | `newIdempotencyKey()` threw on every call | **Fixed** | Random bits now composed from ≤ 32-bit draws. Ran the file standalone: 20,000 keys, all valid UUIDv7, all unique, variant nibbles 8/9/a/b all present |
+| M3.8 | Mock idempotency ignored the payload | **Fixed** | `idempotent()` stores an argument hash and throws `ERR_IDEMPOTENCY_KEY_REUSED` on mismatch; all payload-carrying calls pass one (amounts, PIN, text, ID lookup); tests in `mock_m3_test.dart` |
+| M3.9 | `verifyHandoverPin` had no key | **Fixed** | Signature takes `idempotencyKey`; the doc says a retry replays without spending an attempt; the mock hashes the PIN |
+| M3.10 | Concierge `requestId` only when complete | **Fixed** | Doc and field comment: set from the first saved slot, resumable |
+| M3.6 | `getPriceBand` has no `urgency`; no `basis` | Open | Contract item for Stage B |
+
+**Package suites on the current working tree** (run from a temporary copy, so the shared tree was not touched): `suskii_core` 9 passed, `suskii_domain` 21 passed, `suskii_data` 64 passed.
+
+Remaining low-severity notes, for Stage B rather than now:
+
+| # | Note | Type |
+|---|---|---|
+| M3.12 | The mock scopes keys per operation *and* target (`counterOffer:<offerId>`), so one key reused on two different offers replays instead of failing; the backend keys by user + key and refuses a different operation or payload | **[CONTRACT]** — backend behaviour is the reference |
+| M3.13 | `createRequest`'s argument hash covers category and description only; a retry with a changed pickup or price replays the first result | Low **[CHANGE]** when the request form lands |
+
+**Still to review:** every M3 screen (request form, concierge text and voice, offers and negotiation) once they exist in `apps/mobile`.
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
