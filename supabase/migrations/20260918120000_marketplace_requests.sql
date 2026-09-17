@@ -177,8 +177,8 @@ BEGIN
       'pickup', p_pickup_label, 'destination', p_destination_label, 'urgency', p_urgency,
       'scheduled_at', p_scheduled_at, 'preferred_price_minor', p_preferred_price_minor,
       'item_float_minor', p_item_float_minor, 'declared_value_minor', p_declared_value_minor));
-  IF v_claim ? 'response' THEN
-    RETURN (v_claim -> 'response' ->> 'request_id')::uuid;
+  IF v_claim IS NOT NULL THEN
+    RETURN (v_claim ->> 'request_id')::uuid;
   END IF;
 
   SELECT p.country_code INTO v_country FROM public.profiles p WHERE p.user_id = v_uid;
@@ -248,8 +248,8 @@ DECLARE
 BEGIN
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'publish_request',
     jsonb_build_object('request_id', p_request_id));
-  IF v_claim ? 'response' THEN
-    RETURN (v_claim -> 'response' ->> 'status')::public.job_status;
+  IF v_claim IS NOT NULL THEN
+    RETURN (v_claim ->> 'status')::public.job_status;
   END IF;
 
   SELECT * INTO v_request FROM public.requests r
@@ -305,8 +305,8 @@ DECLARE
 BEGIN
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'cancel_request',
     jsonb_build_object('request_id', p_request_id, 'reason', p_reason_code));
-  IF v_claim ? 'response' THEN
-    RETURN (v_claim -> 'response' ->> 'status')::public.job_status;
+  IF v_claim IS NOT NULL THEN
+    RETURN (v_claim ->> 'status')::public.job_status;
   END IF;
 
   SELECT r.status INTO v_status FROM public.requests r
