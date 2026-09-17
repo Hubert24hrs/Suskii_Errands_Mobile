@@ -79,7 +79,9 @@ still="$(curl -sS -o /dev/null -w '%{http_code}' "${anon[@]}" -H "Content-Type: 
   -d "$(jq -n --arg t "$new_refresh" '{refresh_token:$t}')" "$API_URL/auth/v1/token?grant_type=refresh_token")"
 check "the targeted session survived the foreign attempt" "$still" "200"
 
-curl -sSf "${service[@]}" -X DELETE "$API_URL/auth/v1/admin/users/$user_id" > /dev/null
+# Best effort: the stack is thrown away with the job, and GoTrue can answer 500 when deleting a
+# user that still has sessions or identities.
+curl -sS "${service[@]}" -X DELETE "$API_URL/auth/v1/admin/users/$user_id" > /dev/null || true
 
 [ "$failures" -eq 0 ] || { echo "$failures failure(s)"; exit 1; }
 echo "sessions e2e: all checks passed"
