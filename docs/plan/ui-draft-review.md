@@ -164,6 +164,21 @@ already blocked by each page's `_busy` flag.
 
 Cross-cutting item 2 is corrected below (its "fresh per attempt" wording led here).
 
+## Browser run of the committed app (M2, commit `e473c9b`, 2026-09-17)
+
+Built `apps/mobile` for the web in a throwaway copy (the app has no web target; Kimi's tree was
+not touched) and drove it in a browser at 375x812. Splash, welcome, country and language choice,
+the three onboarding cards and the sign-in screen all render and behave.
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| M3.15 | **Sign-in never reaches the app.** Entering a phone number, sending the code and submitting any 6-digit code runs the mock sign-in (button shows its spinner, no error) and then stays on `/auth` for ever. Cause: `authStateProvider` is never subscribed, so `redirect` keeps reading `signedOut`. The only subscriber is `ref.listen(authStateProvider, …)` inside `_routerRefreshProvider` (`app/router.dart`), and that provider is never watched — it is pulled in with `ref.read` from `routerProvider` — so under Riverpod 3 its listeners stay paused and the stream is never opened. Proof: with one real listener attached to `authStateProvider`, the same build signs in and routes to `/auth/mfa`; without it, `authStateProvider.value` stays `null` even after `verifyPhoneOtp` succeeds. Suggested fix: register the listens inside `routerProvider` itself (it is watched by the app widget) against a `ValueNotifier` created there, and drop `_routerRefreshProvider`. Please add a regression test that pumps `SuskiiApp`, calls `verifyPhoneOtp` and expects the route to leave `/auth` — a widget test would have caught this | **High** | **[BUG]** |
+| M3.16 | Country fixtures disagree with the wave-1 set (ADR-0001, OD-14, backend seed): the picker offers Nigeria, Kenya, Ghana and South Africa, with South Africa `disabled` ("Coming soon") and **Uganda missing**. The backend seeds NG `live`, and KE, GH, ZA and UG all `beta`. Demo data, not a contract, but the country list is what a reviewer reads as the launch scope | Low | **[CHANGE]** |
+
+Not defects, noted while testing: the Google and Apple buttons correctly say "Coming in the next
+milestone" (the backend can now be configured for both, per-environment); deep links to a signed-in
+route bounce back to `/auth` as the redirect intends.
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
