@@ -46,3 +46,14 @@ jobs:
               echo "== $dir == no test directory, skipped"
             fi
           done
+
+      # The Dart VM has 64-bit integers; dart2js does not, and its bitwise operators are 32-bit.
+      # M3.19 (idempotency keys threw RangeError on the web) passed every VM test, so the
+      # pure-logic packages — keys, clock, money — also run in a browser.
+      - name: Tests (web, dart2js)
+        run: |
+          set -e
+          for dir in packages/suskii_core packages/suskii_domain; do
+            echo "== $dir (chrome) =="
+            (cd "$dir" && flutter test --platform chrome)
+          done
