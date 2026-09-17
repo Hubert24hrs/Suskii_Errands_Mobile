@@ -81,9 +81,11 @@ SELECT is(public.publish_request((SELECT id FROM r), 'key-publish-00000000000000
 SELECT throws_ok(
   format($$SELECT public.publish_request(%L, 'key-publish-000000000000002')$$, (SELECT id FROM r)),
   'P0001', 'ERR_ILLEGAL_TRANSITION', 'a published request cannot be published again');
-SELECT throws_ok(
-  format($$UPDATE public.requests SET description = 'after publishing' WHERE id = %L$$, (SELECT id FROM r)),
-  '42501', NULL, 'edits stop when the draft is published');
+-- Once published the row falls outside the update policy, so the statement matches nothing:
+-- Postgres filters it silently rather than raising, and the description stands.
+UPDATE public.requests SET description = 'after publishing' WHERE id = (SELECT id FROM r);
+SELECT is((SELECT description FROM public.requests WHERE id = (SELECT id FROM r)),
+  'Collect two parcels from Yaba market', 'edits stop when the draft is published');
 RESET ROLE;
 
 -- Another signed-in user sees nothing of it, and cannot act on it.
