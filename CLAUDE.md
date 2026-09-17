@@ -48,6 +48,7 @@ Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branch
 | `docs/runbooks/` | Operational procedures, one per failure mode |
 | `docs/audit/` | Dated audit findings after each integration milestone |
 | `contracts/README.md` | What contracts v1 will contain and the rules that bind both agents |
+| `contracts/v1-preview/` | Non-binding preview pinned early: error codes, Auth error mapping, enums (generated), `Money` shape; CI drift check `contracts.yaml` |
 
 ## Maintenance policy — keep these current
 
@@ -61,7 +62,7 @@ Documentation is part of the definition of done, not a postscript. Update on the
 | A phase ends | Phase checkpoint file + `HANDOFF.md` entry + this file's Status table; re-list unresolved ODs |
 | A vendor price, API or country rule changes | `docs/research/REPORT.md` (with the source), `cost-model.md`, the affected `country-packs/*.yaml` field and its `_status` |
 | A new risk appears or one changes score | `docs/research/risk-register.md` |
-| A feature is built | Its runbook, contract entry, and the commands section below |
+| A feature is built | Its runbook, contract entry, and the commands section below. A new or removed `ERR_` code updates `contracts/v1-preview/error-codes.json`; a new enum value regenerates `enums.json` (`python contracts/tools/check_preview.py . --write`) |
 | An audit runs | `docs/audit/AUDIT-<date>.md` + findings for Kimi in `HANDOFF.md` |
 | Contracts change | `contracts/CHANGELOG.md` (semver) + a migration note in `HANDOFF.md` for breaking changes |
 

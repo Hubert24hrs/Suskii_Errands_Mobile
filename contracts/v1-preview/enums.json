@@ -1,0 +1,153 @@
+{
+  "version": "1.0.0-preview.1",
+  "binding": false,
+  "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",
+  "enums": {
+    "admin_role": [
+      "super_admin",
+      "verification_officer",
+      "support_agent",
+      "finance_officer",
+      "dispute_officer"
+    ],
+    "business_role": [
+      "owner",
+      "dispatcher",
+      "worker"
+    ],
+    "chat_message_type": [
+      "text",
+      "image",
+      "voice_note",
+      "location",
+      "offer_card",
+      "system"
+    ],
+    "consent_kind": [
+      "biometric",
+      "criminal_record_check",
+      "location",
+      "marketing",
+      "voice_processing"
+    ],
+    "country_status": [
+      "disabled",
+      "beta",
+      "live"
+    ],
+    "device_platform": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "identity_check_outcome": [
+      "success",
+      "retry",
+      "failed"
+    ],
+    "job_status": [
+      "draft",
+      "published",
+      "offers_received",
+      "negotiating",
+      "agreed",
+      "payment_pending",
+      "paid_held",
+      "assigned",
+      "en_route",
+      "arrived",
+      "in_progress",
+      "completed_by_provider",
+      "confirmed",
+      "settlement_pending",
+      "settled",
+      "closed",
+      "cancelled",
+      "expired",
+      "disputed",
+      "refunded"
+    ],
+    "kyc_step_kind": [
+      "customer_facial",
+      "government_id",
+      "provider_facial",
+      "id_document_capture",
+      "police_clearance",
+      "address",
+      "guarantor",
+      "payout_account",
+      "vehicle_documents",
+      "credentials"
+    ],
+    "kyc_step_status": [
+      "not_started",
+      "consent_pending",
+      "in_progress",
+      "in_review",
+      "verified",
+      "rejected",
+      "expired"
+    ],
+    "offer_status": [
+      "pending",
+      "countered",
+      "accepted",
+      "declined",
+      "expired",
+      "withdrawn"
+    ],
+    "payment_status": [
+      "unpaid",
+      "pending",
+      "held",
+      "failed",
+      "refunded",
+      "partially_refunded"
+    ],
+    "provider_kind": [
+      "individual",
+      "business"
+    ],
+    "referral_commission_status": [
+      "pending",
+      "earned",
+      "holding",
+      "available",
+      "reversed"
+    ],
+    "trust_level": [
+      "new",
+      "verified",
+      "trusted",
+      "elite"
+    ],
+    "urgency": [
+      "flexible",
+      "standard",
+      "urgent",
+      "emergency"
+    ],
+    "user_mode": [
+      "customer",
+      "provider"
+    ],
+    "vehicle_type": [
+      "walking",
+      "bicycle",
+      "motorcycle",
+      "tricycle",
+      "car",
+      "van",
+      "truck"
+    ],
+    "verification_status": [
+      "unverified",
+      "pending",
+      "in_review",
+      "verified",
+      "rejected",
+      "suspended",
+      "expired"
+    ]
+  }
+}

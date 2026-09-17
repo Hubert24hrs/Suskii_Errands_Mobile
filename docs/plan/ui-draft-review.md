@@ -89,7 +89,7 @@ Kimi committed M1 + M2. This pass reads the code rather than the draft, against 
 | C.4 | No `withdrawOffer` for providers, though `OfferStatus.withdrawn` exists (offer machine: `withdraw_offer`) | Medium | **[CHANGE]** |
 | C.5 | `requestStatusChange` has no evidence argument; `set_job_status` takes proof refs for `ARRIVED` and `COMPLETED_BY_PROVIDER` | Medium | **[CONTRACT]** |
 | C.6 | `Money` exponents are a client table **defaulting to 2** for unknown codes. A zero-exponent currency missing from the table would render 100× too small. The server `currencies` table is authoritative: ship exponents in the country pack, and make an unknown code throw in debug rather than default | Medium | **[CHANGE]** + **[CONTRACT]** |
-| C.7 | `Money` JSON keys are `minorUnits`/`currency`; the ERD uses `amount_minor` + `currency`. Settle in contracts v1 together with N.6 (snake_case) | Low | **[CONTRACT]** |
+| C.7 | `Money` JSON keys are `minorUnits`/`currency`; the ERD uses `amount_minor` + `currency`. Settle in contracts v1 together with N.6 (snake_case) | Low | **[CONTRACT]** — **settled in `contracts/v1-preview` (2026-09-17): `{ amount_minor, currency }`** |
 | C.8 | `mediaPaths` / `uploadRefs` are local paths in the mock; on the wire they are Storage object keys returned by the signed-upload call | Low | **[CONTRACT]** |
 
 ## M3 foundation — domain, data, core (uncommitted work in the shared tree, reviewed 2026-09-16)

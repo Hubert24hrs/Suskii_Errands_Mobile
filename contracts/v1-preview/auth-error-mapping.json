@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0-preview.1",
+  "binding": false,
+  "source": "https://supabase.com/docs/guides/auth/debugging/error-codes (checked 2026-09-17). Supabase Auth returns its code in the error `code` property (Dart: AuthApiException.code).",
+  "mapping": {
+    "otp_expired": "ERR_OTP_INVALID",
+    "over_sms_send_rate_limit": "ERR_OTP_RATE_LIMITED",
+    "sms_send_failed": "ERR_NETWORK",
+    "hook_timeout": "ERR_NETWORK",
+    "hook_timeout_after_retry": "ERR_NETWORK",
+    "captcha_failed": "ERR_UNKNOWN",
+    "signup_disabled": "ERR_FEATURE_UNAVAILABLE",
+    "phone_provider_disabled": "ERR_FEATURE_UNAVAILABLE",
+    "session_expired": "ERR_UNAUTHENTICATED",
+    "session_not_found": "ERR_UNAUTHENTICATED",
+    "insufficient_aal": "ERR_PERMISSION_DENIED",
+    "mfa_verification_failed": "ERR_OTP_INVALID",
+    "mfa_verification_rejected": "ERR_PERMISSION_DENIED",
+    "user_banned": "ERR_PERMISSION_DENIED"
+  },
+  "open_questions": [
+    "How Auth reports a before_user_created rejection (ERR_COUNTRY_NOT_SUPPORTED) to the client: confirm the code on a real sign-up (spike S-02), then map it to a dedicated app code."
+  ]
+}

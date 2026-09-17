@@ -1,0 +1,43 @@
+name: contracts
+
+# Contract drift check (contracts/README.md rule 3; docs/plan/infra-cicd.md §5). Fails when backend
+# code raises an error code the preview catalogue does not list as implemented, when a catalogued
+# implemented code is no longer raised, or when enums.json no longer matches the migrations.
+# Codes the apps use but the catalogue lacks are reported as warnings only.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - 'services/**'
+      - 'packages/suskii_core/lib/src/errors.dart'
+      - '.github/workflows/contracts.yaml'
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - 'services/**'
+      - 'packages/suskii_core/lib/src/errors.dart'
+      - '.github/workflows/contracts.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checker unit tests
+        working-directory: contracts/tools
+        run: python3 -m unittest -v test_check_preview
+      - name: Validate JSON files
+        run: |
+          set -euo pipefail
+          for f in contracts/v1-preview/*.json; do python3 -m json.tool "$f" > /dev/null; done
+      - name: Drift check against backend code
+        run: python3 contracts/tools/check_preview.py .

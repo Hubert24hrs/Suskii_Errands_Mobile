@@ -2,14 +2,17 @@
 
 The API and data agreement both agents build against. **Owned by Claude Code.** Read-only for Kimi Code once published.
 
-## Status: not yet published
+## Status: not yet published — preview available
 
-Official contracts are published as **v1 in Phase 1**, after Kimi Code hands off at M8.5 and Claude Code has reconciled the draft against `master_spec`. Until then:
+Official contracts are published as **v1 in Phase 1**, after Kimi Code hands off at M8.5 and Claude Code has reconciled the draft against `master_spec`.
+
+**Preview (not binding):** [`v1-preview/`](v1-preview/README.md) pins what both agents already use — error codes, the Supabase Auth error mapping, enum wire values and the `Money` shape — and CI keeps it in step with the backend code. Until v1:
 
 | Path | Owner | State |
 |---|---|---|
 | `draft/ui-data-requirements.md` | Kimi Code | Live — the frontend records every data need, action, realtime event and error state here. Input, not authority |
 | `CHANGE_REQUESTS.md` | Kimi Code writes, Claude Code resolves | Opens once v1 exists |
+| `v1-preview/`, `tools/` | Claude Code | Live preview, CI-checked |
 | everything else here | Claude Code | Arrives with v1 |
 
 Where the draft conflicts with `master_spec` on money, security or the state machine, the spec wins and the UI changes. Those changes are listed in `HANDOFF.md`, not negotiated in the draft.

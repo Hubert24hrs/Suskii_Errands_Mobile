@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://suskii.invalid/contracts/v1-preview/money.schema.json",
+  "title": "Money",
+  "description": "Every amount on the wire. Integer minor units plus an ISO 4217 code (spec money_rules). The number of minor units per major unit comes from the currency exponent served in the country pack (UGX = 0), never from a hardcoded /100. Clients display amounts; they never derive commission, fees, payouts or referral amounts from them. PREVIEW, not binding: contracts v1 (Stage B) may add fields but will not change these two.",
+  "type": "object",
+  "required": ["amount_minor", "currency"],
+  "additionalProperties": false,
+  "properties": {
+    "amount_minor": {
+      "description": "Signed integer in minor units. Stays within ±9007199254740991 so JavaScript clients read it exactly.",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "currency": {
+      "description": "ISO 4217 alphabetic code, upper case.",
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    }
+  },
+  "examples": [
+    { "amount_minor": 1250000, "currency": "NGN" },
+    { "amount_minor": 45000, "currency": "UGX" },
+    { "amount_minor": -875, "currency": "KES" }
+  ]
+}
