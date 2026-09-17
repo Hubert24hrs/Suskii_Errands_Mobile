@@ -115,6 +115,12 @@
       "available",
       "reversed"
     ],
+    "request_channel": [
+      "app",
+      "web",
+      "concierge",
+      "voice"
+    ],
     "trust_level": [
       "new",
       "verified",

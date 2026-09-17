@@ -41,6 +41,8 @@ Every function is wrapped by `_shared/observability.ts`: an `x-request-id` respo
 
 Environment: `SENTRY_DSN`, `SUSKII_RELEASE`, `SEND_SMS_HOOK_SECRETS`, `SUSKII_ENV`, `ANDROID_SMS_RETRIEVER_HASH`, `ANDROID_PACKAGE_NAME`, `GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT`, `IOS_APP_ID`, `APP_ATTEST_ENVIRONMENT`, `APP_ATTEST_VALIDATION_CATEGORIES` (see `.env.example`). `SUPABASE_URL` and the API keys are provided by the platform.
 
+Marketplace (Phase 3, in progress): `service_categories` and `requests` with `create_request` → `publish_request` → `cancel_request`, all idempotent. A customer edits only a draft, and only the fields a draft carries; `status` is never client-writable; providers never select `requests` (their feed will come from matching). `private.expire_requests()` closes requests nobody took, every five minutes.
+
 Storage: `avatars` and `kyc-docs`, both private, created by migration `…120200_storage_buckets`. Every object lives at `<bucket>/<user_id>/<file>`; policies allow a user their own folder only. `kyc-docs` is **write-only for clients** — identity documents go in and never come back out to a browser or app, so a stolen session cannot re-read them; review and backups read with the service role. `tests/e2e/storage_e2e.sh` proves all of it against the real Storage API in CI.
 
 Sessions (SH-38): `list_sessions()`, `revoke_session(id)` and `revoke_other_sessions()` read and delete `auth.sessions` for the caller. Deleting a session cascades to its refresh tokens, so it cannot be refreshed; an access token already issued stays valid until `jwt_expiry` (1 hour). `tests/e2e/sessions_e2e.sh` proves both against a real GoTrue in CI.

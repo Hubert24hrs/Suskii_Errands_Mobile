@@ -274,7 +274,7 @@
     },
     {
       "code": "ERR_ILLEGAL_TRANSITION",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -449,6 +449,28 @@
       "client_action": "Show a neutral message; never reveal the matching signal."
     },
     {
+      "code": "ERR_REQUEST_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No request with that id belongs to the signed-in customer.",
+      "client_action": "Refresh the list; it was cancelled, expired or never existed."
+    },
+    {
+      "code": "ERR_CATEGORY_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The service category key is unknown or no longer active.",
+      "client_action": "Reload the catalogue from the bootstrap and pick again."
+    },
+    {
       "code": "ERR_UNSUPPORTED_LANGUAGE",
       "status": "planned",
       "category": "features",
@@ -472,7 +494,7 @@
     },
     {
       "code": "ERR_VERIFICATION_REQUIRED",
-      "status": "planned",
+      "status": "implemented",
       "category": "verification",
       "surface": "client",
       "sqlstate": "P0001",

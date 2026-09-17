@@ -35,5 +35,6 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0011](0011-chart-of-accounts.md) | Extend the spec's ledger accounts with gateway assets and two expense accounts | Accepted | Phase 1 money flows | — |
 | [0012](0012-ai-tools-act-as-user.md) | The AI service and voice agent act with the end user's JWT, never the service role | Accepted | Phase 1 C4 / threat model | — |
 | [0013](0013-backend-foundation-before-contracts-v1.md) | Build the backend foundation before contracts v1; pre-contract migrations editable until a shared environment applies them | Accepted | Timeline §6, user approval | S-02 confirms platform assumptions |
+| [0014](0014-marketplace-core-before-contracts-v1.md) | Build the marketplace core before contracts v1, on ADR-0013's terms | Accepted | Phase 2 complete, Phase 3 on the critical path | — |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).
