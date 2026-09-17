@@ -41,6 +41,8 @@ Every function is wrapped by `_shared/observability.ts`: an `x-request-id` respo
 
 Environment: `SENTRY_DSN`, `SUSKII_RELEASE`, `SEND_SMS_HOOK_SECRETS`, `SUSKII_ENV`, `ANDROID_SMS_RETRIEVER_HASH`, `ANDROID_PACKAGE_NAME`, `GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT`, `IOS_APP_ID`, `APP_ATTEST_ENVIRONMENT`, `APP_ATTEST_VALIDATION_CATEGORIES` (see `.env.example`). `SUPABASE_URL` and the API keys are provided by the platform.
 
+Sessions (SH-38): `list_sessions()`, `revoke_session(id)` and `revoke_other_sessions()` read and delete `auth.sessions` for the caller. Deleting a session cascades to its refresh tokens, so it cannot be refreshed; an access token already issued stays valid until `jwt_expiry` (1 hour). `tests/e2e/sessions_e2e.sh` proves both against a real GoTrue in CI.
+
 Error convention for client-callable functions: `28000 ERR_UNAUTHENTICATED`, `42501 ERR_*` not allowed, `P0001 ERR_*` business rule, `22023 ERR_*` invalid argument. The message is the stable code the apps localise.
 
 ## Commands

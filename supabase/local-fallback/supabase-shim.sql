@@ -31,6 +31,39 @@ CREATE TABLE IF NOT EXISTS auth.users (
   created_at         timestamptz NOT NULL DEFAULT now()
 );
 
+-- Sessions, as GoTrue creates them (supabase/auth migrations 20220811173540, 20221003041400,
+-- 20221114143122, 20231027141322). Only the columns our functions read.
+DO $shim$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+                 WHERE n.nspname = 'auth' AND t.typname = 'aal_level') THEN
+    CREATE TYPE auth.aal_level AS ENUM ('aal1', 'aal2', 'aal3');
+  END IF;
+END $shim$;
+
+CREATE TABLE IF NOT EXISTS auth.sessions (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  created_at   timestamptz,
+  updated_at   timestamptz,
+  factor_id    uuid,
+  aal          auth.aal_level,
+  not_after    timestamptz,
+  refreshed_at timestamp,
+  user_agent   text,
+  ip           inet,
+  tag          text
+);
+
+CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
+  id         bigserial PRIMARY KEY,
+  session_id uuid REFERENCES auth.sessions (id) ON DELETE CASCADE,
+  token      text,
+  user_id    text,
+  revoked    boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
 -- Same resolution order as Supabase: legacy per-claim GUC, then the claims JSON.
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT coalesce(

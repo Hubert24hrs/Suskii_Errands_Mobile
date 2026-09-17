@@ -47,6 +47,14 @@ jobs:
       - name: Lint (plpgsql_check)
         run: supabase db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 
+      # Proves what revocation means to a signed-in app: pgTAP can only show rows vanish.
+      - name: Sessions end to end (real GoTrue)
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
+          export API_URL SECRET_KEY ANON_KEY PUBLISHABLE_KEY
+          bash supabase/tests/e2e/sessions_e2e.sh
+
       - name: Security and performance advisors
         run: supabase db advisors --local --type all --level warn --fail-on warn
 

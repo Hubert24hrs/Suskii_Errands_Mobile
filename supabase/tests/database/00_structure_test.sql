@@ -51,6 +51,7 @@ SELECT is(
      AND n.nspname || '.' || p.proname NOT IN (
        'public.get_bootstrap', 'public.set_active_mode', 'public.register_device',
        'public.record_consent', 'public.request_integrity_nonce',
+       'public.list_sessions', 'public.revoke_session', 'public.revoke_other_sessions',
        'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
 
