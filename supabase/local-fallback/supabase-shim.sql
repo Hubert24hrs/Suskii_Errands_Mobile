@@ -31,6 +31,34 @@ CREATE TABLE IF NOT EXISTS auth.users (
   created_at         timestamptz NOT NULL DEFAULT now()
 );
 
+-- Storage, as the storage service creates it (supabase/storage migrations 0001, 0003, 0008,
+-- 0013). Only what the policies touch, so the fallback can apply and test them.
+CREATE SCHEMA IF NOT EXISTS storage;
+GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+
+CREATE TABLE IF NOT EXISTS storage.buckets (
+  id                 text PRIMARY KEY,
+  name               text NOT NULL,
+  public             boolean DEFAULT false,
+  file_size_limit    bigint,
+  allowed_mime_types text[],
+  created_at         timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS storage.objects (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bucket_id   text REFERENCES storage.buckets (id),
+  name        text,
+  owner_id    text,
+  metadata    jsonb,
+  path_tokens text[] GENERATED ALWAYS AS (string_to_array(name, '/')) STORED,
+  created_at  timestamptz DEFAULT now()
+);
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated, anon;
+GRANT ALL ON storage.objects, storage.buckets TO service_role;
+GRANT SELECT ON storage.buckets TO authenticated, anon;
+
 -- Sessions, as GoTrue creates them (supabase/auth migrations 20220811173540, 20221003041400,
 -- 20221114143122, 20231027141322). Only the columns our functions read.
 DO $shim$

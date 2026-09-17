@@ -32,10 +32,10 @@ jobs:
       - name: Deploy config writer tests
         run: bash supabase/deploy/write-remote-config_test.sh
 
-      # Auth (gotrue) stays up so the hook wiring in config.toml is exercised against real
-      # functions; services the database tests do not need are skipped.
+      # Auth (gotrue) and storage stay up so the hook wiring in config.toml and the bucket
+      # policies are exercised against the real services; the rest is skipped.
       - name: Start local stack
-        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,storage-api,postgres-meta
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,postgres-meta
 
       - name: Apply every migration and the seed from zero
         run: supabase db reset --local
@@ -48,12 +48,13 @@ jobs:
         run: supabase db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 
       # Proves what revocation means to a signed-in app: pgTAP can only show rows vanish.
-      - name: Sessions end to end (real GoTrue)
+      - name: Sessions and storage end to end (real GoTrue and Storage)
         run: |
           set -euo pipefail
           eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
           export API_URL SECRET_KEY ANON_KEY PUBLISHABLE_KEY
           bash supabase/tests/e2e/sessions_e2e.sh
+          bash supabase/tests/e2e/storage_e2e.sh
 
       - name: Security and performance advisors
         run: supabase db advisors --local --type all --level warn --fail-on warn
