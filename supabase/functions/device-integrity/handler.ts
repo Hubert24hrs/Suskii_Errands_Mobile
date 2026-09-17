@@ -12,6 +12,7 @@
 import { errorResponse, json } from "../_shared/http.ts";
 import { log } from "../_shared/log.ts";
 import { type AppAttestPolicy, sha256, verifyAssertion, verifyAttestation } from "../_shared/integrity/app_attest.ts";
+import { verifyReceipt } from "../_shared/integrity/app_attest_receipt.ts";
 import {
   evaluatePlayIntegrity,
   type IntegrityVerdict,
@@ -47,6 +48,7 @@ export interface AppAttestStore {
     keyId: string;
     publicKey: string;
     receipt: string;
+    receiptExpiresAt?: string;
     environment: string;
     validationCategory?: number;
     bundleVersion?: string;
@@ -61,6 +63,7 @@ export interface AppAttestDeps {
   policy: AppAttestPolicy;
   verifyAttestation?: typeof verifyAttestation;
   verifyAssertion?: typeof verifyAssertion;
+  verifyReceipt?: typeof verifyReceipt;
 }
 
 export interface DeviceIntegrityDeps {
@@ -226,12 +229,20 @@ async function evaluateAppAttest(deps: AppAttestDeps, req: AppAttestRequest): Pr
       new Date(req.nowMs),
     );
     if (!outcome.ok) return fail(outcome.reason);
+    // Apple: verify the receipt that comes with the attestation before storing it.
+    const receipt = await (deps.verifyReceipt ?? verifyReceipt)(outcome.receipt, {
+      appId: deps.policy.appId,
+      publicKey: outcome.publicKey,
+      now: new Date(req.nowMs),
+    });
+    if (!receipt.ok) return fail(receipt.reason);
     const registered = await deps.store.registerKey({
       userId: req.userId,
       deviceId: req.deviceId,
       keyId: req.keyIdBase64,
       publicKey: toBase64(outcome.publicKey),
       receipt: toBase64(outcome.receipt),
+      receiptExpiresAt: receipt.receipt.expirationTime?.toISOString(),
       environment: deps.policy.environment,
       validationCategory: outcome.extensions.validationCategory,
       bundleVersion: outcome.extensions.bundleVersion,

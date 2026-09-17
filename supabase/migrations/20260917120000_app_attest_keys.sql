@@ -12,8 +12,10 @@ CREATE TABLE private.app_attest_keys (
   environment         text        NOT NULL CHECK (environment IN ('development', 'production')),
   -- X9.62 uncompressed P-256 point.
   public_key          bytea       NOT NULL CHECK (length(public_key) = 65 AND get_byte(public_key, 0) = 4),
-  -- Kept for Apple's fraud-risk metric (server-to-server receipt exchange, not built yet).
+  -- Verified before storing; kept for Apple's fraud-risk metric (the server-to-server receipt
+  -- refresh is not built yet), which must happen before receipt_expires_at.
   receipt             bytea       NOT NULL,
+  receipt_expires_at  timestamptz,
   sign_count          bigint      NOT NULL DEFAULT 0 CHECK (sign_count >= 0),
   validation_category integer,
   bundle_version      text,
@@ -49,7 +51,8 @@ CREATE FUNCTION public.app_attest_register_key(
   p_receipt text,
   p_environment text,
   p_validation_category integer DEFAULT NULL,
-  p_bundle_version text DEFAULT NULL
+  p_bundle_version text DEFAULT NULL,
+  p_receipt_expires_at timestamptz DEFAULT NULL
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -73,9 +76,11 @@ BEGIN
   END IF;
 
   INSERT INTO private.app_attest_keys
-    (key_id, user_id, device_id, environment, public_key, receipt, validation_category, bundle_version)
+    (key_id, user_id, device_id, environment, public_key, receipt, receipt_expires_at,
+     validation_category, bundle_version)
   VALUES
-    (v_key_id, p_user_id, p_device_id, p_environment, v_public_key, v_receipt, p_validation_category, p_bundle_version)
+    (v_key_id, p_user_id, p_device_id, p_environment, v_public_key, v_receipt, p_receipt_expires_at,
+     p_validation_category, p_bundle_version)
   ON CONFLICT (key_id) DO NOTHING;
   RETURN FOUND;
 END $$;
@@ -119,12 +124,12 @@ END $$;
 
 REVOKE ALL ON FUNCTION
   private.try_decode_base64(text),
-  public.app_attest_register_key(uuid, uuid, text, text, text, text, integer, text),
+  public.app_attest_register_key(uuid, uuid, text, text, text, text, integer, text, timestamptz),
   public.app_attest_key_for_assertion(uuid, uuid, text),
   public.app_attest_record_assertion(uuid, text, bigint)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION
-  public.app_attest_register_key(uuid, uuid, text, text, text, text, integer, text),
+  public.app_attest_register_key(uuid, uuid, text, text, text, text, integer, text, timestamptz),
   public.app_attest_key_for_assertion(uuid, uuid, text),
   public.app_attest_record_assertion(uuid, text, bigint)
   TO service_role;

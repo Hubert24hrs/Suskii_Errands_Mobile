@@ -81,6 +81,7 @@ export default {
             p_key_id: input.keyId,
             p_public_key: input.publicKey,
             p_receipt: input.receipt,
+            p_receipt_expires_at: input.receiptExpiresAt ?? null,
             p_environment: input.environment,
             p_validation_category: input.validationCategory ?? null,
             p_bundle_version: input.bundleVersion ?? null,

@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(15);
+SELECT plan(16);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('a1111111-1111-4111-8111-111111111111', '2348000000011'),
@@ -38,7 +38,8 @@ RESET ROLE;
 SET LOCAL ROLE service_role;
 SELECT ok(
   public.app_attest_register_key('a1111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111',
-    (SELECT key_id FROM k), (SELECT public_key FROM k), (SELECT receipt FROM k), 'production', 4, '1.0.0'),
+    (SELECT key_id FROM k), (SELECT public_key FROM k), (SELECT receipt FROM k), 'production', 4, '1.0.0',
+    '2026-12-16T12:00:00Z'),
   'the Edge Function registers a verified key for the user''s iOS device');
 SELECT ok(
   NOT public.app_attest_register_key('a2222222-2222-4222-8222-222222222222', 'd2222222-2222-4222-8222-222222222222',
@@ -81,6 +82,8 @@ SELECT ok(NOT public.app_attest_record_assertion('a2222222-2222-4222-8222-222222
 RESET ROLE;
 
 SELECT is((SELECT sign_count FROM private.app_attest_keys), 1::bigint, 'the stored counter is the last accepted one');
+SELECT is((SELECT receipt_expires_at FROM private.app_attest_keys), '2026-12-16T12:00:00Z'::timestamptz,
+  'the verified receipt''s expiry is kept for the metric refresh');
 
 SELECT * FROM finish();
 ROLLBACK;

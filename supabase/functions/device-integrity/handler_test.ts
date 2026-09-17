@@ -178,6 +178,21 @@ function iosHandler(store: MemoryStore, attest: MemoryAppAttestStore, deps: Part
         assertEquals(keyId.length, 32);
         return { ok: true, publicKey: PUBLIC_KEY, receipt: new Uint8Array([1]), extensions: { validationCategory: 4 } };
       },
+      verifyReceipt: (receipt, expected) => {
+        assertEquals([receipt, expected.appId, expected.publicKey], [new Uint8Array([1]), iosPolicy.appId, PUBLIC_KEY]);
+        return Promise.resolve({
+          ok: true,
+          receipt: {
+            appId: iosPolicy.appId,
+            attestedCertificate: new Uint8Array(),
+            clientHash: new Uint8Array(),
+            token: "",
+            type: "ATTEST",
+            creationTime: new Date(NOW),
+            expirationTime: new Date(NOW + 90 * 86_400_000),
+          },
+        });
+      },
       verifyAssertion: async (_object, clientDataHash, publicKey, previousCounter) => {
         assertEquals(clientDataHash, await nonceHash());
         assertEquals(publicKey, PUBLIC_KEY);
@@ -243,6 +258,16 @@ Deno.test("iOS: verification failures are stored as failures with Apple's reason
   const body = await (await handler(post({ nonce: NONCE, token: TOKEN, key_id: KEY_ID, kind: "attestation" }), USER))
     .json();
   assertEquals(body, { status: "fail", reasons: ["certificate_chain_invalid"], purpose: "payment" });
+  assertEquals(attest.keys.size, 0);
+
+  const badReceipt = iosHandler(store, attest, {
+    verifyReceipt: () => Promise.resolve({ ok: false, reason: "receipt_chain_invalid" }),
+  });
+  const receiptBody = await (await badReceipt(
+    post({ nonce: NONCE, token: TOKEN, key_id: KEY_ID, kind: "attestation" }),
+    USER,
+  )).json();
+  assertEquals(receiptBody.reasons, ["receipt_chain_invalid"]);
   assertEquals(attest.keys.size, 0);
 
   const notBase64 =
