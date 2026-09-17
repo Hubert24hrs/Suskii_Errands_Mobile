@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml']
   pull_request:
-    paths: ['apps/**', 'packages/**']
+    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml']
 
 jobs:
   dart:
