@@ -43,9 +43,10 @@ SELECT throws_ok(
   $$SELECT public.register_organization('key-bz-register-000000002', 'Copycat Ltd',
       '\x0908'::bytea, sha256('RC123456'::bytea))$$,
   '23505', NULL, 'one registration number cannot back two businesses in a country');
+RESET ROLE;
+-- Read as the test role: `org_can_bid` is internal, and `authenticated` has no execute on it.
 SELECT ok(NOT (SELECT private.org_can_bid((SELECT id FROM bz WHERE name = 'org'))),
   'and it cannot bid until it is verified, which is Phase 4 work');
-RESET ROLE;
 
 -- ---------------------------------------------------------------------------
 -- BU-03: members, roles, and consent to join.
