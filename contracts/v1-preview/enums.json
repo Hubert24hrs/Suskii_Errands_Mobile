@@ -116,6 +116,11 @@
       "open",
       "closed"
     ],
+    "org_member_status": [
+      "invited",
+      "active",
+      "removed"
+    ],
     "payment_status": [
       "unpaid",
       "pending",

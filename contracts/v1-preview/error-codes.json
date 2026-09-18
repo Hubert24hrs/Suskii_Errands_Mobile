@@ -722,6 +722,50 @@
       "retryable": false,
       "description": "One of the two people has blocked the other. Symmetric, and the response never says which direction.",
       "client_action": "Show a neutral message. Never reveal that the other party blocked the caller, or offer to contact them another way."
+    },
+    {
+      "code": "ERR_ORG_NOT_FOUND",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No organisation with that id is visible to the caller, or no membership row to act on.",
+      "client_action": "Refresh the organisation list."
+    },
+    {
+      "code": "ERR_ORG_ROLE_REQUIRED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The action needs an organisation role the caller does not hold: owner for membership and vehicles, owner or dispatcher for dispatch, and self-accept enabled for a worker claiming a job.",
+      "client_action": "Hide the action for roles that do not have it rather than showing the error."
+    },
+    {
+      "code": "ERR_WORKER_NOT_ELIGIBLE",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The named worker is not an active member of the organisation, or is not verified and unsuspended as a provider in their own right (BU-04).",
+      "client_action": "Show the worker as unavailable with their verification state."
+    },
+    {
+      "code": "ERR_VEHICLE_NOT_ALLOWED_IN_ZONE",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The provider's vehicle type is banned in a zone covering the pickup (BU-09).",
+      "client_action": "Say which vehicle types the zone allows; the zone list is readable."
     }
   ]
 }
