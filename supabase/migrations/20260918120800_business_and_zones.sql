@@ -264,7 +264,7 @@ AS $$
 DECLARE
   v_uid uuid := private.require_user();
 BEGIN
-  IF private.org_role(p_organization_id, v_uid) <> 'owner' THEN
+  IF private.org_role(p_organization_id, v_uid) IS DISTINCT FROM 'owner' THEN
     RAISE EXCEPTION 'ERR_ORG_ROLE_REQUIRED' USING ERRCODE = 'P0001';
   END IF;
   IF p_user_id IS NULL OR p_role IS NULL OR p_user_id = v_uid THEN
@@ -323,7 +323,7 @@ AS $$
 DECLARE
   v_uid uuid := private.require_user();
 BEGIN
-  IF private.org_role(p_organization_id, v_uid) <> 'owner' THEN
+  IF private.org_role(p_organization_id, v_uid) IS DISTINCT FROM 'owner' THEN
     RAISE EXCEPTION 'ERR_ORG_ROLE_REQUIRED' USING ERRCODE = 'P0001';
   END IF;
   IF p_user_id = v_uid THEN
@@ -358,7 +358,7 @@ AS $$
 DECLARE
   v_uid uuid := private.require_user();
 BEGIN
-  IF private.org_role(p_organization_id, v_uid) <> 'owner' THEN
+  IF private.org_role(p_organization_id, v_uid) IS DISTINCT FROM 'owner' THEN
     RAISE EXCEPTION 'ERR_ORG_ROLE_REQUIRED' USING ERRCODE = 'P0001';
   END IF;
   UPDATE public.organization_members m
@@ -404,7 +404,8 @@ BEGIN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
   IF p_organization_id IS NOT NULL
-     AND private.org_role(p_organization_id, v_uid) NOT IN ('owner', 'dispatcher') THEN
+     AND coalesce(private.org_role(p_organization_id, v_uid)::text, '')
+         NOT IN ('owner', 'dispatcher') THEN
     RAISE EXCEPTION 'ERR_ORG_ROLE_REQUIRED' USING ERRCODE = 'P0001';
   END IF;
 
@@ -521,7 +522,7 @@ BEGIN
   IF v_org IS NULL THEN
     RAISE EXCEPTION 'ERR_ORG_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
-  IF private.org_role(v_org, v_uid) NOT IN ('owner', 'dispatcher') THEN
+  IF coalesce(private.org_role(v_org, v_uid)::text, '') NOT IN ('owner', 'dispatcher') THEN
     RAISE EXCEPTION 'ERR_ORG_ROLE_REQUIRED' USING ERRCODE = 'P0001';
   END IF;
   PERFORM private.require_dispatchable_worker(v_org, p_worker_id);
