@@ -700,6 +700,17 @@
       "retryable": false,
       "description": "The ratings window for this job has closed (`ratings_window_hours`, 7 days by default).",
       "client_action": "Hide the rating prompt; the job's reputation effect is settled."
+    },
+    {
+      "code": "ERR_CHAT_CLOSED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The chat window for this job is not open: it opens at assignment and closes a day after confirmation (`chat_window_hours_after_confirm`), except while a dispute is open.",
+      "client_action": "Hide the composer and say the conversation is closed; offer support."
     }
   ]
 }

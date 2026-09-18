@@ -61,6 +61,8 @@ SELECT is(
        'public.set_job_status', 'public.verify_pin', 'public.reveal_job_pin',
        'public.confirm_completion',
        'public.submit_proof', 'public.rate_job',
+       'public.send_message', 'public.mark_read',
+       'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',
        'private.has_admin_role', 'private.is_any_admin')),
