@@ -11,7 +11,13 @@ import '../../app/router.dart';
 
 /// Countries the UI offers on first run. Status (live/beta/disabled) comes
 /// from the server-style country pack, never hardcoded here.
-const List<String> _welcomeCountryCodes = <String>['NG', 'KE', 'GH', 'ZA'];
+const List<String> _welcomeCountryCodes = <String>[
+  'NG',
+  'KE',
+  'GH',
+  'ZA',
+  'UG',
+];
 
 final _countryPacksProvider = FutureProvider<List<CountryPack>>((ref) {
   final catalog = ref.watch(catalogRepositoryProvider);
@@ -23,6 +29,7 @@ String _countryName(AppLocalizations l10n, String code) => switch (code) {
   'KE' => l10n.countryKe,
   'GH' => l10n.countryGh,
   'ZA' => l10n.countryZa,
+  'UG' => l10n.countryUg,
   _ => code,
 };
 

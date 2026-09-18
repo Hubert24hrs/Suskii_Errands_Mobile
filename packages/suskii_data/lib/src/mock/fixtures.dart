@@ -111,6 +111,45 @@ class MockDatabase {
         trustLevel: TrustLevel.new_,
         createdAt: now.subtract(const Duration(days: 15)),
       ),
+      // Customers behind the per-country feed fixtures (req-feed-*); the
+      // provider feed is country-scoped, so each needs a real country.
+      'user-ke-1': AppUser(
+        id: 'user-ke-1',
+        displayName: 'Wanjiru Kamau',
+        phoneE164: '+254712345678',
+        countryCode: 'KE',
+        preferredLanguage: 'en',
+        activeMode: UserMode.customer,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.unverified,
+        trustLevel: TrustLevel.new_,
+        createdAt: now.subtract(const Duration(days: 40)),
+      ),
+      'user-za-1': AppUser(
+        id: 'user-za-1',
+        displayName: 'Thandi Nkosi',
+        phoneE164: '+27712345678',
+        countryCode: 'ZA',
+        preferredLanguage: 'en',
+        activeMode: UserMode.customer,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.unverified,
+        trustLevel: TrustLevel.new_,
+        createdAt: now.subtract(const Duration(days: 50)),
+      ),
+      'user-us-1': AppUser(
+        id: 'user-us-1',
+        displayName: 'Jordan Lee',
+        phoneE164: '+15551234567',
+        email: 'jordan@example.com',
+        countryCode: 'US',
+        preferredLanguage: 'en',
+        activeMode: UserMode.customer,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.unverified,
+        trustLevel: TrustLevel.new_,
+        createdAt: now.subtract(const Duration(days: 60)),
+      ),
     };
 
     providers = <String, ProviderProfile>{
@@ -310,13 +349,28 @@ class MockDatabase {
       ),
       'ZA': const CountryPack(
         countryCode: 'ZA',
-        status: CountryStatus.disabled,
+        status: CountryStatus.beta,
         currencyCode: 'ZAR',
         supportedLanguages: <String>['en'],
         defaultLanguage: 'en',
-        launchCities: <String>[],
+        launchCities: <String>['Johannesburg'],
         emergencyNumbers: <EmergencyNumber>[
           EmergencyNumber(labelKey: 'emergencyPolice', number: '10111'),
+        ],
+        offerTtlSeconds: 600,
+        maxNegotiationRounds: 5,
+      ),
+      // Wave-1 set (ADR-0001/OD-14, supabase/seed/01_reference.sql):
+      // NG live, KE/GH/ZA/UG beta. US stays as the disabled-country fixture.
+      'UG': const CountryPack(
+        countryCode: 'UG',
+        status: CountryStatus.beta,
+        currencyCode: 'UGX',
+        supportedLanguages: <String>['en'],
+        defaultLanguage: 'en',
+        launchCities: <String>['Kampala'],
+        emergencyNumbers: <EmergencyNumber>[
+          EmergencyNumber(labelKey: 'emergencyPolice', number: '999'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
@@ -471,7 +525,9 @@ class MockDatabase {
         providerId: 'provider-swift',
         expiresAt: now.add(const Duration(minutes: 9)),
       ),
-      // Nearby open requests for the provider feed (multi-currency coverage).
+      // Nearby open requests for the provider feed, one per wave-1 country
+      // (plus a disabled-country one); the feed only serves the signed-in
+      // provider's own country.
       'req-feed-1': JobRequest(
         id: 'req-feed-1',
         customerId: 'user-chidi',

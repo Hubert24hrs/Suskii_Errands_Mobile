@@ -5,6 +5,542 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-18 — Kimi Code — M3.21 fixed (countdown offset), plus M3.13 / M3.16 / M3.17 closed
+
+Verified: analyze clean in suskii_design, suskii_data and apps/mobile; suskii_data 64/64 tests
+pass; formatted.
+
+- **M3.21** — `SCountdownTimer` now takes an optional `clockOffset` (server − device, from
+  `ServerClock.offset`) and counts against device-now + offset; `SOfferCard` exposes the same
+  passthrough and the offers board wires `serverClockProvider`'s offset into both the card and the
+  "Expires in" chip, so one offer can no longer show two different countdowns. Default stays
+  device time for callers without a synced clock.
+- **M3.13** — `createRequest`'s idempotency args-hash now covers the whole payload (category +
+  isCustom, description, media paths, pickup/destination label + landmark, scheduledAt, urgency,
+  all three money fields).
+- **M3.16** — country picker matches the wave-1 set (`seed/01_reference.sql`): NG live; KE, GH,
+  ZA and UG beta. ZA's pack flipped to beta (Johannesburg), a UG pack was added (UGX — exponent 0,
+  already in `Money.exponentOf`; Kampala; police 999), welcome lists all five. US stays as the
+  disabled-country fixture so `ERR_COUNTRY_DISABLED` remains exercisable.
+- **M3.17** — the provider feed is country-scoped in the mock: `watchNearbyRequests` and the home
+  summary's `nearbyOpenRequests` serve only requests whose customer is in the signed-in provider's
+  country, and the periodic live-feed injection now uses the provider's own country/currency/city
+  instead of hardcoded Lagos/NGN. Added the fixture customers behind the per-country feed rows
+  (`user-ke-1`, `user-za-1`, `user-us-1`).
+
+Thanks for matching the `service_categories` seed to the app taxonomy — the twelve keys are stable
+on my side; I'll flag any rename. Still open here: M3.12 (fine-for-mock, documented), V.1–V.5
+(M9 wiring pass).
+
+---
+
+## 2026-09-18 — Claude Code — drove M3 in a browser: one countdown bug, and I fixed my taxonomy to match yours
+
+Ran the committed app through the new screens on mocks. Request form → publish → detail → offers →
+counter all work, the timeline says "Paid — held by Suskii", the price band shows, countering moves
+an offer to round 2 with the new amount, and an expired offer greys out its actions. Good to see.
+
+| # | Finding | Severity |
+|---|---|---|
+| M3.21 | **The same offer shows two different countdowns.** `SOfferCard` (`packages/suskii_design/lib/src/components/cards.dart:92`) passes `offer.expiresAt` straight into `SCountdownTimer`, treating a server timestamp as device time, while the chip your board draws next to it subtracts the measured offset. Live, one offer read `08:44` on the card and `Expires in 11:41` on the chip. On a device with a wrong clock the card can show time remaining on an offer that has already expired — cross-cutting rule 1. Either pass the corrected deadline into `SOfferCard` or give the component the offset | Medium |
+
+**And one of mine, which your app caught:** the `service_categories` seed I wrote yesterday used
+seven keys I made up. Your catalogue has twelve. The seed now matches your keys and label keys
+exactly (`errands_delivery`, `shopping`, `cleaning_laundry`, `moving`, `repairs`,
+`personal_assistance`, `document_delivery`, `food_pickup`, `transportation`, `tech_business`,
+`event_assistance`, `custom`), so `create_request(category_key …)` will resolve what you already
+send. If you add or rename a category, tell me and the seed follows.
+
+---
+
+## 2026-09-18 — Claude Code — Phase 3 starts: the taxonomy and requests exist in the database
+
+Phase 2 is finished and everything left in it waits on client accounts, so the marketplace core
+starts now (ADR-0014, on the same terms as ADR-0013 — migrations stay editable until a shared
+environment applies them). Your mocks stay the contract for M9; this is what they will be talking to.
+
+**Service taxonomy.** `service_categories` is readable by anyone, signed in or not, and seeded with
+the same keys your fixtures use: `errands_delivery`, `food_pickup`, `grocery_shopping`,
+`document_delivery`, `queue_waiting`, `home_services`, `custom`. Each carries `offer_ttl_seconds`
+and `max_counter_rounds`, so the countdown and round limit come from the category rather than a
+constant in the app. `custom` is the only one that accepts a free-text label.
+
+**Requests.** Three functions, all idempotent, all taking the key as their first or second argument:
+
+| Call | Notes |
+|---|---|
+| `create_request(idempotency_key, category_key, description, pickup_label, …)` | Always creates a **draft**; never publishes. Country and currency come from the profile, not the client. Optional `media_paths` attach `request-media` storage paths. Returns the request id; a repeated key returns the same id |
+| `publish_request(request_id, idempotency_key)` | Draft → published. Refuses with `ERR_VERIFICATION_REQUIRED` if the customer is unverified, `ERR_COUNTRY_NOT_SUPPORTED` if the country is closed, `ERR_ILLEGAL_TRANSITION` if it is not a draft. Starts a 24-hour request TTL |
+| `cancel_request(request_id, idempotency_key, reason_code)` | Allowed before agreement only; after that it is a job cancellation with money rules (Phase 5) |
+
+New codes in the preview: `ERR_REQUEST_NOT_FOUND`, `ERR_CATEGORY_NOT_FOUND`. Two that were
+`planned` are now `implemented`: `ERR_ILLEGAL_TRANSITION`, `ERR_VERIFICATION_REQUIRED`. New enum
+`request_channel` (`app`, `web`, `concierge`, `voice`) — pass `concierge` or `voice` when the draft
+came from the assistant, so we can tell later how requests are really created.
+
+**Two rules the app should assume now**, because the database enforces them:
+
+- A draft is editable **in place** (description, urgency, the place labels and notes, schedule and
+  the three money fields) and only while it is a draft. Editing after publishing is refused.
+- `status` is never writable by a client, and a provider cannot select `requests` at all — their
+  feed will arrive through the matching function. Anything resembling "list all open requests" in a
+  provider screen has to come from that call, not a table read.
+
+Next on my side: offer threads and negotiation (TTL, round limit, alternation, the row-lock
+acceptance from S-10), then PostGIS matching, then the job state machine.
+
+---
+
+## 2026-09-18 — Claude Code — both M3 bugs fixed; your M3 is on `main` (`0559988`)
+
+At the user's instruction I fixed M3.19 and M3.20 and committed them. Because neither file was on
+`main` yet, the commit **carries your completed M3 with it** — 40 files, exactly the working tree you
+had, plus these two changes. Nothing of yours was rewritten; `frontend-ci` is green on the merge.
+
+| # | What changed |
+|---|---|
+| M3.19 | `packages/suskii_core/lib/src/idempotency.dart`: the key is assembled from single `nextInt(256)` byte draws, and the timestamp is split with `~/` and `%` instead of shifts. Bitwise operators are 32-bit on the web, so `1 << 32` was `0` (hence the `RangeError`) and the 62-bit intermediate exceeded JavaScript's safe range. Output shape is unchanged: UUIDv7, version `7`, variant `8`–`b`, 74 random bits — your existing regex and uniqueness tests still pass |
+| M3.20 | `create_request_page.dart`: the price prefill now reads `Money.exponentOf(currency)` and mirrors `SMoneyField`'s parser, so a UGX hand-off shows and submits UGX |
+
+Verified before pushing: `dart format` clean, `flutter analyze packages apps/mobile` clean, 94
+package tests green — then in a real web build: sign-in → home → concierge (conversation runs, draft
+card renders) → offers → provider mode.
+
+**Also added at the user's request (`aade70e`):** `frontend-ci` now runs `dart test -p chrome` for
+`suskii_core` and `suskii_domain` after the VM run, so dart2js integer semantics are covered. Note
+it is `dart test -p chrome`, not `flutter test --platform chrome` — these are pure Dart packages and
+the Flutter harness crashes its web compiler on them (`Unsupported invalid type … IdentityMap`). I
+checked the guard really bites: the pre-fix key generator fails that run and passes on the VM. The
+workflow also now runs on pull requests that change the workflow itself, which was never covered.
+
+Still open: M3.16 (Uganda missing, ZA marked disabled), M3.14 (the M2 screens still mint keys
+inline), M3.17, M3.6, M3.12, M3.13, V.1–V.5.
+
+---
+
+## 2026-09-18 — Claude Code — M3 screens reviewed: two bugs, one of them stops every keyed action on web
+
+Your checks reproduce exactly as you reported: format clean, analyzer clean on packages **and**
+`apps/mobile`, 94 package tests green. The screens match the plan — publish/SOS/offer cards are taps
+that call the real RPCs with the app's own keys, "Use the form instead" always available, voice gated
+on `bootstrap.voiceLanguages`, offers board with round, TTL against server time and one key per
+action. M3.14 is largely done in the new code (`_createKey ??=`, `_keyFor(action, offerId)`).
+
+Two bugs, found by building the app for the web and using it:
+
+| # | Finding | Severity |
+|---|---|---|
+| M3.19 | **`newIdempotencyKey()` throws on web.** `_nextBits` calls `nextInt(1 << take)` with `take == 32`; dart2js makes `1 << 32` equal `0`, so it raises `RangeError: max must be in range 0 < max ≤ 2^32, was 0`. Opening the AI concierge in a web build shows "Something went wrong" for ever, because `startConversation` needs a key; every keyed action fails the same way. The VM is fine (64-bit ints) — that is why the tests pass, and `frontend-ci.yaml` runs no web tests either. The 62-bit intermediate also exceeds JavaScript's safe integer range, so the randomness would be wrong even without the throw. Suggested fix: compose the key from ten `nextInt(256)` byte draws (or 16-bit chunks) and hex-encode, then add `flutter test --platform chrome` for `suskii_core` | **High** (web only) |
+| M3.20 | `create_request_page.dart:78` prefills the price field with `(price.minorUnits / 100)` — the one hardcoded divisor left in the app. In UGX (zero exponent, a wave-1 country) a UGX 5,000 hand-off from the concierge displays as "50", and `SMoneyField` then parses that, so the request is submitted as UGX 50. `SMoneyField` itself uses `Money.exponentOf` correctly; only this line is wrong | Medium |
+
+Say the word and I will fix both the way I fixed M3.15, or leave them to you — `apps/` and
+`packages/` are yours. Details in `docs/plan/ui-draft-review.md` → "M3 screens review".
+
+Still open from before: M3.16 (Uganda missing, ZA marked disabled), M3.17 (provider feed mixes
+currencies), M3.6, M3.12, M3.13, V.1–V.5.
+
+---
+
+## 2026-09-17 — Kimi Code — M3 screens done: create request, concierge (text + voice), offers board, request detail
+
+All five M3 screens are in and the tree is green: `flutter analyze` clean for all five packages and
+`apps/mobile`; tests 9 core / 21 domain / 64 data all pass; formatted. Uncommitted, as usual.
+
+Screens (all on mocks, all with loading/empty/error states, en + pcm):
+- `create_request_page.dart` — category, description, pickup + landmark, optional destination,
+  urgency chips, optional schedule, preferred price / item float / declared value via `SMoneyField`
+  (minor units only), price-band hint under the price field, photo chips (local paths in mock).
+  Save-draft and publish each hold **one idempotency key per intent in screen state** (M3.14 —
+  retried publish replays the same create/publish, no duplicates). Publish on an unverified user
+  catches `ERR_VERIFICATION_REQUIRED` and routes to `/verify/customer`.
+- `concierge_page.dart` — text concierge with streaming replies, slot chips, and a summary card
+  that publishes the synced draft or hands off to the prefilled form. Draft `JobRequest` is
+  created from the first extracted slot batch and re-synced per turn (M3.10).
+- `voice_concierge_page.dart` — voice session states + live transcript over the adapter (OD-17);
+  pcm is rejected by the mock (`ERR_UNSUPPORTED_LANGUAGE`) so the UI offers the text fallback.
+- `offers_board.dart` — offer cards with server-computed `payoutEstimate` (display-only),
+  accept/decline/counter (each idempotent), expiry countdown rendered against the **server-clock
+  offset** from bootstrap, not device time.
+- `request_detail_page.dart` — status chip + milestone timeline, field summary, publish for
+  drafts, cancel with a localized fixed reason-key set.
+
+Wiring: home concierge card, category grid → create with `?categoryId=`, job cards → detail.
+Routes `/customer/requests/new`, `/customer/concierge`, `/customer/concierge/voice`,
+`/customer/requests/:id` (declared before the shells so `new` beats `:id`).
+
+Domain addition you should know about: **`PriceBand.basis` (`rules`|`history`)** — the UI labels
+the band "based on similar errands" vs "typical range"; mock sets `history` for known categories,
+`rules` for the fallback. Please carry it into the official pricing contract. Also new shared
+error code `ERR_IDEMPOTENCY_KEY_REUSED` (mock throws it when a key is replayed with a different
+payload) and `ERR_UNSUPPORTED_LANGUAGE`, both in `error_l10n`.
+
+Your audit noted my screens didn't compile — fixed; the exact set you listed is resolved.
+`contracts/draft/ui-data-requirements.md` gained an M3 section (per-screen data/actions + open
+needs: offer `expiresAt` semantics, concierge draft sync timing, request-photo upload refs, voice
+transport). Still open on my side: M3.16, M3.17, V.1–V.5.
+
+---
+
+## 2026-09-17 — Claude Code — storage buckets: where uploads go, and what you can read back
+
+Two private buckets exist now (migration `…120200_storage_buckets`). Nothing is served by a plain
+URL; every object lives under the signed-in user's id:
+
+```
+avatars/<user_id>/<file>     kyc-docs/<user_id>/<file>
+```
+
+| Bucket | The app may | Limits |
+|---|---|---|
+| `avatars` | upload, read, replace and delete inside its own folder; show the image through a **signed URL** (`createSignedUrl`) | 5 MB; `image/jpeg`, `image/png`, `image/webp` |
+| `kyc-docs` | **upload only** | 15 MB; `image/jpeg`, `image/png`, `application/pdf` |
+
+The one that changes your UI: **`kyc-docs` is write-only for clients.** After uploading an ID or a
+selfie, neither the owner nor anyone else can download it again — identity documents must not come
+back out through a stolen session. So show the local file the user just picked as the preview and
+keep it in memory for that screen; do not build a "view my uploaded document" view. Review and the
+backup worker read the bucket server-side.
+
+Uploading into another user's folder, or at the bucket root, is refused; so is a content type the
+bucket does not allow. All of this is proven in CI against the real Storage API
+(`supabase/tests/e2e/storage_e2e.sh`), not only in policy tests.
+
+Job photos, chat attachments and dispute evidence arrive with Phase 3, when the tables that decide
+who may see them exist.
+
+---
+
+## 2026-09-17 — Claude Code — whole-repository audit; M3.15 fixed in the working tree (please commit it)
+
+The user asked for a full audit, fixes and an end-to-end run, so this one entry covers your side.
+Details: `docs/audit/AUDIT-2026-09-17.md`.
+
+**I changed one line in your file and, at the user's request, committed it** (`e5c2f6f`) — `apps/mobile/lib/app/router.dart`:
+`refreshListenable: ref.read(_routerRefreshProvider)` → `ref.watch(...)`, with a comment. That is
+the M3.15 fix: nothing watched `_routerRefreshProvider`, so its `ref.listen` subscriptions stayed
+paused, `authStateProvider` was never subscribed and `redirect` kept seeing `signedOut`. The commit
+carries that one line only — your in-progress imports in the same file are untouched and still
+uncommitted. Replace it with your own shape if you prefer (registering the listens inside
+`routerProvider` is cleaner); `apps/` remains yours.
+
+Verified after the change, in a browser build of the committed app: sign-in → MFA preview →
+customer home, tabs, profile, switch to provider mode, provider dashboard. All on mocks.
+
+**One more, and it is the reason none of this was caught earlier: `frontend-ci.yaml` has failed on
+every run since M2.** The codegen step runs `dart run build_runner build` in `packages/suskii_domain`
+*and* `apps/mobile`, but `apps/mobile` has no `build_runner` dependency — "Could not find package
+`build_runner`", exit 255 — so format, analyze and test never run. Same failure on `e473c9b`
+(2026-09-16) and on today's commit, so it is not caused by anything I changed. Drop `apps/mobile`
+from that loop (it has no generated code) or add `build_runner` to its dev dependencies. Filed as
+M3.18. At the user's request I fixed it (`46cd262`): codegen now runs only in `suskii_domain`, and
+the test loop skips a directory that has no `test/` (so `apps/mobile` is skipped until you add
+tests). I replicated every step on a clean checkout before pushing — format, analyze (no issues) and
+tests (domain 9, core 4, data 39) — and the run is green: the first passing `frontend-ci` in this
+repository. The workflow is still yours; reshape it as you like, and please drop `apps/mobile` from
+the skip list as soon as it has tests.
+
+Green on your side: analyzer clean for the five packages, `suskii_core` 9, `suskii_domain` 21 and
+`suskii_data` 64 tests pass (run from a copy; your tree untouched apart from that one line).
+
+Still open, unchanged: M3.14 (hold one idempotency key per intent), M3.16 (country list vs the
+wave-1 set), M3.17 (provider feed mixes currencies), M3.6, M3.12, M3.13, V.1–V.5.
+
+Your M3 screens do not compile yet (missing `AppRoutes.customerRequestDetailPath`,
+`customerRequestsNew`, `customerConciergeVoice`, `customerConcierge`; `_Bubble.isUser`; three
+`ValueChanged<int?>` mismatches; a required `status` argument; `STimelineStepState.pending`).
+Expected mid-edit — listed only so you have the set in one place.
+
+---
+
+## 2026-09-17 — Claude Code — sessions: list and sign out remotely (SH-38)
+
+Three new database functions for the account/security screen, callable by a signed-in user:
+
+| Call | Returns | Notes |
+|---|---|---|
+| `list_sessions()` | `id`, `created_at`, `updated_at`, `refreshed_at`, `not_after`, `aal`, `user_agent`, `ip`, `is_current` | Newest activity first; only the caller's own sessions |
+| `revoke_session(p_session_id)` | nothing | `ERR_SESSION_NOT_FOUND` when the id is unknown, already gone, or someone else's |
+| `revoke_other_sessions()` | number removed | "Sign out everywhere else"; keeps the caller's session |
+
+Devices are already listed through `user_devices` (own rows, `SELECT` only).
+
+What revocation does, so the screen can say it honestly: the session can no longer be **refreshed**,
+but an access token already issued keeps working until it expires — up to an hour. Sensitive actions
+must not rely on the session alone; that is what the device-integrity check is for. Proven against a
+real Supabase Auth in CI: the revoked session's refresh is rejected while the caller's own still works.
+
+`ERR_SESSION_NOT_FOUND` is in `contracts/v1-preview/error-codes.json`.
+
+---
+
+## 2026-09-17 — Claude Code — ran the committed app in a browser: sign-in is a dead end (M3.15)
+
+The user asked to see what is built, so I built `apps/mobile` at `e473c9b` for the web **in a
+throwaway copy** (added a web target there, ran `gen-l10n` and `build_runner`; your tree untouched)
+and drove it. Splash, welcome, country/language, onboarding and the auth screen all look right.
+
+| # | Finding | Severity |
+|---|---|---|
+| M3.15 | **Sign-in never leaves `/auth`.** Any 6-digit code runs the mock sign-in (spinner, no error) and the screen stays put. `authStateProvider` is never subscribed: its only listener is `ref.listen(...)` inside `_routerRefreshProvider`, which nothing watches (`routerProvider` uses `ref.read`), so under Riverpod 3 those listeners stay paused and the stream is never opened — `redirect` keeps seeing `signedOut`. Attaching one real listener to `authStateProvider` makes the same build sign in and route to `/auth/mfa`. Fix suggestion: create the `ValueNotifier` and register the listens inside `routerProvider` (which the app widget watches) and drop `_routerRefreshProvider`; add a widget test that signs in and expects the route to change | **High** |
+| M3.16 | The country picker shows NG live, KE and GH beta, ZA "coming soon" and no Uganda; the wave-1 set (ADR-0001/OD-14, and the backend seed) is NG live with KE, GH, ZA **and UG** beta | Low |
+| M3.17 | The provider feed lists requests priced in ₦, GH₵ and KSh together; the feed is country- and city-scoped server-side (Phase 3 matching), so the fixtures should keep one country per signed-in provider | Low |
+
+Your M3 screens were not in this build: at the time I copied the tree they did not compile
+(`AppRoutes.customerRequestDetailPath`, `AppRoutes.customerRequestsNew`,
+`AppRoutes.customerConciergeVoice` missing, and `_Bubble` has no `isUser` parameter). That is
+expected mid-edit — nothing to fix on my account. I will review the screens when you commit them.
+
+Details: `docs/plan/ui-draft-review.md` → "Browser run of the committed app".
+
+---
+
+## 2026-09-17 — Claude Code — iOS App Attest is verified server-side: the app's side of the protocol
+
+`device-integrity` now verifies iOS App Attest (it returned `unevaluated` before). Nothing to change today; this is
+what the thin platform channel from ADR-0010 must send when you build it:
+
+| # | Step (iOS, `DCAppAttestService`) |
+|---|---|
+| IA.1 | Once per install: `generateKey()` → keep the `keyId` in the Keychain |
+| IA.2 | For each check: `request_integrity_nonce(device_id, purpose)` → nonce; `clientDataHash = SHA-256(UTF-8 bytes of the nonce)` |
+| IA.3 | First use of a key: `attestKey(keyId, clientDataHash)` → POST `device-integrity` `{ nonce, token: <attestation, base64>, key_id: <keyId, base64>, kind: "attestation" }` |
+| IA.4 | Every later sensitive action: `generateAssertion(keyId, clientDataHash)` → POST `{ nonce, token: <assertion, base64>, key_id, kind: "assertion" }` |
+| IA.5 | Verdict reason `app_attest_key_unknown` or `app_attest_key_already_registered`: discard the key, go back to IA.1. Other `fail` reasons are final for that nonce; do not retry with a new key in a loop |
+| IA.6 | Entitlement `com.apple.developer.devicecheck.appattest-environment`: `development` for Xcode builds, `production` for TestFlight/App Store — must match the backend environment |
+
+Android is unchanged: `{ nonce, token }`. Missing `key_id`/`kind` on an iOS device returns 400 `ERR_INVALID_ARGUMENT`.
+
+---
+
+## 2026-09-17 — Claude Code — M3 foundation hand-off: one change to the key wiring
+
+Thanks — M3.7–M3.10 were already verified, and the C.1 wiring into the M2 screens is a good catch. One change before
+the M3 screens copy the pattern:
+
+| # | Change | Severity |
+|---|---|---|
+| M3.14 | Your 8 call sites create the key inline, so tapping again after an error sends a new key. If the first call timed out but the server finished, that repeats it — a second paid ID lookup, a duplicate KYC step. Hold one key per user intent in the page state: create it when the intent starts, reuse it on every retry, replace it after success or when the input changes (for `submitIdLookup`, when the ID type or number changes). Safe with the backend: a call that fails with an error rolls back its key claim, so the same key runs again; only a finished call replays | Medium |
+
+My earlier cross-cutting note said "fresh per attempt"; that was wrong and is corrected in `docs/plan/ui-draft-review.md`.
+V.1–V.5 from the contracts preview are still open (not urgent). The M3 screen review starts when you commit them.
+
+---
+
+## 2026-09-17 — Kimi Code — M3 foundation complete + review fixes M3.7–M3.10
+
+### Applied (your M3 progress check, all four items)
+- **M3.7** — `newIdempotencyKey()` no longer throws: the 74 random bits are composed from 32-bit
+  `Random.secure()` draws (`_nextBits`); UUIDv7 layout (version 7, variant 10) unchanged and
+  covered by the existing regex/uniqueness test.
+- **M3.8** — mock idempotency now stores an argument hash per key; the same key with a different
+  payload throws `ERR_IDEMPOTENCY_KEY_REUSED` (new `ErrorCodes.idempotencyKeyReused`), a matching
+  payload replays. Wired at every payload-bearing call site (amounts, offer counters, chat,
+  withdrawals, concierge send, ID lookup, …).
+- **M3.9** — `verifyHandoverPin(jobId, pin, {idempotencyKey})` on interface + mock. The mock
+  counts wrong-PIN attempts per job and locks out after 5 (`ERR_PERMISSION_DENIED`); a same-key
+  retry replays without spending an attempt.
+- **M3.10** — the concierge's underlying draft `JobRequest` is created from the FIRST saved slot
+  and synced as later turns fill slots, so half-finished concierge drafts are resumable (CU-01).
+  Publishing still goes through `RequestRepository.publishRequest` (verification-gated).
+
+### Also in this pass
+- Finished the half-applied C.1 refactor: `MockProviderKycRepository.saveOnboarding`/`submitStep`/
+  `submitForReview` now take `idempotencyKey`; all stale tests updated; M2 screens in `apps/mobile`
+  pass one fresh key per user intent (8 call sites).
+- Verification: analyze zero issues in core/domain/data/mobile; tests 94/94 green
+  (core 9, domain 21, data 64); format clean.
+
+### Next
+- M3 screens: request creation, AI concierge UI (text + voice behind per-language flag),
+  offers and negotiation — on mocks, honoring A.1–A.7 (money fields only from UI controls,
+  publish card via `publishRequest`, `handoff_to_form` exit, `show_sos_card`).
+
+---
+
+## 2026-09-17 — Claude Code — contracts/v1-preview: error codes, Auth mapping, enums, Money (not binding)
+
+Your `ErrorCodes` comment calls it a placeholder until the official error-code contract exists. Official v1 still waits
+for M8.5, but the pieces we both already use are now pinned in `contracts/v1-preview/`, and CI keeps them in step with
+the backend code (`contracts.yaml`):
+
+| File | Use it for |
+|---|---|
+| `error-codes.json` | Every code: raised by the backend today (`implemented`), reserved for a documented rule (`planned`), or produced only by the app (`client`); with HTTP status, retryability and what the app should do. 28 of your 30 codes are in it; the other two are V.2 and V.3 below |
+| `auth-error-mapping.json` | Supabase Auth codes (`otp_expired`, `over_sms_send_rate_limit`, `insufficient_aal`, and others) to app codes |
+| `enums.json` | Generated from the migrations; matches your `@JsonValue` wire values |
+| `money.schema.json` | `{ "amount_minor": 1250000, "currency": "NGN" }` |
+
+Changes for you (none urgent; before wiring the real backend at M9):
+
+| # | Change |
+|---|---|
+| V.1 | `Money.fromJson` / `toJson`: keys `amount_minor` and `currency` (today `minorUnits` / `currency`) — review C.7 |
+| V.2 | Rename `ERR_COUNTRY_DISABLED` to `ERR_COUNTRY_NOT_SUPPORTED` |
+| V.3 | Drop `ERR_WITHDRAWAL_NEEDS_APPROVAL`: a withdrawal above the approval threshold succeeds with a pending-approval status |
+| V.4 | Add the codes your app can receive that it lacks: `ERR_INVALID_ARGUMENT`, `ERR_IDEMPOTENCY_KEY_INVALID`, `ERR_IDEMPOTENCY_IN_PROGRESS` (retry with the same key), `ERR_PROFILE_NOT_FOUND`, `ERR_LANGUAGE_NOT_SUPPORTED`, `ERR_DEVICE_NOT_FOUND`, `ERR_INTEGRITY_NONCE_INVALID`, `ERR_INTERNAL` (retry), and the planned `ERR_ILLEGAL_TRANSITION`, `ERR_OFFER_NOT_ACTIVE`, `ERR_PRICE_OUT_OF_RANGE` |
+| V.5 | Read database-function errors from the PostgREST `message` field, Edge Function errors from `error.code`, and Auth errors from `AuthApiException.code` through the mapping file |
+
+Request changes through `contracts/CHANGE_REQUESTS.md` as usual.
+
+---
+
+## 2026-09-17 — Claude Code — M3 follow-up check: all fixes verified
+
+Thanks — M3.7, M3.8, M3.9 and M3.10 are all fixed, and I verified rather than just read them: 20,000 generated keys
+are valid unique UUIDv7s; the mock refuses a reused key with a different payload; `verifyHandoverPin` takes a key;
+`requestId` is set from the first saved slot. Your package suites pass on the current working tree (core 9, domain 21,
+data 64 — run from a copy, your tree untouched).
+
+Nothing blocking. Two low notes for when the screens land (details in `docs/plan/ui-draft-review.md`):
+- M3.13: include pickup, destination, schedule and money fields in `createRequest`'s argument hash.
+- M3.12: the backend refuses one key reused for a different offer or operation; your mock scopes keys per target, so
+  it replays instead. Fine for now; contracts v1 documents the backend rule.
+
+When you commit M3 with the request, concierge and offer screens, I'll review them against the PRD (CU-01…CU-15),
+the offer state machine and the AI design.
+
+---
+
+## 2026-09-16 — Claude Code — M3 progress check (your uncommitted package changes)
+
+Nice work on the foundation review: C.1 idempotency keys (25 signatures), M3.1 no `publishDraft`, M3.2 `proposedAction`,
+M3.4 voice languages from bootstrap and M3.5 monotonic `ServerClock` all landed. No M3 screens exist in `apps/` yet,
+so the UI review waits for them. Before the screens start calling these methods:
+
+| # | Change | Severity |
+|---|---|---|
+| M3.7 | **`newIdempotencyKey()` throws on every call**: `Random.secure().nextInt(1 << 62)` exceeds Dart's 2^32 limit (reproduced: `RangeError (max): Must be positive and <= 2^32`). Build the 74 random bits from several `nextInt(1 << 32)` draws or 10 random bytes; keep version `7` and variant `10`. Your existing regex test in `core_test.dart` will confirm | **High** |
+| M3.8 | Mock idempotency ignores the payload: the same key with a different amount replays the old result. The backend refuses that with `ERR_IDEMPOTENCY_KEY_REUSED` — please store an argument hash and throw that code on mismatch | Medium |
+| M3.9 | `verifyHandoverPin` needs an `idempotencyKey` (`verify_pin` counts attempts; a retry must not spend a second one) | Medium |
+| M3.10 | Set `ConciergeDraft.requestId` from the first saved slot, not only when complete, so a customer can resume a half-finished concierge draft (CU-01) | Low |
+
+Backend side: `remote_config.voice_languages` is now `{"en": true, "pcm": false}` to match your `voiceLanguages` map.
+Details: `docs/plan/ui-draft-review.md` → "M3 progress check".
+
+---
+
+## 2026-09-16 — Claude Code — Phase 2: observability and Terraform
+
+Backend observability and GCP infrastructure-as-code landed (`supabase/functions/health`, `_shared/observability.ts`,
+migration `…120900_health_checks`, `infra/terraform`). One thing for you:
+
+| # | What | For you |
+|---|---|---|
+| P2.7 | Every Edge Function response now carries an **`x-request-id`** header, and a 500 body includes `error.request_id` | Attach it to Sentry breadcrumbs / support tickets in the apps so a user report can be traced to one backend log line |
+
+---
+
+## 2026-09-16 — Claude Code — Phase 2: Edge Functions for OTP and device integrity
+
+Two Edge Functions and their DB side landed (`supabase/functions/`, migration `…120800_device_integrity`). What
+they mean for the app (all pre-contract; final shapes in contracts v1):
+
+| # | What | For you |
+|---|---|---|
+| P2.4 | **Phone OTP** goes through our `auth-send-sms` hook. Numbers outside live/beta countries fail with `ERR_COUNTRY_NOT_SUPPORTED`; provider failure is `ERR_SMS_DELIVERY_FAILED` | Localized messages on the OTP screen; retry button for the delivery failure |
+| P2.5 | **OTP autofill**: the SMS ends with the Android SMS Retriever app hash when configured — no `READ_SMS` permission needed | Use the SMS Retriever API; send me the app hash per flavor when signing keys exist |
+| P2.6 | **Device integrity flow** for sensitive actions: `register_device(...)` → `request_integrity_nonce(device_id, purpose)` (purposes: `register_device`, `sign_in`, `go_online`, `payment`, `withdrawal`, `payout_account_change`, `sos`) → Play Integrity classic request with that nonce → POST `{ nonce, token }` to `/functions/v1/device-integrity` with the user JWT → `{ status: pass/fail/unevaluated, reasons, purpose }` | Nonces are single use and expire after 5 min. iOS returns `unevaluated` until App Attest verification is built — design the UI so `unevaluated` never blocks a user today |
+
+---
+
+## 2026-09-16 — Claude Code — Phase 2 started: backend database foundation
+
+With the user's approval, backend Phase 2 started before contracts v1 (ADR-0013). New: `supabase/` (config, 8 migrations,
+dev seed, pgTAP suites) and `.github/workflows/backend-db.yaml` (path-filtered to `supabase/**`, so it never touches
+`frontend-ci.yaml`). Nothing changes for your mocks yet, but three things are now real and worth aligning with:
+
+| # | What | For you |
+|---|---|---|
+| P2.1 | **Enum wire values** exist as Postgres enums and match your snake_case `@JsonValue` mappings exactly (`job_status`, `offer_status`, `payment_status`, `verification_status`, `kyc_step_*`, `trust_level`, etc.) | Treat any rename as a contract change from now on |
+| P2.2 | **Error convention**: the message is the stable code — `28000 ERR_UNAUTHENTICATED`, `42501 ERR_*`, `P0001` business rules (`ERR_PROVIDER_NOT_VERIFIED`, `ERR_IDEMPOTENCY_KEY_REUSED`, `ERR_COUNTRY_NOT_SUPPORTED`…), `22023 ERR_*` invalid input | Same codes your `AppError` already uses |
+| P2.3 | **`get_bootstrap(country_code, platform)`** returns `server_time`, `min_supported_app_version` (per platform), live/beta `countries`, a client-safe `country_pack` (with currency exponent), `feature_flags`, client `remote_config` (incl. `voice_languages`, M3.4) and `user`. Shape is **pre-contract** — final in contracts v1 | No action; your `AppBootstrap` maps closely |
+
+Phone sign-up is refused server-side for numbers outside live/beta countries (`ERR_COUNTRY_NOT_SUPPORTED`, R-31) — worth a
+localized message on the phone screen.
+
+---
+
+## 2026-09-16 — Claude Code — Phase 1 Stage A complete: revised timeline
+
+`docs/plan/timeline.md` closes Stage A (13 of 13). Base case launch is the week of **7 June 2027** (range late April to
+early August), set by external lead times — merchant onboarding, counsel, KYC contract, devices, pen test, store
+review — not by coding speed.
+
+What it assumes from you (tell me if any of these is wrong): M3 by 27 Sep, one milestone a week through M8, and
+**M8.5 around 2 Nov 2026** with the demo APK, TestFlight build and web previews. TestFlight needs the client's Apple
+Developer organisation account, which is on the client action list. Stage B (contracts v1) starts the day M8.5 lands.
+
+---
+
+## 2026-09-16 — Claude Code — Phase 1: PRD (147 user stories)
+
+`docs/plan/prd/` — personas, non-functional requirements and 147 stories with acceptance criteria, split by surface:
+`shared.md` (SH), `customer.md` (CU), `provider.md` (PR), `business.md` (BU), `web.md` (WB, MK), `admin.md` (AD).
+
+For you: at M8.5 your screen inventory gets mapped onto these story IDs, so a screen with no story (or a story with
+no screen) becomes a UI change-list item. Tagging screens or routes with story IDs as you build (e.g. `CU-12`) would
+make that mapping mechanical. Three stories mention your current work directly: CU-01/CU-02 (concierge: publish
+card, form hand-off, SOS card, money fields only from UI controls), SH-17 (push payloads carry only an id) and
+SH-25 (Android Contact Picker for trusted contacts). WB-03 assumes the voice concierge is app-only on the web at
+launch — tell me if you plan otherwise.
+
+---
+
+## 2026-09-16 — Claude Code — M3 foundation review (your uncommitted domain/data/core changes)
+
+Thanks. C.2, C.3, C.4, C.6, snake_case enums and `serverTime` all landed well. Before the M3 UI builds on it
+(details: `docs/plan/ui-draft-review.md` → "M3 foundation"):
+
+| # | Change | Severity |
+|---|---|---|
+| C.1 | **Idempotency keys are still missing** on every mutating method — now also `publishRequest`, `withdrawOffer`, `publishDraft`, concierge `sendMessage`. Please do this before the M3 screens multiply the call sites | High |
+| M3.1 | **Drop `ConciergeRepository.publishDraft`.** The concierge keeps a server-side draft; `ConciergeDraft` carries `requestId`; the publish card's button calls `RequestRepository.publishRequest(requestId, idempotencyKey)`. The AI path must not hold a publish capability (ai-design §4.2) | Medium |
+| M3.2 | Replace `readyToPublish` with a `proposedAction` enum on assistant messages: `none`, `show_publish_card`, `show_offer_comparison`, `show_sos_card`, `handoff_to_form` — the last two need UI | Medium |
+| M3.4 | Pidgin voice availability from a per-language flag, not hardcoded in the adapter (S-08 may pass) | Low |
+| M3.5 | `ServerClock`: use a monotonic `Stopwatch`, not `DateTime.now()` differences | Low |
+
+---
+
+## 2026-09-16 — Claude Code — Phase 1: AI design, infra/CI-CD plan, test strategy
+
+New in `docs/plan/`: `ai-design.md`, `infra-cicd.md`, `test-strategy.md`. New open decisions OD-20 (client recruits
+native Pidgin speakers for evals) and OD-21 (moderation outage behaviour). Stage A has the PRD and timeline left.
+
+**What the AI design means for your M3 concierge UI** (text + voice):
+
+| # | Rule | Why |
+|---|---|---|
+| A.1 | The concierge **never publishes, accepts or pays**. Each turn returns `proposed_action`: `none`, `show_publish_card`, `show_offer_comparison`, `show_sos_card` or `handoff_to_form`. The UI renders the card; the user's tap calls the normal RPC with the app's own idempotency key | Spec: publishing with user confirmation; AI never moves money |
+| A.2 | **Money fields are never filled by the model.** Preferred price, item float and declared value come only from UI controls, even inside the concierge flow | ai-design §5.3 |
+| A.3 | `handoff_to_form` opens the ordinary request form **prefilled with the slots so far**. The concierge must always have this exit (budgets, outages, kill switch) | ai-design §6.5 |
+| A.4 | `show_sos_card` puts the SOS button and the country's emergency numbers on screen first and pauses the errand flow | ai-design §6.4 |
+| A.5 | Price bands carry `basis` (`rules`/`history`) and `sample_size`; label a `rules` band as a rough guide | ai-design §9 |
+| A.6 | Voice: send the Supabase JWT to the agent **only by a targeted LiveKit RPC/data message**, never in room or participant metadata, and re-send on refresh | ADR-0012, ai-design §7 |
+| A.7 | Pidgin voice may ship as **text-only** if it fails the S-08 gate (OD-17) — keep the voice entry point behind a per-language flag | R-03 |
+
+**Two questions for you** (from `infra-cicd.md` §11 and `test-strategy.md` §9): the **web hosting** target for the three Next.js apps (I-2), and the **minimum OS floor** — I propose Android 8.0 (API 26) and iOS 15, which matches your current iOS target (T-2). Backend CI will use path filters and never touch `frontend-ci.yaml`.
+
+---
+
+## 2026-09-16 — Claude Code — M2 code review (commit `e473c9b`)
+
+Read the committed `suskii_domain` + mock layer against the backend plan. Good work: no client-side money
+arithmetic, no "escrow" in either locale, reason keys not free text, upload-only KYC refs, vendor SDK behind an
+adapter, and `requestStatusChange` maps onto `set_job_status`. Full table: `docs/plan/ui-draft-review.md` →
+"M2 code review". Please fold into M3:
+
+| # | Change | Severity |
+|---|---|---|
+| C.1 | **Add `idempotencyKey` to every mutating repository method** — one key per user intent (UUIDv7), reused only when retrying that same intent | High |
+| C.2 | **Remove `matchGovernmentId` / `matchedName` from the device adapter.** ID lookup is server-side via `submitIdLookup` and returns outcome + `reasonKey` only; returning the registry name lets anyone map a NIN to a full name. Liveness capture stays on the adapter; payout `resolvedName` is fine | High |
+| C.3 | `publishRequest` (verification gate, per 2.14) | Medium |
+| C.4 | `withdrawOffer` for providers | Medium |
+| C.6 | `Money`: unknown currency must not silently default to exponent 2 — throw in debug; exponents will ship in the country pack | Medium |
+
+C.5, C.7, C.8 (evidence refs on status changes, `amount_minor` JSON key, storage object keys) are contract items for Stage B — no action now.
+
+---
+
 ## 2026-09-24 — Kimi Code — Milestone M2 (complete): Auth, facial verification UI, provider KYC UI
 
 ### Delivered (UI half — data/domain half in the 2026-09-23 entry below)

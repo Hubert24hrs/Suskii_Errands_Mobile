@@ -4,16 +4,26 @@ import 'package:flutter/material.dart';
 
 /// Countdown to a deadline (offer TTL, payment TTL). Renders `mm:ss`;
 /// turns to the theme error color under [urgentThreshold].
+///
+/// Deadlines are server timestamps, so pass the measured server-clock offset
+/// (`ServerClock.offset`, server − device) via [clockOffset]; without it the
+/// countdown trusts the device clock.
 class SCountdownTimer extends StatefulWidget {
   const SCountdownTimer({
     required this.deadline,
     super.key,
+    this.clockOffset,
     this.onExpired,
     this.urgentThreshold = const Duration(minutes: 2),
     this.textStyle,
   });
 
   final DateTime deadline;
+
+  /// Measured server − device clock offset; added to the device clock so a
+  /// device with a wrong clock still counts down to the server deadline.
+  final Duration? clockOffset;
+
   final VoidCallback? onExpired;
   final Duration urgentThreshold;
   final TextStyle? textStyle;
@@ -34,7 +44,8 @@ class _SCountdownTimerState extends State<SCountdownTimer> {
   }
 
   void _tick() {
-    final remaining = widget.deadline.difference(DateTime.now());
+    final now = DateTime.now().add(widget.clockOffset ?? Duration.zero);
+    final remaining = widget.deadline.difference(now);
     if (!mounted) return;
     setState(
       () => _remaining = remaining.isNegative ? Duration.zero : remaining,

@@ -17,6 +17,7 @@ class SOfferCard extends StatelessWidget {
     required this.declineLabel,
     required this.etaLabel,
     super.key,
+    this.clockOffset,
     this.onAccept,
     this.onCounter,
     this.onDecline,
@@ -27,6 +28,11 @@ class SOfferCard extends StatelessWidget {
   final String counterLabel;
   final String declineLabel;
   final String etaLabel;
+
+  /// Server − device clock offset for the expiry countdown (offer deadlines
+  /// are server timestamps).
+  final Duration? clockOffset;
+
   final VoidCallback? onAccept;
   final VoidCallback? onCounter;
   final VoidCallback? onDecline;
@@ -89,7 +95,10 @@ class SOfferCard extends StatelessWidget {
                   ),
                 ),
                 if (offer.expiresAt != null)
-                  SCountdownTimer(deadline: offer.expiresAt!),
+                  SCountdownTimer(
+                    deadline: offer.expiresAt!,
+                    clockOffset: clockOffset,
+                  ),
               ],
             ),
             if (offer.message != null && offer.message!.isNotEmpty) ...<Widget>[

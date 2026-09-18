@@ -167,6 +167,7 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                 etaLabel: offer.etaMinutes == null
                     ? ''
                     : l10n.offersEta(offer.etaMinutes!),
+                clockOffset: clock.offset,
                 onAccept: _actionable(offer) ? () => _accept(offer) : null,
                 onCounter: _actionable(offer)
                     ? () => _openCounter(offer)
@@ -206,11 +207,10 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       SCountdownTimer(
-                        // expiresAt is server time; convert to device-time
-                        // terms via the measured bootstrap offset.
-                        deadline: offer.expiresAt!.subtract(
-                          clock.offset ?? Duration.zero,
-                        ),
+                        // expiresAt is server time; the measured bootstrap
+                        // offset corrects for a wrong device clock.
+                        deadline: offer.expiresAt!,
+                        clockOffset: clock.offset,
                       ),
                     ],
                   ],

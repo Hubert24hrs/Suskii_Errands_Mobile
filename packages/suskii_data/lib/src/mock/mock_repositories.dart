@@ -656,6 +656,12 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
 
   bool _online = false;
 
+  /// The real feed is country- and city-scoped server-side (Phase 3
+  /// matching); the mock keeps one country per signed-in provider by matching
+  /// the requesting customer's country.
+  bool _inProviderCountry(JobRequest r) =>
+      db.users[r.customerId]?.countryCode == currentUser.countryCode;
+
   @override
   Future<ProviderHomeSummary> getHomeSummary() async {
     await gate();
@@ -666,7 +672,10 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
       todayEarnings: const Money(1260000, 'NGN'),
       completedToday: 3,
       nearbyOpenRequests: db.requests.values
-          .where((JobRequest r) => r.status == JobStatus.published)
+          .where(
+            (JobRequest r) =>
+                r.status == JobStatus.published && _inProviderCountry(r),
+          )
           .length,
       documentWarnings: const <DocumentExpiryWarning>[
         DocumentExpiryWarning(
@@ -684,27 +693,41 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
     controller = StreamController<List<JobRequest>>(
       onListen: () {
         List<JobRequest> snapshot() => db.requests.values
-            .where((JobRequest r) => r.status == JobStatus.published)
+            .where(
+              (JobRequest r) =>
+                  r.status == JobStatus.published && _inProviderCountry(r),
+            )
             .toList();
         controller.add(snapshot());
-        // Simulated realtime: a new nearby request appears periodically.
+        // Simulated realtime: a new nearby request appears periodically, in
+        // the provider's own country/currency like the server-side feed.
         timer = Timer.periodic(const Duration(seconds: 25), (_) {
+          final user = currentUser;
+          final pack = db.countryPacks[user.countryCode];
+          final currency = pack?.currencyCode ?? 'NGN';
+          final city = pack != null && pack.launchCities.isNotEmpty
+              ? pack.launchCities.first
+              : 'downtown';
+          final customer = db.users.values.firstWhere(
+            (AppUser u) => u.countryCode == user.countryCode,
+            orElse: () => db.users['user-chidi']!,
+          );
           final id = 'req-live-${DateTime.now().millisecondsSinceEpoch}';
           final request = JobRequest(
             id: id,
-            customerId: 'user-chidi',
+            customerId: customer.id,
             categoryId: 'errands_delivery',
             isCustomCategory: false,
-            description: 'Pick up a cake from a bakery in VI.',
+            description: 'Pick up a cake from a bakery in $city.',
             mediaPaths: const <String>[],
-            pickup: const PlaceRef(
-              label: 'Bakery, Victoria Island',
-              point: GeoPoint(latitude: 6.4281, longitude: 3.4219),
+            pickup: PlaceRef(
+              label: 'Bakery, $city',
+              point: const GeoPoint(latitude: 6.4281, longitude: 3.4219),
             ),
             urgency: Urgency.standard,
             status: JobStatus.published,
             createdAt: DateTime.now(),
-            preferredPrice: const Money(300000, 'NGN'),
+            preferredPrice: Money(300000, currency),
           );
           db.requests[id] = request;
           db.jobEvents.add(request);
