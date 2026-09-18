@@ -330,6 +330,16 @@ Bands are always advisory. `sample_size` and `basis` travel with every band so t
 
 **Matching:** a SQL scoring function using PostGIS distance plus weights (configured per country) for availability, rating, completion rate, cancellation rate, response time, current workload and category experience. Weights are config so ops can tune without a release; learning-to-rank on offer-acceptance data comes later behind the same shadow rule.
 
+> **Built 2026-09-18** as `private.match_providers(request_id, limit, radius)`. Weights live in
+> `remote_config` under `matching_weights`, per country, defaulting to distance 40, rating 20,
+> completion 15, cancellation 15, response 10, workload 10. Candidates must be online, verified,
+> unsuspended, in the request's country, registered for its category, and carrying a position
+> fresher than two minutes; providers who already have a thread on the request are skipped, since
+> notifying someone about work they have already bid on is noise. **Category experience is not in
+> the score**: it needs completed-job counts per category, which arrive with the job state
+> machine. A provider with no ratings scores a neutral 0.6 on that term rather than zero — a
+> marketplace that starves newcomers never gets a second provider.
+
 ## 10. Data, retention, observability
 
 | Data | Where | Retention |

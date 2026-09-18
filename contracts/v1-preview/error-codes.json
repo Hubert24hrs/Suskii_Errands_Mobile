@@ -417,13 +417,13 @@
     },
     {
       "code": "ERR_PROVIDER_BUSY_AS_CUSTOMER",
-      "status": "planned",
+      "status": "implemented",
       "category": "provider",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The provider has an active customer job needing attention.",
+      "description": "The caller has a job of their own under way as a customer, so they cannot also go online to take work.",
       "client_action": "Show the active job banner."
     },
     {
@@ -612,6 +612,39 @@
       "retryable": false,
       "description": "The thread already has a live offer awaiting an answer.",
       "client_action": "Counter or withdraw the live offer instead of sending a new one."
+    },
+    {
+      "code": "ERR_PROVIDER_SUSPENDED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The provider is serving a suspension; `suspended_until` says when it lifts.",
+      "client_action": "Show the suspension and its reason key; do not offer a retry."
+    },
+    {
+      "code": "ERR_CITY_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No city with that code in the caller's own country.",
+      "client_action": "Reload the city list for the country."
+    },
+    {
+      "code": "ERR_LOCATION_UNAVAILABLE",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "The provider feed has nothing to measure distance from: no fresh position and no service area.",
+      "client_action": "Ask for location permission and send a heartbeat, or have the provider pick a service area."
     }
   ]
 }
