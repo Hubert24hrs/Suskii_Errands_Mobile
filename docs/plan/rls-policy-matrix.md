@@ -224,6 +224,15 @@ All uploads: size and MIME limits per bucket, malware scan and image re-encode b
 
 All channels are private (`private: true`); public channels are not used anywhere.
 
+> **Built 2026-09-18** as `private.may_join_topic(topic)`, with SELECT and INSERT policies on
+> `realtime.messages` that call it. `user`, `request:*:customer`, `request:*:provider:*`, `job:*`
+> and `ops:sos` are implemented; `org:*:fleet` waits for the organisations table. Two deviations
+> from the table above, both recorded here rather than silently: `message_reads` moves through
+> `mark_read()` instead of the column grant, because a column grant cannot create the row it
+> updates and no client may insert one; and the marker never moves backwards, so two devices
+> reading the same conversation cannot make the unread badge flicker.
+
+
 ## pgTAP obligations
 
 For each table: one **allow** test per non-`—` cell and one **deny** test per role that is `—`, asserted by SQLSTATE (S-13 method). Plus these named deny tests, each of which maps to a spec rule or a spike finding:
