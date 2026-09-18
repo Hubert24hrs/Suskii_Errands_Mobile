@@ -47,8 +47,6 @@ SELECT is((SELECT round FROM public.offers WHERE id = (SELECT id FROM ids WHERE 
   1::smallint, 'the first offer in a thread is round 1');
 SELECT is((SELECT currency FROM public.offers WHERE id = (SELECT id FROM ids WHERE name = 'o1')),
   'NGN'::char(3), 'the amount is in the request currency, never one the client chose');
-SELECT is((SELECT status FROM public.requests WHERE id = (SELECT id FROM ids WHERE name = 'r1')),
-  'offers_received'::public.job_status, 'the first offer moves the request out of published');
 SELECT is(
   public.create_offer('key-o-offer-a-0000000000001', (SELECT id FROM ids WHERE name = 'r1'),
     650000, 'I dey Yaba now, I fit carry am.'),
@@ -63,7 +61,11 @@ SELECT throws_ok(
     (SELECT id FROM ids WHERE name = 'r1')),
   'P0001', 'ERR_PRICE_OUT_OF_RANGE', 'an amount above the country hard maximum is refused');
 SELECT is((SELECT count(*)::int FROM public.offers), 1, 'the provider sees their own offer');
+-- Read as the test role: a provider cannot select `requests` at all, which the next assertion
+-- would otherwise trip over rather than test.
 RESET ROLE;
+SELECT is((SELECT status FROM public.requests WHERE id = (SELECT id FROM ids WHERE name = 'r1')),
+  'offers_received'::public.job_status, 'the first offer moves the request out of published');
 
 -- A rival offers. Neither provider may see the other's amount (the competitive invariant).
 SELECT set_config('request.jwt.claims',
@@ -243,9 +245,14 @@ INSERT INTO ids VALUES ('o4', public.create_offer(
   'key-o-offer-a-0000000000005', (SELECT id FROM ids WHERE name = 'r3'), 900000, NULL));
 SELECT is(public.withdraw_offer('key-o-withdraw-a-000000001', (SELECT id FROM ids WHERE name = 'o4')),
   'withdrawn'::public.offer_status, 'an author may pull their own offer');
+RESET ROLE;
 SELECT is((SELECT status FROM public.requests WHERE id = (SELECT id FROM ids WHERE name = 'r3')),
   'published'::public.job_status, 'and the request is open again');
+
 -- The thread stays open, so the same provider may come back at a different price.
+SELECT set_config('request.jwt.claims',
+  '{"sub": "a2222222-2222-4222-8222-222222222222", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
 INSERT INTO ids VALUES ('o5', public.create_offer(
   'key-o-offer-a-0000000000006', (SELECT id FROM ids WHERE name = 'r3'), 800000, NULL));
 SELECT is((SELECT round FROM public.offers WHERE id = (SELECT id FROM ids WHERE name = 'o5')),

@@ -305,9 +305,9 @@ BEGIN
 
   -- Who is calling. Anyone else is told the offer does not exist, rather than that it does.
   IF v_uid = v_request.customer_id THEN
-    v_side := 'customer';
+    v_side := 'customer'::public.user_mode;
   ELSIF v_uid = v_thread.provider_id THEN
-    v_side := 'provider';
+    v_side := 'provider'::public.user_mode;
   ELSE
     RAISE EXCEPTION 'ERR_OFFER_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
@@ -401,9 +401,9 @@ BEGIN
   SELECT * INTO v_offer FROM public.offers o WHERE o.id = p_offer_id FOR UPDATE;
 
   IF v_uid = v_request.customer_id THEN
-    v_side := 'customer';
+    v_side := 'customer'::public.user_mode;
   ELSIF v_uid = v_thread.provider_id THEN
-    v_side := 'provider';
+    v_side := 'provider'::public.user_mode;
   ELSE
     RAISE EXCEPTION 'ERR_OFFER_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
@@ -497,9 +497,9 @@ BEGIN
   SELECT * INTO v_offer FROM public.offers o WHERE o.id = p_offer_id FOR UPDATE;
 
   IF v_uid = v_request.customer_id THEN
-    v_side := 'customer';
+    v_side := 'customer'::public.user_mode;
   ELSIF v_uid = v_thread.provider_id THEN
-    v_side := 'provider';
+    v_side := 'provider'::public.user_mode;
   ELSE
     RAISE EXCEPTION 'ERR_OFFER_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
@@ -559,9 +559,9 @@ BEGIN
   SELECT * INTO v_offer FROM public.offers o WHERE o.id = p_offer_id FOR UPDATE;
 
   IF v_uid = v_request.customer_id THEN
-    v_side := 'customer';
+    v_side := 'customer'::public.user_mode;
   ELSIF v_uid = v_thread.provider_id THEN
-    v_side := 'provider';
+    v_side := 'provider'::public.user_mode;
   ELSE
     RAISE EXCEPTION 'ERR_OFFER_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
