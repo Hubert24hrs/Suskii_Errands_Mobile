@@ -204,6 +204,29 @@ disabled), M3.17 (provider feed mixes currencies), M3.6, M3.12, M3.13, and the c
 V.1–V.5 (`amount_minor`, `ERR_COUNTRY_NOT_SUPPORTED`, dropping `ERR_WITHDRAWAL_NEEDS_APPROVAL`, the
 missing codes, and reading errors per transport).
 
+## M3 in a browser, and the taxonomy check (2026-09-18)
+
+Drove the committed app (web build, mocks) through the new screens: request form, publish, request
+detail with its timeline, offers board, counter-offer, concierge. All work. Notes worth keeping:
+
+- **Publishing works end to end**: category grid on home → form → *Publish request* → detail shows
+  `Published`, the timeline, the fields and "No offers yet", with the toast confirming it.
+- The timeline reads **"Paid — held by Suskii"** — the ADR-0002 wording, not "escrow".
+- The form shows a **price band** ("Typical price ₦1,500.00 – ₦5,000.00, based on 214 completed
+  jobs"), matching the AI design's band concept, and the money field carries the ₦ prefix.
+- Countering an offer updates it to **round 2** with the new amount and message, and an offer whose
+  TTL runs out switches to **Expired** with its actions disabled — the state machine as designed.
+
+| # | Finding | Severity | Type |
+|---|---|---|---|
+| M3.21 | **Two different countdowns for the same offer.** `SOfferCard` (design package, `cards.dart:92`) renders `SCountdownTimer(deadline: offer.expiresAt!)` — a server timestamp treated as device time — while the board's own chip beside it subtracts the measured clock offset (`offers_board.dart`). In the running app one offer showed `08:44` on the card and `Expires in 11:41` on the chip, the mock's clock skew apart. On a phone whose clock is wrong, the card can show time left on an offer that has already expired. Cross-cutting rule 1: every countdown goes through the bootstrap offset. Fix: pass the corrected deadline into `SOfferCard`, or give the component the offset | Medium | **[BUG]** |
+
+**My side, found by the same run:** the dev seed I wrote for `service_categories` used seven keys of
+my own invention. The app's catalogue has twelve (`errands_delivery`, `shopping`, `cleaning_laundry`,
+`moving`, `repairs`, `personal_assistance`, `document_delivery`, `food_pickup`, `transportation`,
+`tech_business`, `event_assistance`, `custom`). The seed now matches those keys and label keys, so
+`create_request(category_key …)` resolves exactly what the app already sends.
+
 ## Naming alignment with the domain package (checked 2026-09-16)
 
 Checked Kimi's `suskii_domain` enums and entities against the ERD so names do not drift.
