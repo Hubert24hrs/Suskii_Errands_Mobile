@@ -302,8 +302,8 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The job has passed the point where a customer may cancel it freely; after funds are held, cancellation carries fees (OD-08, OD-19).",
-      "client_action": "Offer dispute or support instead."
+      "description": "The request or job is not in a state its customer may cancel: either already terminal, or past the free-cancellation point, after which cancelling carries fees (OD-08, OD-19).",
+      "client_action": "Refresh the job; offer support or a dispute rather than a retry."
     },
     {
       "code": "ERR_KYC_EXPIRED",
