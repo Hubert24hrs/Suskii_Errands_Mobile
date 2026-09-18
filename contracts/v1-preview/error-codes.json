@@ -689,6 +689,17 @@
       "retryable": false,
       "description": "The job cannot be completed until its required proof exists — today the delivery PIN; per-category proof sets arrive with the proofs work.",
       "client_action": "Send the provider to the outstanding proof step."
+    },
+    {
+      "code": "ERR_RATING_WINDOW_CLOSED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The ratings window for this job has closed (`ratings_window_hours`, 7 days by default).",
+      "client_action": "Hide the rating prompt; the job's reputation effect is settled."
     }
   ]
 }

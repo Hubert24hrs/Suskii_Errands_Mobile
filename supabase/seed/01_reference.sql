@@ -58,3 +58,16 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
   ('location_min_move_m', NULL, '25', true),
   ('location_max_interval_s', NULL, '60', true)
 ON CONFLICT DO NOTHING;
+
+-- Ratings and reputation. The window is an assumption until the client sets one: SH-30 requires
+-- a window but the timeline does not name a length. The prior is the Bayesian smoothing SH-31
+-- calls for — a new provider starts at 4.5 stars with the weight of ten jobs behind it, so one
+-- rating moves them a little and fifty move them a lot.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('ratings_window_hours', NULL, '168', true),
+  ('reputation_prior_weight', NULL, '10', false),
+  ('reputation_prior_milli', NULL, '4500', false),
+  ('job_auto_confirm_hours', NULL, '24', true),
+  ('job_pin_max_attempts', NULL, '5', true),
+  ('job_arrival_geofence_m', NULL, '150', true)
+ON CONFLICT DO NOTHING;
