@@ -283,7 +283,7 @@ BEGIN
                        'country_code', v_request.country_code, 'urgency', v_request.urgency));
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key,
     jsonb_build_object('status', 'published'));
-  RETURN 'published';
+  RETURN 'published'::public.job_status;
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -330,7 +330,7 @@ BEGIN
     jsonb_build_object('from_status', v_status, 'reason', p_reason_code));
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key,
     jsonb_build_object('status', 'cancelled'));
-  RETURN 'cancelled';
+  RETURN 'cancelled'::public.job_status;
 END $$;
 
 -- ---------------------------------------------------------------------------
