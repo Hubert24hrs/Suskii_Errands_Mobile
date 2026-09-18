@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.1",
+  "version": "1.0.0-preview.2",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -340,7 +340,7 @@
     },
     {
       "code": "ERR_OFFER_EXPIRED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -351,7 +351,7 @@
     },
     {
       "code": "ERR_OFFER_NOT_ACTIVE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -362,7 +362,7 @@
     },
     {
       "code": "ERR_OFFER_ROUNDS_EXHAUSTED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -406,13 +406,13 @@
     },
     {
       "code": "ERR_PRICE_OUT_OF_RANGE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Amount outside the category hard limits, or the provider would net zero or less.",
+      "description": "Amount above the category hard maximum for the country. The minimum viable payout check arrives with the commission rules (OD-06).",
       "client_action": "Show the allowed range from the server response."
     },
     {
@@ -439,7 +439,7 @@
     },
     {
       "code": "ERR_SELF_DEALING_BLOCKED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -579,6 +579,39 @@
       "retryable": false,
       "description": "Vendor liveness or ID capture failed on the device.",
       "client_action": "Show the retry path."
+    },
+    {
+      "code": "ERR_OFFER_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No offer with that id is visible to the caller. Also returned when the caller is neither the customer nor the thread's provider, so an id cannot be probed.",
+      "client_action": "Refresh the thread."
+    },
+    {
+      "code": "ERR_OFFER_NOT_YOUR_TURN",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The same side may not counter or accept its own offer, and only the author may withdraw one.",
+      "client_action": "Show the thread's own actions; the counterparty has to answer first."
+    },
+    {
+      "code": "ERR_OFFER_ALREADY_PENDING",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The thread already has a live offer awaiting an answer.",
+      "client_action": "Counter or withdraw the live offer instead of sending a new one."
     }
   ]
 }

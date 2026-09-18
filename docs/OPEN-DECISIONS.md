@@ -19,7 +19,7 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-07 | Countries live on launch day | Nigeria first; others as their packs are verified | Open | Client | Phase 1 (contracts), Phase 10 |
 | OD-08 | Gateway fee on refunds | Platform absorbs it for fault-free cancellations; deducted for late customer cancellations | Open | Client | Phase 5 |
 
-## Raised by Phase 0 research and Phase 1 planning (OD-09 … OD-22)
+## Raised by Phase 0 research and Phase 1 planning (OD-09 … OD-23)
 
 | ID | Topic | Proposed default | Status | Owner | Needed by | Evidence |
 |---|---|---|---|---|---|---|
@@ -37,6 +37,7 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-20 | Pidgin evaluation data | Client recruits and pays native Nigerian Pidgin speakers (with recorded consent) to write and review 150 text conversations and record 40 voice tasks across 10+ speakers; Suskii owns the data | Proposed | Client | Phase 7 (blocks S-07 Pidgin half and S-08) | [ai-design.md](plan/ai-design.md) §8.1; R-03 |
 | OD-21 | AI moderation outage behaviour | Fail open with deterministic rules still enforced: requests and reviews publish into an async review queue, chat delivers; alert after 5 minutes. Alternative is fail closed (publishing blocked while moderation is down) | Proposed | Client | Phase 7 | [ai-design.md](plan/ai-design.md) §6.6 |
 | OD-22 | Session lifetime | Customers and providers: no time-box, inactivity timeout 30 days (re-verification for money actions is handled per action, SH-38). Admin console: time-box 12 hours, inactivity 30 minutes (spec: admin session timeouts; PRD AD idle expiry). Supabase applies one setting per project and only on Pro plans and up, so the admin limits need a separate check in the admin app or a separate project | Proposed | Client | Phase 2 (before the first shared environment) | supabase.com/docs/guides/auth/sessions (checked 2026-09-17) |
+| OD-23 | Price guardrails per country and category | The country packs' `pricing.guardrails` as they stand, which the packs themselves mark as placeholders: NG only, five categories, hard maximum enforced server-side on every offer and counter, soft band advisory in the app. A category with **no** row has no hard cap, so today seven of Nigeria's twelve categories are uncapped and the other four countries are uncapped entirely. Calibrate with pilot data before launch; a hard cap is a fraud control, not a pricing opinion | Proposed | Client | Phase 3 (built), before the first live country | `docs/research/country-packs/NG.yaml` `pricing.guardrails` (`_status`: assumption); offer state machine, pricing guardrails |
 
 ## Resolved
 

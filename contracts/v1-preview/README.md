@@ -1,6 +1,6 @@
 # contracts/v1-preview — pinned early, not binding
 
-Version **1.0.0-preview.1** (2026-09-17). Owner: Claude Code.
+Version **1.0.0-preview.2** (2026-09-18). Owner: Claude Code.
 
 [PHASE-1-PLAN](../../docs/plan/PHASE-1-PLAN.md) holds contracts v1 until Kimi Code's M8.5 hand-off, with one exception: the pieces both agents already build against are pinned now, so neither side keeps guessing. This folder is that exception. Contracts v1 (Stage B) replaces it; until then, anything here may still change, and every change is listed in [CHANGELOG.md](../CHANGELOG.md) and `HANDOFF.md`.
 

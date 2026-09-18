@@ -121,6 +121,7 @@ KYC files never sit in the database: they live in the `kyc-docs` bucket, write-o
 | `request_media` | `id uuid PK`, `request_id`, `storage_path`, `kind`, `created_at` | Path convention in the `request-media` bucket; image re-encoded server-side |
 | `offer_threads` | `id uuid PK`, `request_id`, `provider_id`, `organization_id`, `round_count smallint`, `status`, `created_at` | `UNIQUE (request_id, provider_id)`. Round limit counts per thread (offer state machine) |
 | `offers` | `id uuid PK`, `thread_id`, `request_id`, `provider_id`, `author_side` (`provider`/`customer`), `amount_minor`, `currency`, `message`, **`status offer_status`** (`pending`/`countered`/`accepted`/`declined`/`expired`/`withdrawn`), `round smallint`, `expires_at`, `supersedes_offer_id` | **Append-only** except `status`. Partial unique index `UNIQUE (request_id) WHERE status = 'accepted'` as a backstop to the S-10 row lock. Partial `(expires_at) WHERE status = 'pending'` for the expiry worker |
+| `pricing_guardrails` | `(country_code, category_id) PK`, `soft_min_minor`, `soft_max_minor`, `hard_max_minor`, `updated_at` | Added 2026-09-18 with the offers migration. The country pack's `pricing.guardrails`, in the database because the hard maximum is enforced server-side on every offer and counter. Readable by signed-in users for their own country, so the apps can show the soft band. No row means no hard cap (OD-23) |
 | `jobs` | `request_id uuid PK → requests`, `accepted_offer_id`, `provider_id`, `worker_id`, `organization_id`, `agreed_amount_minor`, `commission_rate_bps`, `commission_minor`, `net_minor`, `estimated_gateway_fee_minor`, `actual_gateway_fee_minor`, `tip_minor`, `item_float_released_minor`, `pickup_pin_hash`, `delivery_pin_hash`, `pin_attempts smallint`, `assigned_at`, `en_route_at`, `arrived_at`, `started_at`, `completed_at`, `confirmed_at`, `auto_confirmed boolean`, `settled_at` | Created in the `accept_offer` transaction. **The money snapshot is written once and never recomputed** — rate changes in the country pack must not alter an agreed job. PINs are hashed; the plaintext is shown only to the customer, once. `CHECK (net_minor = agreed_amount_minor - commission_minor)` |
 | `proofs` | `id uuid PK`, `request_id`, `kind` (`photo`/`receipt`/`signature`), `storage_path`, `display_path` (EXIF-stripped), `device_captured_at`, `server_received_at`, `device_point geography(Point)`, `uploaded_by` | Server timestamp is authoritative; device time kept for dispute context |
 | `ratings` | `id uuid PK`, `request_id`, `rater_id`, `ratee_id`, `direction`, `stars smallint`, `tags text[]`, `comment`, `moderation_status` | `UNIQUE (request_id, rater_id)`, `CHECK (stars BETWEEN 1 AND 5)`. Aggregates computed by job with Bayesian averaging (spec), never by trigger on insert |
@@ -233,6 +234,20 @@ All monthly range partitions on the time column, managed by `pg_partman` and sch
 | `vehicles.plate` | yes | duplicate vehicle across accounts |
 | `trusted_contacts.phone` | yes | — |
 | `requests.access_note`, `saved_places.access_note` | no | revealed to the assigned provider only |
+
+## Notes from implementation
+
+**2026-09-18 — offers and negotiation shipped** (`20260918120100_marketplace_offers.sql`), with
+three departures from the draft above, each deliberate:
+
+1. `offer_threads.organization_id` is **not** in the table yet: the organisations table does not
+   exist, and a column referencing nothing is worse than an ALTER later.
+2. `offers` also carries `status_reason` and `status_changed_at`, so a losing provider can be told
+   *why* their offer closed (`sibling_accepted`, `ttl`, `request_cancelled`) rather than only that
+   it did.
+3. `jobs` is not written on acceptance yet. Acceptance moves the request to `agreed` and stops:
+   the money snapshot needs the commission rate (OD-06), and inventing one now would be the kind
+   of number that quietly survives into production.
 
 ## Open questions
 

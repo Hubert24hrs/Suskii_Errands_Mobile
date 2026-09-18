@@ -74,12 +74,31 @@ The provider always sees an estimated payout **from the server** before submitti
 
 | UI action | Function | Notes |
 |---|---|---|
-| Submit an offer | `create_offer(request_id, amount_minor, message, idempotency_key)` | Provider only |
-| Counter | `counter_offer(thread_id, amount_minor, message, idempotency_key)` | Either side, alternating |
-| Accept | `accept_offer(request_id, offer_id, idempotency_key)` | Customer only |
-| Decline | `decline_offer(offer_id, idempotency_key)` | Customer only |
-| Withdraw | `withdraw_offer(offer_id, idempotency_key)` | Author only |
-| Compare offers | `compare_offers(request_id)` | AI advisory, read-only |
+| Submit an offer | `create_offer(idempotency_key, request_id, amount_minor, message)` | Provider only. Also the way a provider re-offers after withdrawing, in the same thread |
+| Counter | `counter_offer(idempotency_key, offer_id, amount_minor, message)` | The counterparty of that offer |
+| Accept | `accept_offer(idempotency_key, offer_id)` | The counterparty of that offer |
+| Decline | `decline_offer(idempotency_key, offer_id, reason_code)` | The counterparty of that offer |
+| Withdraw | `withdraw_offer(idempotency_key, offer_id)` | Author only |
+| Compare offers | `compare_offers(request_id)` | AI advisory, read-only. Not built yet |
+
+> **Reconciled 2026-09-18 with the implementation** (`20260918120100_marketplace_offers.sql`).
+> Three things the first draft left ambiguous, settled by building it:
+>
+> * **Counters and accepts name an offer, not a thread.** A thread id would be ambiguous the
+>   moment two calls race on the same thread; an offer id names exactly the row the caller saw.
+> * **The counterparty accepts, not "the customer".** Once a customer may counter, their counter
+>   is pending on the *provider* — with customer-only acceptance it could never be accepted at
+>   all. So: the customer accepts a provider's offer, the provider accepts the customer's
+>   counter. The same rule governs decline. Acting on your own offer raises
+>   `ERR_OFFER_NOT_YOUR_TURN`.
+> * **Withdrawal leaves the thread open** (transition 5 implies it): the provider re-offers with
+>   `create_offer`, which continues the same thread and counts as the next round. A second live
+>   offer in one thread is refused with `ERR_OFFER_ALREADY_PENDING`.
+>
+> Acceptance stops at `AGREED`: the job row and its money snapshot wait for the job state machine
+> and for OD-06. Of the guardrails below, only the country hard maximum is enforced today
+> (`pricing_guardrails`, seeded from the country packs, OD-23); the minimum viable payout needs
+> the commission rate and the gateway fee estimate.
 
 Expiry has no client entry point: it is a scheduled worker.
 
