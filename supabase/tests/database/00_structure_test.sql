@@ -53,6 +53,8 @@ SELECT is(
        'public.record_consent', 'public.request_integrity_nonce',
        'public.list_sessions', 'public.revoke_session', 'public.revoke_other_sessions',
        'public.create_request', 'public.publish_request', 'public.cancel_request',
+       'public.create_offer', 'public.counter_offer', 'public.accept_offer',
+       'public.decline_offer', 'public.withdraw_offer',
        'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
 
