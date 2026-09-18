@@ -58,6 +58,8 @@ SELECT is(
        'public.set_online', 'public.update_provider_services',
        'public.update_provider_service_areas', 'public.heartbeat',
        'public.provider_feed',
+       'public.set_job_status', 'public.verify_pin', 'public.reveal_job_pin',
+       'public.confirm_completion',
        'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
 

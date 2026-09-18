@@ -296,14 +296,14 @@
     },
     {
       "code": "ERR_JOB_NOT_CANCELLABLE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Cancellation not allowed in the job's current state.",
-      "client_action": "Offer dispute or support instead."
+      "description": "The request or job is not in a state its customer may cancel: either already terminal, or past the free-cancellation point, after which cancelling carries fees (OD-08, OD-19).",
+      "client_action": "Refresh the job; offer support or a dispute rather than a retry."
     },
     {
       "code": "ERR_KYC_EXPIRED",
@@ -645,6 +645,50 @@
       "retryable": true,
       "description": "The provider feed has nothing to measure distance from: no fresh position and no service area.",
       "client_action": "Ask for location permission and send a heartbeat, or have the provider pick a service area."
+    },
+    {
+      "code": "ERR_JOB_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No job with that request id, or the caller is not its provider or worker. The same code covers both, so a job id cannot be probed.",
+      "client_action": "Refresh the job list."
+    },
+    {
+      "code": "ERR_PIN_ATTEMPTS_EXCEEDED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Too many wrong PINs for this job. A wrong PIN itself is not an error: `verify_pin` returns {verified: false, attempts_remaining}.",
+      "client_action": "Stop asking for the PIN; offer support or a dispute instead."
+    },
+    {
+      "code": "ERR_NOT_AT_PICKUP",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "Marking arrival from outside the pickup geofence without a reason code.",
+      "client_action": "Send the current position, or ask for a reason and send it with the call."
+    },
+    {
+      "code": "ERR_PROOF_REQUIRED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The job cannot be completed until its required proof exists — today the delivery PIN; per-category proof sets arrive with the proofs work.",
+      "client_action": "Send the provider to the outstanding proof step."
     }
   ]
 }

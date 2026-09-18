@@ -45,6 +45,17 @@
       "retry",
       "failed"
     ],
+    "job_actor_kind": [
+      "customer",
+      "provider",
+      "worker",
+      "system",
+      "admin"
+    ],
+    "job_pin_kind": [
+      "pickup",
+      "delivery"
+    ],
     "job_status": [
       "draft",
       "published",

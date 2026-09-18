@@ -120,6 +120,28 @@ Everything above is a server function. Kimi's UI calls one of these and renders 
 
 The transitions with actor **S** have no client entry point at all.
 
+## Built so far (2026-09-18, `20260918120300_jobs.sql`)
+
+Transitions 6, 8, 11, 12, 13, 14, 15, 16, 17 and 23 exist. Everything between them that touches
+money does not, and the reason is always the same: OD-06 (commission rate), OD-08 (gateway fee on
+refunds) and OD-19 (who receives a cancellation fee) are unanswered, and a rate invented now would
+survive into production as though it had been decided.
+
+| Piece | Where it stands |
+|---|---|
+| `jobs` row | Created by trigger when an offer is accepted — by trigger rather than inside `accept_offer`, so any future path to `accepted` creates it too. The money columns exist and are **NULL**: the snapshot is written once, by the payment phase, and never recomputed |
+| `job_events` | Append-only, monthly partitions, one row per transition. `private.audit_forbid_mutation` blocks UPDATE and DELETE for every role, and each partition carries forced RLS of its own so reaching one directly returns nothing |
+| `private.mark_paid_held()` | **The payment seam.** No client grant, and none should ever exist — the state machine calls this the most abusable transition in the product. The payment phase calls it after a signature-verified webhook plus a server-side verify; until then it is how a test moves a paid job forward |
+| PINs | `private.job_pins`: salted SHA-256, attempt-limited, in `private` so no grant, policy or `SELECT *` can return one. Issued at assignment; `reveal_job_pin` rotates on every reveal, so a PIN seen once and screenshotted is already dead |
+| Geofence (#13) | `job_arrival_geofence_m`, default 150 m, remote config. Outside it, arrival needs a reason code, and the event records `inside_geofence` either way for the dispute file |
+| Proof (#15) | The part that exists is the delivery PIN, and a delivery is not complete without it (`ERR_PROOF_REQUIRED`). Per-category proof sets arrive with the proofs work |
+| Auto-confirm (#17) | `private.auto_confirm_jobs()`, every ten minutes, 24 h default. The spec's extra guard is honoured: the window elapsing is not enough, the required PIN must have been verified |
+| Free cancellation (#23) | `cancel_request` now covers `agreed`, since nobody has paid there. `paid_held` onward raises `ERR_JOB_NOT_CANCELLABLE` until the fee rules exist |
+
+**One design note worth keeping.** A wrong PIN is **not** an exception: `verify_pin` returns
+`{verified, status, attempts_remaining}`. Raising would roll the transaction back and take the
+attempt counter with it, so an attempt limit enforced by an exception is not a limit at all.
+
 ## Open questions for contracts v1
 
 1. Does `PAID_HELD → ASSIGNED` need to be visible to the UI as a separate state, or can the client treat `PAID_HELD` and `ASSIGNED` as one "waiting for provider" state? Kimi's M3/M4 screens will answer this.

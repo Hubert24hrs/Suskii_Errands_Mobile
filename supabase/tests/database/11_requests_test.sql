@@ -116,7 +116,7 @@ SELECT is(public.cancel_request((SELECT id FROM r), 'key-cancel-0000000000000002
   'cancelled'::public.job_status, 'a customer cancels a published request');
 SELECT throws_ok(
   format($$SELECT public.cancel_request(%L, 'key-cancel-0000000000000003')$$, (SELECT id FROM r)),
-  'P0001', 'ERR_ILLEGAL_TRANSITION', 'a cancelled request cannot be cancelled again');
+  'P0001', 'ERR_JOB_NOT_CANCELLABLE', 'a cancelled request cannot be cancelled again');
 RESET ROLE;
 
 UPDATE public.requests SET status = 'published', expires_at = now() - interval '1 minute'
