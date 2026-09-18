@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.1",
+  "version": "1.0.0-preview.2",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -296,14 +296,14 @@
     },
     {
       "code": "ERR_JOB_NOT_CANCELLABLE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Cancellation not allowed in the job's current state.",
-      "client_action": "Offer dispute or support instead."
+      "description": "The request or job is not in a state its customer may cancel: either already terminal, or past the free-cancellation point, after which cancelling carries fees (OD-08, OD-19).",
+      "client_action": "Refresh the job; offer support or a dispute rather than a retry."
     },
     {
       "code": "ERR_KYC_EXPIRED",
@@ -340,7 +340,7 @@
     },
     {
       "code": "ERR_OFFER_EXPIRED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -351,7 +351,7 @@
     },
     {
       "code": "ERR_OFFER_NOT_ACTIVE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -362,7 +362,7 @@
     },
     {
       "code": "ERR_OFFER_ROUNDS_EXHAUSTED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -406,24 +406,24 @@
     },
     {
       "code": "ERR_PRICE_OUT_OF_RANGE",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Amount outside the category hard limits, or the provider would net zero or less.",
+      "description": "Amount above the category hard maximum for the country. The minimum viable payout check arrives with the commission rules (OD-06).",
       "client_action": "Show the allowed range from the server response."
     },
     {
       "code": "ERR_PROVIDER_BUSY_AS_CUSTOMER",
-      "status": "planned",
+      "status": "implemented",
       "category": "provider",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The provider has an active customer job needing attention.",
+      "description": "The caller has a job of their own under way as a customer, so they cannot also go online to take work.",
       "client_action": "Show the active job banner."
     },
     {
@@ -439,7 +439,7 @@
     },
     {
       "code": "ERR_SELF_DEALING_BLOCKED",
-      "status": "planned",
+      "status": "implemented",
       "category": "marketplace",
       "surface": "client",
       "sqlstate": "P0001",
@@ -579,6 +579,193 @@
       "retryable": false,
       "description": "Vendor liveness or ID capture failed on the device.",
       "client_action": "Show the retry path."
+    },
+    {
+      "code": "ERR_OFFER_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No offer with that id is visible to the caller. Also returned when the caller is neither the customer nor the thread's provider, so an id cannot be probed.",
+      "client_action": "Refresh the thread."
+    },
+    {
+      "code": "ERR_OFFER_NOT_YOUR_TURN",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The same side may not counter or accept its own offer, and only the author may withdraw one.",
+      "client_action": "Show the thread's own actions; the counterparty has to answer first."
+    },
+    {
+      "code": "ERR_OFFER_ALREADY_PENDING",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The thread already has a live offer awaiting an answer.",
+      "client_action": "Counter or withdraw the live offer instead of sending a new one."
+    },
+    {
+      "code": "ERR_PROVIDER_SUSPENDED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The provider is serving a suspension; `suspended_until` says when it lifts.",
+      "client_action": "Show the suspension and its reason key; do not offer a retry."
+    },
+    {
+      "code": "ERR_CITY_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No city with that code in the caller's own country.",
+      "client_action": "Reload the city list for the country."
+    },
+    {
+      "code": "ERR_LOCATION_UNAVAILABLE",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "The provider feed has nothing to measure distance from: no fresh position and no service area.",
+      "client_action": "Ask for location permission and send a heartbeat, or have the provider pick a service area."
+    },
+    {
+      "code": "ERR_JOB_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No job with that request id, or the caller is not its provider or worker. The same code covers both, so a job id cannot be probed.",
+      "client_action": "Refresh the job list."
+    },
+    {
+      "code": "ERR_PIN_ATTEMPTS_EXCEEDED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Too many wrong PINs for this job. A wrong PIN itself is not an error: `verify_pin` returns {verified: false, attempts_remaining}.",
+      "client_action": "Stop asking for the PIN; offer support or a dispute instead."
+    },
+    {
+      "code": "ERR_NOT_AT_PICKUP",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "Marking arrival from outside the pickup geofence without a reason code.",
+      "client_action": "Send the current position, or ask for a reason and send it with the call."
+    },
+    {
+      "code": "ERR_PROOF_REQUIRED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The job cannot be completed until its required proof exists — today the delivery PIN; per-category proof sets arrive with the proofs work.",
+      "client_action": "Send the provider to the outstanding proof step."
+    },
+    {
+      "code": "ERR_RATING_WINDOW_CLOSED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The ratings window for this job has closed (`ratings_window_hours`, 7 days by default).",
+      "client_action": "Hide the rating prompt; the job's reputation effect is settled."
+    },
+    {
+      "code": "ERR_CHAT_CLOSED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The chat window for this job is not open: it opens at assignment and closes a day after confirmation (`chat_window_hours_after_confirm`), except while a dispute is open.",
+      "client_action": "Hide the composer and say the conversation is closed; offer support."
+    },
+    {
+      "code": "ERR_BLOCKED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "One of the two people has blocked the other. Symmetric, and the response never says which direction.",
+      "client_action": "Show a neutral message. Never reveal that the other party blocked the caller, or offer to contact them another way."
+    },
+    {
+      "code": "ERR_ORG_NOT_FOUND",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No organisation with that id is visible to the caller, or no membership row to act on.",
+      "client_action": "Refresh the organisation list."
+    },
+    {
+      "code": "ERR_ORG_ROLE_REQUIRED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The action needs an organisation role the caller does not hold: owner for membership and vehicles, owner or dispatcher for dispatch, and self-accept enabled for a worker claiming a job.",
+      "client_action": "Hide the action for roles that do not have it rather than showing the error."
+    },
+    {
+      "code": "ERR_WORKER_NOT_ELIGIBLE",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The named worker is not an active member of the organisation, or is not verified and unsuspended as a provider in their own right (BU-04).",
+      "client_action": "Show the worker as unavailable with their verification state."
+    },
+    {
+      "code": "ERR_VEHICLE_NOT_ALLOWED_IN_ZONE",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The provider's vehicle type is banned in a zone covering the pickup (BU-09).",
+      "client_action": "Say which vehicle types the zone allows; the zone list is readable."
     }
   ]
 }

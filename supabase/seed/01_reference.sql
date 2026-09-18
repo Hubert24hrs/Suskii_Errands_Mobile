@@ -47,3 +47,33 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
   -- OD-17: Pidgin voice stays off until the S-08 gate passes (review M3.4).
   ('voice_languages', NULL, '{"en": true, "pcm": false}', true)
 ON CONFLICT DO NOTHING;
+
+-- Matching weights and the heartbeat gate, as remote config so ops can tune them without a
+-- release (ai-design §9; ADR-0009 and S-06 for the gate). These are the same values the
+-- functions fall back to, written out so the shape is visible in the admin console.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('matching_weights', NULL,
+   '{"distance": 40, "rating": 20, "completion": 15, "response": 10, "cancellation": 15, "workload": 10}',
+   false),
+  ('location_min_move_m', NULL, '25', true),
+  ('location_max_interval_s', NULL, '60', true)
+ON CONFLICT DO NOTHING;
+
+-- Ratings and reputation. The window is an assumption until the client sets one: SH-30 requires
+-- a window but the timeline does not name a length. The prior is the Bayesian smoothing SH-31
+-- calls for — a new provider starts at 4.5 stars with the weight of ten jobs behind it, so one
+-- rating moves them a little and fifty move them a lot.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('ratings_window_hours', NULL, '168', true),
+  ('reputation_prior_weight', NULL, '10', false),
+  ('reputation_prior_milli', NULL, '4500', false),
+  ('job_auto_confirm_hours', NULL, '24', true),
+  ('job_pin_max_attempts', NULL, '5', true),
+  ('job_arrival_geofence_m', NULL, '150', true)
+ON CONFLICT DO NOTHING;
+
+-- Chat stays open for a day after the job is confirmed, so a question about work that has just
+-- finished still has somewhere to go.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('chat_window_hours_after_confirm', NULL, '24', true)
+ON CONFLICT DO NOTHING;

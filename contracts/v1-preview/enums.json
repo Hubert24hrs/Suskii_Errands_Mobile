@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.1",
+  "version": "1.0.0-preview.2",
   "binding": false,
   "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",
   "enums": {
@@ -45,6 +45,17 @@
       "retry",
       "failed"
     ],
+    "job_actor_kind": [
+      "customer",
+      "provider",
+      "worker",
+      "system",
+      "admin"
+    ],
+    "job_pin_kind": [
+      "pickup",
+      "delivery"
+    ],
     "job_status": [
       "draft",
       "published",
@@ -88,6 +99,23 @@
       "rejected",
       "expired"
     ],
+    "moderation_status": [
+      "pending",
+      "approved",
+      "rejected"
+    ],
+    "notification_kind": [
+      "request_matched",
+      "offer_received",
+      "offer_countered",
+      "offer_accepted",
+      "offer_expired",
+      "job_assigned",
+      "job_status",
+      "chat_message",
+      "rating_received",
+      "system"
+    ],
     "offer_status": [
       "pending",
       "countered",
@@ -95,6 +123,15 @@
       "declined",
       "expired",
       "withdrawn"
+    ],
+    "offer_thread_status": [
+      "open",
+      "closed"
+    ],
+    "org_member_status": [
+      "invited",
+      "active",
+      "removed"
     ],
     "payment_status": [
       "unpaid",
@@ -104,9 +141,18 @@
       "refunded",
       "partially_refunded"
     ],
+    "proof_kind": [
+      "photo",
+      "receipt",
+      "signature"
+    ],
     "provider_kind": [
       "individual",
       "business"
+    ],
+    "rating_direction": [
+      "customer_to_provider",
+      "provider_to_customer"
     ],
     "referral_commission_status": [
       "pending",
@@ -114,6 +160,12 @@
       "holding",
       "available",
       "reversed"
+    ],
+    "report_status": [
+      "open",
+      "reviewing",
+      "actioned",
+      "dismissed"
     ],
     "request_channel": [
       "app",

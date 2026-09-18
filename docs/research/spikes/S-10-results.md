@@ -56,3 +56,16 @@ These assertions become pgTAP tests, more or less as written:
 - exactly one event per acceptance.
 
 Then re-run against Supabase, where the pooler and network add failure modes this local test cannot show (statement timeouts, connection resets mid-transaction).
+
+## Carried in, 2026-09-18
+
+`accept_offer` ships in `supabase/migrations/20260918120100_marketplace_offers.sql` with the shape
+above — request row lock, guarded transition, sibling expiry, one event, idempotency stored — and
+finding 2 applied everywhere: `private.idempotency_claim` inserts the key first and treats "no row
+inserted" as a replay, so no operation depends on a lock it may not have.
+
+Of the assertions listed above, all but true N-way contention are now permanent pgTAP tests
+(`supabase/tests/database/12_offers_test.sql`): single acceptance, sibling expiry with a reason,
+replay without a second event, expired offer rejected, a losing caller told `ERR_OFFER_NOT_ACTIVE`,
+exactly one `offer.accepted` event. Concurrency itself needs more than one session, so it stays in
+this harness until the load tests run against a real Supabase project with the pooler in front.
