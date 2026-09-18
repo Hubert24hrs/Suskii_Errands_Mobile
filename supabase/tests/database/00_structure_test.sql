@@ -55,6 +55,9 @@ SELECT is(
        'public.create_request', 'public.publish_request', 'public.cancel_request',
        'public.create_offer', 'public.counter_offer', 'public.accept_offer',
        'public.decline_offer', 'public.withdraw_offer',
+       'public.set_online', 'public.update_provider_services',
+       'public.update_provider_service_areas', 'public.heartbeat',
+       'public.provider_feed',
        'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
 

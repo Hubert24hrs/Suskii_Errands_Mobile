@@ -249,6 +249,21 @@ three departures from the draft above, each deliberate:
    the money snapshot needs the commission rate (OD-06), and inventing one now would be the kind
    of number that quietly survives into production.
 
+**2026-09-18 — the provider side and matching shipped**
+(`20260918120200_providers_and_matching.sql`):
+
+1. `provider_profiles.rating_bayes numeric(3,2)` is **`rating_avg_milli integer`** (4.73 → 4730).
+   `public` carries no numeric or floating-point columns, and `00_structure_test.sql` enforces it;
+   thousandths of a star are exact and sort the same way.
+2. `provider_service_areas.zone_ids uuid[]` is left out until a zones table exists. Service areas
+   are per city for now.
+3. `provider_live_location.speed_mps` is **`speed_cm_s integer`**, for the same reason as (1).
+4. **The feed returns a distance, not a point.** `provider_feed()` gives `distance_m` and the
+   place labels; the customer's coordinates never reach a provider who has not been chosen. If a
+   map pin is wanted later it should be a deliberately coarsened point, not the raw column.
+5. `provider_profiles` cold-start defaults (`completion_rate_bps` 10000, `cancellation_rate_bps`
+   0, no ratings) favour newcomers while supply is thin. The reputation job overwrites them.
+
 ## Open questions
 
 1. **Enum wire format.** Snake_case on the wire requires `@JsonValue` mappings on Kimi's camelCase Dart enums. The alternative — camelCase in Postgres — fights every Supabase tool. Recommending snake_case; logged as a UI change, to settle before M3 adds more enums.

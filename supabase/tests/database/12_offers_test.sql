@@ -17,6 +17,13 @@ WHERE user_id IN ('a2222222-2222-4222-8222-222222222222',
                   'a3333333-3333-4333-8333-333333333333');
 UPDATE public.profiles SET country_code = 'NG'
 WHERE user_id = 'a4444444-4444-4444-8444-444444444444';
+-- Offering needs a provider profile as well as a verified profile: eligibility is the pair
+-- (`private.is_active_provider`). The unverified one gets a row too, so the assertion below
+-- tests verification rather than a missing row.
+INSERT INTO public.provider_profiles (user_id) VALUES
+  ('a2222222-2222-4222-8222-222222222222'),
+  ('a3333333-3333-4333-8333-333333333333'),
+  ('a4444444-4444-4444-8444-444444444444');
 
 CREATE TEMP TABLE ids (name text PRIMARY KEY, id uuid);
 GRANT ALL ON ids TO authenticated, service_role;

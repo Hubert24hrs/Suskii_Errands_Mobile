@@ -47,3 +47,14 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
   -- OD-17: Pidgin voice stays off until the S-08 gate passes (review M3.4).
   ('voice_languages', NULL, '{"en": true, "pcm": false}', true)
 ON CONFLICT DO NOTHING;
+
+-- Matching weights and the heartbeat gate, as remote config so ops can tune them without a
+-- release (ai-design §9; ADR-0009 and S-06 for the gate). These are the same values the
+-- functions fall back to, written out so the shape is visible in the admin console.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('matching_weights', NULL,
+   '{"distance": 40, "rating": 20, "completion": 15, "response": 10, "cancellation": 15, "workload": 10}',
+   false),
+  ('location_min_move_m', NULL, '25', true),
+  ('location_max_interval_s', NULL, '60', true)
+ON CONFLICT DO NOTHING;
