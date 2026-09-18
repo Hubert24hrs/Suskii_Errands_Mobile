@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(24);
+SELECT plan(26);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000041'),
