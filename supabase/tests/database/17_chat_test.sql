@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(35);
+SELECT plan(36);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000101'),   -- customer
@@ -214,15 +214,24 @@ SELECT is(
 
 -- Database broadcasts: the channels carry what the tables just recorded, and a channel that is
 -- down must never roll back the work. Both are facts about this stack, so both are asserted.
-SELECT ok((SELECT private.broadcast('job:' || (SELECT id FROM ch WHERE name = 'r'),
-             'test.event', '{"ok": true}'::jsonb)) IS NULL,
+SELECT lives_ok(
+  format($$SELECT private.broadcast('job:' || %L, 'test.event', '{"ok": true}'::jsonb)$$,
+    (SELECT id FROM ch WHERE name = 'r')),
   'a broadcast returns quietly rather than failing the transaction that produced it');
+-- Count this one event rather than the topic: by now the job topic carries every status change
+-- and message this file made, which is itself the evidence that the triggers are firing.
 SELECT is(
   (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN -1
                ELSE (SELECT count(*)::int FROM realtime.messages m
-                     WHERE m.topic = 'job:' || (SELECT id FROM ch WHERE name = 'r')) END),
+                     WHERE m.topic = 'job:' || (SELECT id FROM ch WHERE name = 'r')
+                       AND m.event = 'test.event') END),
   (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN -1 ELSE 1 END),
   'and the message really landed on the job topic');
+SELECT ok(
+  (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN 99
+               ELSE (SELECT count(*)::int FROM realtime.messages m
+                     WHERE m.topic = 'job:' || (SELECT id FROM ch WHERE name = 'r')) END) > 1,
+  'and the job topic carries what the triggers broadcast along the way');
 
 SELECT * FROM finish();
 ROLLBACK;
