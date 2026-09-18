@@ -119,6 +119,11 @@
       "refunded",
       "partially_refunded"
     ],
+    "proof_kind": [
+      "photo",
+      "receipt",
+      "signature"
+    ],
     "provider_kind": [
       "individual",
       "business"

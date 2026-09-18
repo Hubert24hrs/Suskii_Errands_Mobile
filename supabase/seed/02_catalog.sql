@@ -34,3 +34,20 @@ FROM (VALUES
 ) AS g(key, soft_min, soft_max, hard_max)
 JOIN public.service_categories sc ON sc.key = g.key
 ON CONFLICT DO NOTHING;
+
+-- What each category has to show for itself before a provider can mark the work done (job
+-- lifecycle transition 15). A kind that is absent or zero is not required, so a category with an
+-- empty object needs no proof at all. These are the defaults; ops tunes them per category.
+UPDATE public.service_categories SET proof_requirements = v.req
+FROM (VALUES
+  ('errands_delivery',   '{"photo": 1}'::jsonb),
+  ('shopping',           '{"photo": 1, "receipt": 1}'::jsonb),
+  ('cleaning_laundry',   '{"photo": 1}'::jsonb),
+  ('moving',             '{"photo": 2}'::jsonb),
+  ('repairs',            '{"photo": 1}'::jsonb),
+  ('document_delivery',  '{"photo": 1, "signature": 1}'::jsonb),
+  ('food_pickup',        '{"photo": 1}'::jsonb),
+  ('event_assistance',   '{"photo": 1}'::jsonb)
+) AS v(key, req)
+WHERE public.service_categories.key = v.key
+  AND public.service_categories.proof_requirements = '{}'::jsonb;
