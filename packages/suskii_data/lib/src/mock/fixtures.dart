@@ -38,6 +38,16 @@ class MockDatabase {
   late final Map<String, ReferralSummary> referrals;
   late final List<AppNotification> notifications;
 
+  /// Payments by id, plus the jobId → paymentId index (one payment per job).
+  late final Map<String, Payment> payments;
+  late final Map<String, String> paymentByJob;
+
+  /// Ratings per job (both directions live in one list).
+  late final Map<String, List<Rating>> ratings;
+
+  /// Latest SOS alert per job.
+  late final Map<String, SosAlert> sosAlerts;
+
   /// Customer facial-verification sessions, keyed by user id.
   late final Map<String, VerificationSession> verificationSessions;
 
@@ -54,9 +64,18 @@ class MockDatabase {
       StreamController<Offer>.broadcast();
   final StreamController<ProviderKycProfile> kycEvents =
       StreamController<ProviderKycProfile>.broadcast();
+  final StreamController<Payment> paymentEvents =
+      StreamController<Payment>.broadcast();
+  final StreamController<SosAlert> sosEvents =
+      StreamController<SosAlert>.broadcast();
 
   void _seed() {
     final now = DateTime.now();
+
+    payments = <String, Payment>{};
+    paymentByJob = <String, String>{};
+    ratings = <String, List<Rating>>{};
+    sosAlerts = <String, SosAlert>{};
 
     users = <String, AppUser>{
       'user-ada': AppUser(
@@ -439,6 +458,7 @@ class MockDatabase {
           estimatedGatewayFee: const Money(4800, 'NGN'),
         ),
         providerId: 'provider-musa',
+        handoverPin: '4281',
       ),
       'req-3': JobRequest(
         id: 'req-3',

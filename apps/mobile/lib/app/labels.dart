@@ -156,3 +156,21 @@ String cancelReasonLabel(AppLocalizations l10n, String key) => switch (key) {
   'foundElsewhere' => l10n.cancelReasonFoundElsewhere,
   _ => l10n.cancelReasonOther,
 };
+
+String paymentMethodLabel(AppLocalizations l10n, PaymentMethod method) =>
+    switch (method) {
+      PaymentMethod.card => l10n.payMethodCard,
+      PaymentMethod.bankTransfer => l10n.payMethodBankTransfer,
+      PaymentMethod.mobileMoney => l10n.payMethodMobileMoney,
+      PaymentMethod.ussd => l10n.payMethodUssd,
+    };
+
+/// Rating quick-tag keys → localized labels.
+String ratingTagLabel(AppLocalizations l10n, String key) => switch (key) {
+  'ratingTagPunctual' => l10n.ratingTagPunctual,
+  'ratingTagCareful' => l10n.ratingTagCareful,
+  'ratingTagCommunicative' => l10n.ratingTagCommunicative,
+  'ratingTagProfessional' => l10n.ratingTagProfessional,
+  'ratingTagSlow' => l10n.ratingTagSlow,
+  _ => l10n.ratingTagRude,
+};

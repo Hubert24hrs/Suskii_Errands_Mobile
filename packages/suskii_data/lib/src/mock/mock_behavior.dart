@@ -34,6 +34,14 @@ class MockBehavior {
   /// observable fast). Null → use the category's `offerTtlSeconds`.
   Duration? offerTtlOverride;
 
+  /// Simulated gateway delay before an initialized payment confirms via the
+  /// (mocked) webhook + server-side verify.
+  Duration paymentConfirmDelay = const Duration(seconds: 3);
+
+  /// When true, the next initialized payment confirms as FAILED (gateway
+  /// decline) instead of HELD — demos the payment-failure path.
+  bool failNextPayment = false;
+
   Future<void> gate() async {
     await Future<void>.delayed(latency);
     if (offline) {

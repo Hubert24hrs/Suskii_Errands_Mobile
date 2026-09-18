@@ -105,6 +105,35 @@ final conciergeRepositoryProvider = Provider<ConciergeRepository>(
   ),
 );
 
+final paymentRepositoryProvider = Provider<PaymentRepository>(
+  (ref) => MockPaymentRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final ratingRepositoryProvider = Provider<RatingRepository>(
+  (ref) => MockRatingRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final safetyRepositoryProvider = Provider<SafetyRepository>(
+  (ref) => MockSafetyRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+/// Masked calls (LiveKit plugs in behind this interface at M9).
+final callAdapterProvider = Provider<CallAdapter>(
+  (ref) => MockCallAdapter(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
 final catalogRepositoryProvider = Provider<CatalogRepository>(
   (ref) => MockCatalogRepository(
     ref.watch(mockDatabaseProvider),
@@ -276,4 +305,30 @@ final offersProvider = StreamProvider.family<List<Offer>, String>(
 final priceBandProvider = FutureProvider.family<PriceBand, String>(
   (ref, categoryId) =>
       ref.watch(catalogRepositoryProvider).getPriceBand(categoryId: categoryId),
+);
+
+/// ---------------------------------------------------------------------------
+/// Screen-level data providers (M4: payments, tracking, chat, safety, ratings)
+/// ---------------------------------------------------------------------------
+
+final paymentForJobProvider = StreamProvider.family<Payment?, String>(
+  (ref, jobId) =>
+      ref.watch(paymentRepositoryProvider).watchPaymentForJob(jobId),
+);
+
+final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>(
+  (ref, jobId) => ref.watch(chatRepositoryProvider).watchMessages(jobId),
+);
+
+final providerLocationProvider = StreamProvider.family<GeoPoint, String>(
+  (ref, jobId) =>
+      ref.watch(trackingRepositoryProvider).watchProviderLocation(jobId),
+);
+
+final activeSosProvider = StreamProvider.family<SosAlert?, String>(
+  (ref, jobId) => ref.watch(safetyRepositoryProvider).watchActiveSos(jobId),
+);
+
+final myRatingProvider = FutureProvider.family<Rating?, String>(
+  (ref, jobId) => ref.watch(ratingRepositoryProvider).getMyRatingForJob(jobId),
 );

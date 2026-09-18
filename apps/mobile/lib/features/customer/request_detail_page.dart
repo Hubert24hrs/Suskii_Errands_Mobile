@@ -13,6 +13,8 @@ import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import 'offers_board.dart';
+import 'rating_sheet.dart';
+import 'sos_sheet.dart';
 
 /// Request detail: status timeline, fields summary, publish (drafts),
 /// cancel with a localized reason key, and the live offers board.
@@ -29,6 +31,7 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
   bool _busy = false;
   String? _publishKey;
   String? _cancelKey;
+  String? _confirmKey;
 
   static const List<JobStatus> _milestones = <JobStatus>[
     JobStatus.published,
@@ -58,6 +61,32 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
     JobStatus.published,
     JobStatus.offersReceived,
     JobStatus.negotiating,
+  };
+
+  /// States where the parties are in contact: chat/call/track/SOS (M4).
+  static const Set<JobStatus> _contactStates = <JobStatus>{
+    JobStatus.agreed,
+    JobStatus.paymentPending,
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+  };
+
+  /// States where a live tracking view makes sense.
+  static const Set<JobStatus> _trackableStates = <JobStatus>{
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+  };
+
+  static const Set<JobStatus> _rateableStates = <JobStatus>{
+    JobStatus.confirmed,
+    JobStatus.settled,
+    JobStatus.closed,
   };
 
   int _milestoneReached(JobStatus status) {
@@ -105,6 +134,24 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         .read(requestRepositoryProvider)
         .publishRequest(widget.jobId, idempotencyKey: _publishKey!);
   });
+
+  Future<void> _confirmCompletion() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showSConfirmDialog(
+      context: context,
+      title: l10n.detailConfirmCompletion,
+      message: l10n.detailConfirmCompletionBody,
+      confirmLabel: l10n.actionConfirm,
+      cancelLabel: l10n.actionCancel,
+    );
+    if (!confirmed || !mounted) return;
+    await _run(() async {
+      _confirmKey ??= newIdempotencyKey();
+      await ref
+          .read(jobProgressRepositoryProvider)
+          .confirmCompletion(widget.jobId, idempotencyKey: _confirmKey!);
+    });
+  }
 
   Future<void> _cancel() async {
     final l10n = AppLocalizations.of(context);
@@ -238,6 +285,121 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
               child: Text(l10n.offersAcceptedNote),
             ),
           ),
+        if (request.status == JobStatus.agreed ||
+            request.status == JobStatus.paymentPending) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          SButton(
+            label: l10n.detailPayNow,
+            icon: Icons.payments_outlined,
+            onPressed: () => unawaited(
+              context.push(AppRoutes.customerRequestPayPath(widget.jobId)),
+            ),
+          ),
+        ],
+        if (_contactStates.contains(request.status)) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: SButton(
+                  label: l10n.detailChat,
+                  variant: SButtonVariant.secondary,
+                  icon: Icons.chat_bubble_outline,
+                  onPressed: () => unawaited(
+                    context.push(
+                      AppRoutes.customerRequestChatPath(widget.jobId),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: SSpacing.sm),
+              Expanded(
+                child: SButton(
+                  label: l10n.detailCall,
+                  variant: SButtonVariant.secondary,
+                  icon: Icons.call_outlined,
+                  onPressed: () => unawaited(
+                    context.push(
+                      AppRoutes.customerRequestCallPath(widget.jobId),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: SSpacing.sm),
+              Expanded(
+                child: SButton(
+                  label: l10n.detailTrack,
+                  variant: SButtonVariant.secondary,
+                  icon: Icons.place_outlined,
+                  onPressed: _trackableStates.contains(request.status)
+                      ? () => unawaited(
+                          context.push(
+                            AppRoutes.customerRequestTrackPath(widget.jobId),
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: SSpacing.sm),
+              IconButton.filled(
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                  foregroundColor: theme.colorScheme.onError,
+                ),
+                tooltip: l10n.sosButton,
+                onPressed: () => showSosSheet(context, widget.jobId),
+                icon: const Icon(Icons.sos_outlined),
+              ),
+            ],
+          ),
+        ],
+        if (request.handoverPin != null &&
+            _contactStates.contains(request.status)) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.detailHandoverPinTitle,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: SSpacing.xs),
+                  Text(
+                    request.handoverPin!,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      letterSpacing: 8,
+                    ),
+                  ),
+                  const SizedBox(height: SSpacing.xs),
+                  Text(
+                    l10n.detailHandoverPinBody,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (request.status == JobStatus.completedByProvider) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.md),
+              child: Text(l10n.detailCompletedByProvider),
+            ),
+          ),
+          const SizedBox(height: SSpacing.sm),
+          SButton(
+            label: l10n.detailConfirmCompletion,
+            loading: _busy,
+            onPressed: _busy ? null : _confirmCompletion,
+          ),
+        ],
+        if (_rateableStates.contains(request.status))
+          _RatingSection(jobId: widget.jobId),
         if (_showsOffers.contains(request.status)) ...<Widget>[
           Text(l10n.offersTitle, style: theme.textTheme.titleMedium),
           const SizedBox(height: SSpacing.sm),
@@ -276,6 +438,45 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
           ),
           Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
+      ),
+    );
+  }
+}
+
+/// Rating prompt on completed jobs: a rate button until the user's rating
+/// exists, then the recorded stars.
+class _RatingSection extends ConsumerWidget {
+  const _RatingSection({required this.jobId});
+
+  final String jobId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final rating = ref.watch(myRatingProvider(jobId));
+    return rating.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (Rating? existing) => Padding(
+        padding: const EdgeInsets.only(top: SSpacing.md),
+        child: existing == null
+            ? SButton(
+                label: l10n.ratingTitle,
+                variant: SButtonVariant.secondary,
+                icon: Icons.star_outline_rounded,
+                onPressed: () => showRatingSheet(context, jobId),
+              )
+            : Row(
+                children: <Widget>[
+                  SRatingInput(value: existing.stars, size: 20),
+                  const SizedBox(width: SSpacing.sm),
+                  Text(
+                    l10n.ratingDoneLabel(existing.stars),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
       ),
     );
   }

@@ -251,3 +251,65 @@ Sections for M3..M8 screens get appended here as those milestones are built.
   should state whether drafts are server-side from turn one (preferred) or client-posted.
 - Photo upload-ref flow for request photos (same shape as KYC upload refs).
 - Voice session transport (WebSocket vs WebRTC) and partial-transcript event schema (OD-17).
+
+---
+
+## M4 — Payments, tracking, chat, calls, SOS, completion, ratings (2026-09-18)
+
+### Payment checkout (`/customer/requests/:id/pay`)
+- Data displayed: agreed price Money (from the job), payment method list (card / bank_transfer /
+  mobile_money / ussd — per-country availability should come from the country pack), payment
+  status + TTL countdown (server timestamp + clock offset), gateway decline reason key,
+  off-app instructions (USSD code, transfer reference).
+- Actions: `initializePayment(jobId, method, idempotencyKey)` → PaymentSession |
+  `ERR_VERIFICATION_REQUIRED` (UI routes to `/verify/customer`), `ERR_PERMISSION_DENIED` (not the
+  customer), `ERR_INVALID_STATE` (job not AGREED/PAYMENT_PENDING or already paid).
+- Realtime: `watchPaymentForJob(jobId)` — pending → held (webhook + server-side verify) or failed;
+  the job follows (PAYMENT_PENDING → PAID_HELD / back to AGREED on failure). The client NEVER
+  marks a payment successful.
+- Edge cases: retry within the TTL returns the in-flight payment; gateway decline shows a
+  localized reason and re-opens the method picker.
+
+### Live tracking (`/customer/requests/:id/track`)
+- Data displayed: provider `GeoPoint` stream, job pickup/destination points, status headline.
+- Realtime: `watchProviderLocation(jobId)` (mock samples ticks; Realtime Broadcast server-side).
+- Actions: `createTripShareLink(jobId, idempotencyKey)` → `{ url, expiresAt }` (1 h mock) —
+  shareable expiring link for trusted contacts (spec: safety.live_trip_share).
+- Note for the contract: location event schema (point + timestamp + accuracy?) and sampling
+  policy are backend decisions; the UI just consumes the stream.
+
+### Job chat (`/customer/requests/:id/chat`, list in Messages tab)
+- Data displayed: message list (text, image, voice_note, location, offer_card, system), read
+  receipts (`readAt`), empty state.
+- Actions: `sendMessage(jobId, type, {text|mediaPath|location}, idempotencyKey)` → ChatMessage.
+- Realtime: `watchMessages(jobId)`.
+- Open needs: typing indicators, read-receipt writes (`markRead`), AI moderation outcomes
+  (blocked-message signal), and media upload refs are not in the mock — contract should define.
+
+### Masked call (`/customer/requests/:id/call`)
+- Data displayed: call state (connecting/ringing/active/ended/failed), masked-number notice.
+- Actions: adapter `startCall(jobId, idempotencyKey)` → CallSession (opaque id; server-minted
+  token) | `ERR_PERMISSION_DENIED` (not a participant / outside the call window),
+  `ERR_CALL_IN_PROGRESS` (one active call per job); `events(sessionId)` stream;
+  `setMuted(sessionId, muted)`; `endCall(sessionId)`.
+- Open needs: token transport (LiveKit), missed-call system message + push, PSTN fallback
+  surfacing (spec: communication.voice_calls).
+
+### SOS + trip sharing (sheet on request detail / tracking)
+- Data displayed: active alert state, trusted-contacts-notified count, country-pack emergency
+  numbers.
+- Actions: `triggerSos(jobId, location?, idempotencyKey)` → SosAlert (re-trigger while active
+  returns the same alert) | `ERR_INVALID_STATE` (job not active), `ERR_PERMISSION_DENIED`;
+  `watchActiveSos(jobId)`; `createTripShareLink` (above).
+- Open needs: trusted-contact management UI (M5 settings) — the contract should carry the
+  contact list + notification result per contact.
+
+### Completion + ratings (on request detail)
+- Data displayed: handover PIN (server-generated, customer-only — new `JobRequest.handoverPin`),
+  "provider marked done" state, existing rating (stars + tags).
+- Actions: `confirmCompletion(jobId, idempotencyKey)` → CONFIRMED (releases held payment
+  server-side); `submitRating(jobId, stars, tagKeys, comment?, idempotencyKey)` |
+  `ERR_INVALID_STATE` (not rateable / already rated / stars out of range),
+  `ERR_PERMISSION_DENIED` (not a participant); `getMyRatingForJob(jobId)`.
+- Open needs: PIN lifecycle (when generated, regeneration, expiry), auto-confirm window value,
+  rating aggregation display (Bayesian average on profiles).

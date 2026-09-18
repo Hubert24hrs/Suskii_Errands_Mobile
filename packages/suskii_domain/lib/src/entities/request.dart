@@ -46,6 +46,11 @@ abstract class JobRequest with _$JobRequest {
     PriceBreakdown? agreedBreakdown,
     String? providerId,
     DateTime? expiresAt,
+
+    /// Server-generated handover PIN, shown ONLY to the customer (spec:
+    /// job_lifecycle.proof). Set when the job is agreed; the provider quotes
+    /// it at handover and the server verifies with attempt limits.
+    String? handoverPin,
   }) = _JobRequest;
 
   factory JobRequest.fromJson(Map<String, dynamic> json) =>

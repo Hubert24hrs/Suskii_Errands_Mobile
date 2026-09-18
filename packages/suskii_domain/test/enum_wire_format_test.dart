@@ -229,5 +229,51 @@ void main() {
       );
       expect(msg.toJson()['role'], 'assistant');
     });
+
+    test('M4 enums: PaymentMethod + PaymentStatus + SosStatus', () {
+      Payment withMethod(PaymentMethod m, PaymentStatus s) => Payment(
+        id: 'p1',
+        jobId: 'r1',
+        amount: const Money(100, 'NGN'),
+        method: m,
+        status: s,
+        createdAt: now,
+      );
+      expect(
+        withMethod(PaymentMethod.bankTransfer, PaymentStatus.held)
+            .toJson()['method'],
+        'bank_transfer',
+      );
+      expect(
+        withMethod(PaymentMethod.mobileMoney, PaymentStatus.pending)
+            .toJson()['method'],
+        'mobile_money',
+      );
+      expect(
+        withMethod(
+          PaymentMethod.ussd,
+          PaymentStatus.partiallyRefunded,
+        ).toJson()['status'],
+        'partially_refunded',
+      );
+      final alert = SosAlert(
+        id: 's1',
+        jobId: 'r1',
+        triggeredBy: 'u1',
+        status: SosStatus.active,
+        createdAt: now,
+      );
+      expect(alert.toJson()['status'], 'active');
+      final rating = Rating(
+        id: 'rt1',
+        jobId: 'r1',
+        raterId: 'u1',
+        rateeId: 'u2',
+        stars: 5,
+        tagKeys: const ['ratingTagPunctual'],
+        createdAt: now,
+      );
+      expect(Rating.fromJson(rating.toJson()).stars, 5);
+    });
   });
 }

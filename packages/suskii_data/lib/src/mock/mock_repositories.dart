@@ -561,6 +561,8 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
         agreedPrice: accepted.amount,
         agreedBreakdown: simulateQuote(accepted.amount),
         providerId: accepted.providerId,
+        // Server-generated handover PIN (the mock's known PIN is 4281).
+        handoverPin: '4281',
       );
       db.requests[requestId] = updated;
       db.jobEvents.add(updated);
@@ -962,6 +964,417 @@ class MockChatRepository extends _MockRepo implements ChatRepository {
       }
       return message;
     }, argsHash: '$type|${text ?? ''}|${mediaPath ?? ''}');
+  }
+}
+
+class MockPaymentRepository extends _MockRepo implements PaymentRepository {
+  MockPaymentRepository(super.db, super.behavior);
+
+  static const Duration _paymentTtl = Duration(minutes: 15);
+
+  final List<Timer> _timers = <Timer>[];
+
+  @override
+  Future<Payment?> getPaymentForJob(String jobId) async {
+    await gate();
+    return db.payments[db.paymentByJob[jobId]];
+  }
+
+  @override
+  Stream<Payment?> watchPaymentForJob(String jobId) {
+    late StreamController<Payment?> controller;
+    StreamSubscription<Payment>? sub;
+    controller = StreamController<Payment?>(
+      onListen: () {
+        controller.add(db.payments[db.paymentByJob[jobId]]);
+        sub = db.paymentEvents.stream
+            .where((Payment p) => p.jobId == jobId)
+            .listen(controller.add);
+      },
+      onCancel: () {
+        unawaited(sub?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<PaymentSession> initializePayment({
+    required String jobId,
+    required PaymentMethod method,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('initializePayment:$jobId', idempotencyKey, () async {
+      final user = currentUser;
+      if (user.customerVerification != VerificationStatus.verified) {
+        throw const AppError(ErrorCodes.verificationRequired);
+      }
+      final job = db.requests[jobId];
+      if (job == null) throw const AppError(ErrorCodes.unknown);
+      if (job.customerId != user.id) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      final agreed = job.agreedPrice;
+      if (agreed == null ||
+          (job.status != JobStatus.agreed &&
+              job.status != JobStatus.paymentPending)) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final existing = db.payments[db.paymentByJob[jobId]];
+      if (existing != null && existing.status == PaymentStatus.held) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      // Retry within the TTL: return the in-flight payment (same as the
+      // server returning the existing pending attempt).
+      if (existing != null && existing.status == PaymentStatus.pending) {
+        return PaymentSession(
+          payment: existing,
+          ussdCode: method == PaymentMethod.ussd ? '*737*000#...' : null,
+          reference: method == PaymentMethod.bankTransfer
+              ? existing.gatewayReference
+              : null,
+        );
+      }
+      final id = 'pay-${DateTime.now().millisecondsSinceEpoch}';
+      final payment = Payment(
+        id: id,
+        jobId: jobId,
+        amount: agreed,
+        method: method,
+        status: PaymentStatus.pending,
+        createdAt: serverNow(),
+        gatewayReference: 'FLW-MOCK-$id',
+        expiresAt: serverNow().add(_paymentTtl),
+      );
+      db.payments[id] = payment;
+      db.paymentByJob[jobId] = id;
+      final pendingJob = job.copyWith(
+        status: JobStatus.paymentPending,
+        expiresAt: payment.expiresAt,
+      );
+      db.requests[jobId] = pendingJob;
+      db.jobEvents.add(pendingJob);
+      db.paymentEvents.add(payment);
+
+      // Simulated gateway webhook + server-side verify: the payment flips to
+      // HELD (or FAILED with failure injection) and the job follows. The
+      // client never marks anything itself — it watches these events.
+      _timers.add(
+        Timer(behavior.paymentConfirmDelay, () {
+          if (behavior.failNextPayment) {
+            behavior.failNextPayment = false;
+            final failed = payment.copyWith(
+              status: PaymentStatus.failed,
+              failureReasonKey: 'paymentDeclined',
+            );
+            db.payments[id] = failed;
+            db.paymentEvents.add(failed);
+            // Back to AGREED so the customer can re-attempt payment.
+            final back = (db.requests[jobId] ?? pendingJob).copyWith(
+              status: JobStatus.agreed,
+            );
+            db.requests[jobId] = back;
+            db.jobEvents.add(back);
+            return;
+          }
+          final held = payment.copyWith(
+            status: PaymentStatus.held,
+            paidAt: serverNow(),
+          );
+          db.payments[id] = held;
+          db.paymentEvents.add(held);
+          final paidJob = (db.requests[jobId] ?? pendingJob).copyWith(
+            status: JobStatus.paidHeld,
+          );
+          db.requests[jobId] = paidJob;
+          db.jobEvents.add(paidJob);
+        }),
+      );
+
+      return PaymentSession(
+        payment: payment,
+        ussdCode: method == PaymentMethod.ussd ? '*737*000#...' : null,
+        reference: method == PaymentMethod.bankTransfer
+            ? payment.gatewayReference
+            : null,
+      );
+    }, argsHash: '$method');
+  }
+}
+
+class MockRatingRepository extends _MockRepo implements RatingRepository {
+  MockRatingRepository(super.db, super.behavior);
+
+  static const Set<JobStatus> _rateable = <JobStatus>{
+    JobStatus.confirmed,
+    JobStatus.settled,
+    JobStatus.closed,
+  };
+
+  @override
+  Future<Rating?> getMyRatingForJob(String jobId) async {
+    await gate();
+    final user = currentUser;
+    for (final rating in db.ratings[jobId] ?? const <Rating>[]) {
+      if (rating.raterId == user.id) return rating;
+    }
+    return null;
+  }
+
+  @override
+  Future<Rating> submitRating({
+    required String jobId,
+    required int stars,
+    required String idempotencyKey,
+    List<String> tagKeys = const <String>[],
+    String? comment,
+  }) async {
+    await gate();
+    return idempotent('submitRating:$jobId', idempotencyKey, () async {
+      final user = currentUser;
+      final job = db.requests[jobId];
+      if (job == null) throw const AppError(ErrorCodes.unknown);
+      final isCustomer = job.customerId == user.id;
+      final isProvider = job.providerId == user.id;
+      if (!isCustomer && !isProvider) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      if (!_rateable.contains(job.status) || stars < 1 || stars > 5) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final list = db.ratings.putIfAbsent(jobId, () => <Rating>[]);
+      if (list.any((Rating r) => r.raterId == user.id)) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final rating = Rating(
+        id: 'rating-${DateTime.now().millisecondsSinceEpoch}',
+        jobId: jobId,
+        raterId: user.id,
+        rateeId: isCustomer ? job.providerId! : job.customerId,
+        stars: stars,
+        tagKeys: tagKeys,
+        comment: comment,
+        createdAt: serverNow(),
+      );
+      list.add(rating);
+      return rating;
+    }, argsHash: '$stars|${tagKeys.join(',')}|${comment ?? ''}');
+  }
+}
+
+class MockSafetyRepository extends _MockRepo implements SafetyRepository {
+  MockSafetyRepository(super.db, super.behavior);
+
+  /// States in which SOS / trip sharing make sense (agreed onward, i.e. the
+  /// parties are in contact or the job is being executed).
+  static const Set<JobStatus> _activeJobStates = <JobStatus>{
+    JobStatus.agreed,
+    JobStatus.paymentPending,
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+  };
+
+  JobRequest _participantJob(String jobId) {
+    final user = currentUser;
+    final job = db.requests[jobId];
+    if (job == null) throw const AppError(ErrorCodes.unknown);
+    if (job.customerId != user.id && job.providerId != user.id) {
+      throw const AppError(ErrorCodes.permissionDenied);
+    }
+    if (!_activeJobStates.contains(job.status)) {
+      throw const AppError(ErrorCodes.invalidState);
+    }
+    return job;
+  }
+
+  @override
+  Future<SosAlert> triggerSos({
+    required String jobId,
+    required String idempotencyKey,
+    GeoPoint? location,
+  }) async {
+    await gate();
+    return idempotent(
+      'triggerSos:$jobId',
+      idempotencyKey,
+      () async {
+        final user = currentUser;
+        _participantJob(jobId);
+        // SOS is naturally idempotent: a second trigger while one is active
+        // returns the same alert rather than piling up alerts.
+        final existing = db.sosAlerts[jobId];
+        if (existing != null && existing.status == SosStatus.active) {
+          return existing;
+        }
+        final alert = SosAlert(
+          id: 'sos-${DateTime.now().millisecondsSinceEpoch}',
+          jobId: jobId,
+          triggeredBy: user.id,
+          status: SosStatus.active,
+          createdAt: serverNow(),
+          location: location,
+          // The mock "server" notifies 2 trusted contacts.
+          trustedContactsNotified: 2,
+        );
+        db.sosAlerts[jobId] = alert;
+        db.sosEvents.add(alert);
+        return alert;
+      },
+      argsHash: location == null
+          ? ''
+          : '${location.latitude},${location.longitude}',
+    );
+  }
+
+  @override
+  Stream<SosAlert?> watchActiveSos(String jobId) {
+    late StreamController<SosAlert?> controller;
+    StreamSubscription<SosAlert>? sub;
+    controller = StreamController<SosAlert?>(
+      onListen: () {
+        final current = db.sosAlerts[jobId];
+        controller.add(
+          current != null && current.status == SosStatus.active
+              ? current
+              : null,
+        );
+        sub = db.sosEvents.stream
+            .where((SosAlert a) => a.jobId == jobId)
+            .listen(
+              (SosAlert a) =>
+                  controller.add(a.status == SosStatus.active ? a : null),
+            );
+      },
+      onCancel: () {
+        unawaited(sub?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<TripShare> createTripShareLink(
+    String jobId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('tripShare:$jobId', idempotencyKey, () async {
+      _participantJob(jobId);
+      return TripShare(
+        url: 'https://track.suskii.invalid/t/$jobId',
+        expiresAt: serverNow().add(const Duration(hours: 1)),
+      );
+    });
+  }
+}
+
+class MockCallAdapter extends _MockRepo implements CallAdapter {
+  MockCallAdapter(super.db, super.behavior);
+
+  /// The spec window is provider-selected → 24h after completion; the mock
+  /// approximates it with the job's in-contact states.
+  static const Set<JobStatus> _callableStates = <JobStatus>{
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+  };
+
+  final Map<String, StreamController<CallEvent>> _controllers =
+      <String, StreamController<CallEvent>>{};
+  final Map<String, CallState> _states = <String, CallState>{};
+  final Map<String, String> _sessionJobs = <String, String>{};
+  final Set<String> _jobsInCall = <String>{};
+  final List<Timer> _timers = <Timer>[];
+
+  void _emit(String sessionId, CallState state) {
+    _states[sessionId] = state;
+    _controllers[sessionId]?.add(CallEvent(state: state));
+  }
+
+  @override
+  Future<CallSession> startCall(
+    String jobId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('startCall:$jobId', idempotencyKey, () async {
+      final user = currentUser;
+      final job = db.requests[jobId];
+      if (job == null) throw const AppError(ErrorCodes.unknown);
+      if (job.customerId != user.id && job.providerId != user.id) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      if (!_callableStates.contains(job.status)) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      // One active call per job (resolved server-side).
+      if (_jobsInCall.contains(jobId)) {
+        throw const AppError(ErrorCodes.callInProgress);
+      }
+      final sessionId = 'call-${DateTime.now().millisecondsSinceEpoch}';
+      _jobsInCall.add(jobId);
+      _sessionJobs[sessionId] = jobId;
+      _states[sessionId] = CallState.connecting;
+      _controllers[sessionId] = StreamController<CallEvent>.broadcast();
+      _timers.add(
+        Timer(
+          const Duration(milliseconds: 800),
+          () => _emit(sessionId, CallState.ringing),
+        ),
+      );
+      _timers.add(
+        Timer(
+          const Duration(seconds: 2),
+          () => _emit(sessionId, CallState.active),
+        ),
+      );
+      return CallSession(
+        sessionId: sessionId,
+        jobId: jobId,
+        expiresAt: serverNow().add(const Duration(minutes: 5)),
+      );
+    });
+  }
+
+  @override
+  Stream<CallEvent> events(String sessionId) {
+    late StreamController<CallEvent> controller;
+    StreamSubscription<CallEvent>? sub;
+    controller = StreamController<CallEvent>(
+      onListen: () {
+        controller.add(
+          CallEvent(state: _states[sessionId] ?? CallState.connecting),
+        );
+        sub = _controllers[sessionId]?.stream.listen(controller.add);
+      },
+      onCancel: () {
+        unawaited(sub?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<void> setMuted(String sessionId, {required bool muted}) async {
+    // Mute is local audio state on the real adapter; nothing to simulate.
+  }
+
+  @override
+  Future<void> endCall(String sessionId) async {
+    final jobId = _sessionJobs.remove(sessionId);
+    if (jobId != null) _jobsInCall.remove(jobId);
+    _emit(sessionId, CallState.ended);
   }
 }
 

@@ -170,6 +170,41 @@ enum PaymentStatus {
   partiallyRefunded,
 }
 
+/// Customer-facing payment rails; per-country availability comes from the
+/// country pack (Flutterwave primary in wave-1 markets).
+enum PaymentMethod {
+  @JsonValue('card')
+  card,
+  @JsonValue('bank_transfer')
+  bankTransfer,
+  @JsonValue('mobile_money')
+  mobileMoney,
+  @JsonValue('ussd')
+  ussd,
+}
+
+/// Lifecycle of a masked in-app call (LiveKit behind a vendor-neutral
+/// adapter). Calls exist only between the two participants of a job.
+enum CallState {
+  @JsonValue('connecting')
+  connecting,
+  @JsonValue('ringing')
+  ringing,
+  @JsonValue('active')
+  active,
+  @JsonValue('ended')
+  ended,
+  @JsonValue('failed')
+  failed,
+}
+
+enum SosStatus {
+  @JsonValue('active')
+  active,
+  @JsonValue('resolved')
+  resolved,
+}
+
 enum ReferralCommissionStatus {
   @JsonValue('pending')
   pending,

@@ -20,6 +20,8 @@ abstract final class ErrorCodes {
   static const String offerRoundsExhausted = 'ERR_OFFER_ROUNDS_EXHAUSTED';
   static const String selfDealingBlocked = 'ERR_SELF_DEALING_BLOCKED';
   static const String jobNotCancellable = 'ERR_JOB_NOT_CANCELLABLE';
+  static const String invalidState = 'ERR_INVALID_STATE';
+  static const String callInProgress = 'ERR_CALL_IN_PROGRESS';
 
   // Money
   static const String paymentFailed = 'ERR_PAYMENT_FAILED';

@@ -5,14 +5,18 @@ import 'package:suskii_domain/suskii_domain.dart';
 
 import '../features/auth/auth_page.dart';
 import '../features/auth/mfa_prompt_page.dart';
+import '../features/customer/call_page.dart';
+import '../features/customer/chat_page.dart';
 import '../features/customer/concierge_page.dart';
 import '../features/customer/create_request_page.dart';
 import '../features/customer/customer_home_page.dart';
 import '../features/customer/customer_shell.dart';
 import '../features/customer/messages_page.dart';
+import '../features/customer/payment_page.dart';
 import '../features/customer/profile_page.dart';
 import '../features/customer/request_detail_page.dart';
 import '../features/customer/requests_page.dart';
+import '../features/customer/tracking_page.dart';
 import '../features/customer/voice_concierge_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
@@ -51,8 +55,22 @@ abstract final class AppRoutes {
   static const String customerConciergeVoice = '/customer/concierge/voice';
   static const String customerRequestDetail = '/customer/requests/:id';
 
+  // M4: payment, tracking, chat, masked call — all job-scoped.
+  static const String customerRequestPay = '/customer/requests/:id/pay';
+  static const String customerRequestTrack = '/customer/requests/:id/track';
+  static const String customerRequestChat = '/customer/requests/:id/chat';
+  static const String customerRequestCall = '/customer/requests/:id/call';
+
   static String customerRequestDetailPath(String id) =>
       '/customer/requests/$id';
+  static String customerRequestPayPath(String id) =>
+      '/customer/requests/$id/pay';
+  static String customerRequestTrackPath(String id) =>
+      '/customer/requests/$id/track';
+  static String customerRequestChatPath(String id) =>
+      '/customer/requests/$id/chat';
+  static String customerRequestCallPath(String id) =>
+      '/customer/requests/$id/call';
 
   static const String providerFeed = '/provider/feed';
   static const String providerJobs = '/provider/jobs';
@@ -229,6 +247,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.customerRequestDetail,
         builder: (context, state) =>
             RequestDetailPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.customerRequestPay,
+        builder: (context, state) =>
+            PaymentPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.customerRequestTrack,
+        builder: (context, state) =>
+            TrackingPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.customerRequestChat,
+        builder: (context, state) =>
+            ChatPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.customerRequestCall,
+        builder: (context, state) =>
+            CallPage(jobId: state.pathParameters['id']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

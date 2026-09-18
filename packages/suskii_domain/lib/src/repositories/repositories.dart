@@ -4,8 +4,11 @@ import '../entities/chat.dart';
 import '../entities/concierge.dart';
 import '../entities/notification.dart';
 import '../entities/offer.dart';
+import '../entities/payment.dart';
+import '../entities/rating.dart';
 import '../entities/referral.dart';
 import '../entities/request.dart';
+import '../entities/safety.dart';
 import '../entities/user.dart';
 import '../entities/verification.dart';
 import '../entities/wallet.dart';
@@ -197,6 +200,98 @@ abstract interface class ChatRepository {
     String? mediaPath,
     GeoPoint? location,
   });
+}
+
+/// ---------------------------------------------------------------------------
+/// Payments, ratings, calls, safety (milestone M4)
+/// ---------------------------------------------------------------------------
+
+/// Job payments. Server-initialized only: the client picks a method and asks;
+/// the server creates the payment with the gateway and status changes arrive
+/// via [watchPaymentForJob] (webhook + server-side verify). The client NEVER
+/// marks a payment successful.
+abstract interface class PaymentRepository {
+  Future<Payment?> getPaymentForJob(String jobId);
+  Stream<Payment?> watchPaymentForJob(String jobId);
+
+  /// Throws AppError(ERR_INVALID_STATE) unless the job is AGREED (first
+  /// attempt) or PAYMENT_PENDING (retry within the TTL); verification-gated
+  /// like publishing.
+  Future<PaymentSession> initializePayment({
+    required String jobId,
+    required PaymentMethod method,
+    required String idempotencyKey,
+  });
+}
+
+/// Two-way ratings (spec: added_features). One rating per party per job;
+/// the aggregate on profiles is server-computed (Bayesian averaging).
+abstract interface class RatingRepository {
+  Future<Rating?> getMyRatingForJob(String jobId);
+  Future<Rating> submitRating({
+    required String jobId,
+    required int stars,
+    required String idempotencyKey,
+    List<String> tagKeys = const <String>[],
+    String? comment,
+  });
+}
+
+/// SOS + live trip sharing (spec: safety). Triggering SOS is an action
+/// request — the server notifies operations, the city security partner and
+/// trusted contacts; the client renders the alert state and the country
+/// pack's emergency numbers.
+abstract interface class SafetyRepository {
+  Future<SosAlert> triggerSos({
+    required String jobId,
+    required String idempotencyKey,
+    GeoPoint? location,
+  });
+
+  /// The open alert for a job, if any (null once resolved).
+  Stream<SosAlert?> watchActiveSos(String jobId);
+
+  /// Shareable, expiring tracking link for trusted contacts.
+  Future<TripShare> createTripShareLink(
+    String jobId, {
+    required String idempotencyKey,
+  });
+}
+
+/// A live masked call. The access token is minted server-side, room-scoped
+/// and short-lived; the client holds only an opaque session id.
+class CallSession {
+  const CallSession({
+    required this.sessionId,
+    required this.jobId,
+    required this.expiresAt,
+  });
+
+  final String sessionId;
+  final String jobId;
+  final DateTime expiresAt;
+}
+
+class CallEvent {
+  const CallEvent({required this.state, this.reasonKey});
+
+  final CallState state;
+
+  /// Localizable reason key when [state] is failed.
+  final String? reasonKey;
+}
+
+/// Vendor-neutral masked-call adapter (LiveKit plugs in behind this; the
+/// PSTN fallback is a server-side decision surfaced as a call event).
+/// Rules enforced server-side (spec: communication.voice_calls): only the
+/// two job participants, only from provider-selected until 24h after
+/// completion, one active call per job — violations throw
+/// AppError(ERR_PERMISSION_DENIED / ERR_CALL_IN_PROGRESS). No recording.
+abstract interface class CallAdapter {
+  Future<CallSession> startCall(String jobId, {required String idempotencyKey});
+  Stream<CallEvent> events(String sessionId);
+  Future<void> setMuted(String sessionId, {required bool muted});
+  Future<void> endCall(String sessionId);
 }
 
 abstract interface class WalletRepository {
