@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(33);
+SELECT plan(35);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000101'),   -- customer
@@ -211,6 +211,18 @@ SELECT is(
                        AND policyname IN ('realtime_join_own_topics', 'realtime_send_own_topics'))
           END),
   2, 'the channel policies are bound to realtime.messages');
+
+-- Database broadcasts: the channels carry what the tables just recorded, and a channel that is
+-- down must never roll back the work. Both are facts about this stack, so both are asserted.
+SELECT ok((SELECT private.broadcast('job:' || (SELECT id FROM ch WHERE name = 'r'),
+             'test.event', '{"ok": true}'::jsonb)) IS NULL,
+  'a broadcast returns quietly rather than failing the transaction that produced it');
+SELECT is(
+  (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN -1
+               ELSE (SELECT count(*)::int FROM realtime.messages m
+                     WHERE m.topic = 'job:' || (SELECT id FROM ch WHERE name = 'r')) END),
+  (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN -1 ELSE 1 END),
+  'and the message really landed on the job topic');
 
 SELECT * FROM finish();
 ROLLBACK;
