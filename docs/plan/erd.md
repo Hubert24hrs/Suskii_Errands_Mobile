@@ -264,6 +264,17 @@ three departures from the draft above, each deliberate:
 5. `provider_profiles` cold-start defaults (`completion_rate_bps` 10000, `cancellation_rate_bps`
    0, no ratings) favour newcomers while supply is thin. The reputation job overwrites them.
 
+**2026-09-18 — jobs and their history shipped** (`20260918120300_jobs.sql`):
+
+1. `jobs.pickup_pin_hash` / `delivery_pin_hash` / `pin_attempts` are **not** on `jobs`. They live
+   in `private.job_pins`, salted and attempt-counted. The ERD's rule was "no role selects them";
+   a private table enforces that without column grants, and leaves `SELECT *` on `jobs` working.
+2. `jobs` gains `delivery_pin_required`, `pickup_pin_verified_at`, `delivery_pin_verified_at` and
+   `arrived_reason_code` — the evidence a dispute needs about how the job actually ran.
+3. `job_events` is partitioned monthly as the ERD says; `private.ensure_monthly_partitions` now
+   enables and forces RLS on each partition it creates, since a partition of a public table is
+   reachable directly and would otherwise have no row security of its own.
+
 ## Open questions
 
 1. **Enum wire format.** Snake_case on the wire requires `@JsonValue` mappings on Kimi's camelCase Dart enums. The alternative — camelCase in Postgres — fights every Supabase tool. Recommending snake_case; logged as a UI change, to settle before M3 adds more enums.
