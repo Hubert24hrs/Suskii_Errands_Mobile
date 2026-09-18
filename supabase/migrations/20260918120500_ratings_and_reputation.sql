@@ -226,7 +226,9 @@ BEGIN
     AND o.author_side = 'provider'
     AND o.round = 1
     AND req.published_at IS NOT NULL
-    AND o.created_at > req.published_at;
+    -- `>=`, not `>`: an offer in the same instant as the publication is a real, very fast
+    -- answer, and dropping it would quietly exclude the best responders from the metric.
+    AND o.created_at >= req.published_at;
 
   UPDATE public.provider_profiles pp
   SET rating_avg_milli = greatest(least(v_avg_milli, 5000), 0),
