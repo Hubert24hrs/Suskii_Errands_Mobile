@@ -144,6 +144,12 @@
       "available",
       "reversed"
     ],
+    "report_status": [
+      "open",
+      "reviewing",
+      "actioned",
+      "dismissed"
+    ],
     "request_channel": [
       "app",
       "web",

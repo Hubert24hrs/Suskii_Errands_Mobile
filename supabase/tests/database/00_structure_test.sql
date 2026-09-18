@@ -62,6 +62,8 @@ SELECT is(
        'public.confirm_completion',
        'public.submit_proof', 'public.rate_job',
        'public.send_message', 'public.mark_read',
+       'public.block_user', 'public.unblock_user', 'public.favorite_provider',
+       'public.report_user',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

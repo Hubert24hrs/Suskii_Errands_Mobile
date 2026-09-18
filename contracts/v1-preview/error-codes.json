@@ -711,6 +711,17 @@
       "retryable": false,
       "description": "The chat window for this job is not open: it opens at assignment and closes a day after confirmation (`chat_window_hours_after_confirm`), except while a dispute is open.",
       "client_action": "Hide the composer and say the conversation is closed; offer support."
+    },
+    {
+      "code": "ERR_BLOCKED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "One of the two people has blocked the other. Symmetric, and the response never says which direction.",
+      "client_action": "Show a neutral message. Never reveal that the other party blocked the caller, or offer to contact them another way."
     }
   ]
 }
