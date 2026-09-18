@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(32);
+SELECT plan(33);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000101'),   -- customer
@@ -200,6 +200,17 @@ RESET ROLE;
 UPDATE public.requests SET status = 'disputed' WHERE id = (SELECT id FROM ch WHERE name = 'r');
 SELECT ok((SELECT private.chat_is_open((SELECT id FROM ch WHERE name = 'r'))),
   'an open dispute keeps the conversation open, whatever the window says');
+
+-- Whether the channel policies actually bound to `realtime.messages` is a fact about the stack,
+-- not an assumption: where the table exists, the policies must be on it. If Realtime is ever
+-- absent, this records that too rather than quietly passing.
+SELECT is(
+  (SELECT CASE WHEN to_regclass('realtime.messages') IS NULL THEN -1
+               ELSE (SELECT count(*)::int FROM pg_policies
+                     WHERE schemaname = 'realtime' AND tablename = 'messages'
+                       AND policyname IN ('realtime_join_own_topics', 'realtime_send_own_topics'))
+          END),
+  2, 'the channel policies are bound to realtime.messages');
 
 SELECT * FROM finish();
 ROLLBACK;
