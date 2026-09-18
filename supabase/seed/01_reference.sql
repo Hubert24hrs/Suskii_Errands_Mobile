@@ -71,3 +71,9 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
   ('job_pin_max_attempts', NULL, '5', true),
   ('job_arrival_geofence_m', NULL, '150', true)
 ON CONFLICT DO NOTHING;
+
+-- Chat stays open for a day after the job is confirmed, so a question about work that has just
+-- finished still has somewhere to go.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('chat_window_hours_after_confirm', NULL, '24', true)
+ON CONFLICT DO NOTHING;
