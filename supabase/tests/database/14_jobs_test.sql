@@ -181,6 +181,8 @@ SELECT is(
   (public.verify_pin('key-j-pin-right-0000000002', (SELECT id FROM jids WHERE name = 'r'),
      (SELECT pin FROM pins WHERE name = 'delivery'), 'delivery') ->> 'verified')::boolean,
   true, 'the delivery PIN is verified at the door');
+SELECT public.submit_proof('key-j-proof-p-000000000001', (SELECT id FROM jids WHERE name = 'r'),
+  'photo', (SELECT id FROM jids WHERE name = 'r') || '/handover.jpg');
 SELECT is(public.set_job_status('key-j-complete-p-0000002',
             (SELECT id FROM jids WHERE name = 'r'), 'completed_by_provider'),
   'completed_by_provider'::public.job_status, 'and now the work can be handed over');
@@ -299,6 +301,8 @@ SELECT public.set_job_status('key-j-arrive-p-000000003', (SELECT id FROM jids WH
   'arrived', NULL, 6.4460, 3.4751);
 SELECT public.verify_pin('key-j-pin-right-0000000003', (SELECT id FROM jids WHERE name = 'r3'),
   (SELECT pin FROM pins WHERE name = 'pickup3'));
+SELECT public.submit_proof('key-j-proof-p-000000000002', (SELECT id FROM jids WHERE name = 'r3'),
+  'photo', (SELECT id FROM jids WHERE name = 'r3') || '/done.jpg');
 SELECT is(public.set_job_status('key-j-complete-p-0000003',
             (SELECT id FROM jids WHERE name = 'r3'), 'completed_by_provider'),
   'completed_by_provider'::public.job_status, 'the provider finishes');
