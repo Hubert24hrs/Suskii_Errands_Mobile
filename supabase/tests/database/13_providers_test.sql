@@ -22,6 +22,14 @@ WHERE user_id = 'b4444444-4444-4444-8444-444444444444';
 UPDATE public.profiles SET country_code = 'KE', provider_verification = 'verified'
 WHERE user_id = 'b5555555-5555-4555-8555-555555555555';
 
+-- Provider profiles up front: `set_online` creates one lazily, but the suspension below is set
+-- by an UPDATE, and an UPDATE that matches no row is not a test of anything.
+INSERT INTO public.provider_profiles (user_id) VALUES
+  ('b2222222-2222-4222-8222-222222222222'),
+  ('b3333333-3333-4333-8333-333333333333'),
+  ('b4444444-4444-4444-8444-444444444444'),
+  ('b5555555-5555-4555-8555-555555555555');
+
 -- ---------------------------------------------------------------------------
 -- Going online.
 -- ---------------------------------------------------------------------------
@@ -83,10 +91,10 @@ SELECT is(public.heartbeat(6.4460, 3.4751), true, 'the first fix is written');
 SELECT is(public.heartbeat(6.44601, 3.47511), false,
   'a provider who has not moved does not write again');
 SELECT is(public.heartbeat(6.4600, 3.4900), true, 'real movement writes a new position');
+RESET ROLE;
 SELECT is((SELECT count(*)::int FROM public.provider_live_location l
            WHERE l.provider_id = 'b2222222-2222-4222-8222-222222222222'), 1,
   'one row per provider, updated in place');
-RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
   '{"sub": "b4444444-4444-4444-8444-444444444444", "role": "authenticated", "aal": "aal1"}', true);
