@@ -69,6 +69,7 @@ SELECT is(
        'public.set_member_options', 'public.register_vehicle',
        'public.dispatch_job', 'public.claim_job',
        'private.is_org_member', 'private.org_role',
+       'public.mark_notifications_read',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

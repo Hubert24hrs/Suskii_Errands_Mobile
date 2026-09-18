@@ -104,6 +104,18 @@
       "approved",
       "rejected"
     ],
+    "notification_kind": [
+      "request_matched",
+      "offer_received",
+      "offer_countered",
+      "offer_accepted",
+      "offer_expired",
+      "job_assigned",
+      "job_status",
+      "chat_message",
+      "rating_received",
+      "system"
+    ],
     "offer_status": [
       "pending",
       "countered",
