@@ -99,6 +99,11 @@
       "rejected",
       "expired"
     ],
+    "moderation_status": [
+      "pending",
+      "approved",
+      "rejected"
+    ],
     "offer_status": [
       "pending",
       "countered",
@@ -127,6 +132,10 @@
     "provider_kind": [
       "individual",
       "business"
+    ],
+    "rating_direction": [
+      "customer_to_provider",
+      "provider_to_customer"
     ],
     "referral_commission_status": [
       "pending",
