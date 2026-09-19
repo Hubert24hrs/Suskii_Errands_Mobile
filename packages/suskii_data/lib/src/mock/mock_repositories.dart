@@ -2685,3 +2685,385 @@ class MockSettingsRepository extends _MockRepo implements SettingsRepository {
     );
   }
 }
+
+
+/// ---------------------------------------------------------------------------
+/// M6: provider tools + business console
+/// ---------------------------------------------------------------------------
+
+class MockProviderToolsRepository extends _MockRepo
+    implements ProviderToolsRepository {
+  MockProviderToolsRepository(super.db, super.behavior);
+
+  String get _providerId => currentUser.id;
+
+  @override
+  Future<List<AvailabilitySlot>> getAvailability() async {
+    await gate();
+    return List<AvailabilitySlot>.unmodifiable(
+      db.availability[_providerId] ?? const <AvailabilitySlot>[],
+    );
+  }
+
+  @override
+  Future<List<AvailabilitySlot>> setAvailability(
+    List<AvailabilitySlot> slots, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('setAvailability', idempotencyKey, () async {
+      for (final slot in slots) {
+        if (slot.dayOfWeek < 1 ||
+            slot.dayOfWeek > 7 ||
+            slot.startMinutes < 0 ||
+            slot.endMinutes > 24 * 60 ||
+            slot.startMinutes >= slot.endMinutes) {
+          throw const AppError(ErrorCodes.invalidState);
+        }
+      }
+      db.availability[_providerId] = List<AvailabilitySlot>.of(slots);
+      return List<AvailabilitySlot>.unmodifiable(slots);
+    }, argsHash: slots.toString());
+  }
+
+  @override
+  Future<EarningsGoal?> getEarningsGoal() async {
+    await gate();
+    return db.earningsGoals[_providerId];
+  }
+
+  @override
+  Future<EarningsGoal> setEarningsGoal(
+    Money target,
+    GoalPeriod period, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('setEarningsGoal', idempotencyKey, () async {
+      if (target.minorUnits <= 0) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      // Progress stays server-computed: keep whatever the "server" last
+      // computed for this provider (seeded fixture), zero for a fresh goal.
+      final progress =
+          db.earningsGoals[_providerId]?.progress ??
+          Money(0, target.currencyCode);
+      final goal = EarningsGoal(
+        target: target,
+        period: period,
+        progress: progress,
+      );
+      db.earningsGoals[_providerId] = goal;
+      return goal;
+    }, argsHash: '${target.minorUnits} ${target.currencyCode} $period');
+  }
+
+  @override
+  Future<List<DemandZone>> getDemandHeatmap() async {
+    await gate();
+    final zones = List<DemandZone>.of(db.demandZones)
+      ..sort((DemandZone a, DemandZone b) => b.intensity.compareTo(a.intensity));
+    return zones;
+  }
+
+  @override
+  Future<ProviderInsights> getInsights() async {
+    await gate();
+    final profile = db.providers[_providerId];
+    return ProviderInsights(
+      acceptanceRate: 0.86,
+      completionRate: 0.97,
+      avgRating: profile?.rating ?? 0,
+      fiveStarShare: 0.71,
+      avgResponseTimeSeconds: profile?.avgResponseTimeSeconds ?? 0,
+      periodDays: 30,
+    );
+  }
+
+  /// Mock pricing for instant payout (server-side decision): 1.5% fee,
+  /// capped at ₦2,000.
+  InstantPayoutQuote _quote(Money amount) {
+    final rawFee = (amount.minorUnits * 15) ~/ 1000;
+    final feeMinor = rawFee > 200000 ? 200000 : rawFee;
+    return InstantPayoutQuote(
+      fee: Money(feeMinor, amount.currencyCode),
+      net: Money(amount.minorUnits - feeMinor, amount.currencyCode),
+      arrivesWithinMinutes: 15,
+    );
+  }
+
+  @override
+  Future<InstantPayoutQuote> quoteInstantPayout(Money amount) async {
+    await gate();
+    if (amount.minorUnits <= 0) {
+      throw const AppError(ErrorCodes.invalidState);
+    }
+    return _quote(amount);
+  }
+
+  @override
+  Future<WalletTransaction> requestInstantPayout(
+    Money amount, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('instantPayout', idempotencyKey, () async {
+      final user = currentUser;
+      if (user.providerVerification != VerificationStatus.verified) {
+        throw const AppError(ErrorCodes.kycIncomplete);
+      }
+      final summary = db.wallets[user.id];
+      final available =
+          summary?.available ?? Money(0, amount.currencyCode);
+      if (amount > available) {
+        throw const AppError(ErrorCodes.insufficientBalance);
+      }
+      final quote = _quote(amount);
+      // Debit the full amount; the fee never leaves the platform.
+      db.wallets[user.id] = (summary ??
+              WalletSummary(
+                available: available,
+                pending: Money(0, amount.currencyCode),
+              ))
+          .copyWith(
+        available: Money(
+          available.minorUnits - amount.minorUnits,
+          amount.currencyCode,
+        ),
+      );
+      final txn = WalletTransaction(
+        id: 'txn-${DateTime.now().millisecondsSinceEpoch}',
+        kind: WalletTransactionKind.payout,
+        status: WalletTransactionStatus.completed,
+        amount: quote.net,
+        descriptionKey: 'txnInstantPayout',
+        createdAt: serverNow(),
+      );
+      db.walletTransactions
+          .putIfAbsent(user.id, () => <WalletTransaction>[])
+          .add(txn);
+      return txn;
+    }, argsHash: '${amount.minorUnits} ${amount.currencyCode}');
+  }
+}
+
+class MockOrganizationRepository extends _MockRepo
+    implements OrganizationRepository {
+  MockOrganizationRepository(super.db, super.behavior);
+
+  /// The org the current user belongs to (any role), or null.
+  Organization? _myOrg() {
+    final userId = currentUser.id;
+    for (final org in db.organizations.values) {
+      final members = db.orgMembers[org.id] ?? const <OrgMember>[];
+      if (members.any((OrgMember m) => m.userId == userId)) return org;
+    }
+    return null;
+  }
+
+  BusinessRole? _myRole(String orgId) {
+    final userId = currentUser.id;
+    for (final m in db.orgMembers[orgId] ?? const <OrgMember>[]) {
+      if (m.userId == userId) return m.role;
+    }
+    return null;
+  }
+
+  Organization _requireOrg() {
+    final org = _myOrg();
+    if (org == null) throw const AppError(ErrorCodes.permissionDenied);
+    return org;
+  }
+
+  /// Owner/dispatcher-only actions.
+  void _requireManager(String orgId) {
+    final role = _myRole(orgId);
+    if (role != BusinessRole.owner && role != BusinessRole.dispatcher) {
+      throw const AppError(ErrorCodes.permissionDenied);
+    }
+  }
+
+  @override
+  Future<Organization?> getMyOrganization() async {
+    await gate();
+    return _myOrg();
+  }
+
+  @override
+  Future<List<OrgMember>> getMembers() async {
+    await gate();
+    final org = _requireOrg();
+    final isOwner = _myRole(org.id) == BusinessRole.owner;
+    final members = db.orgMembers[org.id] ?? const <OrgMember>[];
+    // Per-worker earnings are Owner-visible only (spec).
+    return <OrgMember>[
+      for (final m in members)
+        isOwner ? m : m.copyWith(earningsToDate: null),
+    ];
+  }
+
+  @override
+  Future<OrgMember> inviteMember({
+    required String phoneE164,
+    required BusinessRole role,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgInvite', idempotencyKey, () async {
+      final org = _requireOrg();
+      _requireManager(org.id);
+      if (role == BusinessRole.owner) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final members = db.orgMembers.putIfAbsent(org.id, () => <OrgMember>[]);
+      final id =
+          'user-invited-${phoneE164.replaceAll(RegExp('[^0-9]'), '')}';
+      if (members.any((OrgMember m) => m.userId == id)) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final member = OrgMember(
+        userId: id,
+        displayName: phoneE164, // name arrives once the invitee signs up
+        role: role,
+        verificationStatus: VerificationStatus.pending,
+        jobsCompleted: 0,
+        earningsToDate: const Money(0, 'NGN'),
+      );
+      members.add(member);
+      db.organizations[org.id] =
+          org.copyWith(memberCount: members.length);
+      return member;
+    }, argsHash: '$phoneE164|$role');
+  }
+
+  @override
+  Future<void> removeMember(
+    String userId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    await idempotent('orgRemoveMember:$userId', idempotencyKey, () async {
+      final org = _requireOrg();
+      _requireManager(org.id);
+      if (userId == org.ownerId) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final members = db.orgMembers[org.id] ?? <OrgMember>[];
+      members.removeWhere((OrgMember m) => m.userId == userId);
+      db.organizations[org.id] =
+          org.copyWith(memberCount: members.length);
+      return true;
+    });
+  }
+
+  @override
+  Future<List<JobRequest>> getAssignableJobs() async {
+    await gate();
+    _requireOrg();
+    final orgProfileIds = db.providers.values
+        .where((ProviderProfile p) => p.kind == ProviderKind.business)
+        .map((ProviderProfile p) => p.userId)
+        .toSet();
+    return db.requests.values
+        .where(
+          (JobRequest r) =>
+              r.providerId != null &&
+              orgProfileIds.contains(r.providerId) &&
+              !db.orgAssignments.containsKey(r.id) &&
+              (r.status == JobStatus.paidHeld ||
+                  r.status == JobStatus.assigned),
+        )
+        .toList();
+  }
+
+  @override
+  Future<JobRequest> assignJob({
+    required String jobId,
+    required String workerId,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgAssignJob:$jobId', idempotencyKey, () async {
+      final org = _requireOrg();
+      _requireManager(org.id);
+      final job = db.requests[jobId];
+      if (job == null) throw const AppError(ErrorCodes.unknown);
+      final worker = (db.orgMembers[org.id] ?? const <OrgMember>[])
+          .where((OrgMember m) => m.userId == workerId)
+          .firstOrNull;
+      if (worker == null ||
+          worker.role != BusinessRole.worker ||
+          worker.verificationStatus != VerificationStatus.verified) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      final assignable = (await getAssignableJobs())
+          .any((JobRequest r) => r.id == jobId);
+      if (!assignable) throw const AppError(ErrorCodes.invalidState);
+      db.orgAssignments[jobId] = workerId;
+      final updated = job.copyWith(status: JobStatus.assigned);
+      db.requests[jobId] = updated;
+      db.jobEvents.add(updated);
+      return updated;
+    }, argsHash: workerId);
+  }
+
+  @override
+  Future<List<Vehicle>> getVehicles() async {
+    await gate();
+    final org = _requireOrg();
+    return List<Vehicle>.unmodifiable(
+      db.vehicles[org.id] ?? const <Vehicle>[],
+    );
+  }
+
+  @override
+  Future<Vehicle> upsertVehicle(
+    Vehicle vehicle, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgUpsertVehicle:${vehicle.id}', idempotencyKey,
+        () async {
+      final org = _requireOrg();
+      _requireManager(org.id);
+      final list = db.vehicles.putIfAbsent(org.id, () => <Vehicle>[]);
+      final stored = vehicle.copyWith(organizationId: org.id);
+      final idx = list.indexWhere((Vehicle v) => v.id == vehicle.id);
+      if (idx >= 0) {
+        list[idx] = stored;
+      } else {
+        list.add(stored);
+      }
+      db.organizations[org.id] =
+          org.copyWith(activeVehicleCount: list.length);
+      return stored;
+    }, argsHash: vehicle.toString());
+  }
+
+  @override
+  Future<Vehicle> assignVehicle(
+    String vehicleId,
+    String? workerId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgAssignVehicle:$vehicleId', idempotencyKey, () async {
+      final org = _requireOrg();
+      _requireManager(org.id);
+      final list = db.vehicles[org.id] ?? <Vehicle>[];
+      final idx = list.indexWhere((Vehicle v) => v.id == vehicleId);
+      if (idx < 0) throw const AppError(ErrorCodes.unknown);
+      if (workerId != null) {
+        final worker = (db.orgMembers[org.id] ?? const <OrgMember>[])
+            .where((OrgMember m) => m.userId == workerId)
+            .firstOrNull;
+        if (worker == null || worker.role != BusinessRole.worker) {
+          throw const AppError(ErrorCodes.permissionDenied);
+        }
+      }
+      final updated = list[idx].copyWith(assignedWorkerId: workerId);
+      list[idx] = updated;
+      return updated;
+    }, argsHash: workerId ?? '');
+  }
+}

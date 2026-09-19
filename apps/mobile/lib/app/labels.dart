@@ -54,6 +54,7 @@ String transactionLabel(AppLocalizations l10n, String? key) => switch (key) {
   'txnRefundItemFloat' => l10n.txnRefundItemFloat,
   'txnWithdrawal' => l10n.txnWithdrawal,
   'txnReferralWithdrawal' => l10n.txnReferralWithdrawal,
+  'txnInstantPayout' => l10n.txnInstantPayout,
   _ => key ?? '',
 };
 
@@ -103,6 +104,19 @@ String idTypeLabel(AppLocalizations l10n, String idType) => switch (idType) {
   'driversLicence' => l10n.idDriversLicence,
   'passport' => l10n.idPassport,
   _ => idType,
+};
+
+String verificationStatusLabel(
+  AppLocalizations l10n,
+  VerificationStatus status,
+) => switch (status) {
+  VerificationStatus.unverified => l10n.verificationUnverified,
+  VerificationStatus.pending => l10n.verificationPending,
+  VerificationStatus.inReview => l10n.verificationInReview,
+  VerificationStatus.verified => l10n.verificationVerified,
+  VerificationStatus.rejected => l10n.verificationRejected,
+  VerificationStatus.suspended => l10n.verificationSuspended,
+  VerificationStatus.expired => l10n.verificationExpired,
 };
 
 String vehicleTypeLabel(AppLocalizations l10n, VehicleType type) =>
@@ -197,4 +211,31 @@ String ticketStatusLabel(AppLocalizations l10n, SupportTicketStatus status) =>
       SupportTicketStatus.awaitingUser => l10n.supportStatusAwaitingUser,
       SupportTicketStatus.resolved => l10n.supportStatusResolved,
       SupportTicketStatus.closed => l10n.supportStatusClosed,
+    };
+
+/// Business-role labels (M6 business console).
+String businessRoleLabel(AppLocalizations l10n, BusinessRole role) =>
+    switch (role) {
+      BusinessRole.owner => l10n.orgRoleOwner,
+      BusinessRole.dispatcher => l10n.orgRoleDispatcher,
+      BusinessRole.worker => l10n.orgRoleWorker,
+    };
+
+/// Earnings-goal period labels (M6 provider tools).
+String goalPeriodLabel(AppLocalizations l10n, GoalPeriod period) =>
+    switch (period) {
+      GoalPeriod.weekly => l10n.toolsGoalWeekly,
+      GoalPeriod.monthly => l10n.toolsGoalMonthly,
+    };
+
+/// Weekday short labels; [dayOfWeek] is 1 = Monday … 7 = Sunday.
+String weekdayLabel(AppLocalizations l10n, int dayOfWeek) =>
+    switch (dayOfWeek) {
+      1 => l10n.toolsDayMon,
+      2 => l10n.toolsDayTue,
+      3 => l10n.toolsDayWed,
+      4 => l10n.toolsDayThu,
+      5 => l10n.toolsDayFri,
+      6 => l10n.toolsDaySat,
+      _ => l10n.toolsDaySun,
     };

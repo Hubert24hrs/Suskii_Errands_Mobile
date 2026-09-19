@@ -5,6 +5,47 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-20 — Kimi Code — M6 done: provider tools + business console
+
+All M6 surfaces are in on mocks. Verify: analyze clean in suskii_l10n + apps/mobile
+(domain/data/core unchanged since their clean M6 runs earlier this milestone);
+suskii_data tests 107 pass (12 new M6 tests); formatted.
+
+**Domain/data** — entities `AvailabilitySlot` (dayOfWeek 1–7, minutes-since-midnight),
+`EarningsGoal` (+ `GoalPeriod` weekly/monthly), `DemandZone`, `ProviderInsights`,
+`InstantPayoutQuote`; `Organization`, `OrgMember` (owner/dispatcher/worker via
+`BusinessRole`), `Vehicle`; interfaces `ProviderToolsRepository`,
+`OrganizationRepository`. Mocks + fixtures: personas user-bola (business owner of
+org-swift "SwiftErrands Ltd"), user-dafe (dispatcher), user-tayo (verified worker),
+user-seun (in-review worker); user-ada Mon–Sat 8–18 availability + ₦150k/wk goal at
+60%; 5 Lagos demand zones; org-swift 4 members + 3 vehicles (veh-2 docs expire in
+18d); job req-org-1 paidHeld awaiting dispatch. Mock rules: instant payout fee 1.5%
+capped at ₦2,000, debits wallet (`txnInstantPayout`), requires verified provider +
+sufficient available balance; member earnings redacted (null) for non-owners; owner
+role can't be invited/removed; dispatch + vehicle assignment require verified workers;
+manager actions gated owner|dispatcher.
+
+**Screens** — provider tools (`/provider/tools`): availability editor (per-day switch
++ hour dropdowns, one idempotent save), earnings goal card + set-goal sheet, instant
+payout card (amount → server quote fee/net → confirm), demand heatmap as
+intensity-colored zone list (no map SDK in the mock build), insights tiles
+(acceptance, completion, rating, 5★ share, response time — all server-computed).
+Business console (`/provider/org`): org header (verification + payout chips, member/
+vehicle counts), members list (invite sheet phone+role, remove with confirm dialog;
+earnings rendered only when non-null), vehicles (add sheet, assign to verified
+worker, ≤30-day document-expiry warning), dispatch queue (assign paid-held org jobs
+to verified workers). Profile page links both surfaces in provider mode only; the
+router already redirects /provider/* to customer home in customer mode.
+
+**Contract needs** — appended to `contracts/draft/ui-data-requirements.md`:
+availability slots, earnings goal, heatmap payload (needs polygon/tile-grid for a
+real map), insights, instant-payout quote (TTL, amount param, payout destination),
+org/member/vehicle schemas with the earnings-redaction rule, dispatch semantics, and
+open needs (KYB/org onboarding, invite accept/decline handshake, per-worker payout
+splits, vehicle document upload refs, dispatch audit log, multi-org membership).
+
+---
+
 ## 2026-09-19 — Kimi Code — M5 done: wallet, referrals, promos, disputes, support, settings
 
 All M5 surfaces are in on mocks. Verify: analyze clean in suskii_core / suskii_domain /

@@ -63,6 +63,27 @@ class MockDatabase {
   /// Trusted contacts by user id (max 5 per user).
   late final Map<String, List<TrustedContact>> trustedContacts;
 
+  /// Weekly availability windows by provider id (M6).
+  late final Map<String, List<AvailabilitySlot>> availability;
+
+  /// Earnings goal by provider id (M6); progress is computed on read.
+  late final Map<String, EarningsGoal> earningsGoals;
+
+  /// Organizations by id (M6 business console).
+  late final Map<String, Organization> organizations;
+
+  /// Org membership: orgId → members (owner included).
+  late final Map<String, List<OrgMember>> orgMembers;
+
+  /// Vehicle registry by org id.
+  late final Map<String, List<Vehicle>> vehicles;
+
+  /// Demand-heatmap zones for the provider's service area (M6).
+  late final List<DemandZone> demandZones;
+
+  /// Dispatch assignments: jobId → worker user id (M6 business console).
+  late final Map<String, String> orgAssignments;
+
   /// Customer facial-verification sessions, keyed by user id.
   late final Map<String, VerificationSession> verificationSessions;
 
@@ -165,6 +186,137 @@ class MockDatabase {
       ],
     };
 
+    // M6 fixtures: provider tools for user-ada (the individual-provider
+    // persona) and the org-swift business console for user-bola.
+    availability = <String, List<AvailabilitySlot>>{
+      // Mon–Sat 08:00–18:00.
+      'user-ada': <AvailabilitySlot>[
+        for (var day = 1; day <= 6; day++)
+          AvailabilitySlot(dayOfWeek: day, startMinutes: 8 * 60, endMinutes: 18 * 60),
+      ],
+    };
+    earningsGoals = <String, EarningsGoal>{
+      // ₦150,000/week target at ~60% progress (progress is server-computed).
+      'user-ada': const EarningsGoal(
+        target: Money(15000000, 'NGN'),
+        period: GoalPeriod.weekly,
+        progress: Money(9050000, 'NGN'),
+      ),
+    };
+    demandZones = <DemandZone>[
+      const DemandZone(
+        id: 'zone-lekki',
+        label: 'Lekki Phase 1',
+        center: GeoPoint(latitude: 6.4418, longitude: 3.4723),
+        intensity: 0.92,
+        openRequests: 34,
+      ),
+      const DemandZone(
+        id: 'zone-vi',
+        label: 'Victoria Island',
+        center: GeoPoint(latitude: 6.4281, longitude: 3.4219),
+        intensity: 0.74,
+        openRequests: 21,
+      ),
+      const DemandZone(
+        id: 'zone-ikoyi',
+        label: 'Ikoyi',
+        center: GeoPoint(latitude: 6.4527, longitude: 3.4320),
+        intensity: 0.55,
+        openRequests: 12,
+      ),
+      const DemandZone(
+        id: 'zone-oniru',
+        label: 'Oniru',
+        center: GeoPoint(latitude: 6.4350, longitude: 3.4400),
+        intensity: 0.38,
+        openRequests: 7,
+      ),
+      const DemandZone(
+        id: 'zone-ajah',
+        label: 'Ajah',
+        center: GeoPoint(latitude: 6.4698, longitude: 3.5852),
+        intensity: 0.21,
+        openRequests: 3,
+      ),
+    ];
+    organizations = <String, Organization>{
+      'org-swift': const Organization(
+        id: 'org-swift',
+        name: 'SwiftErrands Ltd',
+        ownerId: 'user-bola',
+        verificationStatus: VerificationStatus.verified,
+        payoutAccountSet: true,
+        memberCount: 4,
+        activeVehicleCount: 3,
+      ),
+    };
+    orgMembers = <String, List<OrgMember>>{
+      'org-swift': <OrgMember>[
+        const OrgMember(
+          userId: 'user-bola',
+          displayName: 'Bola Swift',
+          role: BusinessRole.owner,
+          verificationStatus: VerificationStatus.verified,
+          jobsCompleted: 88,
+          earningsToDate: Money(12400000, 'NGN'),
+        ),
+        const OrgMember(
+          userId: 'user-dafe',
+          displayName: 'Dafe Akpe',
+          role: BusinessRole.dispatcher,
+          verificationStatus: VerificationStatus.verified,
+          jobsCompleted: 0,
+          earningsToDate: Money(0, 'NGN'),
+        ),
+        const OrgMember(
+          userId: 'user-tayo',
+          displayName: 'Tayo Adeleke',
+          role: BusinessRole.worker,
+          verificationStatus: VerificationStatus.verified,
+          jobsCompleted: 412,
+          earningsToDate: Money(8320000, 'NGN'),
+        ),
+        const OrgMember(
+          userId: 'user-seun',
+          displayName: 'Seun Alabi',
+          role: BusinessRole.worker,
+          verificationStatus: VerificationStatus.inReview,
+          jobsCompleted: 0,
+          earningsToDate: Money(0, 'NGN'),
+        ),
+      ],
+    };
+    vehicles = <String, List<Vehicle>>{
+      'org-swift': <Vehicle>[
+        Vehicle(
+          id: 'veh-1',
+          organizationId: 'org-swift',
+          type: VehicleType.motorcycle,
+          plate: 'LAG-234-KJ',
+          assignedWorkerId: 'user-tayo',
+          documentExpiry: now.add(const Duration(days: 210)),
+        ),
+        Vehicle(
+          id: 'veh-2',
+          organizationId: 'org-swift',
+          type: VehicleType.van,
+          plate: 'LAG-881-XB',
+          // Expiring in 18 days — demos the document-expiry warning.
+          documentExpiry: now.add(const Duration(days: 18)),
+        ),
+        Vehicle(
+          id: 'veh-3',
+          organizationId: 'org-swift',
+          type: VehicleType.car,
+          plate: 'LAG-450-QA',
+          assignedWorkerId: 'user-bola',
+          documentExpiry: now.add(const Duration(days: 340)),
+        ),
+      ],
+    };
+    orgAssignments = <String, String>{};
+
     users = <String, AppUser>{
       'user-ada': AppUser(
         id: 'user-ada',
@@ -217,6 +369,60 @@ class MockDatabase {
         providerVerification: VerificationStatus.rejected,
         trustLevel: TrustLevel.new_,
         createdAt: now.subtract(const Duration(days: 15)),
+      ),
+      // M6 business-console persona: verified business provider who owns
+      // org-swift (SwiftErrands Ltd). user-ada stays the individual-provider
+      // persona (org console shows the not-available state for her).
+      'user-bola': AppUser(
+        id: 'user-bola',
+        displayName: 'Bola Swift',
+        phoneE164: '+2348077788899',
+        email: 'bola@swifterrands.example.com',
+        countryCode: 'NG',
+        preferredLanguage: 'en',
+        activeMode: UserMode.provider,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.verified,
+        trustLevel: TrustLevel.trusted,
+        createdAt: now.subtract(const Duration(days: 400)),
+      ),
+      // org-swift members (M6) — real users so the org console is demoable
+      // from their perspectives too.
+      'user-dafe': AppUser(
+        id: 'user-dafe',
+        displayName: 'Dafe Akpe',
+        phoneE164: '+2348033344455',
+        countryCode: 'NG',
+        preferredLanguage: 'en',
+        activeMode: UserMode.provider,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.verified,
+        trustLevel: TrustLevel.verified,
+        createdAt: now.subtract(const Duration(days: 200)),
+      ),
+      'user-tayo': AppUser(
+        id: 'user-tayo',
+        displayName: 'Tayo Adeleke',
+        phoneE164: '+2348022233344',
+        countryCode: 'NG',
+        preferredLanguage: 'en',
+        activeMode: UserMode.provider,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.verified,
+        trustLevel: TrustLevel.verified,
+        createdAt: now.subtract(const Duration(days: 180)),
+      ),
+      'user-seun': AppUser(
+        id: 'user-seun',
+        displayName: 'Seun Alabi',
+        phoneE164: '+2348055566677',
+        countryCode: 'NG',
+        preferredLanguage: 'en',
+        activeMode: UserMode.provider,
+        customerVerification: VerificationStatus.verified,
+        providerVerification: VerificationStatus.inReview,
+        trustLevel: TrustLevel.new_,
+        createdAt: now.subtract(const Duration(days: 6)),
       ),
       // Customers behind the per-country feed fixtures (req-feed-*); the
       // provider feed is country-scoped, so each needs a real country.
@@ -499,6 +705,30 @@ class MockDatabase {
     };
 
     requests = <String, JobRequest>{
+      // M6: an org-accepted job awaiting dispatch to a worker (business
+      // console demo). Customer is a foreign persona so it shows for nobody's
+      // customer list.
+      'req-org-1': JobRequest(
+        id: 'req-org-1',
+        customerId: 'user-kofi',
+        categoryId: 'document_delivery',
+        isCustomCategory: false,
+        description: 'Deliver a contract bundle to a bank HQ on Marina.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(
+          label: 'SwiftErrands depot, Lekki',
+          point: GeoPoint(latitude: 6.4474, longitude: 3.4723),
+        ),
+        destination: const PlaceRef(
+          label: 'Bank HQ, Marina',
+          point: GeoPoint(latitude: 6.4527, longitude: 3.4010),
+        ),
+        urgency: Urgency.urgent,
+        status: JobStatus.paidHeld,
+        createdAt: now.subtract(const Duration(hours: 1)),
+        agreedPrice: const Money(850000, 'NGN'),
+        providerId: 'provider-swift',
+      ),
       'req-1': JobRequest(
         id: 'req-1',
         customerId: 'user-ada',

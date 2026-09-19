@@ -248,6 +248,24 @@ class ProfilePage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.customerSettings),
           ),
+          // M6: provider-only surfaces (router redirects /provider/* in
+          // customer mode, so only offer them in provider mode).
+          if (mode == UserMode.provider) ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.handyman_outlined),
+              title: Text(l10n.profileProviderTools),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.providerTools),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.business_center_outlined),
+              title: Text(l10n.profileBusinessConsole),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.providerOrg),
+            ),
+          ],
           const SizedBox(height: SSpacing.lg),
 
           // Language

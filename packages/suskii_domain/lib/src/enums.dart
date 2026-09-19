@@ -244,6 +244,14 @@ enum ReferralCommissionStatus {
   reversed,
 }
 
+/// Earnings-goal period (M6 provider tools).
+enum GoalPeriod {
+  @JsonValue('weekly')
+  weekly,
+  @JsonValue('monthly')
+  monthly,
+}
+
 enum ChatMessageType {
   @JsonValue('text')
   text,

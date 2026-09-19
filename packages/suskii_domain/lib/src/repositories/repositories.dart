@@ -5,8 +5,10 @@ import '../entities/concierge.dart';
 import '../entities/dispute.dart';
 import '../entities/notification.dart';
 import '../entities/offer.dart';
+import '../entities/organization.dart';
 import '../entities/payment.dart';
 import '../entities/promo.dart';
+import '../entities/provider_tools.dart';
 import '../entities/rating.dart';
 import '../entities/referral.dart';
 import '../entities/request.dart';
@@ -391,6 +393,83 @@ abstract interface class SettingsRepository {
 
   /// GDPR-style data export. Returns an opaque export reference.
   Future<String> requestDataExport({required String idempotencyKey});
+}
+
+/// ---------------------------------------------------------------------------
+/// Provider tools + business console (milestone M6)
+/// ---------------------------------------------------------------------------
+
+/// Provider tools (spec: added_features). All stats/quotes are computed
+/// server-side; the client sets preferences and renders results.
+abstract interface class ProviderToolsRepository {
+  /// Weekly availability windows (empty list = always available).
+  Future<List<AvailabilitySlot>> getAvailability();
+  Future<List<AvailabilitySlot>> setAvailability(
+    List<AvailabilitySlot> slots, {
+    required String idempotencyKey,
+  });
+
+  /// Earnings goal; progress is computed server-side on every read.
+  Future<EarningsGoal?> getEarningsGoal();
+  Future<EarningsGoal> setEarningsGoal(
+    Money target,
+    GoalPeriod period, {
+    required String idempotencyKey,
+  });
+
+  /// Demand heatmap zones for the provider's service area.
+  Future<List<DemandZone>> getDemandHeatmap();
+
+  /// Performance insights snapshot (acceptance, completion, rating…).
+  Future<ProviderInsights> getInsights();
+
+  /// Instant payout (spec: paid feature). Quote first — the fee and net are
+  /// server-computed; then request. Throws AppError(ERR_INSUFFICIENT_BALANCE)
+  /// or AppError(ERR_KYC_INCOMPLETE) when not allowed.
+  Future<InstantPayoutQuote> quoteInstantPayout(Money amount);
+  Future<WalletTransaction> requestInstantPayout(
+    Money amount, {
+    required String idempotencyKey,
+  });
+}
+
+/// Business console (spec: business_accounts_and_fleets). Business providers
+/// only — every method throws AppError(ERR_PERMISSION_DENIED) for individual
+/// providers. Owner/dispatcher capabilities are enforced server-side.
+abstract interface class OrganizationRepository {
+  Future<Organization?> getMyOrganization();
+  Future<List<OrgMember>> getMembers();
+
+  /// Invites a worker/dispatcher by phone. Idempotent per phone+role.
+  Future<OrgMember> inviteMember({
+    required String phoneE164,
+    required BusinessRole role,
+    required String idempotencyKey,
+  });
+  Future<void> removeMember(String userId, {required String idempotencyKey});
+
+  /// Dispatcher action: assign an org-accepted job to a verified worker.
+  /// Throws AppError(ERR_INVALID_STATE) when the job is not assignable.
+  Future<JobRequest> assignJob({
+    required String jobId,
+    required String workerId,
+    required String idempotencyKey,
+  });
+
+  /// Org-accepted jobs awaiting dispatch (not yet assigned to a worker).
+  Future<List<JobRequest>> getAssignableJobs();
+
+  /// Vehicle registry (type, plate, document expiry, assigned worker).
+  Future<List<Vehicle>> getVehicles();
+  Future<Vehicle> upsertVehicle(
+    Vehicle vehicle, {
+    required String idempotencyKey,
+  });
+  Future<Vehicle> assignVehicle(
+    String vehicleId,
+    String? workerId, {
+    required String idempotencyKey,
+  });
 }
 
 /// AI concierge (text + voice). The concierge structures a request via

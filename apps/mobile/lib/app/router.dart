@@ -27,11 +27,13 @@ import '../features/customer/voice_concierge_page.dart';
 import '../features/customer/wallet_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
+import '../features/provider/organization_page.dart';
 import '../features/provider/provider_feed_page.dart';
 import '../features/provider/provider_jobs_page.dart';
 import '../features/provider/provider_kyc_page.dart';
 import '../features/provider/provider_onboarding_page.dart';
 import '../features/provider/provider_shell.dart';
+import '../features/provider/provider_tools_page.dart';
 import '../features/splash/splash_page.dart';
 import '../features/startup/startup_error_page.dart';
 import '../features/verification/customer_verification_page.dart';
@@ -94,6 +96,9 @@ abstract final class AppRoutes {
   static const String providerJobs = '/provider/jobs';
   static const String providerEarnings = '/provider/earnings';
   static const String providerProfile = '/provider/profile';
+
+  static const String providerTools = '/provider/tools';
+  static const String providerOrg = '/provider/org';
 }
 
 /// Simple boolean flag controller (Riverpod 3 has no legacy StateProvider).
@@ -315,6 +320,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.customerSettings,
         builder: (context, state) => const SettingsPage(),
+      ),
+      // M6 routes — provider tools + business console.
+      GoRoute(
+        path: AppRoutes.providerTools,
+        builder: (context, state) => const ProviderToolsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerOrg,
+        builder: (context, state) => const OrganizationPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

@@ -373,3 +373,48 @@ Sections for M3..M8 screens get appended here as those milestones are built.
 - Data export: `requestDataExport(idempotencyKey)` → opaque export reference.
 - Open needs: export delivery (email link vs in-app download), deletion grace-period value,
   quiet-hours timezone semantics (device-local vs stored zone).
+
+## M6 — Provider tools + business console (2026-09-20)
+
+### Provider tools (`/provider/tools`)
+- Availability: `AvailabilitySlot { dayOfWeek (1–7, Mon–Sun), startMinutes, endMinutes }`
+  (minutes since midnight, local); `getAvailability()`, `setAvailability(slots,
+  idempotencyKey)` — full-replace semantics per provider.
+- Earnings goal: `EarningsGoal { target: Money, period: weekly|monthly, progress: Money }` —
+  progress is server-derived from the ledger, never client-computed; `getEarningsGoal()`,
+  `setEarningsGoal(target, period, idempotencyKey)`.
+- Demand heatmap: `getDemandHeatmap()` → `List<DemandZone { id, labelKey?, center: GeoPoint,
+  intensity: 0–1, openRequests }>`. UI renders intensity-colored zones; needs a polygon or
+  tile-grid payload for a real map — currently a list fallback.
+- Insights: `getInsights()` → `ProviderInsights { acceptanceRate, completionRate, avgRating,
+  fiveStarShare, avgResponseTimeSeconds, periodDays }` — all rates server-computed over
+  `periodDays`.
+- Instant payout: `quoteInstantPayout()` → `InstantPayoutQuote { fee, net,
+  arrivesWithinMinutes }` (mock fee = 1.5% capped at ₦2,000 — server owns the real tariff);
+  `requestInstantPayout(idempotencyKey)` debits the wallet and creates a transaction with
+  `descriptionKey: 'txnInstantPayout'` | `ERR_KYC_INCOMPLETE` (provider not verified),
+  `ERR_INSUFFICIENT_BALANCE` (vs available balance).
+- Open needs: quote TTL + amount parameter (quote is currently whole-available-balance),
+  payout destination selection, heatmap freshness timestamp, per-day insights trend series.
+
+### Business console (`/provider/org`)
+- Organization: `getMyOrganization()` → `Organization { id, name, ownerId,
+  verificationStatus, payoutAccountSet, memberCount, activeVehicleCount } | null` (null =
+  individual provider, UI shows an explanatory empty state).
+- Members: `getMembers()` → `List<OrgMember { userId, displayName, role: owner|dispatcher|
+  worker, verificationStatus, jobsCompleted, earningsToDate? }>` — **redaction rule:
+  `earningsToDate` is null for anyone who is not the owner** (server must enforce, not just
+  omit on the client). `inviteMember(phoneE164, role, idempotencyKey)` — owner/dispatcher
+  only; inviting with role owner → error. `removeMember(userId, idempotencyKey)` — owner
+  cannot be removed.
+- Vehicles: `getVehicles()` → `List<Vehicle { id, organizationId, type, plate,
+  assignedWorkerId?, documentExpiry? }>`; UI warns when `documentExpiry` is ≤ 30 days out.
+  `upsertVehicle(vehicle, idempotencyKey)`, `assignVehicle(vehicleId, workerId,
+  idempotencyKey)` — assignee must be a verified worker.
+- Dispatch: `getAssignableJobs()` → jobs paid/held to the org awaiting dispatch;
+  `assignJob(requestId, workerId, idempotencyKey)` — worker must be verified
+  (`ERR_KYC_INCOMPLETE` otherwise). All manager actions are gated owner|dispatcher
+  (`ERR_PERMISSION_DENIED`).
+- Open needs: org onboarding/KYB flow (docs, CAC number), member invitation accept/decline
+  handshake, per-worker payout splits, vehicle document upload refs, dispatch audit log,
+  multi-org membership semantics.

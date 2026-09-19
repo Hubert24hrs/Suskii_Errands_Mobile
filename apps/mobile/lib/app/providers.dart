@@ -392,3 +392,53 @@ final notificationPrefsProvider = FutureProvider<NotificationPreferences>(
 final trustedContactsProvider = FutureProvider<List<TrustedContact>>(
   (ref) => ref.watch(settingsRepositoryProvider).getTrustedContacts(),
 );
+
+/// ---------------------------------------------------------------------------
+/// M6: provider tools + business console
+/// ---------------------------------------------------------------------------
+
+final providerToolsRepositoryProvider = Provider<ProviderToolsRepository>(
+  (ref) => MockProviderToolsRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final organizationRepositoryProvider = Provider<OrganizationRepository>(
+  (ref) => MockOrganizationRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final availabilityProvider = FutureProvider<List<AvailabilitySlot>>(
+  (ref) => ref.watch(providerToolsRepositoryProvider).getAvailability(),
+);
+
+final earningsGoalProvider = FutureProvider<EarningsGoal?>(
+  (ref) => ref.watch(providerToolsRepositoryProvider).getEarningsGoal(),
+);
+
+final demandHeatmapProvider = FutureProvider<List<DemandZone>>(
+  (ref) => ref.watch(providerToolsRepositoryProvider).getDemandHeatmap(),
+);
+
+final providerInsightsProvider = FutureProvider<ProviderInsights>(
+  (ref) => ref.watch(providerToolsRepositoryProvider).getInsights(),
+);
+
+final myOrganizationProvider = FutureProvider<Organization?>(
+  (ref) => ref.watch(organizationRepositoryProvider).getMyOrganization(),
+);
+
+final orgMembersProvider = FutureProvider<List<OrgMember>>(
+  (ref) => ref.watch(organizationRepositoryProvider).getMembers(),
+);
+
+final orgVehiclesProvider = FutureProvider<List<Vehicle>>(
+  (ref) => ref.watch(organizationRepositoryProvider).getVehicles(),
+);
+
+final orgAssignableJobsProvider = FutureProvider<List<JobRequest>>(
+  (ref) => ref.watch(organizationRepositoryProvider).getAssignableJobs(),
+);
