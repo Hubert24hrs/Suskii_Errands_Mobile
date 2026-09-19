@@ -174,3 +174,27 @@ String ratingTagLabel(AppLocalizations l10n, String key) => switch (key) {
   'ratingTagSlow' => l10n.ratingTagSlow,
   _ => l10n.ratingTagRude,
 };
+
+String disputeStatusLabel(AppLocalizations l10n, DisputeStatus status) =>
+    switch (status) {
+      DisputeStatus.open => l10n.disputeStatusOpen,
+      DisputeStatus.inReview => l10n.disputeStatusInReview,
+      DisputeStatus.resolved => l10n.disputeStatusResolved,
+      DisputeStatus.rejected => l10n.disputeStatusRejected,
+    };
+
+/// Dispute reasons are localization keys sent to the server, never free text.
+String disputeReasonLabel(AppLocalizations l10n, String key) => switch (key) {
+  'disputeReasonNotDelivered' => l10n.disputeReasonNotDelivered,
+  'disputeReasonDamaged' => l10n.disputeReasonDamaged,
+  'disputeReasonLate' => l10n.disputeReasonLate,
+  _ => l10n.disputeReasonOther,
+};
+
+String ticketStatusLabel(AppLocalizations l10n, SupportTicketStatus status) =>
+    switch (status) {
+      SupportTicketStatus.open => l10n.supportStatusOpen,
+      SupportTicketStatus.awaitingUser => l10n.supportStatusAwaitingUser,
+      SupportTicketStatus.resolved => l10n.supportStatusResolved,
+      SupportTicketStatus.closed => l10n.supportStatusClosed,
+    };

@@ -42,6 +42,14 @@ class MockBehavior {
   /// decline) instead of HELD — demos the payment-failure path.
   bool failNextPayment = false;
 
+  /// Simulated ops-review delay before an open/in-review dispute resolves
+  /// with a partial refund (M5 dispute-center demo).
+  Duration disputeResolveDelay = const Duration(seconds: 5);
+
+  /// Simulated delay before the AI first-line triage replies to a new
+  /// support-ticket message.
+  Duration supportTriageDelay = const Duration(seconds: 2);
+
   Future<void> gate() async {
     await Future<void>.delayed(latency);
     if (offline) {

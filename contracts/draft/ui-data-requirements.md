@@ -313,3 +313,63 @@ Sections for M3..M8 screens get appended here as those milestones are built.
   `ERR_PERMISSION_DENIED` (not a participant); `getMyRatingForJob(jobId)`.
 - Open needs: PIN lifecycle (when generated, regeneration, expiry), auto-confirm window value,
   rating aggregation display (Bayesian average on profiles).
+
+## M5 — Wallet, referrals, promos, disputes, support, settings
+
+### Wallet (`/customer/wallet`)
+- Data displayed: `WalletSummary { available, pending, lifetimeEarned? }` (server-derived
+  from the double-entry ledger) + `WalletTransaction` list (kind, status, amount, createdAt,
+  referenceId?, descriptionKey — a localization key, not free text).
+- Actions: `requestWithdrawal(amount, idempotencyKey)` | `ERR_INSUFFICIENT_BALANCE`,
+  `ERR_WITHDRAWAL_BELOW_MINIMUM`, `ERR_WITHDRAWAL_NEEDS_APPROVAL`, KYC/name-match enforced
+  server-side.
+- Open needs: pagination cursor semantics for `getTransactions`, withdrawal review SLA,
+  payout-account linking flow.
+
+### Referrals (`/customer/referrals`)
+- Data displayed: `ReferralSummary { code, shareLink, invitedCount, activeReferrals,
+  earnedTotal, holding, available }` — all amounts server-computed from the current campaign.
+- Actions: `requestWithdrawal(amount, idempotencyKey)` for referral earnings.
+- Open needs: per-referral list (who signed up, status), campaign terms payload, fraud holds.
+
+### Promos (`/customer/promos`)
+- Data displayed: `Promo { code, titleKey, descriptionKey, percentOff, maxDiscount?,
+  expiresAt, redeemed }` — titles/bodies are localization keys.
+- Actions: `redeemPromo(code, idempotencyKey)` → Promo | `ERR_PROMO_INVALID` (unknown,
+  expired or already redeemed — deliberately one code so no enumeration oracle).
+- Open needs: where the discount applies at checkout (quote breakdown line), per-user
+  eligibility rules, stacking policy.
+
+### Disputes (`/customer/disputes`, opened from request detail)
+- Data displayed: `Dispute { id, jobId, openedBy, reasonKey, status, createdAt, details?,
+  evidencePaths?, slaDeadline?, resolutionNoteKey?, refundAmount? }`; statuses
+  open/in_review/resolved/rejected. One dispute per job (re-open returns the existing one).
+- Actions: `openDispute(jobId, reasonKey, idempotencyKey, details?, evidencePaths)` |
+  `ERR_PERMISSION_DENIED` (not a participant), `ERR_INVALID_STATE` (job not disputable:
+  mock allows paidHeld…confirmed); `getMyDisputes()`, `watchDispute(jobId)`.
+- Server owns: payout freeze on open, SLA clock, resolution + refund amount (mock resolves
+  with a 50% partial refund: job → REFUNDED, held payment → PARTIALLY_REFUNDED).
+- Open needs: evidence upload refs, ops messaging thread on a dispute, appeal flow,
+  resolution outcome taxonomy.
+
+### Support (`/customer/support`, `/customer/support/:id`)
+- Data displayed: `SupportTicket { id, subject, status, createdAt, messages }` with
+  `SupportMessage { id, body, fromUser, createdAt, aiTriage }` — AI first-line triage
+  replies are flagged `aiTriage` and labeled as automated in the UI.
+- Actions: `createTicket(subject, body, idempotencyKey)`, `replyToTicket(ticketId, body,
+  idempotencyKey)`; `getTickets()`, `watchTickets()` (realtime list stream).
+- Open needs: human-handoff signal, ticket close/reopen, attachments, satisfaction rating.
+
+### Settings (`/customer/settings`)
+- Notification preferences: `NotificationPreferences { push, sms, email, marketing,
+  quietStartMinutes?, quietEndMinutes? }` (quiet hours = minutes since midnight, local;
+  marketing is separate from transactional); `getNotificationPreferences()`,
+  `updateNotificationPreferences(prefs, idempotencyKey)`.
+- Trusted contacts (max 5, used by SOS/trip share): `getTrustedContacts()`,
+  `addTrustedContact(name, phoneE164, idempotencyKey)` (6th → `ERR_INVALID_STATE`),
+  `removeTrustedContact(contactId, idempotencyKey)`.
+- Account deletion: `requestAccountDeletion(idempotencyKey)` → scheduled deletion date
+  (mock: now + 30 days; signing back in before then cancels — store-readiness requirement).
+- Data export: `requestDataExport(idempotencyKey)` → opaque export reference.
+- Open needs: export delivery (email link vs in-app download), deletion grace-period value,
+  quiet-hours timezone semantics (device-local vs stored zone).

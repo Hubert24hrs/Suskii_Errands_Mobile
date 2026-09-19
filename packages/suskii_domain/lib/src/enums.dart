@@ -205,6 +205,32 @@ enum SosStatus {
   resolved,
 }
 
+/// Dispute-center lifecycle (M5). Payouts are frozen while a dispute is open
+/// or in review.
+enum DisputeStatus {
+  @JsonValue('open')
+  open,
+  @JsonValue('in_review')
+  inReview,
+  @JsonValue('resolved')
+  resolved,
+  @JsonValue('rejected')
+  rejected,
+}
+
+/// Help-center ticket lifecycle (M5). `awaitingUser` is set when support (or
+/// the AI triage) has replied and the ball is with the user.
+enum SupportTicketStatus {
+  @JsonValue('open')
+  open,
+  @JsonValue('awaiting_user')
+  awaitingUser,
+  @JsonValue('resolved')
+  resolved,
+  @JsonValue('closed')
+  closed,
+}
+
 enum ReferralCommissionStatus {
   @JsonValue('pending')
   pending,

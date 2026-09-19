@@ -205,6 +205,51 @@ class ProfilePage extends ConsumerWidget {
             const SizedBox(height: SSpacing.lg),
           ],
 
+          // M5: account surfaces
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.account_balance_wallet_outlined),
+            title: Text(l10n.profileWallet),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerWallet),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.group_add_outlined),
+            title: Text(l10n.profileReferrals),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerReferrals),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.local_offer_outlined),
+            title: Text(l10n.profilePromos),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerPromos),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.gavel_outlined),
+            title: Text(l10n.profileDisputes),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerDisputes),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.support_agent_outlined),
+            title: Text(l10n.profileSupport),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerSupport),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.settings_outlined),
+            title: Text(l10n.profileSettings),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.customerSettings),
+          ),
+          const SizedBox(height: SSpacing.lg),
+
           // Language
           Text(l10n.profileLanguage, style: theme.textTheme.titleMedium),
           const SizedBox(height: SSpacing.sm),

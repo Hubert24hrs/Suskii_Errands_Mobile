@@ -2271,3 +2271,417 @@ class MockProviderKycRepository extends _MockRepo
     db.kycEvents.add(profile);
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// M5: disputes, support, promos, settings
+/// ---------------------------------------------------------------------------
+
+class MockDisputeRepository extends _MockRepo implements DisputeRepository {
+  MockDisputeRepository(super.db, super.behavior);
+
+  /// States in which a party can still open a dispute (payment held or the
+  /// job is being executed / just completed).
+  static const Set<JobStatus> _disputable = <JobStatus>{
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+    JobStatus.confirmed,
+  };
+
+  JobRequest _participantJob(String jobId) {
+    final user = currentUser;
+    final job = db.requests[jobId];
+    if (job == null) throw const AppError(ErrorCodes.unknown);
+    if (job.customerId != user.id && job.providerId != user.id) {
+      throw const AppError(ErrorCodes.permissionDenied);
+    }
+    return job;
+  }
+
+  @override
+  Future<List<Dispute>> getMyDisputes() async {
+    await gate();
+    final user = currentUser;
+    final mine =
+        db.disputes.values.where((Dispute d) {
+            final job = db.requests[d.jobId];
+            return d.openedBy == user.id ||
+                job?.customerId == user.id ||
+                job?.providerId == user.id;
+          }).toList()
+          ..sort((Dispute a, Dispute b) => b.createdAt.compareTo(a.createdAt));
+    return mine;
+  }
+
+  @override
+  Stream<Dispute?> watchDispute(String jobId) {
+    late StreamController<Dispute?> controller;
+    StreamSubscription<Dispute>? sub;
+    controller = StreamController<Dispute?>(
+      onListen: () {
+        controller.add(db.disputes[jobId]);
+        sub = db.disputeEvents.stream
+            .where((Dispute d) => d.jobId == jobId)
+            .listen(controller.add);
+      },
+      onCancel: () {
+        unawaited(sub?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<Dispute> openDispute({
+    required String jobId,
+    required String reasonKey,
+    required String idempotencyKey,
+    String? details,
+    List<String> evidencePaths = const <String>[],
+  }) async {
+    await gate();
+    return idempotent('openDispute:$jobId', idempotencyKey, () async {
+      final user = currentUser;
+      final job = _participantJob(jobId);
+      // One dispute per job: re-opening returns the existing one.
+      final existing = db.disputes[jobId];
+      if (existing != null) return existing;
+      if (!_disputable.contains(job.status)) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final dispute = Dispute(
+        id: 'disp-${DateTime.now().millisecondsSinceEpoch}',
+        jobId: jobId,
+        openedBy: user.id,
+        reasonKey: reasonKey,
+        status: DisputeStatus.open,
+        createdAt: serverNow(),
+        details: details,
+        evidencePaths: evidencePaths.isEmpty ? null : evidencePaths,
+        slaDeadline: serverNow().add(const Duration(hours: 24)),
+      );
+      _store(dispute);
+      final disputed = job.copyWith(status: JobStatus.disputed);
+      db.requests[jobId] = disputed;
+      db.jobEvents.add(disputed);
+      _scheduleResolution(dispute.id);
+      return dispute;
+    }, argsHash: '$reasonKey|${details ?? ''}|${evidencePaths.join(',')}');
+  }
+
+  /// The mock "ops team": after `behavior.disputeResolveDelay` the dispute
+  /// resolves with a 50% partial refund — job → REFUNDED, payment →
+  /// PARTIALLY_REFUNDED. All amounts are server-decided.
+  void _scheduleResolution(String disputeId) {
+    Timer(behavior.disputeResolveDelay, () {
+      final entry = db.disputes.entries.where(
+        (MapEntry<String, Dispute> e) => e.value.id == disputeId,
+      );
+      if (entry.isEmpty) return;
+      final current = entry.first.value;
+      if (current.status == DisputeStatus.resolved) return;
+      final job = db.requests[current.jobId];
+      final agreed = job?.agreedPrice;
+      final refund = agreed == null
+          ? null
+          : Money(agreed.minorUnits ~/ 2, agreed.currencyCode);
+      final resolved = current.copyWith(
+        status: DisputeStatus.resolved,
+        resolutionNoteKey: 'disputeResolvedPartialRefund',
+        refundAmount: refund,
+      );
+      _store(resolved);
+      if (job != null) {
+        final refunded = job.copyWith(status: JobStatus.refunded);
+        db.requests[job.id] = refunded;
+        db.jobEvents.add(refunded);
+      }
+      final paymentId = db.paymentByJob[current.jobId];
+      final payment = paymentId == null ? null : db.payments[paymentId];
+      if (payment != null && payment.status == PaymentStatus.held) {
+        final refunded = payment.copyWith(
+          status: PaymentStatus.partiallyRefunded,
+        );
+        db.payments[payment.id] = refunded;
+        db.paymentEvents.add(refunded);
+      }
+    });
+  }
+
+  void _store(Dispute dispute) {
+    db.disputes[dispute.jobId] = dispute;
+    db.disputeEvents.add(dispute);
+  }
+}
+
+class MockSupportRepository extends _MockRepo implements SupportRepository {
+  MockSupportRepository(super.db, super.behavior);
+
+  List<SupportTicket> _sorted() {
+    final list = db.tickets.values.toList()
+      ..sort(
+        (SupportTicket a, SupportTicket b) =>
+            b.createdAt.compareTo(a.createdAt),
+      );
+    return list;
+  }
+
+  @override
+  Future<List<SupportTicket>> getTickets() async {
+    await gate();
+    return _sorted();
+  }
+
+  @override
+  Stream<List<SupportTicket>> watchTickets() {
+    late StreamController<List<SupportTicket>> controller;
+    StreamSubscription<SupportTicket>? sub;
+    controller = StreamController<List<SupportTicket>>(
+      onListen: () {
+        controller.add(_sorted());
+        sub = db.supportEvents.stream.listen(
+          (SupportTicket _) => controller.add(_sorted()),
+        );
+      },
+      onCancel: () {
+        unawaited(sub?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<SupportTicket> createTicket({
+    required String subject,
+    required String body,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('createTicket', idempotencyKey, () async {
+      final now = serverNow();
+      final ticket = SupportTicket(
+        id: 'ticket-${DateTime.now().millisecondsSinceEpoch}',
+        subject: subject,
+        status: SupportTicketStatus.open,
+        createdAt: now,
+        messages: <SupportMessage>[
+          SupportMessage(
+            id: 'tmsg-${now.microsecondsSinceEpoch}',
+            body: body,
+            fromUser: true,
+            createdAt: now,
+          ),
+        ],
+      );
+      db.tickets[ticket.id] = ticket;
+      db.supportEvents.add(ticket);
+      _scheduleTriageReply(ticket.id);
+      return ticket;
+    }, argsHash: '$subject|$body');
+  }
+
+  @override
+  Future<SupportTicket> replyToTicket(
+    String ticketId,
+    String body, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('replyTicket:$ticketId', idempotencyKey, () async {
+      final ticket = db.tickets[ticketId];
+      if (ticket == null) throw const AppError(ErrorCodes.unknown);
+      final now = serverNow();
+      final updated = ticket.copyWith(
+        status: SupportTicketStatus.awaitingUser,
+        messages: <SupportMessage>[
+          ...ticket.messages,
+          SupportMessage(
+            id: 'tmsg-${now.microsecondsSinceEpoch}',
+            body: body,
+            fromUser: true,
+            createdAt: now,
+          ),
+        ],
+      );
+      db.tickets[ticketId] = updated;
+      db.supportEvents.add(updated);
+      _scheduleTriageReply(ticketId);
+      return updated;
+    }, argsHash: body);
+  }
+
+  /// AI first-line triage answers every user message after
+  /// `behavior.supportTriageDelay` (spec: help center AI triage).
+  void _scheduleTriageReply(String ticketId) {
+    Timer(behavior.supportTriageDelay, () {
+      final ticket = db.tickets[ticketId];
+      if (ticket == null) return;
+      final now = serverNow();
+      final updated = ticket.copyWith(
+        status: SupportTicketStatus.awaitingUser,
+        messages: <SupportMessage>[
+          ...ticket.messages,
+          SupportMessage(
+            id: 'tmsg-${now.microsecondsSinceEpoch}-ai',
+            body:
+                'Thanks — I have logged this and shared the relevant details '
+                'with our support team. A human agent will follow up if '
+                'anything else is needed.',
+            fromUser: false,
+            aiTriage: true,
+            createdAt: now,
+          ),
+        ],
+      );
+      db.tickets[ticketId] = updated;
+      db.supportEvents.add(updated);
+    });
+  }
+}
+
+class MockPromoRepository extends _MockRepo implements PromoRepository {
+  MockPromoRepository(super.db, super.behavior);
+
+  @override
+  Future<List<Promo>> getPromos() async {
+    await gate();
+    final list = db.promos.values.toList()
+      ..sort((Promo a, Promo b) => b.expiresAt.compareTo(a.expiresAt));
+    return list;
+  }
+
+  @override
+  Future<Promo> redeemPromo(
+    String code, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    final normalized = code.trim().toUpperCase();
+    return idempotent('redeemPromo', idempotencyKey, () async {
+      final promo = db.promos[normalized];
+      // Validity is a server decision: unknown, expired or already-redeemed
+      // codes all fail with the same error code.
+      if (promo == null ||
+          promo.redeemed ||
+          promo.expiresAt.isBefore(serverNow())) {
+        throw const AppError(ErrorCodes.promoInvalid);
+      }
+      final redeemed = promo.copyWith(redeemed: true);
+      db.promos[normalized] = redeemed;
+      return redeemed;
+    }, argsHash: normalized);
+  }
+}
+
+class MockSettingsRepository extends _MockRepo implements SettingsRepository {
+  MockSettingsRepository(super.db, super.behavior);
+
+  static const int maxTrustedContacts = 5;
+
+  static const NotificationPreferences _defaultPrefs = NotificationPreferences(
+    push: true,
+    sms: true,
+    email: true,
+    marketing: false,
+  );
+
+  @override
+  Future<NotificationPreferences> getNotificationPreferences() async {
+    await gate();
+    return db.notificationPrefs[behavior.currentUserId] ?? _defaultPrefs;
+  }
+
+  @override
+  Future<NotificationPreferences> updateNotificationPreferences(
+    NotificationPreferences preferences, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('updateNotifPrefs', idempotencyKey, () async {
+      db.notificationPrefs[behavior.currentUserId] = preferences;
+      return preferences;
+    }, argsHash: preferences.toString());
+  }
+
+  @override
+  Future<List<TrustedContact>> getTrustedContacts() async {
+    await gate();
+    return List<TrustedContact>.unmodifiable(
+      db.trustedContacts[behavior.currentUserId] ?? const <TrustedContact>[],
+    );
+  }
+
+  @override
+  Future<TrustedContact> addTrustedContact({
+    required String name,
+    required String phoneE164,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('addTrustedContact', idempotencyKey, () async {
+      final list = db.trustedContacts.putIfAbsent(
+        behavior.currentUserId,
+        () => <TrustedContact>[],
+      );
+      if (list.length >= maxTrustedContacts) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final contact = TrustedContact(
+        id: 'tc-${DateTime.now().millisecondsSinceEpoch}',
+        name: name,
+        phoneE164: phoneE164,
+      );
+      list.add(contact);
+      return contact;
+    }, argsHash: '$name|$phoneE164');
+  }
+
+  @override
+  Future<void> removeTrustedContact(
+    String contactId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    // `idempotent` stores non-null results, so the void removal returns a
+    // sentinel bool that is discarded.
+    await idempotent(
+      'removeTrustedContact:$contactId',
+      idempotencyKey,
+      () async {
+        db.trustedContacts[behavior.currentUserId]?.removeWhere(
+          (TrustedContact c) => c.id == contactId,
+        );
+        return true;
+      },
+    );
+  }
+
+  @override
+  Future<DateTime> requestAccountDeletion({
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    // Store-readiness grace period: deletion is scheduled 30 days out;
+    // signing back in before then cancels it.
+    return idempotent(
+      'requestAccountDeletion',
+      idempotencyKey,
+      () async => serverNow().add(const Duration(days: 30)),
+    );
+  }
+
+  @override
+  Future<String> requestDataExport({required String idempotencyKey}) async {
+    await gate();
+    return idempotent(
+      'requestDataExport',
+      idempotencyKey,
+      () async => 'export-${DateTime.now().millisecondsSinceEpoch}',
+    );
+  }
+}

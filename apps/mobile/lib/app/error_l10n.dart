@@ -37,6 +37,7 @@ String localizedError(AppLocalizations l10n, Object error) {
     ErrorCodes.unsupportedLanguage => l10n.errUnsupportedLanguage,
     ErrorCodes.invalidState => l10n.errInvalidState,
     ErrorCodes.callInProgress => l10n.errCallInProgress,
+    ErrorCodes.promoInvalid => l10n.errPromoInvalid,
     _ => l10n.errUnknown,
   };
 }

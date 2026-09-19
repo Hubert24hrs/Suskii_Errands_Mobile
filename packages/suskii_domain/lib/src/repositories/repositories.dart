@@ -2,13 +2,17 @@ import '../entities/bootstrap.dart';
 import '../entities/catalog.dart';
 import '../entities/chat.dart';
 import '../entities/concierge.dart';
+import '../entities/dispute.dart';
 import '../entities/notification.dart';
 import '../entities/offer.dart';
 import '../entities/payment.dart';
+import '../entities/promo.dart';
 import '../entities/rating.dart';
 import '../entities/referral.dart';
 import '../entities/request.dart';
 import '../entities/safety.dart';
+import '../entities/settings.dart';
+import '../entities/support.dart';
 import '../entities/user.dart';
 import '../entities/verification.dart';
 import '../entities/wallet.dart';
@@ -314,6 +318,79 @@ abstract interface class ReferralRepository {
     Money amount, {
     required String idempotencyKey,
   });
+}
+
+/// ---------------------------------------------------------------------------
+/// Wallet, referrals, disputes, support, promos, settings (milestone M5)
+/// ---------------------------------------------------------------------------
+
+/// Dispute center (spec: added_features). Opening a dispute is an action
+/// request — the server freezes the payout, starts the SLA clock and moves
+/// the job to DISPUTED.
+abstract interface class DisputeRepository {
+  Future<List<Dispute>> getMyDisputes();
+  Stream<Dispute?> watchDispute(String jobId);
+  Future<Dispute> openDispute({
+    required String jobId,
+    required String reasonKey,
+    required String idempotencyKey,
+    String? details,
+    List<String> evidencePaths = const <String>[],
+  });
+}
+
+/// Help-center tickets with AI first-line triage (the mock replies with a
+/// triage message; human handoff is server-side).
+abstract interface class SupportRepository {
+  Future<List<SupportTicket>> getTickets();
+  Stream<List<SupportTicket>> watchTickets();
+  Future<SupportTicket> createTicket({
+    required String subject,
+    required String body,
+    required String idempotencyKey,
+  });
+  Future<SupportTicket> replyToTicket(
+    String ticketId,
+    String body, {
+    required String idempotencyKey,
+  });
+}
+
+/// Promo codes (spec: added_features). Redemption validity is a server
+/// decision — unknown, expired or already-redeemed codes throw
+/// AppError(ERR_PROMO_INVALID).
+abstract interface class PromoRepository {
+  Future<List<Promo>> getPromos();
+  Future<Promo> redeemPromo(String code, {required String idempotencyKey});
+}
+
+/// Settings: notification preferences, trusted contacts, account deletion
+/// and data export (spec: added_features / communication.notifications).
+abstract interface class SettingsRepository {
+  Future<NotificationPreferences> getNotificationPreferences();
+  Future<NotificationPreferences> updateNotificationPreferences(
+    NotificationPreferences preferences, {
+    required String idempotencyKey,
+  });
+
+  /// Up to 5 contacts; the 6th throws AppError(ERR_INVALID_STATE).
+  Future<List<TrustedContact>> getTrustedContacts();
+  Future<TrustedContact> addTrustedContact({
+    required String name,
+    required String phoneE164,
+    required String idempotencyKey,
+  });
+  Future<void> removeTrustedContact(
+    String contactId, {
+    required String idempotencyKey,
+  });
+
+  /// In-app account deletion with a grace period (spec: store_readiness).
+  /// Returns the scheduled deletion date; signing back in before it cancels.
+  Future<DateTime> requestAccountDeletion({required String idempotencyKey});
+
+  /// GDPR-style data export. Returns an opaque export reference.
+  Future<String> requestDataExport({required String idempotencyKey});
 }
 
 /// AI concierge (text + voice). The concierge structures a request via

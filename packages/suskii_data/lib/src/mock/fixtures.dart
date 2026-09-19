@@ -48,6 +48,21 @@ class MockDatabase {
   /// Latest SOS alert per job.
   late final Map<String, SosAlert> sosAlerts;
 
+  /// Disputes by job id (at most one per job).
+  late final Map<String, Dispute> disputes;
+
+  /// Support tickets by id.
+  late final Map<String, SupportTicket> tickets;
+
+  /// Promo campaigns by code.
+  late final Map<String, Promo> promos;
+
+  /// Notification preferences by user id.
+  late final Map<String, NotificationPreferences> notificationPrefs;
+
+  /// Trusted contacts by user id (max 5 per user).
+  late final Map<String, List<TrustedContact>> trustedContacts;
+
   /// Customer facial-verification sessions, keyed by user id.
   late final Map<String, VerificationSession> verificationSessions;
 
@@ -68,6 +83,10 @@ class MockDatabase {
       StreamController<Payment>.broadcast();
   final StreamController<SosAlert> sosEvents =
       StreamController<SosAlert>.broadcast();
+  final StreamController<Dispute> disputeEvents =
+      StreamController<Dispute>.broadcast();
+  final StreamController<SupportTicket> supportEvents =
+      StreamController<SupportTicket>.broadcast();
 
   void _seed() {
     final now = DateTime.now();
@@ -76,6 +95,75 @@ class MockDatabase {
     paymentByJob = <String, String>{};
     ratings = <String, List<Rating>>{};
     sosAlerts = <String, SosAlert>{};
+
+    // M5 fixtures: an in-review dispute on req-3 (the job is already
+    // `disputed`), one open support ticket with an AI-triage reply, one
+    // active and one expired promo, and a trusted contact for user-ada.
+    disputes = <String, Dispute>{
+      'req-3': Dispute(
+        id: 'disp-1',
+        jobId: 'req-3',
+        openedBy: 'user-ada',
+        reasonKey: 'disputeReasonNotDelivered',
+        status: DisputeStatus.inReview,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        slaDeadline: now.add(const Duration(hours: 22)),
+      ),
+    };
+    tickets = <String, SupportTicket>{
+      'ticket-1': SupportTicket(
+        id: 'ticket-1',
+        subject: 'Where is my refund?',
+        status: SupportTicketStatus.open,
+        createdAt: now.subtract(const Duration(hours: 5)),
+        messages: <SupportMessage>[
+          SupportMessage(
+            id: 'tmsg-1',
+            body: 'My card was charged but the job was cancelled.',
+            fromUser: true,
+            createdAt: now.subtract(const Duration(hours: 5)),
+          ),
+          SupportMessage(
+            id: 'tmsg-2',
+            body:
+                'I can see a pending refund on your cancelled job. Refunds to '
+                'cards take 3–5 business days. I have flagged this for a '
+                'human agent to confirm.',
+            fromUser: false,
+            aiTriage: true,
+            createdAt: now.subtract(const Duration(hours: 4, minutes: 55)),
+          ),
+        ],
+      ),
+    };
+    promos = <String, Promo>{
+      'WELCOME10': Promo(
+        code: 'WELCOME10',
+        titleKey: 'promoWelcomeTitle',
+        descriptionKey: 'promoWelcomeBody',
+        percentOff: 10,
+        maxDiscount: const Money(200000, 'NGN'),
+        expiresAt: now.add(const Duration(days: 30)),
+      ),
+      'FESTIVE20': Promo(
+        code: 'FESTIVE20',
+        titleKey: 'promoFestiveTitle',
+        descriptionKey: 'promoFestiveBody',
+        percentOff: 20,
+        maxDiscount: const Money(500000, 'NGN'),
+        expiresAt: now.subtract(const Duration(days: 10)),
+      ),
+    };
+    notificationPrefs = <String, NotificationPreferences>{};
+    trustedContacts = <String, List<TrustedContact>>{
+      'user-ada': <TrustedContact>[
+        const TrustedContact(
+          id: 'tc-1',
+          name: 'Ngozi Obi',
+          phoneE164: '+2347012345678',
+        ),
+      ],
+    };
 
     users = <String, AppUser>{
       'user-ada': AppUser(

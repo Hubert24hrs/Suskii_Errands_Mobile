@@ -11,13 +11,20 @@ import '../features/customer/concierge_page.dart';
 import '../features/customer/create_request_page.dart';
 import '../features/customer/customer_home_page.dart';
 import '../features/customer/customer_shell.dart';
+import '../features/customer/disputes_page.dart';
 import '../features/customer/messages_page.dart';
 import '../features/customer/payment_page.dart';
 import '../features/customer/profile_page.dart';
+import '../features/customer/promos_page.dart';
+import '../features/customer/referrals_page.dart';
 import '../features/customer/request_detail_page.dart';
 import '../features/customer/requests_page.dart';
+import '../features/customer/settings_page.dart';
+import '../features/customer/support_page.dart';
+import '../features/customer/support_ticket_page.dart';
 import '../features/customer/tracking_page.dart';
 import '../features/customer/voice_concierge_page.dart';
+import '../features/customer/wallet_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
 import '../features/provider/provider_feed_page.dart';
@@ -60,6 +67,17 @@ abstract final class AppRoutes {
   static const String customerRequestTrack = '/customer/requests/:id/track';
   static const String customerRequestChat = '/customer/requests/:id/chat';
   static const String customerRequestCall = '/customer/requests/:id/call';
+
+  // M5: wallet, referrals, promos, disputes, support, settings.
+  static const String customerWallet = '/customer/wallet';
+  static const String customerReferrals = '/customer/referrals';
+  static const String customerPromos = '/customer/promos';
+  static const String customerDisputes = '/customer/disputes';
+  static const String customerSupport = '/customer/support';
+  static const String customerSupportTicket = '/customer/support/:id';
+  static const String customerSettings = '/customer/settings';
+
+  static String customerSupportTicketPath(String id) => '/customer/support/$id';
 
   static String customerRequestDetailPath(String id) =>
       '/customer/requests/$id';
@@ -267,6 +285,36 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.customerRequestCall,
         builder: (context, state) =>
             CallPage(jobId: state.pathParameters['id']!),
+      ),
+      // M5 routes — declared before the shells like the M3/M4 routes.
+      GoRoute(
+        path: AppRoutes.customerWallet,
+        builder: (context, state) => const WalletPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerReferrals,
+        builder: (context, state) => const ReferralsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerPromos,
+        builder: (context, state) => const PromosPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerDisputes,
+        builder: (context, state) => const DisputesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerSupport,
+        builder: (context, state) => const SupportPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.customerSupportTicket,
+        builder: (context, state) =>
+            SupportTicketPage(ticketId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.customerSettings,
+        builder: (context, state) => const SettingsPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

@@ -332,3 +332,63 @@ final activeSosProvider = StreamProvider.family<SosAlert?, String>(
 final myRatingProvider = FutureProvider.family<Rating?, String>(
   (ref, jobId) => ref.watch(ratingRepositoryProvider).getMyRatingForJob(jobId),
 );
+
+/// ---------------------------------------------------------------------------
+/// M5: disputes, support, promos, settings
+/// ---------------------------------------------------------------------------
+
+final disputeRepositoryProvider = Provider<DisputeRepository>(
+  (ref) => MockDisputeRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final supportRepositoryProvider = Provider<SupportRepository>(
+  (ref) => MockSupportRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final promoRepositoryProvider = Provider<PromoRepository>(
+  (ref) => MockPromoRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final settingsRepositoryProvider = Provider<SettingsRepository>(
+  (ref) => MockSettingsRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  ),
+);
+
+final myDisputesProvider = FutureProvider<List<Dispute>>(
+  (ref) => ref.watch(disputeRepositoryProvider).getMyDisputes(),
+);
+
+final disputeForJobProvider = StreamProvider.family<Dispute?, String>(
+  (ref, jobId) => ref.watch(disputeRepositoryProvider).watchDispute(jobId),
+);
+
+final supportTicketsProvider = StreamProvider<List<SupportTicket>>(
+  (ref) => ref.watch(supportRepositoryProvider).watchTickets(),
+);
+
+final promosProvider = FutureProvider<List<Promo>>(
+  (ref) => ref.watch(promoRepositoryProvider).getPromos(),
+);
+
+final referralSummaryProvider = FutureProvider<ReferralSummary>(
+  (ref) => ref.watch(referralRepositoryProvider).getSummary(),
+);
+
+final notificationPrefsProvider = FutureProvider<NotificationPreferences>(
+  (ref) => ref.watch(settingsRepositoryProvider).getNotificationPreferences(),
+);
+
+final trustedContactsProvider = FutureProvider<List<TrustedContact>>(
+  (ref) => ref.watch(settingsRepositoryProvider).getTrustedContacts(),
+);

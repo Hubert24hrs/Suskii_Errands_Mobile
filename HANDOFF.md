@@ -5,6 +5,44 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-19 — Kimi Code — M5 done: wallet, referrals, promos, disputes, support, settings
+
+All M5 surfaces are in on mocks. Verify: analyze clean in suskii_core / suskii_domain /
+suskii_data / suskii_l10n / apps/mobile; suskii_data tests 95 pass (13 new M5 tests);
+formatted. NOTE: a mid-session `git pull` merge wiped the uncommitted M5 domain/data files;
+they were recreated from scratch and re-verified — double-check nothing else was lost if
+anything downstream looks off.
+
+**Domain/data** — new entities `Dispute` (+ `DisputeStatus`), `SupportTicket` +
+`SupportMessage` (+ `SupportTicketStatus`, `aiTriage` flag), `Promo`,
+`NotificationPreferences` (quiet hours as minutes-since-midnight), `TrustedContact`; new
+interfaces `DisputeRepository`, `SupportRepository`, `PromoRepository`,
+`SettingsRepository`; new error `ERR_PROMO_INVALID`. Mock behavior: one dispute per job
+(re-open returns existing); disputable states = paidHeld…confirmed; mock ops resolves after
+`behavior.disputeResolveDelay` with a 50% partial refund (job → REFUNDED, held payment →
+PARTIALLY_REFUNDED); support tickets get an AI-triage reply after
+`behavior.supportTriageDelay`; promo validity (unknown/expired/redeemed) is one server-side
+error; trusted contacts cap at 5 (6th → ERR_INVALID_STATE); account deletion returns a
++30d scheduled date; data export returns an opaque reference. All mutations idempotency-keyed.
+
+**Screens** — customer wallet (balances + transactions + withdrawal sheet, amount entered
+in major units → integer minor units); referrals (code/share-link copy, stats, referral
+withdrawal reusing the wallet sheet); promos (redeem box + campaign cards, expired/applied
+badges); disputes list + open-dispute sheet (localized reason keys, evidence hint) wired
+into request detail (dispute card once one exists, open CTA while disputable); support
+ticket list + new-ticket sheet + chat-style thread with labeled AI replies; settings
+(notification channels, quiet hours, trusted contacts CRUD, data export, destructive
+account deletion with confirm dialog). Profile page links to all six; routes
+`/customer/{wallet,referrals,promos,disputes,support,support/:id,settings}`.
+
+**Contract needs** — appended to `contracts/draft/ui-data-requirements.md`: disputes,
+support tickets, promos, notification prefs, trusted contacts, account deletion, data
+export. Highlights: dispute open/resolve are server actions with SLA deadline + refund
+amounts in the payload; promo redemption returns validity verdicts only
+(ERR_PROMO_INVALID); support tickets need realtime (we poll `watchTickets` on mocks).
+
+---
+
 ## 2026-09-18 — Kimi Code — M4 done: payments, tracking, chat, calls, SOS, completion + ratings
 
 All M4 surfaces are in on mocks. Verify: analyze clean in all five packages + apps/mobile;

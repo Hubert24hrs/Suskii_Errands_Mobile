@@ -73,28 +73,25 @@ void main() {
       );
     });
 
-    test(
-      'initialize → pending → webhook confirm flips payment HELD and job PAID_HELD',
-      () async {
-        behavior.paymentConfirmDelay = const Duration(milliseconds: 50);
-        agreeReq1();
-        final repo = MockPaymentRepository(db, behavior);
-        final session = await repo.initializePayment(
-          jobId: 'req-1',
-          method: PaymentMethod.card,
-          idempotencyKey: newIdempotencyKey(),
-        );
-        expect(session.payment.status, PaymentStatus.pending);
-        expect(db.requests['req-1']!.status, JobStatus.paymentPending);
-        expect(session.payment.expiresAt, isNotNull);
+    test('initialize → pending → webhook confirm flips payment HELD and job PAID_HELD', () async {
+      behavior.paymentConfirmDelay = const Duration(milliseconds: 50);
+      agreeReq1();
+      final repo = MockPaymentRepository(db, behavior);
+      final session = await repo.initializePayment(
+        jobId: 'req-1',
+        method: PaymentMethod.card,
+        idempotencyKey: newIdempotencyKey(),
+      );
+      expect(session.payment.status, PaymentStatus.pending);
+      expect(db.requests['req-1']!.status, JobStatus.paymentPending);
+      expect(session.payment.expiresAt, isNotNull);
 
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        final payment = await repo.getPaymentForJob('req-1');
-        expect(payment!.status, PaymentStatus.held);
-        expect(payment.paidAt, isNotNull);
-        expect(db.requests['req-1']!.status, JobStatus.paidHeld);
-      },
-    );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final payment = await repo.getPaymentForJob('req-1');
+      expect(payment!.status, PaymentStatus.held);
+      expect(payment.paidAt, isNotNull);
+      expect(db.requests['req-1']!.status, JobStatus.paidHeld);
+    });
 
     test('watchPaymentForJob streams pending → held', () async {
       behavior.paymentConfirmDelay = const Duration(milliseconds: 50);

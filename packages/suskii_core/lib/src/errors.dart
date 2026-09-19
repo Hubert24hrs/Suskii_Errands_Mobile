@@ -43,6 +43,7 @@ abstract final class ErrorCodes {
   // Features
   static const String featureUnavailable = 'ERR_FEATURE_UNAVAILABLE';
   static const String unsupportedLanguage = 'ERR_UNSUPPORTED_LANGUAGE';
+  static const String promoInvalid = 'ERR_PROMO_INVALID';
 }
 
 /// Error type surfaced to the app. [messageKey] is a localization key.

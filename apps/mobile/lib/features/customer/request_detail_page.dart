@@ -13,6 +13,7 @@ import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import 'offers_board.dart';
+import 'open_dispute_sheet.dart';
 import 'rating_sheet.dart';
 import 'sos_sheet.dart';
 
@@ -87,6 +88,18 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
     JobStatus.confirmed,
     JobStatus.settled,
     JobStatus.closed,
+  };
+
+  /// States in which a dispute can be opened (mirrors the mock's set — the
+  /// server owns the real rule).
+  static const Set<JobStatus> _disputableStates = <JobStatus>{
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+    JobStatus.confirmed,
   };
 
   int _milestoneReached(JobStatus status) {
@@ -400,6 +413,10 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         ],
         if (_rateableStates.contains(request.status))
           _RatingSection(jobId: widget.jobId),
+        if (_disputableStates.contains(request.status) ||
+            request.status == JobStatus.disputed ||
+            request.status == JobStatus.refunded)
+          _DisputeSection(jobId: widget.jobId, status: request.status),
         if (_showsOffers.contains(request.status)) ...<Widget>[
           Text(l10n.offersTitle, style: theme.textTheme.titleMedium),
           const SizedBox(height: SSpacing.sm),
@@ -478,6 +495,115 @@ class _RatingSection extends ConsumerWidget {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Dispute section (M5): an open-dispute button while the job is disputable;
+/// once a dispute exists, its live status, SLA, resolution and refund render
+/// here instead.
+class _DisputeSection extends ConsumerWidget {
+  const _DisputeSection({required this.jobId, required this.status});
+
+  final String jobId;
+  final JobStatus status;
+
+  static const Set<JobStatus> _disputable = <JobStatus>{
+    JobStatus.paidHeld,
+    JobStatus.assigned,
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+    JobStatus.completedByProvider,
+    JobStatus.confirmed,
+  };
+
+  String _resolutionLabel(AppLocalizations l10n, String key) => switch (key) {
+    'disputeResolvedPartialRefund' => l10n.disputeResolvedPartialRefund,
+    _ => key,
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final dispute = ref.watch(disputeForJobProvider(jobId));
+    return dispute.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (Dispute? existing) {
+        if (existing == null) {
+          if (!_disputable.contains(status)) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(top: SSpacing.md),
+            child: SButton(
+              label: l10n.disputeOpenCta,
+              variant: SButtonVariant.ghost,
+              icon: Icons.gavel_outlined,
+              onPressed: () => showOpenDisputeSheet(context, jobId),
+            ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: SSpacing.md),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          disputeReasonLabel(l10n, existing.reasonKey),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ),
+                      Chip(
+                        label: Text(disputeStatusLabel(l10n, existing.status)),
+                      ),
+                    ],
+                  ),
+                  if ((existing.status == DisputeStatus.open ||
+                          existing.status == DisputeStatus.inReview) &&
+                      existing.slaDeadline != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: SSpacing.xs),
+                      child: Text(
+                        l10n.disputeSlaLabel(
+                          MaterialLocalizations.of(context)
+                              .formatShortDate(existing.slaDeadline!),
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  if (existing.resolutionNoteKey != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: SSpacing.xs),
+                      child: Text(
+                        _resolutionLabel(l10n, existing.resolutionNoteKey!),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  if (existing.refundAmount != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: SSpacing.xs),
+                      child: Text(
+                        '${l10n.disputeRefundLabel}: '
+                        '${existing.refundAmount!.format(locale: locale)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
