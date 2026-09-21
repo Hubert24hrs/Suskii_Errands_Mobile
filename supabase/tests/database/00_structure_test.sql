@@ -88,6 +88,7 @@ SELECT is(
        'public.update_ticket', 'public.suspend_provider', 'public.reinstate_provider',
        'private.support_ticket_scope',
        'public.my_balances', 'public.start_payment', 'public.cancel_job',
+       'public.preview_promo', 'public.add_tip',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

@@ -8,6 +8,26 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.9] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 4: promo codes and tips.
+
+- **`start_payment` gains a fourth argument**, `p_promo_code text DEFAULT NULL`. The three-argument
+  form was **dropped**, not overloaded: two overloads with defaults would make
+  `start_payment(key, request_id)` ambiguous rather than defaulting. Positional callers are
+  unaffected; a client naming arguments is too.
+- **New functions** `preview_promo(code, request_id)` → `(discount_minor, currency,
+  stacks_with_referral)`, and `add_tip(key, request_id, amount_minor)` → payment id.
+- **New tables** `promo_codes` (column-level SELECT: `spent_minor` and `max_uses` are **not**
+  granted, because knowing the budget tells a customer exactly when to hurry), `promo_redemptions`
+  (own rows) and `tips` (job participants).
+- **New columns on `payments`**: `kind` (`job` / `tip`) and `discount_minor`. A tip is a separate
+  charge on the same job and may sit alongside the job's payment.
+- **Added enum** `discount_kind` (`fixed`, `percent`). 40 enums in all. No new error codes:
+  `ERR_PROMO_INVALID` already existed and is now `implemented`.
+- A promo **never** reduces provider earnings, and a tip carries **no** commission. Both are spec
+  rules, and both are asserted against money-flows 4b and 2.
+
 ## [1.0.0-preview.8] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 3: cancelling a paid job, and refunds. Additive.
