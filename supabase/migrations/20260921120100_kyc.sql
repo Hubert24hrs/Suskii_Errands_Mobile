@@ -179,8 +179,10 @@ BEGIN
   VALUES (v_uid, p_kind,
           (SELECT c.id FROM public.consents c
            WHERE c.user_id = v_uid AND c.granted
-             AND c.kind = CASE WHEN p_kind = 'police_clearance' THEN 'criminal_record_check'
-                               ELSE 'biometric' END
+             -- The CASE resolves to text, and with an empty search_path there is no implicit
+             -- cast to the enum, so it is spelled out.
+             AND c.kind = (CASE WHEN p_kind = 'police_clearance' THEN 'criminal_record_check'
+                                ELSE 'biometric' END)::public.consent_kind
            ORDER BY c.id DESC LIMIT 1))
   RETURNING id INTO v_id;
 
