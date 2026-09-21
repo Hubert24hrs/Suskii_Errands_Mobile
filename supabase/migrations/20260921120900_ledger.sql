@@ -129,7 +129,7 @@ BEGIN
     v_tx := NEW.transaction_id;
   END IF;
 
-  SELECT coalesce(sum(e.amount_minor), 0), count(DISTINCT e.currency)
+  SELECT coalesce(sum(e.amount_minor), 0)::bigint, count(DISTINCT e.currency)::integer
   INTO v_sum, v_currs
   FROM ledger.entries e WHERE e.transaction_id = v_tx;
 
@@ -291,7 +291,7 @@ AS $$
          coalesce(e.total, 0),
          b.balance_minor - coalesce(e.total, 0)
   FROM ledger.balances b
-  LEFT JOIN (SELECT en.account_id, sum(en.amount_minor) AS total
+  LEFT JOIN (SELECT en.account_id, sum(en.amount_minor)::bigint AS total
              FROM ledger.entries en GROUP BY en.account_id) e
     ON e.account_id = b.account_id
   WHERE b.balance_minor <> coalesce(e.total, 0);
@@ -303,7 +303,7 @@ RETURNS TABLE (transaction_id bigint, sum_minor bigint)
 LANGUAGE sql STABLE
 SET search_path = ''
 AS $$
-  SELECT e.transaction_id, sum(e.amount_minor)
+  SELECT e.transaction_id, sum(e.amount_minor)::bigint
   FROM ledger.entries e
   GROUP BY e.transaction_id
   HAVING sum(e.amount_minor) <> 0;

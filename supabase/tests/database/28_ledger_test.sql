@@ -147,7 +147,7 @@ SELECT is((SELECT b.balance_minor FROM ledger.balances b
   'the collection fee nets to zero: it was recovered from the provider, not absorbed');
 SELECT is((SELECT count(*)::int FROM ledger.reconcile()), 0,
   'and every balance still matches the entries behind it');
-SELECT is((SELECT sum(e.amount_minor) FROM ledger.entries e), 0::bigint,
+SELECT is((SELECT sum(e.amount_minor)::bigint FROM ledger.entries e), 0::bigint,
   'the whole book sums to zero, which is the only invariant that matters');
 
 -- ---------------------------------------------------------------------------
