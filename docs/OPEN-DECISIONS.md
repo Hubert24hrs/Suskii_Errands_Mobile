@@ -10,9 +10,9 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 
 | ID | Topic | Default we are building | Status | Owner | Needed by |
 |---|---|---|---|---|---|
-| OD-01 | Who funds the 2.5% referral commission | Platform funds it from its 12.5%, so provider earnings are unaffected | Open | Client | Phase 5 (money) |
-| OD-02 | Referral commission duration | Lifetime of the referred account, with an admin-configurable cap per country and campaign | Open | Client | Phase 5 |
-| OD-03 | Both sides of a job were referred by different people | Each referrer earns 2.5% of net, max 5% per job | Open | Client | Phase 5 |
+| OD-01 | Who funds the 2.5% referral commission | Platform funds it from its 12.5%, so provider earnings are unaffected. **Built 2026-09-22** as money-flows 1c's `platform_referral_expense` line: the provider's 84.60 is identical with or without a referral, and `35_referrals_test.sql` asserts it. Answering the alternative means changing one posting | Open | Client | Phase 5 (money) |
+| OD-02 | Referral commission duration | Lifetime of the referred account, with an admin-configurable cap per country and campaign. **Built 2026-09-22** as `referrals.expires_at` plus the `referral.duration_months` and `referral.max_earned_minor` remote-config keys, both defaulting to no cap. An answer is an UPDATE, not a migration | Open | Client | Phase 5 |
+| OD-03 | Both sides of a job were referred by different people | Each referrer earns 2.5% of net, max 5% per job. **Built 2026-09-22** as `referral.max_referrers_per_job`, default 2 | Open | Client | Phase 5 |
 | OD-04 | Shopping errands: item cost handling | Prepaid item float as a separate non-commissionable line, released against a receipt; gateway fee passed to the customer. **Sub-question (2026-09-16):** receipt total above the float — proposed: never charged automatically; the provider requests a top-up the customer approves in-app, otherwise the difference goes to the dispute path | Open | Client | Phase 3 (requests), Phase 5 |
 | OD-05 | Insurance / damage and loss cover | No insurer at launch; declared value, claims inside disputes, insurer-ready hooks | Open | Client | Phase 4 |
 | OD-06 | Commission rate | 12.5%, configurable per country | Open | Client | Phase 5 |

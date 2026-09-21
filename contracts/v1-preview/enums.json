@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.13",
+  "version": "1.0.0-preview.14",
   "binding": false,
   "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",
   "enums": {

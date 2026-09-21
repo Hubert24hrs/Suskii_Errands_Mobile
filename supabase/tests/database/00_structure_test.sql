@@ -8,9 +8,10 @@ SELECT plan(13);
 
 -- Internal schemas are unreachable for client roles.
 SELECT is(
-  (SELECT count(*)::int FROM unnest(ARRAY['ledger', 'kyc', 'audit']) s, unnest(ARRAY['anon', 'authenticated']) r
+  (SELECT count(*)::int FROM unnest(ARRAY['ledger', 'kyc', 'audit', 'analytics']) s,
+          unnest(ARRAY['anon', 'authenticated']) r
    WHERE has_schema_privilege(r, s, 'USAGE')),
-  0, 'anon and authenticated have no USAGE on ledger, kyc or audit');
+  0, 'anon and authenticated have no USAGE on ledger, kyc, audit or analytics');
 
 -- RLS enabled and forced on every table in public (S-13 finding 5).
 SELECT is(
@@ -29,7 +30,7 @@ SELECT is(
 SELECT is(
   (SELECT coalesce(array_agg(n.nspname || '.' || p.proname ORDER BY 1), '{}')
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit')
+   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit', 'analytics')
      AND p.prosecdef
      AND NOT coalesce('search_path=""' = ANY (p.proconfig), false)),
   '{}'::text[], 'every SECURITY DEFINER function sets search_path to empty');
@@ -38,7 +39,7 @@ SELECT is(
 SELECT is(
   (SELECT coalesce(array_agg(DISTINCT n.nspname || '.' || p.proname), '{}')
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit')
+   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit', 'analytics')
      AND has_function_privilege('anon', p.oid, 'EXECUTE')
      AND n.nspname || '.' || p.proname NOT IN
        ('public.get_bootstrap', 'public.get_shared_trip')),
@@ -47,7 +48,7 @@ SELECT is(
 SELECT is(
   (SELECT coalesce(array_agg(DISTINCT n.nspname || '.' || p.proname), '{}')
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit')
+   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit', 'analytics')
      AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
      AND n.nspname || '.' || p.proname NOT IN (
        'public.get_bootstrap', 'public.set_active_mode', 'public.register_device',
@@ -95,6 +96,12 @@ SELECT is(
        'private.dispute_scope',
        'public.add_payout_account', 'public.available_balance',
        'public.request_withdrawal', 'public.approve_withdrawal',
+       'public.my_referral_code', 'public.claim_referral_code',
+       'public.my_referral_summary', 'public.my_referrals',
+       'public.propose_config_change', 'public.review_config_change',
+       'public.config_change_queue', 'public.country_pack_readiness',
+       'public.analytics_report',
+       'private.staff_may_read_request_media',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

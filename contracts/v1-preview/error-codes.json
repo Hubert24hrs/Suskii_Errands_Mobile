@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.13",
+  "version": "1.0.0-preview.14",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -1096,6 +1096,72 @@
       "retryable": true,
       "description": "A transfer or a bank name enquiry needs the real account number, and `payout_accounts.account_ciphertext` is envelope-encrypted with a KMS key the worker does not have (ADR-0007; GCP billing is timeline action 1). The event is handed back for retry rather than failed, so it is still waiting when the key arrives.",
       "client_action": "Never reaches an app. It means payouts are paused, not lost."
+    },
+    {
+      "code": "ERR_REFERRAL_CODE_NOT_FOUND",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No referral code matches what was entered, or it is not a well-formed one. Codes are eight characters from an alphabet with no letter that reads as a digit.",
+      "client_action": "Show a field error and let them retype it, or paste from the share link."
+    },
+    {
+      "code": "ERR_REFERRAL_ALREADY_ATTRIBUTED",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 409,
+      "retryable": false,
+      "description": "This account already has a referrer. One referrer per account, for ever — the attribution is what makes the programme single-level.",
+      "client_action": "Show who introduced them and hide the code field."
+    },
+    {
+      "code": "ERR_REFERRAL_SELF",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Somebody entered their own referral code. The other self-referral case — two accounts on one handset — is not refused here: it is accepted and blocked silently, so that nobody learns which signal caught them.",
+      "client_action": "Show a field error."
+    },
+    {
+      "code": "ERR_REFERRAL_TOO_LATE",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 409,
+      "retryable": false,
+      "description": "A referral code may only be entered before the account's first errand (spec referral_program).",
+      "client_action": "Explain that codes are entered at sign-up, and hide the field."
+    },
+    {
+      "code": "ERR_CONFIG_CHANGE_NOT_FOUND",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 404,
+      "retryable": false,
+      "description": "No configuration change with that id. Admin surface only.",
+      "client_action": "Refresh the approvals queue."
+    },
+    {
+      "code": "ERR_COUNTRY_PACK_INCOMPLETE",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 409,
+      "retryable": false,
+      "description": "A country cannot go live while its pack is missing something the running system reads — cities, published terms and privacy, accepted ID types, SMS providers, payment providers, payout providers, or a payment route that is only the development provider. DETAIL names what is missing.",
+      "client_action": "Show the gaps from country_pack_readiness; the change stays pending until they are filled."
     }
   ]
 }
