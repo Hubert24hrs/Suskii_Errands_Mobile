@@ -95,3 +95,17 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
    '["provider_facial", "government_id", "id_document_capture", "police_clearance"]', true),
   ('police_clearance_max_age_months', NULL, '6', false)
 ON CONFLICT DO NOTHING;
+
+-- Moderation (Phase 4). The global baseline lives in the migration, because a production
+-- database that moderates nothing is worse than no moderation at all. These three are the
+-- country-specific rules from the packs, which belong with the country rows they depend on.
+-- All `[A]`: every pack tags `restricted: assumption`, awaiting counsel.
+INSERT INTO public.prohibited_items (country_code, key, kind, match_terms, action) VALUES
+  ('NG', 'sim_cards_preregistered', 'item',
+   ARRAY['pre-registered sim', 'preregistered sim', 'registered sim card',
+         'already registered sim'], 'block'),
+  ('KE', 'single_use_plastic_carrier_bags', 'item',
+   ARRAY['plastic carrier bag', 'plastic carrier bags', 'polythene bag'], 'hold'),
+  ('ZA', 'alcohol_outside_licensed_hours', 'item',
+   ARRAY['alcohol after hours', 'after hours alcohol'], 'hold')
+ON CONFLICT DO NOTHING;
