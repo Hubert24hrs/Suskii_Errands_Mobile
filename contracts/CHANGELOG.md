@@ -8,6 +8,25 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.8] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 3: cancelling a paid job, and refunds. Additive.
+
+- **Added** `ERR_REFUND_NOT_FOUND`, `ERR_REFUND_EXCEEDS_PAYMENT` (both `surface: internal`).
+  89 codes in all.
+- **Added enum** `refund_status` (`pending`, `succeeded`, `failed`). 39 enums in all.
+- **New function** `cancel_job(key, request_id, reason_code)` → `(refund_minor, fee_minor,
+  currency)`. `reason_code` is a **key**, `^[a-z0-9_]{3,60}$`, not a sentence the user typed.
+  `cancel_request` still handles a request nobody has paid for; this is the paid half.
+- **What it costs depends on when and who.** A customer cancelling before the provider is
+  `en_route` pays nothing; after that, `cancellation_fee_bps` (10% by default, remote-config,
+  OD-19) plus the gateway fee comes out of the refund (OD-08). A provider cancelling always
+  refunds in full. Show the fee before the user confirms — `cancellation_fee_bps` is
+  client-visible for exactly that.
+- **New table** `refunds`, readable by the job's participants. A refund is `pending` until the
+  gateway confirms it; the money leaves `held_funds` immediately because the platform owes it
+  from the moment it cancels.
+
 ## [1.0.0-preview.7] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 2: payment records and the webhook intake. Additive.

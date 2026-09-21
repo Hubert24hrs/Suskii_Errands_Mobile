@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.7",
+  "version": "1.0.0-preview.8",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -964,6 +964,28 @@
       "retryable": false,
       "description": "No payment matches that id, or that gateway reference. Raised inside the webhook and settlement seams, which no client can reach.",
       "client_action": "Never expected in an app. In a worker: the webhook names a charge we have no record of — store it, do not retry, and raise it with the gateway."
+    },
+    {
+      "code": "ERR_REFUND_NOT_FOUND",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "No refund with that id, or it is not pending. Raised inside the gateway seams.",
+      "client_action": "Never expected in an app."
+    },
+    {
+      "code": "ERR_REFUND_EXCEEDS_PAYMENT",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "Refunds against one payment would total more than was paid. A deferred constraint trigger, so it aborts the whole transaction and cannot be caught — anything issuing a partial refund must check first and raise its own error (S-14).",
+      "client_action": "Never expected. Treat as a money incident: stop the worker and reconcile before resuming."
     }
   ]
 }

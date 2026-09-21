@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.7",
+  "version": "1.0.0-preview.8",
   "binding": false,
   "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",
   "enums": {
@@ -196,6 +196,11 @@
       "holding",
       "available",
       "reversed"
+    ],
+    "refund_status": [
+      "pending",
+      "succeeded",
+      "failed"
     ],
     "report_status": [
       "open",
