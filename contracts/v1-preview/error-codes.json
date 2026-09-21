@@ -252,7 +252,7 @@
     },
     {
       "code": "ERR_CONSENT_REQUIRED",
-      "status": "planned",
+      "status": "implemented",
       "category": "verification",
       "surface": "client",
       "sqlstate": "P0001",
@@ -329,7 +329,7 @@
     },
     {
       "code": "ERR_KYC_STEP_INVALID",
-      "status": "planned",
+      "status": "implemented",
       "category": "verification",
       "surface": "client",
       "sqlstate": "P0001",
@@ -810,6 +810,17 @@
       "retryable": false,
       "description": "No SOS incident with that id.",
       "client_action": "Refresh the ops queue."
+    },
+    {
+      "code": "ERR_IDENTITY_ALREADY_REGISTERED",
+      "status": "implemented",
+      "category": "verification",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "That identity document is already registered to another account. One verified identity per person is a core anti-fraud control; the match is made on a blind index, so nothing reads either number.",
+      "client_action": "Show a neutral message and route to support. Never say whose account it is, or confirm that the number exists."
     }
   ]
 }

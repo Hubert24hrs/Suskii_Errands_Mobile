@@ -78,6 +78,10 @@
       "disputed",
       "refunded"
     ],
+    "kyc_decision": [
+      "approved",
+      "rejected"
+    ],
     "kyc_step_kind": [
       "customer_facial",
       "government_id",

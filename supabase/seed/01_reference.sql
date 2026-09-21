@@ -85,3 +85,13 @@ INSERT INTO public.remote_config (key, country_code, value, client_visible) VALU
   ('sos_escalate_after_minutes', NULL, '3', false),
   ('trip_share_ttl_minutes', NULL, '60', true)
 ON CONFLICT DO NOTHING;
+
+-- KYC. The required step sets are config so a country that asks for more does not need a
+-- migration; these are the spec's minimum. `police_clearance_max_age_months` is OD-09's proposed
+-- default and belongs to counsel, not to us.
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('kyc_steps_customer', NULL, '["customer_facial"]', true),
+  ('kyc_steps_provider', NULL,
+   '["provider_facial", "government_id", "id_document_capture", "police_clearance"]', true),
+  ('police_clearance_max_age_months', NULL, '6', false)
+ON CONFLICT DO NOTHING;
