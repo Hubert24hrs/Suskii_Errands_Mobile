@@ -111,9 +111,12 @@ SELECT is(public.submit_float_receipt('key-if-rcpt-p-00000001',
             (SELECT id::text || '/receipt.jpg' FROM fl WHERE name = 'r')), 2640::bigint,
   'the provider files a receipt for 26.40 of the 30.00');
 RESET ROLE;
+-- Counted by what the notification carries, not by kind: moving the job to `in_progress` above
+-- sends its own `job_status` notification, and a test that counts kinds counts that too.
 SELECT is((SELECT count(*)::int FROM public.notifications
-           WHERE user_id = 'a9111111-1111-4111-8111-444444444444' AND kind = 'job_status'), 1,
-  'and the customer is asked to look at it');
+           WHERE user_id = 'a9111111-1111-4111-8111-444444444444'
+             AND params ->> 'spent_minor' IS NOT NULL), 1,
+  'and the customer is asked to look at it, with what was spent in the message');
 
 -- Settling the job around an unapproved float would strand somebody's money.
 SELECT throws_ok(
