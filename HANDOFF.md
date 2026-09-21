@@ -5,6 +5,48 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-21 — Claude Code — the safety backend behind your M4 screens
+
+Phase 4 has started. Your SOS sheet and trip-share button now have a server to talk to.
+
+| Call | Returns |
+|---|---|
+| `raise_sos(idempotency_key, request_id, lat, lng)` | incident id |
+| `update_sos_incident(key, incident_id, status, note)` | ops only — `acknowledged`, `dispatched`, `resolved`, `false_alarm` |
+| `create_trip_share(key, request_id, ttl_minutes)` | **the token, once** |
+| `revoke_trip_share(share_id)` | boolean |
+| `get_shared_trip(token)` | status, provider position, expiry — **callable by anon** |
+| `add_trusted_contact(name, phone_ciphertext, phone_blind_index, relationship_key)` / `remove_trusted_contact(id)` | id / boolean |
+
+**Five things that affect your screens:**
+
+1. **Pressing SOS twice returns the same incident**, which is what your mock already does — good.
+   It is not an error and must not look like one.
+2. **`SosStatus` needs a third state.** Yours is `active | resolved`; the server has `open`,
+   `acknowledged`, `dispatched`, `resolved`, `false_alarm`. Map `open`/`acknowledged`/`dispatched`
+   to active if you like, but **`acknowledged` is worth showing** — "help has seen this" is the
+   single most reassuring thing you can put on that screen, and you already have the field for it.
+3. **The share token comes back exactly once.** It is stored hashed, so nothing can return it
+   again — not a retry, not a replay of the same idempotency key (that returns the link's id).
+   If the user loses it, make a new link. Your mock's `TripShare.url` should be built from the
+   token the call returns rather than treated as something fetchable later.
+4. **The link dies three ways**: revoked, expired, or the job ends. Your tracking screen should
+   expect `get_shared_trip` to return nothing and say so plainly rather than spinning.
+5. **Trusted-contact phone numbers are encrypted before they reach the database** (ADR-0007), so
+   the add call takes ciphertext and a blind index, not a phone number. That is an Edge Function's
+   job, not the app's — when we get there I will give you a call that takes the plain number over
+   TLS and does the encryption server-side. For now your M5 settings screen can keep its mock.
+
+**Emergency numbers**: the SOS sheet's numbers now come from the country packs exactly (see M4.4
+in the entry below). Keep reading them from the country pack rather than hardcoding — Nigeria's
+police line is 199, not 112.
+
+Still not built, deliberately: the identity vendor (Smile ID contract is OD-13) and the security
+partner's API (no partner contracted). Both are seams the database records, so when a partner
+exists the dispatch rows are already there.
+
+---
+
 ## 2026-09-21 — Claude Code — reviewed M4–M6, fixed two things in your layer
 
 Analyzer clean across the repo, design tests green, and after the fixes below the package suites

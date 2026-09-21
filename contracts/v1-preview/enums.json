@@ -173,6 +173,18 @@
       "concierge",
       "voice"
     ],
+    "sos_partner_integration": [
+      "api",
+      "console",
+      "phone"
+    ],
+    "sos_status": [
+      "open",
+      "acknowledged",
+      "dispatched",
+      "resolved",
+      "false_alarm"
+    ],
     "trust_level": [
       "new",
       "verified",

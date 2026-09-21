@@ -395,13 +395,13 @@
     },
     {
       "code": "ERR_PERMISSION_DENIED",
-      "status": "planned",
+      "status": "implemented",
       "category": "auth",
       "surface": "client",
       "sqlstate": "42501",
       "http_status": 403,
       "retryable": false,
-      "description": "Authenticated but not allowed (role, mode, ownership).",
+      "description": "The caller lacks the role the action needs. Used where refusing plainly is safe — the ops console — while participant-scoped reads answer *_NOT_FOUND instead, so an id cannot be probed.",
       "client_action": "Show a neutral message; do not retry."
     },
     {
@@ -788,6 +788,28 @@
       "retryable": false,
       "description": "The promo code is unknown, expired, already used, or not valid for this user or country.",
       "client_action": "Show the reason next to the field and keep the order total unchanged."
+    },
+    {
+      "code": "ERR_TRUSTED_CONTACT_LIMIT",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The user already has the maximum number of trusted contacts (`trusted_contacts_max`, five by default, SH-25).",
+      "client_action": "Ask them to remove one before adding another; show the list."
+    },
+    {
+      "code": "ERR_SOS_NOT_FOUND",
+      "status": "implemented",
+      "category": "safety",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No SOS incident with that id.",
+      "client_action": "Refresh the ops queue."
     }
   ]
 }

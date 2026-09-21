@@ -40,7 +40,8 @@ SELECT is(
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit')
      AND has_function_privilege('anon', p.oid, 'EXECUTE')
-     AND n.nspname || '.' || p.proname NOT IN ('public.get_bootstrap')),
+     AND n.nspname || '.' || p.proname NOT IN
+       ('public.get_bootstrap', 'public.get_shared_trip')),
   '{}'::text[], 'anon can execute only allowlisted functions');
 
 SELECT is(
@@ -70,6 +71,10 @@ SELECT is(
        'public.dispatch_job', 'public.claim_job',
        'private.is_org_member', 'private.org_role',
        'public.mark_notifications_read',
+       'public.add_trusted_contact', 'public.remove_trusted_contact',
+       'public.raise_sos', 'public.update_sos_incident',
+       'public.create_trip_share', 'public.revoke_trip_share',
+       'public.get_shared_trip',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

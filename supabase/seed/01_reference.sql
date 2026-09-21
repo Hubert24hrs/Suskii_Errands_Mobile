@@ -77,3 +77,11 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
   ('chat_window_hours_after_confirm', NULL, '24', true)
 ON CONFLICT DO NOTHING;
+
+-- Safety (Phase 4). The escalation window is deliberately short: an SOS nobody has acknowledged
+-- in three minutes is an SOS that needs someone else's attention (AD-21).
+INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
+  ('trusted_contacts_max', NULL, '5', true),
+  ('sos_escalate_after_minutes', NULL, '3', false),
+  ('trip_share_ttl_minutes', NULL, '60', true)
+ON CONFLICT DO NOTHING;
