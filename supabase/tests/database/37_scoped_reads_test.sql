@@ -38,7 +38,7 @@ GRANT ALL ON sc TO authenticated, service_role;
 CREATE FUNCTION pg_temp.act(p_user text, p_aal text DEFAULT 'aal2') RETURNS void
 LANGUAGE sql AS $fn$
   SELECT set_config('request.jwt.claims',
-    format('{"sub": %L, "role": "authenticated", "aal": %L}', p_user, p_aal), true);
+    jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', p_aal)::text, true);
   SELECT NULL::void;
 $fn$;
 
@@ -51,7 +51,7 @@ DECLARE
   v_payment uuid;
 BEGIN
   PERFORM set_config('request.jwt.claims',
-    format('{"sub": %L, "role": "authenticated", "aal": "aal1"}', p_customer), true);
+    jsonb_build_object('sub', p_customer, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   v_request := public.create_request('key-sc-req-' || p_tag, 'personal_assistance',
     'Deliver a parcel', 'Yaba', 'standard', false, NULL, NULL, 6.5095, 3.3711);
   PERFORM public.publish_request(v_request, 'key-sc-pub-' || p_tag);
@@ -60,7 +60,7 @@ BEGIN
     true);
   v_offer := public.create_offer('key-sc-off-' || p_tag, v_request, 10000, NULL);
   PERFORM set_config('request.jwt.claims',
-    format('{"sub": %L, "role": "authenticated", "aal": "aal1"}', p_customer), true);
+    jsonb_build_object('sub', p_customer, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   PERFORM public.accept_offer('key-sc-acc-' || p_tag, v_offer);
   -- Paid, because a dispute can only be opened while there is still money to argue about.
   SELECT payment_id INTO v_payment FROM public.start_payment('key-sc-pay-' || p_tag, v_request);

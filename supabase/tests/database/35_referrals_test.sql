@@ -141,14 +141,14 @@ DECLARE
   v_payment uuid;
 BEGIN
   PERFORM set_config('request.jwt.claims',
-    format('{"sub": %L, "role": "authenticated", "aal": "aal1"}', p_customer), true);
+    jsonb_build_object('sub', p_customer, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   v_request := public.create_request('key-rf-req-' || p_tag, 'personal_assistance',
     'Deliver a parcel', 'Yaba', 'standard', false, NULL, NULL, 6.5095, 3.3711);
   PERFORM public.publish_request(v_request, 'key-rf-pub-' || p_tag);
   PERFORM set_config('request.jwt.claims', v_provider, true);
   v_offer := public.create_offer('key-rf-off-' || p_tag, v_request, p_amount, NULL);
   PERFORM set_config('request.jwt.claims',
-    format('{"sub": %L, "role": "authenticated", "aal": "aal1"}', p_customer), true);
+    jsonb_build_object('sub', p_customer, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   PERFORM public.accept_offer('key-rf-acc-' || p_tag, v_offer);
   SELECT payment_id INTO v_payment FROM public.start_payment('key-rf-pay-' || p_tag, v_request);
   PERFORM private.record_gateway_checkout(v_payment, 'flutterwave', 'FLWR-' || p_tag, NULL);
