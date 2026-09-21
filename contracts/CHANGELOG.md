@@ -8,6 +8,30 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.14] — 2026-09-22 (preview, not binding)
+
+The referral programme, the admin configuration verbs, and the analytics views. Three new client
+surfaces, all additive.
+
+- **Added** `ERR_REFERRAL_CODE_NOT_FOUND`, `ERR_REFERRAL_ALREADY_ATTRIBUTED`, `ERR_REFERRAL_SELF`,
+  `ERR_REFERRAL_TOO_LATE`, `ERR_CONFIG_CHANGE_NOT_FOUND`, `ERR_COUNTRY_PACK_INCOMPLETE`.
+  105 codes in all.
+- **No new enum values.** `referral_commission_status` has been in `enums.json` since Phase 2 and
+  is now reachable: `pending → earned → holding → available`, or `reversed`.
+- **New client functions** for the referral hub (M5): `my_referral_code()`,
+  `claim_referral_code(key, code)`, `my_referrals(limit)`, `my_referral_summary()`. A referrer
+  sees their own earnings; a referee never sees what somebody earned from them.
+- **New admin functions**: `propose_config_change`, `review_config_change`,
+  `config_change_queue`, `country_pack_readiness`, `analytics_report`. Config is a proposal and a
+  second signature, never a direct write — the tables still grant no writes to any client role.
+- **Note for the admin dashboard (M8):** a change to a commission or referral rate, a country
+  going live, or a referral campaign needs **two** approvers, and a change never applies until the
+  last one signs. `config_change_queue` returns `approvals_required` and `approvals_given`; show
+  both. A refused apply — an incomplete country pack — leaves the change `pending`, not `applied`.
+- **`ERR_REFERRAL_SELF` is only the obvious case.** A referral claimed from a handset the referrer
+  has also used is accepted and silently blocked, because telling somebody which signal caught
+  them is a free oracle. The client sees a success either way.
+
 ## [1.0.0-preview.13] — 2026-09-21 (preview, not binding)
 
 The payment provider abstraction and its two Edge Functions. No client-facing change.
