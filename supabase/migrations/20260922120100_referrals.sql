@@ -195,23 +195,21 @@ RETURNS TABLE (rate_bps integer, campaign_id uuid)
 LANGUAGE sql STABLE
 SET search_path = ''
 AS $$
-  SELECT c.rate_bps, c.id
-  FROM public.referral_campaigns c
-  WHERE c.country_code = p_country AND c.currency = p_currency AND c.active
-    AND now() BETWEEN c.starts_at AND c.ends_at
-    AND c.spent_minor < c.budget_minor
-  ORDER BY c.rate_bps DESC, c.ends_at
-  LIMIT 1
-  UNION ALL
-  SELECT co.referral_rate_bps, NULL::uuid
+  -- One row, always: the country's own rate, overridden by the best live campaign that still has
+  -- budget. A lateral rather than a union, because `ORDER BY … LIMIT` on a union branch belongs
+  -- to the union and not to the branch.
+  SELECT coalesce(camp.rate_bps, co.referral_rate_bps), camp.id
   FROM public.countries co
-  WHERE co.code = p_country
-    AND NOT EXISTS (
-      SELECT 1 FROM public.referral_campaigns c2
-      WHERE c2.country_code = p_country AND c2.currency = p_currency AND c2.active
-        AND now() BETWEEN c2.starts_at AND c2.ends_at
-        AND c2.spent_minor < c2.budget_minor)
-  LIMIT 1;
+  LEFT JOIN LATERAL (
+    SELECT c.rate_bps, c.id
+    FROM public.referral_campaigns c
+    WHERE c.country_code = co.code AND c.currency = p_currency AND c.active
+      AND now() BETWEEN c.starts_at AND c.ends_at
+      AND c.spent_minor < c.budget_minor
+    ORDER BY c.rate_bps DESC, c.ends_at
+    LIMIT 1
+  ) camp ON true
+  WHERE co.code = p_country;
 $$;
 
 -- What a referral has earned so far, for OD-02's amount cap.
