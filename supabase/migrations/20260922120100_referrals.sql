@@ -235,17 +235,15 @@ AS $$
 DECLARE
   v_uid  uuid := private.require_user();
   v_code text;
-  v_try  integer := 0;
 BEGIN
   SELECT rc.code INTO v_code FROM public.referral_codes rc WHERE rc.user_id = v_uid;
   IF v_code IS NOT NULL THEN
     RETURN v_code;
   END IF;
 
-  -- 32^8 codes against a few million users: a collision is rare and retrying is cheaper than
-  -- reasoning about how rare.
-  LOOP
-    v_try := v_try + 1;
+  -- 32^8 codes against a few million users: a collision is rare, and retrying is cheaper than
+  -- reasoning about how rare. Bounded rather than open, so the function has an end.
+  FOR i IN 1..8 LOOP
     v_code := (SELECT string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
                                         1 + floor(random() * 32)::integer, 1), '')
                FROM generate_series(1, 8));
@@ -259,12 +257,11 @@ BEGIN
       IF v_code IS NOT NULL THEN
         RETURN v_code;
       END IF;
-      IF v_try >= 8 THEN
-        RAISE EXCEPTION 'ERR_INTERNAL' USING ERRCODE = 'P0001',
-          DETAIL = 'could not allocate a referral code';
-      END IF;
     END;
   END LOOP;
+
+  RAISE EXCEPTION 'ERR_INTERNAL' USING ERRCODE = 'P0001',
+    DETAIL = 'could not allocate a referral code';
 END $$;
 
 -- ---------------------------------------------------------------------------
