@@ -82,6 +82,8 @@ SELECT is(
        'public.verification_summary',
        'public.moderation_queue', 'public.decide_moderation_case',
        'public.fraud_queue', 'public.review_fraud_flag',
+       'public.start_call', 'public.answer_call', 'public.end_call',
+       'public.request_pstn_fallback',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',
@@ -126,8 +128,8 @@ SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute
     WHERE attrelid = 'public.profiles'::regclass AND attnum > 0 AND NOT attisdropped
       AND has_column_privilege('authenticated', 'public.profiles'::regclass, attnum, 'UPDATE')$$,
-  ARRAY['display_name', 'language', 'avatar_path'],
-  'profiles: authenticated may update only display_name, language, avatar_path');
+  ARRAY['display_name', 'language', 'avatar_path', 'timezone'],
+  'profiles: authenticated may update only display_name, language, avatar_path, timezone');
 
 SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute

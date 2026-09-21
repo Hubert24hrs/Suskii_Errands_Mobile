@@ -8,6 +8,31 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.4] — 2026-09-21 (preview, not binding)
+
+Phase 6's database half: calls, notification delivery and scheduled errands. Additive.
+
+- **Added** `ERR_CALL_NOT_FOUND` and `ERR_CALL_WINDOW_CLOSED` (implemented), and
+  `ERR_PSTN_UNAVAILABLE` (**planned**, see below). 80 codes in all.
+- **New category** `communication`.
+- **Clarified** `ERR_CALL_IN_PROGRESS`: still `planned`, and now documented as **never raised**.
+  `start_call` resolves a simultaneous attempt by returning the live call and setting `is_caller`
+  false, rather than refusing the second caller (SH-12). Apps should branch on `is_caller`, not on
+  this code.
+- **Added enum** `call_status` (`ringing`, `active`, `ended`, `missed`, `declined`, `failed`).
+  37 enums in all.
+- **Added enum values** `call_incoming` and `call_missed` to `notification_kind`. Adding a value is
+  additive, but an app that switches exhaustively on `kind` must handle them.
+- **New client-writable column** `profiles.timezone` (IANA name, nullable). Quiet hours are
+  evaluated in it; unset, they fall back to the country's first city. Apps should write the device
+  zone at sign-in and when it changes.
+- `request_pstn_fallback` returns **NULL** when no masked number is allocated, which is every
+  case today: no telephony provider is contracted. It does not raise, because raising would
+  roll back the `call.pstn_requested` event in the same transaction, and counting how often
+  people reach for the phone is the only thing the seam is currently good for. Treat NULL as
+  "not available yet"; `ERR_PSTN_UNAVAILABLE` is reserved for a provider that exists and
+  refuses.
+
 ## [1.0.0-preview.3] — 2026-09-21 (preview, not binding)
 
 Phase 4: safety, the KYC spine and moderation. Additive; nothing that existed changed meaning.

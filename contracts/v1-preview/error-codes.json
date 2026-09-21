@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.3",
+  "version": "1.0.0-preview.4",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -775,8 +775,8 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "A call is already active on this job. One active call per job, resolved server-side once the call vendor is chosen; the app enforces it against its mock meanwhile.",
-      "client_action": "Offer to join or end the existing call rather than starting a second."
+      "description": "Reserved, and not raised by the backend: `start_call` resolves a simultaneous attempt by returning the live call rather than refusing it, with `is_caller` telling the second caller they are now the callee (SH-12). Kept in case a call vendor forces a refusal instead.",
+      "client_action": "Do not expect it. On `start_call`, read `is_caller` and show answer or ring accordingly."
     },
     {
       "code": "ERR_PROMO_INVALID",
@@ -854,6 +854,39 @@
       "retryable": false,
       "description": "No fraud flag with that id. Admin surfaces only; the subject of a flag can never read or reach one.",
       "client_action": "Refresh the fraud queue."
+    },
+    {
+      "code": "ERR_CALL_NOT_FOUND",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No call with that id.",
+      "client_action": "Close the call screen and return to the job."
+    },
+    {
+      "code": "ERR_CALL_WINDOW_CLOSED",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Calling is open from assignment until `chat_window_hours_after_confirm` after the job is confirmed, and stays open while a dispute is live (SH-12). Outside that window there is no call, and no PSTN fallback either.",
+      "client_action": "Hide the call button outside the window rather than letting it fail; if it fails anyway, say the job is over and offer support."
+    },
+    {
+      "code": "ERR_PSTN_UNAVAILABLE",
+      "status": "planned",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Reserved for a telephony provider that exists and refuses — an exhausted number pool, or a country it does not cover. It is not raised today: `request_pstn_fallback` returns NULL when no number is allocated, because raising would roll back the `call.pstn_requested` event in the same transaction, and counting how often people reach for the phone is the only thing the seam is currently good for. No provider is contracted (REPORT §6.3).",
+      "client_action": "Treat a NULL return as “not available yet”: keep the user on the in-app call and do not retry in a loop. Handle this code the same way when a provider exists."
     }
   ]
 }
