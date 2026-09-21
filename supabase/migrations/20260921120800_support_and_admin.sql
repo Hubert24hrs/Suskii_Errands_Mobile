@@ -215,7 +215,9 @@ BEGIN
   -- A note to a colleague is not an answer to the customer, so it does not move the ticket.
   IF NOT p_internal THEN
     UPDATE public.support_tickets t
-    SET status = CASE WHEN v_staff THEN 'waiting_on_user' ELSE 'waiting_on_support' END,
+    -- Cast: a CASE resolves to text, which will not assign to an enum column.
+    SET status = (CASE WHEN v_staff THEN 'waiting_on_user'
+                       ELSE 'waiting_on_support' END)::public.support_ticket_status,
         resolved_at = NULL
     WHERE t.id = p_ticket_id;
 
