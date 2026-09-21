@@ -625,8 +625,8 @@ class MockDatabase {
         defaultLanguage: 'en',
         launchCities: <String>['Lagos', 'Abuja', 'Port Harcourt'],
         emergencyNumbers: <EmergencyNumber>[
-          EmergencyNumber(labelKey: 'emergencyPolice', number: '112'),
-          EmergencyNumber(labelKey: 'emergencyAmbulance', number: '112'),
+          EmergencyNumber(labelKey: 'emergencyPolice', number: '199'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '112'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
@@ -640,7 +640,8 @@ class MockDatabase {
         defaultLanguage: 'en',
         launchCities: <String>['Nairobi'],
         emergencyNumbers: <EmergencyNumber>[
-          EmergencyNumber(labelKey: 'emergencyPolice', number: '999'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '999'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '112'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
@@ -655,6 +656,8 @@ class MockDatabase {
         launchCities: <String>['Accra'],
         emergencyNumbers: <EmergencyNumber>[
           EmergencyNumber(labelKey: 'emergencyPolice', number: '191'),
+          EmergencyNumber(labelKey: 'emergencyAmbulance', number: '193'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '112'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
@@ -669,6 +672,8 @@ class MockDatabase {
         launchCities: <String>['Johannesburg'],
         emergencyNumbers: <EmergencyNumber>[
           EmergencyNumber(labelKey: 'emergencyPolice', number: '10111'),
+          EmergencyNumber(labelKey: 'emergencyAmbulance', number: '10177'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '112'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
@@ -683,7 +688,8 @@ class MockDatabase {
         defaultLanguage: 'en',
         launchCities: <String>['Kampala'],
         emergencyNumbers: <EmergencyNumber>[
-          EmergencyNumber(labelKey: 'emergencyPolice', number: '999'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '999'),
+          EmergencyNumber(labelKey: 'emergencyGeneral', number: '112'),
         ],
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,

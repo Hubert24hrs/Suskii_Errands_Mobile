@@ -37,9 +37,20 @@ class _TrackingPageState extends ConsumerState<TrackingPage> {
       final share = await ref
           .read(safetyRepositoryProvider)
           .createTripShareLink(widget.jobId, idempotencyKey: _shareKey!);
-      await Clipboard.setData(ClipboardData(text: share.url));
+      // The link exists the moment the server returns it; copying it is a convenience. A
+      // clipboard that refuses (web permission, a locked pasteboard) must not turn a share that
+      // succeeded into an error, so the URL is shown instead for the user to copy by hand.
+      var copied = true;
+      try {
+        await Clipboard.setData(ClipboardData(text: share.url));
+      } on Object {
+        copied = false;
+      }
       if (mounted) {
-        showSToast(context, AppLocalizations.of(context).sosTripShared);
+        showSToast(
+          context,
+          copied ? AppLocalizations.of(context).sosTripShared : share.url,
+        );
       }
     } on Object catch (error) {
       if (mounted) {

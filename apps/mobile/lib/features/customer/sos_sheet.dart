@@ -51,9 +51,18 @@ class _SosSheetState extends ConsumerState<SosSheet> {
     final share = await ref
         .read(safetyRepositoryProvider)
         .createTripShareLink(widget.jobId, idempotencyKey: _shareKey!);
-    await Clipboard.setData(ClipboardData(text: share.url));
+    // Same rule as the tracking page: the share succeeded even if the clipboard refused.
+    var copied = true;
+    try {
+      await Clipboard.setData(ClipboardData(text: share.url));
+    } on Object {
+      copied = false;
+    }
     if (mounted) {
-      showSToast(context, AppLocalizations.of(context).sosTripShared);
+      showSToast(
+        context,
+        copied ? AppLocalizations.of(context).sosTripShared : share.url,
+      );
     }
   });
 
