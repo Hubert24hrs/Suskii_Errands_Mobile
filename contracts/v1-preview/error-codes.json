@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.10",
+  "version": "1.0.0-preview.11",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -1008,6 +1008,39 @@
       "retryable": true,
       "description": "Earnings cannot be recognised while the item float is still waiting on a receipt or its approval — settling around it would strand the goods money in a holding account nobody is watching. The settlement sweep skips the job and retries next run.",
       "client_action": "Never surfaces in an app. A job stuck here for days means a receipt nobody approved; the auto-approval sweep should have cleared it."
+    },
+    {
+      "code": "ERR_DISPUTE_NOT_FOUND",
+      "status": "implemented",
+      "category": "safety",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No dispute with that id, or not one you are party to. Somebody else's dispute is not admitted to exist.",
+      "client_action": "Return to the job and refresh."
+    },
+    {
+      "code": "ERR_DISPUTE_ALREADY_OPEN",
+      "status": "implemented",
+      "category": "safety",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "This job already has an open dispute. Two arguments about one job are one argument.",
+      "client_action": "Open the existing case instead of offering to start another."
+    },
+    {
+      "code": "ERR_DISPUTE_WINDOW_CLOSED",
+      "status": "implemented",
+      "category": "safety",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A dispute needs money still held against the job. Once it has settled or been paid out the remedy is a chargeback or a clawback, not a dispute.",
+      "client_action": "Hide the dispute button once the job has settled; route the user to support instead."
     }
   ]
 }

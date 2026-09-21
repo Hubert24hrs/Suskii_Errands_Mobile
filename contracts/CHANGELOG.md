@@ -8,6 +8,26 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.11] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 6: disputes.
+
+- **Added** `ERR_DISPUTE_NOT_FOUND`, `ERR_DISPUTE_ALREADY_OPEN`, `ERR_DISPUTE_WINDOW_CLOSED`.
+  94 codes in all.
+- **Added enums** `dispute_status` (`open`, `under_review`, `resolved`, `withdrawn`) and
+  `evidence_kind`. 42 enums in all.
+- **New functions** `open_dispute`, `submit_dispute_evidence`, `withdraw_dispute` (client), and
+  `dispute_queue`, `assign_dispute`, `resolve_dispute` (dispute officer / super admin).
+- **New tables** `disputes` (both parties read it) and `dispute_evidence` (**each side reads only
+  its own submissions** — evidence you can read before answering is evidence you can tailor a
+  story around).
+- **`dispute_officer` gets its scope back.** It lost blanket chat access in preview.5 when support
+  was scoped to tickets; it now reads a job's conversation, messages and calls when a dispute
+  references that job, and not otherwise.
+- Opening a dispute moves the job to `disputed` and **freezes settlement**. Withdrawing restores
+  the exact status it froze, not `confirmed`.
+- A dispute needs money still held: after settlement the answer is `ERR_DISPUTE_WINDOW_CLOSED`.
+
 ## [1.0.0-preview.10] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 5: the item float. Additive, but it changes what a charge means.
