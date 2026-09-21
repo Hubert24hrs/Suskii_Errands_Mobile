@@ -8,6 +8,19 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.13] — 2026-09-21 (preview, not binding)
+
+The payment provider abstraction and its two Edge Functions. No client-facing change.
+
+- **Added** `ERR_NO_PROVIDER_CONFIGURED` and `ERR_PAYOUT_KEY_UNAVAILABLE`, both
+  `surface: internal` and neither with a SQLSTATE: they are worker outcomes recorded on an outbox
+  event, not database errors. 99 codes in all.
+- **No new client functions.** `payments-webhook` is called by a gateway and `payments-worker` by
+  a schedule; the `gateway_*` RPCs they use are granted to `service_role` alone.
+- **The Flutterwave and Paystack adapters are not in this release and are not missing by
+  accident.** Their endpoint paths, payload shapes and signature schemes are not in the research,
+  and spike S-12 settles them against a sandbox that needs merchant accounts.
+
 ## [1.0.0-preview.12] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 7: payout accounts, payouts and withdrawals. **Phase 5's database half is complete.**

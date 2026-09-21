@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.12",
+  "version": "1.0.0-preview.13",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -1074,6 +1074,28 @@
       "retryable": false,
       "description": "No withdrawal with that id. Admin surfaces only.",
       "client_action": "Refresh the approvals queue."
+    },
+    {
+      "code": "ERR_NO_PROVIDER_CONFIGURED",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": false,
+      "description": "A country pack names a payment provider that no adapter implements. Recorded on the outbox event as a permanent failure, because it is a configuration mistake and should look like one rather than like a gateway outage.",
+      "client_action": "Never reaches an app. Fix the country pack, or ship the adapter."
+    },
+    {
+      "code": "ERR_PAYOUT_KEY_UNAVAILABLE",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": true,
+      "description": "A transfer or a bank name enquiry needs the real account number, and `payout_accounts.account_ciphertext` is envelope-encrypted with a KMS key the worker does not have (ADR-0007; GCP billing is timeline action 1). The event is handed back for retry rather than failed, so it is still waiting when the key arrives.",
+      "client_action": "Never reaches an app. It means payouts are paused, not lost."
     }
   ]
 }
