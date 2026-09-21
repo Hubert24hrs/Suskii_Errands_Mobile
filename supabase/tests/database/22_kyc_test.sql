@@ -9,18 +9,22 @@ INSERT INTO auth.users (id, phone) VALUES
   ('6b111111-1111-4111-8111-ffffffffffff', '2348000000151'),   -- a provider applicant
   ('6b222222-2222-4222-8222-ffffffffffff', '2348000000152'),   -- someone with the same ID number
   ('6b333333-3333-4333-8333-ffffffffffff', '2348000000153'),   -- verification officer
-  ('6b444444-4444-4444-8444-ffffffffffff', '2348000000154');   -- support agent
+  ('6b444444-4444-4444-8444-ffffffffffff', '2348000000154'),   -- support agent
+  ('6b555555-5555-4555-8555-ffffffffffff', '2348000000155');   -- a second officer
 UPDATE public.profiles SET country_code = 'NG', active_mode = 'provider'
 WHERE user_id IN ('6b111111-1111-4111-8111-ffffffffffff',
                   '6b222222-2222-4222-8222-ffffffffffff');
 UPDATE public.profiles SET country_code = 'NG'
 WHERE user_id IN ('6b333333-3333-4333-8333-ffffffffffff',
-                  '6b444444-4444-4444-8444-ffffffffffff');
+                  '6b444444-4444-4444-8444-ffffffffffff',
+                  '6b555555-5555-4555-8555-ffffffffffff');
 INSERT INTO public.admin_users (user_id, roles) VALUES
   ('6b333333-3333-4333-8333-ffffffffffff',
    ARRAY['verification_officer']::public.admin_role[]),
   ('6b444444-4444-4444-8444-ffffffffffff',
-   ARRAY['support_agent']::public.admin_role[]);
+   ARRAY['support_agent']::public.admin_role[]),
+  ('6b555555-5555-4555-8555-ffffffffffff',
+   ARRAY['verification_officer']::public.admin_role[]);
 
 -- The applicant has a provider profile, so the last assertion about `is_active_provider`
 -- tests the verification rather than the absence of a row.
@@ -178,20 +182,37 @@ SELECT is((SELECT attempt_count FROM public.get_my_kyc_profile()
            WHERE kind = 'id_document_capture'), 2::smallint, 'and counts the attempt');
 RESET ROLE;
 
--- Nobody reviews themselves (a named deny case in the RLS matrix).
-INSERT INTO kyc.kyc_steps (user_id, kind, status, submitted_at)
-VALUES ('6b333333-3333-4333-8333-ffffffffffff', 'government_id', 'in_review', now());
+-- Nobody reviews themselves (a named deny case in the RLS matrix). Nothing below reads `kyc`
+-- directly, because nothing can: the schema is unreachable even to the role running this file,
+-- which is the property it exists for. Everything goes through the published functions.
 SELECT set_config('request.jwt.claims',
   '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
 SET LOCAL ROLE authenticated;
+SELECT public.submit_kyc_step('key-ky-step-o-000000001', 'government_id',
+  ARRAY['6b333333-3333-4333-8333-ffffffffffff/officer-id.jpg']);
 SELECT is((SELECT count(*)::int FROM public.kyc_review_queue()
            WHERE user_id = '6b333333-3333-4333-8333-ffffffffffff'), 0,
-  'an officer''s own step never appears in their queue');
+  'an officer''s own step never appears in their own queue');
+RESET ROLE;
+
+-- A second officer can see it, which is how it gets reviewed at all — and how this test gets
+-- an id to try the forbidden thing with.
+SELECT set_config('request.jwt.claims',
+  '{"sub": "6b555555-5555-4555-8555-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+SET LOCAL ROLE authenticated;
+INSERT INTO ky VALUES ('own_step', (SELECT step_id FROM public.kyc_review_queue()
+                                    WHERE user_id = '6b333333-3333-4333-8333-ffffffffffff'));
+SELECT ok((SELECT id FROM ky WHERE name = 'own_step') IS NOT NULL,
+  'another officer does see it, so it is reviewable by somebody');
+RESET ROLE;
+
+SELECT set_config('request.jwt.claims',
+  '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT public.decide_kyc_step('key-ky-dec-self-00000001', %L, 'approved')$$,
-    (SELECT s.id FROM kyc.kyc_steps s
-     WHERE s.user_id = '6b333333-3333-4333-8333-ffffffffffff')),
-  '42501', 'ERR_PERMISSION_DENIED', 'and they cannot decide it by id either');
+    (SELECT id FROM ky WHERE name = 'own_step')),
+  '42501', 'ERR_PERMISSION_DENIED', 'and cannot decide it by id either');
 RESET ROLE;
 
 -- Support sees status, never documents (RLS matrix §4).
@@ -210,31 +231,39 @@ SELECT throws_ok($$SELECT public.kyc_review_queue()$$,
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- PR-14: expiry, reminders, and the standing that lapses.
+-- PR-14: a document that has run out, and the standing that lapses with it.
 -- ---------------------------------------------------------------------------
+SELECT set_config('request.jwt.claims',
+  '{"sub": "6b111111-1111-4111-8111-ffffffffffff", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
+-- Issued last month, already out of date: the certificate is real, its validity is not.
+SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000004', ''::bytea,
+            sha256('PC-2'::bytea), (now() - interval '1 month')::date,
+            (now() - interval '1 day')::date, '6b111111-1111-4111-8111-ffffffffffff/pc2.pdf'),
+  'in_review'::public.kyc_step_status, 'a replacement certificate is submitted');
+RESET ROLE;
+
 SELECT set_config('request.jwt.claims',
   '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
 SET LOCAL ROLE authenticated;
 SELECT is(public.decide_kyc_step('key-ky-dec-pc-000000001',
             (SELECT step_id FROM public.kyc_review_queue() WHERE kind = 'police_clearance'),
             'approved'),
-  'verified'::public.kyc_step_status, 'the police clearance is approved');
+  'verified'::public.kyc_step_status, 'and approved on its face');
 RESET ROLE;
-SELECT ok((SELECT decision FROM kyc.police_clearances
-           WHERE user_id = '6b111111-1111-4111-8111-ffffffffffff') = 'approved',
-  'and the certificate carries the decision');
 
-SELECT is(private.expire_kyc_documents(), 0, 'nothing has expired yet');
-UPDATE kyc.kyc_steps SET expires_at = now() - interval '1 day'
-WHERE user_id = '6b111111-1111-4111-8111-ffffffffffff' AND kind = 'police_clearance';
-SELECT is(private.expire_kyc_documents(), 1, 'the day it lapses, it lapses');
-SELECT is((SELECT status FROM kyc.kyc_steps
-           WHERE user_id = '6b111111-1111-4111-8111-ffffffffffff' AND kind = 'police_clearance'),
-  'expired'::public.kyc_step_status, 'the step is expired');
+SELECT is(private.expire_kyc_documents(), 1,
+  'the expiry job then catches that its validity has already passed');
+SELECT set_config('request.jwt.claims',
+  '{"sub": "6b111111-1111-4111-8111-ffffffffffff", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT status FROM public.get_my_kyc_profile() WHERE kind = 'police_clearance'),
+  'expired'::public.kyc_step_status, 'the applicant sees the step expired');
 SELECT is((SELECT provider_verification FROM public.profiles
            WHERE user_id = '6b111111-1111-4111-8111-ffffffffffff'),
   'expired'::public.verification_status,
-  'and the provider''s standing with it — which is what stops them taking new work');
+  'and their standing with it — which is what stops them taking new work');
+RESET ROLE;
 SELECT ok(NOT (SELECT private.is_active_provider('6b111111-1111-4111-8111-ffffffffffff')),
   'is_active_provider agrees, so offers and dispatch refuse them');
 
