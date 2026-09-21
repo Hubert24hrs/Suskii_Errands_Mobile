@@ -23,7 +23,9 @@ VALUES ('5a444444-4444-4444-8444-eeeeeeeeeeee',
 
 CREATE TEMP TABLE sf (name text PRIMARY KEY, id uuid);
 CREATE TEMP TABLE sft (name text PRIMARY KEY, token text);
-GRANT ALL ON sf, sft TO authenticated, service_role;
+-- `anon` reads the token too: following a shared trip without an account is the point of
+-- SH-26, so the anonymous half of this file needs the scratch table as well.
+GRANT ALL ON sf, sft TO anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- SH-25: trusted contacts, capped at five.
