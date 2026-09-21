@@ -80,6 +80,8 @@ SELECT is(
        'public.get_my_kyc_profile', 'public.kyc_review_queue',
        'public.decide_kyc_step', 'public.request_document_access',
        'public.verification_summary',
+       'public.moderation_queue', 'public.decide_moderation_case',
+       'public.fraud_queue', 'public.review_fraud_flag',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.2",
+  "version": "1.0.0-preview.3",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -821,6 +821,39 @@
       "retryable": false,
       "description": "That identity document is already registered to another account. One verified identity per person is a core anti-fraud control; the match is made on a blind index, so nothing reads either number.",
       "client_action": "Show a neutral message and route to support. Never say whose account it is, or confirm that the number exists."
+    },
+    {
+      "code": "ERR_CONTENT_NOT_ALLOWED",
+      "status": "implemented",
+      "category": "moderation",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The text names something the platform does not carry (`prohibited_items`, action `block`). Deterministic and explainable: `details` carries the rule key that fired. Only requests are refused; chat and reviews are held for review instead (OD-21 fail-open).",
+      "client_action": "Name the rule from `details` and let them edit the text. Never retry the same text; a retry produces the same refusal."
+    },
+    {
+      "code": "ERR_MODERATION_CASE_NOT_FOUND",
+      "status": "implemented",
+      "category": "moderation",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No moderation case with that id. Admin surfaces only.",
+      "client_action": "Refresh the moderation queue."
+    },
+    {
+      "code": "ERR_FRAUD_FLAG_NOT_FOUND",
+      "status": "implemented",
+      "category": "moderation",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No fraud flag with that id. Admin surfaces only; the subject of a flag can never read or reach one.",
+      "client_action": "Refresh the fraud queue."
     }
   ]
 }
