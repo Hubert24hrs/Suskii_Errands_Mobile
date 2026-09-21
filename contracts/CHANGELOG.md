@@ -8,6 +8,21 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.5] — 2026-09-21 (preview, not binding)
+
+Phase 8's first slice: support tickets, the scope they open, and suspension. Additive in the
+catalogue; **one access change is a tightening, not an addition** — see below.
+
+- **Added** `ERR_TICKET_NOT_FOUND`, `ERR_TICKET_CLOSED` (new category `support`) and
+  `ERR_PROVIDER_NOT_FOUND`. 83 codes in all.
+- **Added enum** `support_ticket_status` (`open`, `waiting_on_user`, `waiting_on_support`,
+  `resolved`, `closed`). 38 enums in all.
+- **Breaking for admin surfaces, on purpose:** a `support_agent` can no longer read every
+  conversation, message or call. Reading a job's chat now requires a support ticket that names
+  that job (RLS matrix §8, a DPIA control). `dispute_officer` loses that access entirely until
+  `disputes` exists in Phase 5. An admin console that listed conversations directly must go
+  through a ticket instead.
+
 ## [1.0.0-preview.4] — 2026-09-21 (preview, not binding)
 
 Phase 6's database half: calls, notification delivery and scheduled errands. Additive.

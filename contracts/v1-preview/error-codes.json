@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.4",
+  "version": "1.0.0-preview.5",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -887,6 +887,39 @@
       "retryable": false,
       "description": "Reserved for a telephony provider that exists and refuses — an exhausted number pool, or a country it does not cover. It is not raised today: `request_pstn_fallback` returns NULL when no number is allocated, because raising would roll back the `call.pstn_requested` event in the same transaction, and counting how often people reach for the phone is the only thing the seam is currently good for. No provider is contracted (REPORT §6.3).",
       "client_action": "Treat a NULL return as “not available yet”: keep the user on the in-app call and do not retry in a loop. Handle this code the same way when a provider exists."
+    },
+    {
+      "code": "ERR_TICKET_NOT_FOUND",
+      "status": "implemented",
+      "category": "support",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No support ticket with that id, or it is not yours. Somebody else's ticket is not admitted to exist, so this is also the answer to reading one you do not own.",
+      "client_action": "Return to the ticket list and refresh."
+    },
+    {
+      "code": "ERR_TICKET_CLOSED",
+      "status": "implemented",
+      "category": "support",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The ticket is closed and takes no further replies. A resolved ticket still does: replying reopens it.",
+      "client_action": "Offer to open a new ticket, and quote the old one."
+    },
+    {
+      "code": "ERR_PROVIDER_NOT_FOUND",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "That user has no provider profile. Admin surfaces only.",
+      "client_action": "Refresh the user record."
     }
   ]
 }
