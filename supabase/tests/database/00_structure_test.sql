@@ -89,6 +89,7 @@ SELECT is(
        'private.support_ticket_scope',
        'public.my_balances', 'public.start_payment', 'public.cancel_job',
        'public.preview_promo', 'public.add_tip',
+       'public.submit_float_receipt', 'public.approve_float_receipt',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',

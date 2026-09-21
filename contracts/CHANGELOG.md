@@ -8,6 +8,23 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.10] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 5: the item float. Additive, but it changes what a charge means.
+
+- **Added** `ERR_NO_ITEM_FLOAT` (client) and `ERR_ITEM_FLOAT_PENDING` (internal). 91 codes in all.
+- **New functions** `submit_float_receipt(key, request_id, spent_minor, storage_path)` (provider)
+  and `approve_float_receipt(key, request_id)` (customer).
+- **`payments.amount_minor` is no longer the job price.** On a request with `item_float_minor`,
+  the charge is job + float + a surcharge covering the gateway's fee on the float (OD-04, so the
+  provider is reimbursed exactly what they spend). The new `job_amount_minor`, `float_minor` and
+  `float_surcharge_minor` columns say how it divides — **read those, do not subtract**.
+- **New columns on `jobs`**: `item_float_spent_minor`, `item_float_receipt_path`,
+  `item_float_approved_at`.
+- A receipt auto-approves after `float_auto_approve_hours` (24, client-visible), the same shape as
+  job auto-confirmation. Earnings do not settle while a float is unapproved.
+- `cancel_job` refuses once the float has been released: that is a dispute, not a cancellation.
+
 ## [1.0.0-preview.9] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 4: promo codes and tips.

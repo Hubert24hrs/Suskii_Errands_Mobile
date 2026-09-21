@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.9",
+  "version": "1.0.0-preview.10",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -986,6 +986,28 @@
       "retryable": false,
       "description": "Refunds against one payment would total more than was paid. A deferred constraint trigger, so it aborts the whole transaction and cannot be caught — anything issuing a partial refund must check first and raise its own error (S-14).",
       "client_action": "Never expected. Treat as a money incident: stop the worker and reconcile before resuming."
+    },
+    {
+      "code": "ERR_NO_ITEM_FLOAT",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "This job has no item float, so there is no receipt to file against it. Only a request created with `item_float_minor` has one.",
+      "client_action": "Do not show the receipt screen unless the job has a float."
+    },
+    {
+      "code": "ERR_ITEM_FLOAT_PENDING",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": true,
+      "description": "Earnings cannot be recognised while the item float is still waiting on a receipt or its approval — settling around it would strand the goods money in a holding account nobody is watching. The settlement sweep skips the job and retries next run.",
+      "client_action": "Never surfaces in an app. A job stuck here for days means a receipt nobody approved; the auto-approval sweep should have cleared it."
     }
   ]
 }
