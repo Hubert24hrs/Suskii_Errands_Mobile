@@ -40,6 +40,11 @@
       "ios",
       "web"
     ],
+    "fraud_flag_status": [
+      "open",
+      "cleared",
+      "confirmed"
+    ],
     "identity_check_outcome": [
       "success",
       "retry",

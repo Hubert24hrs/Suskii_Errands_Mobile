@@ -843,6 +843,17 @@
       "retryable": false,
       "description": "No moderation case with that id. Admin surfaces only.",
       "client_action": "Refresh the moderation queue."
+    },
+    {
+      "code": "ERR_FRAUD_FLAG_NOT_FOUND",
+      "status": "implemented",
+      "category": "moderation",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No fraud flag with that id. Admin surfaces only; the subject of a flag can never read or reach one.",
+      "client_action": "Refresh the fraud queue."
     }
   ]
 }

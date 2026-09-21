@@ -8,6 +8,21 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.3] — 2026-09-21 (preview, not binding)
+
+Phase 4: safety, the KYC spine and moderation. Additive; nothing that existed changed meaning.
+
+- **Added** `ERR_TRUSTED_CONTACT_LIMIT`, `ERR_SOS_NOT_FOUND` (safety), `ERR_CONSENT_REQUIRED`,
+  `ERR_KYC_STEP_INVALID`, `ERR_IDENTITY_ALREADY_REGISTERED` (verification), and
+  `ERR_CONTENT_NOT_ALLOWED`, `ERR_MODERATION_CASE_NOT_FOUND`, `ERR_FRAUD_FLAG_NOT_FOUND`
+  (moderation and risk). 77 codes in all.
+- **New category** `moderation`.
+- `ERR_CONTENT_NOT_ALLOWED` carries the rule key in PostgREST's `details`. It is the only refusal
+  moderation makes: a held request publishes and a flagged message delivers (OD-21 fail-open), so
+  an app must not treat a hold as an error. Retrying the same text produces the same refusal.
+- **Added enums** `sos_status`, `sos_partner_integration`, `kyc_decision`, `moderation_action`,
+  `moderation_category`, `moderation_case_status`, `fraud_flag_status`. 36 enums in all.
+
 ## [1.0.0-preview.2] — 2026-09-18 (preview, not binding)
 
 The marketplace core (Phase 3, ADR-0014) raised codes the catalogue had only reserved, and added
