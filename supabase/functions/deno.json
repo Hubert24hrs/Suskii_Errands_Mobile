@@ -2,7 +2,9 @@
   "workspace": [
     "./auth-send-sms",
     "./device-integrity",
-    "./health"
+    "./health",
+    "./payments-webhook",
+    "./payments-worker"
   ],
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

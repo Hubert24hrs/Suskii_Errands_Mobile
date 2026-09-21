@@ -443,6 +443,22 @@ verify_jwt = false
 import_map = "./functions/health/deno.json"
 entrypoint = "./functions/health/index.ts"
 
+[functions.payments-webhook]
+enabled = true
+# Called by a payment gateway. Authenticated by the provider's own signature inside the handler,
+# which is why there is no JWT: a gateway has no Supabase session.
+verify_jwt = false
+import_map = "./functions/payments-webhook/deno.json"
+entrypoint = "./functions/payments-webhook/index.ts"
+
+[functions.payments-worker]
+enabled = true
+# Invoked on a schedule. Authenticated by a named secret API key inside the function
+# (withSupabase auth "secret:worker"), so that key rotates on its own.
+verify_jwt = false
+import_map = "./functions/payments-worker/deno.json"
+entrypoint = "./functions/payments-worker/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false
