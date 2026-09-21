@@ -112,7 +112,7 @@ AS $$
 DECLARE
   v_text   text := lower(coalesce(p_text, ''));
   v_labels jsonb := '[]'::jsonb;
-  v_action public.moderation_action := 'allow';
+  v_action public.moderation_action := 'allow'::public.moderation_action;
   v_row    record;
 BEGIN
   IF btrim(v_text) = '' THEN
