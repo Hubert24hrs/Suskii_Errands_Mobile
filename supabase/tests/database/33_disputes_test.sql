@@ -5,7 +5,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(38);
+SELECT plan(39);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b1111111-1111-4111-8111-333333333333', '2348000000261'),   -- customer
@@ -59,6 +59,13 @@ BEGIN
 END $fn$;
 
 INSERT INTO dp VALUES ('r', pg_temp.paid_job('r-00000001', 10000));
+-- A conversation, because `conversations` rows are created by the first message and the officer's
+-- scope has nothing to open without one. Sent while the job is still `assigned`: chat closes a day
+-- after confirmation, and the next statement backdates that by two.
+SELECT set_config('request.jwt.claims',
+  '{"sub": "b1111111-1111-4111-8111-333333333333", "role": "authenticated", "aal": "aal1"}', true);
+SELECT public.send_message('key-dp-msg-c-00000001', (SELECT id FROM dp WHERE name = 'r'),
+  'Where is my parcel?');
 UPDATE public.requests SET status = 'confirmed' WHERE id = (SELECT id FROM dp WHERE name = 'r');
 UPDATE public.jobs SET confirmed_at = now() - interval '2 days'
 WHERE request_id = (SELECT id FROM dp WHERE name = 'r');
@@ -150,6 +157,7 @@ SELECT is((SELECT count(*)::int FROM public.dispute_evidence), 2,
   'and both sides of the evidence, which is the point of an adjudicator');
 SELECT is((SELECT count(*)::int FROM public.conversations), 1,
   'the case opens the job''s chat to them — the case is the reason, not the role');
+SELECT is((SELECT count(*)::int FROM public.messages), 1, 'and the messages in it');
 SELECT throws_ok(
   format($$SELECT public.assign_dispute('key-dp-asg-bad-00001', %L,
       'b4444444-4444-4444-8444-333333333333')$$, (SELECT id FROM dp WHERE name = 'd')),
