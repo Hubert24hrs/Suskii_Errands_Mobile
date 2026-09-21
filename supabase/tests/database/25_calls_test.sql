@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(38);
+SELECT plan(40);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('9e111111-1111-4111-8111-bbbbbbbbbbbb', '2348000000181'),   -- customer
@@ -242,9 +242,25 @@ RESET ROLE;
 SELECT set_config('request.jwt.claims',
   '{"sub": "9e444444-4444-4444-8444-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal2"}', true);
 SET LOCAL ROLE authenticated;
-SELECT is((SELECT count(*)::int FROM public.calls), 4, 'support sees it, for the ticket');
+SELECT is((SELECT count(*)::int FROM public.calls), 0,
+  'support does not browse call history: being a support agent is not a reason (RLS matrix §8)');
 SELECT is((SELECT count(*)::int FROM public.masked_numbers), 0,
-  'but support has no business with the proxy numbers');
+  'and has no business with the proxy numbers at all');
+RESET ROLE;
+
+-- A ticket about the job is the reason, and then the metadata opens.
+SELECT set_config('request.jwt.claims',
+  '{"sub": "9e111111-1111-4111-8111-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
+SELECT ok(public.open_ticket('key-cl-ticket-c-000001', 'job', 'The provider never called back.',
+            (SELECT id FROM cl WHERE name = 'r')) IS NOT NULL,
+  'the customer opens a ticket about the job');
+RESET ROLE;
+SELECT set_config('request.jwt.claims',
+  '{"sub": "9e444444-4444-4444-8444-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal2"}', true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT count(*)::int FROM public.calls), 4,
+  'and now support can see the call history, because a ticket points at it');
 RESET ROLE;
 
 -- The window closes with the job.
