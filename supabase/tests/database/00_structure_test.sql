@@ -128,8 +128,8 @@ SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute
     WHERE attrelid = 'public.profiles'::regclass AND attnum > 0 AND NOT attisdropped
       AND has_column_privilege('authenticated', 'public.profiles'::regclass, attnum, 'UPDATE')$$,
-  ARRAY['display_name', 'language', 'avatar_path'],
-  'profiles: authenticated may update only display_name, language, avatar_path');
+  ARRAY['display_name', 'language', 'avatar_path', 'timezone'],
+  'profiles: authenticated may update only display_name, language, avatar_path, timezone');
 
 SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute
