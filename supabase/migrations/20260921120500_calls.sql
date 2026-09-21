@@ -424,12 +424,20 @@ BEGIN
 
   IF v_number IS NULL THEN
     -- No telephony provider is contracted (REPORT §6.3): Infobip is the recommendation, Africa's
-    -- Talking the alternative, and neither is signed. The event is emitted anyway so the seam is
-    -- exercised and the demand is measurable before anybody pays for numbers.
+    -- Talking the alternative, and neither is signed.
+    --
+    -- **NULL, not an exception.** Raising would roll the emitted event back with everything else
+    -- in the transaction, and the whole point of emitting it is to measure how often people reach
+    -- for the phone before anybody pays for numbers. A function whose answer is a phone number
+    -- has an obvious way to say it has none, so the record is worth more than the error code
+    -- here. The reserved code for this case stays unraised until a vendor exists and refuses
+    -- for a real reason — see `contracts/v1-preview/error-codes.json`.
     PERFORM private.emit_event('call', p_call_id::text, 'call.pstn_requested',
       jsonb_build_object('call_id', p_call_id, 'request_id', v_call.request_id,
                          'requested_by', v_uid));
-    RAISE EXCEPTION 'ERR_PSTN_UNAVAILABLE' USING ERRCODE = 'P0001';
+    PERFORM private.idempotency_complete(v_uid, p_idempotency_key,
+      jsonb_build_object('proxy_number', NULL));
+    RETURN NULL;
   END IF;
 
   UPDATE public.calls c SET pstn_fallback = true WHERE c.id = p_call_id;

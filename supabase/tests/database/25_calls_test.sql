@@ -143,14 +143,12 @@ RESET ROLE;
 SELECT set_config('request.jwt.claims',
   '{"sub": "9e111111-1111-4111-8111-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
-SELECT throws_ok(
-  format($$SELECT public.request_pstn_fallback('key-cl-pstn-c-00000001', %L)$$,
-    (SELECT id FROM cl WHERE name = 'c1')),
-  'P0001', 'ERR_PSTN_UNAVAILABLE',
-  'with no telephony provider contracted, the fallback says so plainly');
+SELECT is(public.request_pstn_fallback('key-cl-pstn-c-00000001',
+            (SELECT id FROM cl WHERE name = 'c1')), NULL,
+  'with no telephony provider contracted, there is no number to give');
 RESET ROLE;
 SELECT is((SELECT count(*)::int FROM private.outbox WHERE event_type = 'call.pstn_requested'), 1,
-  'and the demand is recorded, so it can be measured before anybody buys numbers');
+  'and the demand survives to be counted — which raising would have rolled back with it');
 
 SELECT ok(private.record_masked_number((SELECT id FROM cl WHERE name = 'r'),
             '+2348000099999', 'infobip', 'vendor-ref-1') IS NOT NULL,

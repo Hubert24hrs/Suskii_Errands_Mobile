@@ -879,14 +879,14 @@
     },
     {
       "code": "ERR_PSTN_UNAVAILABLE",
-      "status": "implemented",
+      "status": "planned",
       "category": "communication",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "No masked number is allocated for this job. Today this is always the answer: no telephony provider is contracted (REPORT §6.3), so the fallback is a seam and the allocation table ships empty.",
-      "client_action": "Tell the user the phone fallback is not available yet and keep them on the in-app call; do not retry in a loop."
+      "description": "Reserved for a telephony provider that exists and refuses — an exhausted number pool, or a country it does not cover. It is not raised today: `request_pstn_fallback` returns NULL when no number is allocated, because raising would roll back the `call.pstn_requested` event in the same transaction, and counting how often people reach for the phone is the only thing the seam is currently good for. No provider is contracted (REPORT §6.3).",
+      "client_action": "Treat a NULL return as “not available yet”: keep the user on the in-app call and do not retry in a loop. Handle this code the same way when a provider exists."
     }
   ]
 }
