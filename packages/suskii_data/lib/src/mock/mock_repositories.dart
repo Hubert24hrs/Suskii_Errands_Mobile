@@ -7,6 +7,14 @@ import 'fixtures.dart';
 import 'mock_behavior.dart';
 import 'server_sim.dart';
 
+/// Mock record ids. The millisecond clock alone is not unique: two records
+/// minted in the same millisecond collide, and because these ids key the
+/// in-memory maps, a collision silently overwrites the earlier record. The
+/// sequence makes them unique without changing the readable `prefix-…` shape.
+int _mockIdSeq = 0;
+String _mockId(String prefix) =>
+    '$prefix-${DateTime.now().millisecondsSinceEpoch}-${++_mockIdSeq}';
+
 /// Base class wiring the shared behavior gate (latency/offline/failure).
 abstract class _MockRepo {
   _MockRepo(this.db, this.behavior);
@@ -274,7 +282,7 @@ class MockRequestRepository extends _MockRepo implements RequestRepository {
         final user = currentUser;
         // Drafts are free: unverified customers may create them (and use the
         // concierge). Verification gates publishRequest, not create.
-        final id = 'req-${DateTime.now().millisecondsSinceEpoch}';
+        final id = _mockId('req');
         final request = JobRequest(
           id: id,
           customerId: user.id,
@@ -714,7 +722,7 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
             (AppUser u) => u.countryCode == user.countryCode,
             orElse: () => db.users['user-chidi']!,
           );
-          final id = 'req-live-${DateTime.now().millisecondsSinceEpoch}';
+          final id = _mockId('req-live');
           final request = JobRequest(
             id: id,
             customerId: customer.id,
@@ -772,7 +780,7 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
         }
         final user = currentUser;
         final offer = Offer(
-          id: 'offer-${DateTime.now().millisecondsSinceEpoch}',
+          id: _mockId('offer'),
           requestId: requestId,
           providerId: user.id,
           providerName: user.displayName,
@@ -948,7 +956,7 @@ class MockChatRepository extends _MockRepo implements ChatRepository {
     await gate();
     return idempotent('chatSend:$jobId', idempotencyKey, () async {
       final message = ChatMessage(
-        id: 'msg-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('msg'),
         jobId: jobId,
         senderId: currentUser.id,
         type: type,
@@ -1037,7 +1045,7 @@ class MockPaymentRepository extends _MockRepo implements PaymentRepository {
               : null,
         );
       }
-      final id = 'pay-${DateTime.now().millisecondsSinceEpoch}';
+      final id = _mockId('pay');
       final payment = Payment(
         id: id,
         jobId: jobId,
@@ -1149,7 +1157,7 @@ class MockRatingRepository extends _MockRepo implements RatingRepository {
         throw const AppError(ErrorCodes.invalidState);
       }
       final rating = Rating(
-        id: 'rating-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('rating'),
         jobId: jobId,
         raterId: user.id,
         rateeId: isCustomer ? job.providerId! : job.customerId,
@@ -1213,7 +1221,7 @@ class MockSafetyRepository extends _MockRepo implements SafetyRepository {
           return existing;
         }
         final alert = SosAlert(
-          id: 'sos-${DateTime.now().millisecondsSinceEpoch}',
+          id: _mockId('sos'),
           jobId: jobId,
           triggeredBy: user.id,
           status: SosStatus.active,
@@ -1321,7 +1329,7 @@ class MockCallAdapter extends _MockRepo implements CallAdapter {
       if (_jobsInCall.contains(jobId)) {
         throw const AppError(ErrorCodes.callInProgress);
       }
-      final sessionId = 'call-${DateTime.now().millisecondsSinceEpoch}';
+      final sessionId = _mockId('call');
       _jobsInCall.add(jobId);
       _sessionJobs[sessionId] = jobId;
       _states[sessionId] = CallState.connecting;
@@ -1429,7 +1437,7 @@ class MockWalletRepository extends _MockRepo implements WalletRepository {
         throw const AppError(ErrorCodes.withdrawalNeedsApproval);
       }
       final txn = WalletTransaction(
-        id: 'txn-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.pending,
         amount: amount,
@@ -1477,7 +1485,7 @@ class MockReferralRepository extends _MockRepo implements ReferralRepository {
         throw const AppError(ErrorCodes.insufficientBalance);
       }
       return WalletTransaction(
-        id: 'txn-ref-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('txn-ref'),
         kind: WalletTransactionKind.referral,
         status: WalletTransactionStatus.pending,
         amount: amount,
@@ -1604,7 +1612,7 @@ class MockConciergeRepository extends _MockRepo implements ConciergeRepository {
     await gate();
     return idempotent('startConversation', idempotencyKey, () async {
       final conversation = ConciergeConversation(
-        id: 'conv-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('conv'),
         createdAt: serverNow(),
         language: currentUser.preferredLanguage,
       );
@@ -1845,7 +1853,7 @@ class MockVoiceConciergeAdapter extends _MockRepo
       throw const AppError(ErrorCodes.unsupportedLanguage);
     }
     return VoiceSession(
-      sessionId: 'voice-${DateTime.now().millisecondsSinceEpoch}',
+      sessionId: _mockId('voice'),
       conversationId: conversationId,
       language: language,
     );
@@ -1884,7 +1892,7 @@ class MockIdentityVerificationAdapter extends _MockRepo
   Future<LivenessSession> startLivenessSession() async {
     await gate();
     return LivenessSession(
-      sessionId: 'liveness-${DateTime.now().millisecondsSinceEpoch}',
+      sessionId: _mockId('liveness'),
       expiresAt: DateTime.now().add(const Duration(minutes: 10)),
     );
   }
@@ -2354,7 +2362,7 @@ class MockDisputeRepository extends _MockRepo implements DisputeRepository {
         throw const AppError(ErrorCodes.invalidState);
       }
       final dispute = Dispute(
-        id: 'disp-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('disp'),
         jobId: jobId,
         openedBy: user.id,
         reasonKey: reasonKey,
@@ -2465,7 +2473,7 @@ class MockSupportRepository extends _MockRepo implements SupportRepository {
     return idempotent('createTicket', idempotencyKey, () async {
       final now = serverNow();
       final ticket = SupportTicket(
-        id: 'ticket-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('ticket'),
         subject: subject,
         status: SupportTicketStatus.open,
         createdAt: now,
@@ -2632,7 +2640,7 @@ class MockSettingsRepository extends _MockRepo implements SettingsRepository {
         throw const AppError(ErrorCodes.invalidState);
       }
       final contact = TrustedContact(
-        id: 'tc-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('tc'),
         name: name,
         phoneE164: phoneE164,
       );
@@ -2681,7 +2689,7 @@ class MockSettingsRepository extends _MockRepo implements SettingsRepository {
     return idempotent(
       'requestDataExport',
       idempotencyKey,
-      () async => 'export-${DateTime.now().millisecondsSinceEpoch}',
+      () async => _mockId('export'),
     );
   }
 }
@@ -2832,7 +2840,7 @@ class MockProviderToolsRepository extends _MockRepo
         ),
       );
       final txn = WalletTransaction(
-        id: 'txn-${DateTime.now().millisecondsSinceEpoch}',
+        id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.completed,
         amount: quote.net,

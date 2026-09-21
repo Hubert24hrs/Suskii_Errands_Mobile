@@ -418,3 +418,34 @@ Sections for M3..M8 screens get appended here as those milestones are built.
 - Open needs: org onboarding/KYB flow (docs, CAC number), member invitation accept/decline
   handshake, per-worker payout splits, vehicle document upload refs, dispatch audit log,
   multi-org membership semantics.
+
+## M7 — Customer web app (2026-09-21)
+
+The web customer app (`apps/web-customer`) mirrors the mobile customer-mode data needs — the
+M1–M5 sections above apply unchanged. Web-specific deltas:
+
+- **Confirm completion** is now exercised on web too: `confirmCompletion(requestId,
+  idempotencyKey)` — customer-only, only from `completed_by_provider`, releases nothing
+  client-side (settlement stays a server step). Already listed in M4; noting it because the
+  web mock now implements it (`jobProgressRepository`).
+- **Chat-window evaluation client-side**: the web mock tracks `jobConfirmedAt` internally and
+  refuses `sendMessage` with `ERR_CHAT_CLOSED` outside the window, but the client cannot see
+  the deadline. The official contract should expose the chat-window expiry (or an
+  `isChatOpen` flag) on the job/conversation payload so the composer can be hidden before a
+  failed send.
+- **Concierge**: same contract as M3 (draft sync, proposedAction). Web addition: the streamed
+  reply patches the assistant message with `requestId` asynchronously — the official stream
+  protocol should say whether the draft id arrives as a separate event or on message metadata.
+- **Messages list**: derived client-side from the customer's jobs + per-job message watches.
+  A `list_conversations` payload (participants, last message id, unread marker) would avoid
+  N subscriptions — the mobile app has the same need (M4 notes).
+- **Web push**: not built in M7 (mock). Needs the SH-17 contract: push payloads carry only an
+  id; web push subscription registration endpoint per device.
+- **Facial verification on web**: UI is simulated behind the same adapter seam; the vendor
+  web SDK availability is still unverified (spec says VERIFY) — flag for S-05 follow-up.
+- **Voice concierge on web**: entry point is gated per-language on `bootstrap.voiceLanguages`;
+  voice transport (LiveKit JS) is not built in M7 — the voice UI stays behind the flag with a
+  text fallback, same as mobile.
+- **Auth**: the web app currently signs in as a mock persona (`switchPersona` demo hook). The
+  M9 wiring needs `@supabase/ssr` session handling; phone OTP on web reuses the same
+  `auth-send-sms` hook — no new contract surface expected.

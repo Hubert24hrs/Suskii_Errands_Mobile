@@ -46,6 +46,8 @@ key.properties
 node_modules/
 .next/
 out/
+*.tsbuildinfo
+.turbo/
 pnpm-lock.yaml.tmp
 
 # IDE / OS

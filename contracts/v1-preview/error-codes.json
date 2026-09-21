@@ -766,6 +766,28 @@
       "retryable": false,
       "description": "The provider's vehicle type is banned in a zone covering the pickup (BU-09).",
       "client_action": "Say which vehicle types the zone allows; the zone list is readable."
+    },
+    {
+      "code": "ERR_CALL_IN_PROGRESS",
+      "status": "planned",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A call is already active on this job. One active call per job, resolved server-side once the call vendor is chosen; the app enforces it against its mock meanwhile.",
+      "client_action": "Offer to join or end the existing call rather than starting a second."
+    },
+    {
+      "code": "ERR_PROMO_INVALID",
+      "status": "planned",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The promo code is unknown, expired, already used, or not valid for this user or country.",
+      "client_action": "Show the reason next to the field and keep the order total unchanged."
     }
   ]
 }
