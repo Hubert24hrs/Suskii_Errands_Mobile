@@ -8,6 +8,22 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.7] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 2: payment records and the webhook intake. Additive.
+
+- **Added** `ERR_PAYMENT_NOT_FOUND` (`surface: internal`). 87 codes in all.
+- **Changed to `implemented`**: `ERR_PAYMENT_FAILED`, raised when a gateway reports a charge for
+  an amount that is not the job's.
+- **New function** `start_payment(key, request_id, method?)` → `(payment_id, amount_minor,
+  currency, status)`. It creates an intent and **nothing more**: `checkout_url` is NULL until a
+  worker with gateway credentials fills it in, and no such worker exists yet. Calling it again on
+  a live intent returns the same one rather than a second charge.
+- **New table** `payments`, readable by the job's participants. The client never writes it and
+  never confirms a payment: the only path into `paid_held` is a signature-verified webhook.
+- `webhook_events` has no policy for any client role, deliberately — a raw gateway payload carries
+  whatever the gateway put in it.
+
 ## [1.0.0-preview.6] — 2026-09-21 (preview, not binding)
 
 Phase 5's first slice: the double-entry ledger. Additive.

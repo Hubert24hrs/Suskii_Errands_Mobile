@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.6",
+  "version": "1.0.0-preview.7",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -373,7 +373,7 @@
     },
     {
       "code": "ERR_PAYMENT_FAILED",
-      "status": "planned",
+      "status": "implemented",
       "category": "money",
       "surface": "client",
       "sqlstate": "P0001",
@@ -953,6 +953,17 @@
       "retryable": false,
       "description": "A ledger entry of zero. It records nothing and usually means an amount was computed as NULL or rounded away, so it is refused rather than stored.",
       "client_action": "Never expected; fix the posting that produced it."
+    },
+    {
+      "code": "ERR_PAYMENT_NOT_FOUND",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "No payment matches that id, or that gateway reference. Raised inside the webhook and settlement seams, which no client can reach.",
+      "client_action": "Never expected in an app. In a worker: the webhook names a charge we have no record of — store it, do not retry, and raise it with the gateway."
     }
   ]
 }
