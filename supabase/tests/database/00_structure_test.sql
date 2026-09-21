@@ -82,6 +82,8 @@ SELECT is(
        'public.verification_summary',
        'public.moderation_queue', 'public.decide_moderation_case',
        'public.fraud_queue', 'public.review_fraud_flag',
+       'public.start_call', 'public.answer_call', 'public.end_call',
+       'public.request_pstn_fallback',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',
