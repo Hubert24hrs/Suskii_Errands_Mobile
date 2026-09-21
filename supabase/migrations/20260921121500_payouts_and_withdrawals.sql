@@ -154,7 +154,8 @@ AS $$
                    WHERE a.owner_kind = 'user' AND a.owner_id = p_user
                      AND a.account_type = p_account AND a.currency = p_currency), 0)
        - coalesce((SELECT sum(w.amount_minor)::bigint FROM public.withdrawals w
-                   WHERE w.user_id = p_user AND w.source_account = p_account
+                   -- `source_account` is text on the table and an enum here, so say which.
+                   WHERE w.user_id = p_user AND w.source_account = p_account::text
                      AND w.currency = p_currency
                      AND w.status IN ('requested', 'awaiting_approval', 'approved',
                                       'processing')), 0);
