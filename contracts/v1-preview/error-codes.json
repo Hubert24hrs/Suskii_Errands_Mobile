@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.5",
+  "version": "1.0.0-preview.6",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -920,6 +920,39 @@
       "retryable": false,
       "description": "That user has no provider profile. Admin surfaces only.",
       "client_action": "Refresh the user record."
+    },
+    {
+      "code": "ERR_LEDGER_UNBALANCED",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "A ledger posting did not sum to zero, or had fewer than two entries. Raised by `ledger.post` before anything is written, and again by a deferred constraint trigger as the invariant of last resort (S-14). No client can reach the ledger, so this never surfaces in an app.",
+      "client_action": "Never expected. Treat as a money incident: stop the affected worker, do not retry, and reconcile before resuming."
+    },
+    {
+      "code": "ERR_LEDGER_CURRENCY_MISMATCH",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "One ledger transaction mixed two currencies. A job is priced and settled in its own country's currency and there are no cross-currency jobs at launch, so this means a caller built the entries wrongly.",
+      "client_action": "Never expected; same handling as ERR_LEDGER_UNBALANCED."
+    },
+    {
+      "code": "ERR_LEDGER_EMPTY_ENTRY",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": null,
+      "retryable": false,
+      "description": "A ledger entry of zero. It records nothing and usually means an amount was computed as NULL or rounded away, so it is refused rather than stored.",
+      "client_action": "Never expected; fix the posting that produced it."
     }
   ]
 }

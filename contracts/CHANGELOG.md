@@ -8,6 +8,20 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.6] — 2026-09-21 (preview, not binding)
+
+Phase 5's first slice: the double-entry ledger. Additive.
+
+- **Added** `ERR_LEDGER_UNBALANCED`, `ERR_LEDGER_CURRENCY_MISMATCH`, `ERR_LEDGER_EMPTY_ENTRY`,
+  all `surface: internal`. 86 codes in all.
+- **No new enums in the catalogue**, deliberately: `ledger.owner_kind`, `ledger.account_type` and
+  `ledger.transaction_kind` live in the `ledger` schema, which no client role can reach. They are
+  not part of the client contract and the generator does not pick them up.
+- **New function** `public.my_balances()` → `(account_type, currency, balance_minor)` for the
+  caller's own wallet, provider earnings and referral earnings. **Amounts are returned positive**:
+  these are liabilities in the books, so the stored balance is negative and the function negates
+  it. Do not negate again.
+
 ## [1.0.0-preview.5] — 2026-09-21 (preview, not binding)
 
 Phase 8's first slice: support tickets, the scope they open, and suspension. Additive in the
