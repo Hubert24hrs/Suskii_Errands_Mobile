@@ -8,7 +8,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(54);
+SELECT plan(56);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('e1111111-1111-4111-8111-222222222222', '2348000000301'),   -- customer (referred)
@@ -230,15 +230,28 @@ SELECT is(private.mature_referral_commissions(), 0, 'and it does not mature earl
 
 UPDATE public.referral_commissions SET available_at = now() - interval '1 minute'
 WHERE request_id = (SELECT val FROM rf WHERE name = 'job1')::uuid;
-SELECT is(private.mature_referral_commissions(), 2, 'after 72 hours it matures');
+
+-- **One of the two, not both.** An open flag against the customer's referrer — raised earlier,
+-- when somebody claimed their code from a handset they had also used — holds their commission
+-- where it is. That is the whole purpose of a hold that outlasts the dispute window: a signal
+-- that arrives after the money was posted still has somewhere to bite.
+SELECT is(private.mature_referral_commissions(), 1,
+  'after the hold, the referrer with nothing open against them matures');
+SELECT is((SELECT status FROM public.referral_commissions rc
+           WHERE rc.request_id = (SELECT val FROM rf WHERE name = 'job1')::uuid
+             AND rc.referrer_id = 'e4444444-4444-4444-8444-222222222222'),
+  'available'::public.referral_commission_status, 'the second referrer is withdrawable');
+SELECT is(private.available_minor('e3333333-3333-4333-8333-222222222222',
+                                  'referral_earnings', 'NGN'), 0::bigint,
+  'and the flagged one is not, however long the clock runs');
+
+UPDATE public.fraud_flags SET status = 'cleared', reviewed_at = now()
+WHERE rule_key = 'referral_shared_device';
+SELECT is(private.mature_referral_commissions(), 1,
+  'a reviewer clears the flag and it matures on the next sweep');
 SELECT is(private.available_minor('e3333333-3333-4333-8333-222222222222',
                                   'referral_earnings', 'NGN'), 219::bigint,
   'and now it can be withdrawn — posting 9 finally has something to pay out');
-
--- A flag raised after the money was posted is exactly what the hold exists for.
-SELECT is((SELECT count(*)::int FROM public.referral_commissions
-           WHERE referrer_id = 'e4444444-4444-4444-8444-222222222222'
-             AND status = 'available'), 1, 'the second referrer matured too');
 
 -- ---------------------------------------------------------------------------
 -- Clawback: money-flows 7.
