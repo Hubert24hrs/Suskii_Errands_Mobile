@@ -4,6 +4,7 @@ abstract final class ErrorCodes {
   static const String network = 'ERR_NETWORK';
   static const String unknown = 'ERR_UNKNOWN';
   static const String forceUpdateRequired = 'ERR_FORCE_UPDATE_REQUIRED';
+
   /// Wire value is `ERR_COUNTRY_NOT_SUPPORTED`: contracts 1.0.0-preview.1 replaced the app's
   /// own country-disabled name with the server's, which is the one that arrives.
   static const String countryDisabled = 'ERR_COUNTRY_NOT_SUPPORTED';
@@ -22,6 +23,7 @@ abstract final class ErrorCodes {
   static const String offerRoundsExhausted = 'ERR_OFFER_ROUNDS_EXHAUSTED';
   static const String selfDealingBlocked = 'ERR_SELF_DEALING_BLOCKED';
   static const String jobNotCancellable = 'ERR_JOB_NOT_CANCELLABLE';
+
   /// Wire value is `ERR_ILLEGAL_TRANSITION`: the server raises that for every
   /// "not in a state where this is allowed" case, and two names for one rule is drift.
   static const String invalidState = 'ERR_ILLEGAL_TRANSITION';

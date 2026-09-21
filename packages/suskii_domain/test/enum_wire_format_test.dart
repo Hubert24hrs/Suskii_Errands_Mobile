@@ -240,13 +240,17 @@ void main() {
         createdAt: now,
       );
       expect(
-        withMethod(PaymentMethod.bankTransfer, PaymentStatus.held)
-            .toJson()['method'],
+        withMethod(
+          PaymentMethod.bankTransfer,
+          PaymentStatus.held,
+        ).toJson()['method'],
         'bank_transfer',
       );
       expect(
-        withMethod(PaymentMethod.mobileMoney, PaymentStatus.pending)
-            .toJson()['method'],
+        withMethod(
+          PaymentMethod.mobileMoney,
+          PaymentStatus.pending,
+        ).toJson()['method'],
         'mobile_money',
       );
       expect(

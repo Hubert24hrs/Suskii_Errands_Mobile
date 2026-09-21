@@ -192,7 +192,11 @@ class MockDatabase {
       // Mon–Sat 08:00–18:00.
       'user-ada': <AvailabilitySlot>[
         for (var day = 1; day <= 6; day++)
-          AvailabilitySlot(dayOfWeek: day, startMinutes: 8 * 60, endMinutes: 18 * 60),
+          AvailabilitySlot(
+            dayOfWeek: day,
+            startMinutes: 8 * 60,
+            endMinutes: 18 * 60,
+          ),
       ],
     };
     earningsGoals = <String, EarningsGoal>{

@@ -25,12 +25,9 @@ void main() {
       final repo = MockProviderToolsRepository(db, behavior);
       final seeded = await repo.getAvailability();
       expect(seeded, hasLength(6)); // Mon–Sat for user-ada
-      final updated = await repo.setAvailability(
-        const <AvailabilitySlot>[
-          AvailabilitySlot(dayOfWeek: 2, startMinutes: 540, endMinutes: 720),
-        ],
-        idempotencyKey: newIdempotencyKey(),
-      );
+      final updated = await repo.setAvailability(const <AvailabilitySlot>[
+        AvailabilitySlot(dayOfWeek: 2, startMinutes: 540, endMinutes: 720),
+      ], idempotencyKey: newIdempotencyKey());
       expect(updated, hasLength(1));
       expect((await repo.getAvailability()).single.dayOfWeek, 2);
     });
@@ -38,21 +35,15 @@ void main() {
     test('invalid windows are refused', () async {
       final repo = MockProviderToolsRepository(db, behavior);
       await expectThrows(
-        () => repo.setAvailability(
-          const <AvailabilitySlot>[
-            AvailabilitySlot(dayOfWeek: 9, startMinutes: 0, endMinutes: 60),
-          ],
-          idempotencyKey: newIdempotencyKey(),
-        ),
+        () => repo.setAvailability(const <AvailabilitySlot>[
+          AvailabilitySlot(dayOfWeek: 9, startMinutes: 0, endMinutes: 60),
+        ], idempotencyKey: newIdempotencyKey()),
         ErrorCodes.invalidState,
       );
       await expectThrows(
-        () => repo.setAvailability(
-          const <AvailabilitySlot>[
-            AvailabilitySlot(dayOfWeek: 1, startMinutes: 600, endMinutes: 600),
-          ],
-          idempotencyKey: newIdempotencyKey(),
-        ),
+        () => repo.setAvailability(const <AvailabilitySlot>[
+          AvailabilitySlot(dayOfWeek: 1, startMinutes: 600, endMinutes: 600),
+        ], idempotencyKey: newIdempotencyKey()),
         ErrorCodes.invalidState,
       );
     });
@@ -80,26 +71,28 @@ void main() {
       }
     });
 
-    test('instant payout quote: fee + net == amount; payout debits wallet',
-        () async {
-      final repo = MockProviderToolsRepository(db, behavior);
-      const amount = Money(1000000, 'NGN'); // ₦10,000
-      final quote = await repo.quoteInstantPayout(amount);
-      expect(quote.fee.minorUnits + quote.net.minorUnits, amount.minorUnits);
-      expect(quote.fee.minorUnits, greaterThan(0));
+    test(
+      'instant payout quote: fee + net == amount; payout debits wallet',
+      () async {
+        final repo = MockProviderToolsRepository(db, behavior);
+        const amount = Money(1000000, 'NGN'); // ₦10,000
+        final quote = await repo.quoteInstantPayout(amount);
+        expect(quote.fee.minorUnits + quote.net.minorUnits, amount.minorUnits);
+        expect(quote.fee.minorUnits, greaterThan(0));
 
-      final before = db.wallets['user-ada']!.available.minorUnits;
-      final txn = await repo.requestInstantPayout(
-        amount,
-        idempotencyKey: newIdempotencyKey(),
-      );
-      expect(txn.amount, quote.net);
-      expect(txn.status, WalletTransactionStatus.completed);
-      expect(
-        db.wallets['user-ada']!.available.minorUnits,
-        before - amount.minorUnits,
-      );
-    });
+        final before = db.wallets['user-ada']!.available.minorUnits;
+        final txn = await repo.requestInstantPayout(
+          amount,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(txn.amount, quote.net);
+        expect(txn.status, WalletTransactionStatus.completed);
+        expect(
+          db.wallets['user-ada']!.available.minorUnits,
+          before - amount.minorUnits,
+        );
+      },
+    );
 
     test('instant payout enforces balance and KYC', () async {
       final repo = MockProviderToolsRepository(db, behavior);
@@ -122,28 +115,27 @@ void main() {
   });
 
   group('business console (M6)', () {
-    test('individual providers get no organization; members see the org',
-        () async {
-      final repo = MockOrganizationRepository(db, behavior);
-      expect(await repo.getMyOrganization(), isNull); // user-ada: individual
-      await expectThrows(
-        () => repo.getMembers(),
-        ErrorCodes.permissionDenied,
-      );
-      behavior.currentUserId = 'user-bola';
-      final org = await repo.getMyOrganization();
-      expect(org!.name, 'SwiftErrands Ltd');
-      expect((await repo.getMembers()), hasLength(4));
-    });
+    test(
+      'individual providers get no organization; members see the org',
+      () async {
+        final repo = MockOrganizationRepository(db, behavior);
+        expect(await repo.getMyOrganization(), isNull); // user-ada: individual
+        await expectThrows(
+          () => repo.getMembers(),
+          ErrorCodes.permissionDenied,
+        );
+        behavior.currentUserId = 'user-bola';
+        final org = await repo.getMyOrganization();
+        expect(org!.name, 'SwiftErrands Ltd');
+        expect((await repo.getMembers()), hasLength(4));
+      },
+    );
 
     test('per-worker earnings are redacted for non-owners', () async {
       behavior.currentUserId = 'user-tayo'; // worker
       final repo = MockOrganizationRepository(db, behavior);
       final members = await repo.getMembers();
-      expect(
-        members.every((OrgMember m) => m.earningsToDate == null),
-        isTrue,
-      );
+      expect(members.every((OrgMember m) => m.earningsToDate == null), isTrue);
       behavior.currentUserId = 'user-bola'; // owner
       final ownerView = await repo.getMembers();
       expect(
@@ -152,58 +144,57 @@ void main() {
       );
     });
 
-    test('invite is manager-only, idempotent, and blocks a second owner',
-        () async {
-      behavior.currentUserId = 'user-bola';
-      final repo = MockOrganizationRepository(db, behavior);
-      final key = newIdempotencyKey();
-      final invited = await repo.inviteMember(
-        phoneE164: '+2348011122233',
-        role: BusinessRole.worker,
-        idempotencyKey: key,
-      );
-      expect(invited.verificationStatus, VerificationStatus.pending);
-      expect((await repo.getMembers()), hasLength(5));
-      final replay = await repo.inviteMember(
-        phoneE164: '+2348011122233',
-        role: BusinessRole.worker,
-        idempotencyKey: key,
-      );
-      expect(replay.userId, invited.userId);
-      expect((await repo.getMembers()), hasLength(5));
-      await expectThrows(
-        () => repo.inviteMember(
-          phoneE164: '+2348099900011',
-          role: BusinessRole.owner,
-          idempotencyKey: newIdempotencyKey(),
-        ),
-        ErrorCodes.invalidState,
-      );
-      // A worker cannot invite.
-      behavior.currentUserId = 'user-tayo';
-      await expectThrows(
-        () => repo.inviteMember(
-          phoneE164: '+2348099900022',
+    test(
+      'invite is manager-only, idempotent, and blocks a second owner',
+      () async {
+        behavior.currentUserId = 'user-bola';
+        final repo = MockOrganizationRepository(db, behavior);
+        final key = newIdempotencyKey();
+        final invited = await repo.inviteMember(
+          phoneE164: '+2348011122233',
           role: BusinessRole.worker,
-          idempotencyKey: newIdempotencyKey(),
-        ),
-        ErrorCodes.permissionDenied,
-      );
-    });
+          idempotencyKey: key,
+        );
+        expect(invited.verificationStatus, VerificationStatus.pending);
+        expect((await repo.getMembers()), hasLength(5));
+        final replay = await repo.inviteMember(
+          phoneE164: '+2348011122233',
+          role: BusinessRole.worker,
+          idempotencyKey: key,
+        );
+        expect(replay.userId, invited.userId);
+        expect((await repo.getMembers()), hasLength(5));
+        await expectThrows(
+          () => repo.inviteMember(
+            phoneE164: '+2348099900011',
+            role: BusinessRole.owner,
+            idempotencyKey: newIdempotencyKey(),
+          ),
+          ErrorCodes.invalidState,
+        );
+        // A worker cannot invite.
+        behavior.currentUserId = 'user-tayo';
+        await expectThrows(
+          () => repo.inviteMember(
+            phoneE164: '+2348099900022',
+            role: BusinessRole.worker,
+            idempotencyKey: newIdempotencyKey(),
+          ),
+          ErrorCodes.permissionDenied,
+        );
+      },
+    );
 
     test('removeMember drops the member but never the owner', () async {
       behavior.currentUserId = 'user-bola';
       final repo = MockOrganizationRepository(db, behavior);
-      await repo.removeMember(
-        'user-seun',
-        idempotencyKey: newIdempotencyKey(),
-      );
+      await repo.removeMember('user-seun', idempotencyKey: newIdempotencyKey());
       final members = await repo.getMembers();
       expect(members, hasLength(3));
       expect(members.any((OrgMember m) => m.userId == 'user-seun'), isFalse);
       await expectThrows(
-        () => repo.removeMember('user-bola',
-            idempotencyKey: newIdempotencyKey()),
+        () =>
+            repo.removeMember('user-bola', idempotencyKey: newIdempotencyKey()),
         ErrorCodes.invalidState,
       );
     });
@@ -222,7 +213,9 @@ void main() {
       expect(db.orgAssignments['req-org-1'], 'user-tayo');
       // No longer assignable.
       expect(
-        (await repo.getAssignableJobs()).any((JobRequest r) => r.id == 'req-org-1'),
+        (await repo.getAssignableJobs()).any(
+          (JobRequest r) => r.id == 'req-org-1',
+        ),
         isFalse,
       );
       // Re-dispatch is refused.
@@ -246,36 +239,38 @@ void main() {
       );
     });
 
-    test('vehicles: upsert, assign to worker, reject non-worker assignee',
-        () async {
-      behavior.currentUserId = 'user-bola';
-      final repo = MockOrganizationRepository(db, behavior);
-      expect((await repo.getVehicles()), hasLength(3));
-      final updated = await repo.assignVehicle(
-        'veh-2',
-        'user-tayo',
-        idempotencyKey: newIdempotencyKey(),
-      );
-      expect(updated.assignedWorkerId, 'user-tayo');
-      await expectThrows(
-        () => repo.assignVehicle(
+    test(
+      'vehicles: upsert, assign to worker, reject non-worker assignee',
+      () async {
+        behavior.currentUserId = 'user-bola';
+        final repo = MockOrganizationRepository(db, behavior);
+        expect((await repo.getVehicles()), hasLength(3));
+        final updated = await repo.assignVehicle(
           'veh-2',
-          'user-dafe', // dispatcher, not a worker
+          'user-tayo',
           idempotencyKey: newIdempotencyKey(),
-        ),
-        ErrorCodes.permissionDenied,
-      );
-      final added = await repo.upsertVehicle(
-        const Vehicle(
-          id: 'veh-4',
-          organizationId: '', // server overwrites with the caller's org
-          type: VehicleType.tricycle,
-          plate: 'LAG-777-ZZ',
-        ),
-        idempotencyKey: newIdempotencyKey(),
-      );
-      expect(added.organizationId, 'org-swift');
-      expect((await repo.getVehicles()), hasLength(4));
-    });
+        );
+        expect(updated.assignedWorkerId, 'user-tayo');
+        await expectThrows(
+          () => repo.assignVehicle(
+            'veh-2',
+            'user-dafe', // dispatcher, not a worker
+            idempotencyKey: newIdempotencyKey(),
+          ),
+          ErrorCodes.permissionDenied,
+        );
+        final added = await repo.upsertVehicle(
+          const Vehicle(
+            id: 'veh-4',
+            organizationId: '', // server overwrites with the caller's org
+            type: VehicleType.tricycle,
+            plate: 'LAG-777-ZZ',
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(added.organizationId, 'org-swift');
+        expect((await repo.getVehicles()), hasLength(4));
+      },
+    );
   });
 }

@@ -2694,7 +2694,6 @@ class MockSettingsRepository extends _MockRepo implements SettingsRepository {
   }
 }
 
-
 /// ---------------------------------------------------------------------------
 /// M6: provider tools + business console
 /// ---------------------------------------------------------------------------
@@ -2769,8 +2768,9 @@ class MockProviderToolsRepository extends _MockRepo
   @override
   Future<List<DemandZone>> getDemandHeatmap() async {
     await gate();
-    final zones = List<DemandZone>.of(db.demandZones)
-      ..sort((DemandZone a, DemandZone b) => b.intensity.compareTo(a.intensity));
+    final zones = List<DemandZone>.of(
+      db.demandZones,
+    )..sort((DemandZone a, DemandZone b) => b.intensity.compareTo(a.intensity));
     return zones;
   }
 
@@ -2821,24 +2821,24 @@ class MockProviderToolsRepository extends _MockRepo
         throw const AppError(ErrorCodes.kycIncomplete);
       }
       final summary = db.wallets[user.id];
-      final available =
-          summary?.available ?? Money(0, amount.currencyCode);
+      final available = summary?.available ?? Money(0, amount.currencyCode);
       if (amount > available) {
         throw const AppError(ErrorCodes.insufficientBalance);
       }
       final quote = _quote(amount);
       // Debit the full amount; the fee never leaves the platform.
-      db.wallets[user.id] = (summary ??
-              WalletSummary(
-                available: available,
-                pending: Money(0, amount.currencyCode),
-              ))
-          .copyWith(
-        available: Money(
-          available.minorUnits - amount.minorUnits,
-          amount.currencyCode,
-        ),
-      );
+      db.wallets[user.id] =
+          (summary ??
+                  WalletSummary(
+                    available: available,
+                    pending: Money(0, amount.currencyCode),
+                  ))
+              .copyWith(
+                available: Money(
+                  available.minorUnits - amount.minorUnits,
+                  amount.currencyCode,
+                ),
+              );
       final txn = WalletTransaction(
         id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
@@ -2905,8 +2905,7 @@ class MockOrganizationRepository extends _MockRepo
     final members = db.orgMembers[org.id] ?? const <OrgMember>[];
     // Per-worker earnings are Owner-visible only (spec).
     return <OrgMember>[
-      for (final m in members)
-        isOwner ? m : m.copyWith(earningsToDate: null),
+      for (final m in members) isOwner ? m : m.copyWith(earningsToDate: null),
     ];
   }
 
@@ -2924,8 +2923,7 @@ class MockOrganizationRepository extends _MockRepo
         throw const AppError(ErrorCodes.invalidState);
       }
       final members = db.orgMembers.putIfAbsent(org.id, () => <OrgMember>[]);
-      final id =
-          'user-invited-${phoneE164.replaceAll(RegExp('[^0-9]'), '')}';
+      final id = 'user-invited-${phoneE164.replaceAll(RegExp('[^0-9]'), '')}';
       if (members.any((OrgMember m) => m.userId == id)) {
         throw const AppError(ErrorCodes.invalidState);
       }
@@ -2938,8 +2936,7 @@ class MockOrganizationRepository extends _MockRepo
         earningsToDate: const Money(0, 'NGN'),
       );
       members.add(member);
-      db.organizations[org.id] =
-          org.copyWith(memberCount: members.length);
+      db.organizations[org.id] = org.copyWith(memberCount: members.length);
       return member;
     }, argsHash: '$phoneE164|$role');
   }
@@ -2958,8 +2955,7 @@ class MockOrganizationRepository extends _MockRepo
       }
       final members = db.orgMembers[org.id] ?? <OrgMember>[];
       members.removeWhere((OrgMember m) => m.userId == userId);
-      db.organizations[org.id] =
-          org.copyWith(memberCount: members.length);
+      db.organizations[org.id] = org.copyWith(memberCount: members.length);
       return true;
     });
   }
@@ -3004,8 +3000,9 @@ class MockOrganizationRepository extends _MockRepo
           worker.verificationStatus != VerificationStatus.verified) {
         throw const AppError(ErrorCodes.permissionDenied);
       }
-      final assignable = (await getAssignableJobs())
-          .any((JobRequest r) => r.id == jobId);
+      final assignable = (await getAssignableJobs()).any(
+        (JobRequest r) => r.id == jobId,
+      );
       if (!assignable) throw const AppError(ErrorCodes.invalidState);
       db.orgAssignments[jobId] = workerId;
       final updated = job.copyWith(status: JobStatus.assigned);
@@ -3019,9 +3016,7 @@ class MockOrganizationRepository extends _MockRepo
   Future<List<Vehicle>> getVehicles() async {
     await gate();
     final org = _requireOrg();
-    return List<Vehicle>.unmodifiable(
-      db.vehicles[org.id] ?? const <Vehicle>[],
-    );
+    return List<Vehicle>.unmodifiable(db.vehicles[org.id] ?? const <Vehicle>[]);
   }
 
   @override
@@ -3030,22 +3025,27 @@ class MockOrganizationRepository extends _MockRepo
     required String idempotencyKey,
   }) async {
     await gate();
-    return idempotent('orgUpsertVehicle:${vehicle.id}', idempotencyKey,
-        () async {
-      final org = _requireOrg();
-      _requireManager(org.id);
-      final list = db.vehicles.putIfAbsent(org.id, () => <Vehicle>[]);
-      final stored = vehicle.copyWith(organizationId: org.id);
-      final idx = list.indexWhere((Vehicle v) => v.id == vehicle.id);
-      if (idx >= 0) {
-        list[idx] = stored;
-      } else {
-        list.add(stored);
-      }
-      db.organizations[org.id] =
-          org.copyWith(activeVehicleCount: list.length);
-      return stored;
-    }, argsHash: vehicle.toString());
+    return idempotent(
+      'orgUpsertVehicle:${vehicle.id}',
+      idempotencyKey,
+      () async {
+        final org = _requireOrg();
+        _requireManager(org.id);
+        final list = db.vehicles.putIfAbsent(org.id, () => <Vehicle>[]);
+        final stored = vehicle.copyWith(organizationId: org.id);
+        final idx = list.indexWhere((Vehicle v) => v.id == vehicle.id);
+        if (idx >= 0) {
+          list[idx] = stored;
+        } else {
+          list.add(stored);
+        }
+        db.organizations[org.id] = org.copyWith(
+          activeVehicleCount: list.length,
+        );
+        return stored;
+      },
+      argsHash: vehicle.toString(),
+    );
   }
 
   @override
