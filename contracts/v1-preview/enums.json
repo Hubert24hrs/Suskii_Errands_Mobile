@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.11",
+  "version": "1.0.0-preview.12",
   "binding": false,
   "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",
   "enums": {
@@ -196,6 +196,18 @@
       "refunded",
       "partially_refunded"
     ],
+    "payout_rail": [
+      "bank",
+      "mobile_money"
+    ],
+    "payout_status": [
+      "requested",
+      "submitted",
+      "pending",
+      "succeeded",
+      "failed",
+      "reversed"
+    ],
     "proof_kind": [
       "photo",
       "receipt",
@@ -285,6 +297,15 @@
       "rejected",
       "suspended",
       "expired"
+    ],
+    "withdrawal_status": [
+      "requested",
+      "awaiting_approval",
+      "approved",
+      "rejected",
+      "processing",
+      "paid",
+      "failed"
     ]
   }
 }

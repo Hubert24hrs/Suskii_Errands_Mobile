@@ -8,6 +8,26 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.12] — 2026-09-21 (preview, not binding)
+
+Phase 5, part 7: payout accounts, payouts and withdrawals. **Phase 5's database half is complete.**
+
+- **Added** `ERR_PAYOUT_ACCOUNT_NOT_FOUND`, `ERR_PAYOUT_NOT_FOUND`, `ERR_WITHDRAWAL_NOT_FOUND`.
+  97 codes in all.
+- **Changed to `implemented`**: `ERR_INSUFFICIENT_BALANCE`, `ERR_WITHDRAWAL_BELOW_MINIMUM`.
+- **Added enums** `payout_rail`, `payout_status`, `withdrawal_status`. 45 enums in all.
+- **New functions** `add_payout_account`, `available_balance(source, currency)`,
+  `request_withdrawal`, `approve_withdrawal`.
+- **New tables** `payout_accounts` (column-level read — **the ciphertext is granted to nobody**,
+  so a user cannot read back their own account number and neither can a stolen session),
+  `payouts` and `withdrawals`, all own-rows.
+- **`ERR_WITHDRAWAL_NEEDS_APPROVAL` is still not a code and will not become one.** The decision in
+  preview.1 stands: a withdrawal awaiting approval is a *status*. It is now a real one —
+  `withdrawal_status = 'awaiting_approval'`, returned by `request_withdrawal` — so the app has
+  something concrete to switch on. The constant in `suskii_core` should go.
+- An unverified payout account cannot receive money: `verified_at` is set by the bank's name
+  enquiry, never by a client.
+
 ## [1.0.0-preview.11] — 2026-09-21 (preview, not binding)
 
 Phase 5, part 6: disputes.

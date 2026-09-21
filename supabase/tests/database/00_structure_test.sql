@@ -93,6 +93,8 @@ SELECT is(
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',
+       'public.add_payout_account', 'public.available_balance',
+       'public.request_withdrawal', 'public.approve_withdrawal',
        'private.chat_is_open', 'private.try_uuid', 'private.may_join_topic',
        'private.may_read_request_media', 'private.is_job_participant',
        'private.path_request_id',
