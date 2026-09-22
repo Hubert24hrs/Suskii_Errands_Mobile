@@ -6,7 +6,54 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
-Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
+Nothing pending.
+
+## [1.0.0] - 2026-09-22 - **contracts v1, binding**
+
+Kimi Code's M8.5 hand-off landed on 2026-09-21 and unblocked Stage B. `contracts/v1/` is now the
+agreement; `contracts/v1-preview/` is superseded.
+
+**Most of it is generated.** `contracts/tools/generate_v1.py` replays `supabase/migrations` the way
+Postgres does -- CREATE adds, DROP removes, GRANT and REVOKE accumulate -- and emits the RPC
+catalogue, the client-readable tables with their column-level privileges, the enums, the buckets
+and the realtime topics. CI runs it without `--write` and fails on any difference. The parser was
+validated against the one piece of ground truth available: it reproduces the 144-function
+`authenticated` execute allowlist that `00_structure_test.sql` asserts against the live database,
+exactly, with no difference in either direction.
+
+- **`rpc-catalog/index.json`** -- 121 callable functions with arguments, return shapes, the error
+  codes each can raise, the idempotency key where there is one (62 of them), and what the caller
+  must be. `rpc-catalog/private.json` lists the 23 `private.*` helpers granted to `authenticated`
+  that are **not** callable, so the grant does not read like a mistake.
+- **`db-types/tables.json`** -- the 64 tables a client reads directly, with **column-level**
+  privileges. Four tables are narrower than they look; `promo_codes` withholds the budget.
+- **`enums.json`** (45), **`storage/buckets.json`** (6), **`realtime-events/channels.json`** (5 topics).
+- **`state-machines/job.json`** and **`offer.json`** -- authored, because many transitions are
+  written in SQL with a variable source state and a generated table could only be partial. The
+  reverse check is mechanical and is in CI.
+- **`error-codes/`** -- moved from the preview, 109 codes, unchanged in content.
+- **`edge-functions.openapi.yaml`** -- the six functions. Exactly one is callable by an app.
+- **`fixtures/`** -- expired offer, failed payment, disputed job, suspended provider, and the
+  spec's worked money example.
+
+### Corrections this shook out
+
+- **Job transition 9 was wrong in the Phase 1 design doc.** It said `payment_pending -> negotiating`;
+  the implementation returns the request to `agreed`, which is right, because `negotiating` means a
+  counter-offer is outstanding and after an accepted offer none is. The contract records `agreed`
+  and says why. Found by the state-machine cross-check on its first run.
+- **`ERR_PROOF_REQUIRED`'s description was stale** and now names both gates.
+
+### For Kimi Code, at M9
+
+- **Ids are UUIDs.** The mocks use `req-1`, `disp-1`, `off-2`. Anything that parses, sorts or routes
+  on an id needs checking; deep links are the sharp edge.
+- **`messages.id` is `bigint`**, not a UUID, because chat is partitioned. Treat it as an opaque
+  string rather than an `int`.
+- **Arguments are passed by name**, and an optional one is omitted rather than passed as `null`.
+- **A provider reads a request only once the job is funded.** There is no query that returns an
+  exact address to a provider who has not been assigned a funded job.
+- `CHANGE_REQUESTS.md` is open.
 
 ## [1.0.0-preview.18] — 2026-09-22 (preview, not binding)
 

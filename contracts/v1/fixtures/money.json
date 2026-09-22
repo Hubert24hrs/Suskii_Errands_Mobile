@@ -1,0 +1,48 @@
+{
+  "$comment": "The spec's own worked example, posted through money-flows 1a to 1d. These exact numbers are proven by supabase/tests/database/28_ledger_test.sql. If an app ever computes a different total from the same inputs, the app is wrong.",
+  "job": {
+    "agreed_amount_minor": 1000000,
+    "currency": "NGN",
+    "commission_rate_bps": 1250
+  },
+  "breakdown": {
+    "customer_pays": {
+      "amount_minor": 1000000,
+      "currency": "NGN"
+    },
+    "platform_commission": {
+      "amount_minor": 125000,
+      "currency": "NGN"
+    },
+    "gateway_fee_borne_by_provider": {
+      "amount_minor": 29000,
+      "currency": "NGN"
+    },
+    "provider_receives": {
+      "amount_minor": 846000,
+      "currency": "NGN"
+    },
+    "referral_commission_funded_by_platform": {
+      "amount_minor": 21900,
+      "currency": "NGN"
+    },
+    "net_platform_revenue": {
+      "amount_minor": 103100,
+      "currency": "NGN"
+    }
+  },
+  "zero_exponent_currency": {
+    "$comment": "UGX has exponent 0. 12500 is USh 12,500, not USh 125.00. A hardcoded /100 corrupts this, which is how M3.20 happened.",
+    "agreed_amount_minor": 12500,
+    "currency": "UGX",
+    "display": "USh 12,500"
+  },
+  "invariants": [
+    "Entries in a transaction sum to zero.",
+    "One currency per transaction.",
+    "Balances are derived, never stored as truth.",
+    "A promo never reduces provider earnings: commission stays on the full negotiated price and the discount is platform_promo_expense.",
+    "A tip carries no commission.",
+    "No commission on the item float: the customer covers the gateway fee on it so the provider is reimbursed exactly what they spent (OD-04)."
+  ]
+}

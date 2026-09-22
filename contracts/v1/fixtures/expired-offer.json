@@ -1,0 +1,69 @@
+{
+  "$comment": "Two dead offers that look the same to a client and are not. One ran out of time; the other lost, and was expired inside the accept transaction. The board renders both as dead and untappable, but only the first is worth a 'make another offer' prompt.",
+  "request_id": "3f2a91c4-6b1e-4a7d-9f03-0c5d8e2b7a11",
+  "rank_offers": [
+    {
+      "offer_id": "a1c8f0d2-3e44-4b91-8f6a-2d7c9b0e5a33",
+      "provider_id": "7d9e2b10-54cc-4a08-9e31-6f1b3c8d2e77",
+      "display_name": "Tunde A.",
+      "amount_minor": 800000,
+      "currency": "NGN",
+      "score": "0.880",
+      "factors": {
+        "cheapest": true,
+        "new_provider": true,
+        "price_weight": "0.500",
+        "reputation_weight": "0.380"
+      },
+      "status": "pending",
+      "round": 1,
+      "expires_at": "2026-09-22T14:41:00+01:00"
+    },
+    {
+      "offer_id": "b2d9e1f3-4f55-4ca2-9075-3e8daf1c6b44",
+      "provider_id": "8ea0f321-65dd-4b19-af42-701c4d9e3f88",
+      "display_name": "Ngozi E.",
+      "amount_minor": 1000000,
+      "currency": "NGN",
+      "score": "0.488",
+      "factors": {
+        "cheapest": false,
+        "new_provider": false,
+        "price_weight": "0.100",
+        "reputation_weight": "0.388"
+      },
+      "status": "expired",
+      "round": 1,
+      "expires_at": "2026-09-22T14:20:00+01:00"
+    }
+  ],
+  "offer_expired_by_ttl": {
+    "id": "b2d9e1f3-4f55-4ca2-9075-3e8daf1c6b44",
+    "request_id": "3f2a91c4-6b1e-4a7d-9f03-0c5d8e2b7a11",
+    "thread_id": "c3eaf204-5066-4db3-a186-4f9eb02d7c55",
+    "provider_id": "8ea0f321-65dd-4b19-af42-701c4d9e3f88",
+    "amount_minor": 1000000,
+    "currency": "NGN",
+    "status": "expired",
+    "round": 1,
+    "created_at": "2026-09-22T14:10:00+01:00",
+    "expires_at": "2026-09-22T14:20:00+01:00"
+  },
+  "offer_expired_by_sibling": {
+    "id": "d4fb0315-6177-4ec4-b297-5a0fc13e8d66",
+    "request_id": "3f2a91c4-6b1e-4a7d-9f03-0c5d8e2b7a11",
+    "thread_id": "e50c1426-7288-4fd5-a3a8-6b1ad24f9e77",
+    "provider_id": "9fb10432-76ee-4c2a-b053-812d5eaf4099",
+    "amount_minor": 900000,
+    "currency": "NGN",
+    "status": "expired",
+    "round": 2,
+    "created_at": "2026-09-22T14:15:00+01:00",
+    "expires_at": "2026-09-22T14:45:00+01:00"
+  },
+  "errors_a_client_will_see": {
+    "ERR_OFFER_EXPIRED": "Tapped an offer whose TTL had elapsed.",
+    "ERR_OFFER_NOT_ACTIVE": "Tapped an offer a sibling acceptance had already expired. Word it as 'another provider was just selected', not as a mistake the user made.",
+    "ERR_OFFER_NOT_YOUR_TURN": "Countered twice in a row from the same side."
+  }
+}

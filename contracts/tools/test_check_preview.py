@@ -5,6 +5,9 @@ from pathlib import Path
 
 import check_preview
 
+# The two enum-drift tests that used to live here moved to test_generate_v1.py
+# when enums.json moved to generate_v1.py.
+
 
 def write(root: Path, relative: str, content: str) -> None:
     path = root / relative
@@ -36,13 +39,12 @@ class CheckPreviewTest(unittest.TestCase):
             {"code": "ERR_OFFER_EXPIRED", "status": "planned"},
             {"code": "ERR_NETWORK", "status": "client"},
         ])
-        check_preview.write_enums(self.root)
 
     def tearDown(self):
         self._tmp.cleanup()
 
     def catalogue(self, codes):
-        write(self.root, "contracts/v1-preview/error-codes.json", json.dumps({"codes": codes}))
+        write(self.root, "contracts/v1/error-codes/codes.json", json.dumps({"codes": codes}))
 
     def errors(self):
         return [f.message for f in check_preview.check(self.root) if f.level == "error"]
@@ -65,15 +67,7 @@ class CheckPreviewTest(unittest.TestCase):
     def test_codes_only_in_tests_do_not_count(self):
         self.assertNotIn("ERR_ONLY_IN_TESTS", " ".join(self.errors()))
 
-    def test_enum_drift_is_detected(self):
-        write(self.root, "supabase/migrations/2_more.sql",
-              "CREATE TYPE public.urgency AS ENUM ('flexible', 'standard');\n")
-        self.assertTrue(any("enums.json is out of date for: urgency" in m for m in self.errors()))
 
-    def test_enum_value_added_to_existing_type_is_detected(self):
-        path = self.root / "supabase/migrations/1_init.sql"
-        path.write_text(path.read_text().replace("'provider'", "'provider', 'admin'"), encoding="utf-8")
-        self.assertTrue(any("user_mode" in m for m in self.errors()))
 
     def test_malformed_and_duplicate_catalogue_entries(self):
         self.catalogue([

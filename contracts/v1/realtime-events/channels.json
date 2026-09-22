@@ -1,0 +1,33 @@
+{
+  "$comment": "Generated from the private.broadcast() calls in the migrations. Topics are private: private.may_join_topic authorises every join, and a broadcast is a courtesy rather than a guarantee -- the tables are the truth and a client refetches on reconnect (ADR-0009).",
+  "topics": {
+    "job:{id}": [
+      "call.answered",
+      "call.ended",
+      "call.incoming",
+      "call.pstn_ready",
+      "chat.message",
+      "job.status",
+      "sos.raised"
+    ],
+    "ops:sos": [
+      "sos.escalated",
+      "sos.raised",
+      "sos.updated"
+    ],
+    "request:{id}:customer": [
+      "offer.countered",
+      "offer.created",
+      "offer.{status}",
+      "payment.checkout_ready"
+    ],
+    "request:{id}:provider:{id}": [
+      "offer.countered",
+      "offer.created",
+      "offer.{status}"
+    ],
+    "user:{id}": [
+      "notification"
+    ]
+  }
+}

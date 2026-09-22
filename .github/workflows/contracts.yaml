@@ -1,9 +1,16 @@
 name: contracts
 
-# Contract drift check (contracts/README.md rule 3; docs/plan/infra-cicd.md §5). Fails when backend
-# code raises an error code the preview catalogue does not list as implemented, when a catalogued
-# implemented code is no longer raised, or when enums.json no longer matches the migrations.
-# Codes the apps use but the catalogue lacks are reported as warnings only.
+# Contract drift check (contracts/README.md rule 3; docs/plan/infra-cicd.md §5).
+#
+# Two tools. check_preview.py owns the error catalogue: it fails when backend code raises a code
+# the catalogue does not list as implemented, or when an implemented code is no longer raised.
+# generate_v1.py owns everything in contracts/v1 that is a fact about the schema -- the RPC
+# catalogue, the client-readable tables and their column grants, the enums, the buckets and the
+# realtime topics -- and fails when the committed files no longer match supabase/migrations. It
+# also cross-checks the authored job state machine: a from/to pair written as two literals in SQL
+# must appear in contracts/v1/state-machines/job.json.
+#
+# Codes the apps use but the catalogue lacks are reported as warnings only: those are Kimi's files.
 on:
   push:
     branches: [main]
@@ -34,10 +41,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Checker unit tests
         working-directory: contracts/tools
-        run: python3 -m unittest -v test_check_preview
+        run: python3 -m unittest -v test_check_preview test_generate_v1
       - name: Validate JSON files
         run: |
           set -euo pipefail
-          for f in contracts/v1-preview/*.json; do python3 -m json.tool "$f" > /dev/null; done
-      - name: Drift check against backend code
+          find contracts/v1 -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool > /dev/null
+      - name: Error-code drift against backend code
         run: python3 contracts/tools/check_preview.py .
+      - name: contracts/v1 drift against supabase/migrations
+        run: python3 contracts/tools/generate_v1.py .

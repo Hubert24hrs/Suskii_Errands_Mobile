@@ -1,0 +1,192 @@
+{
+  "$comment": "Generated. These are NOT callable by a client: PostgREST exposes only the public schema. They are granted to authenticated because an RLS policy calls them as the invoking role, and a grant with no explanation reads like a mistake. Listed so it does not.",
+  "count": 23,
+  "functions": [
+    {
+      "name": "admin_may_read_countries",
+      "signature": "private.admin_may_read_countries(character[], public.admin_role[])",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121000_polymorphic_scope.sql"
+    },
+    {
+      "name": "admin_may_read_country",
+      "signature": "private.admin_may_read_country(character, public.admin_role[])",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922120700_admin_country_scope.sql"
+    },
+    {
+      "name": "admin_may_read_request",
+      "signature": "private.admin_may_read_request(uuid, public.admin_role[])",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922120700_admin_country_scope.sql"
+    },
+    {
+      "name": "admin_may_read_user",
+      "signature": "private.admin_may_read_user(uuid, public.admin_role[])",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922120700_admin_country_scope.sql"
+    },
+    {
+      "name": "admin_scope_allows",
+      "signature": "private.admin_scope_allows(character)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922120700_admin_country_scope.sql"
+    },
+    {
+      "name": "admin_scope_allows_any",
+      "signature": "private.admin_scope_allows_any(character[])",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121000_polymorphic_scope.sql"
+    },
+    {
+      "name": "chat_is_open",
+      "signature": "private.chat_is_open(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    },
+    {
+      "name": "dispute_scope",
+      "signature": "private.dispute_scope(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260921121400_disputes.sql"
+    },
+    {
+      "name": "fraud_subject_countries",
+      "signature": "private.fraud_subject_countries(text, text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121000_polymorphic_scope.sql"
+    },
+    {
+      "name": "has_admin_role",
+      "signature": "private.has_admin_role(public.admin_role[])",
+      "executable_by": [
+        "authenticated",
+        "service_role"
+      ],
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "is_any_admin",
+      "signature": "private.is_any_admin()",
+      "executable_by": [
+        "authenticated",
+        "service_role"
+      ],
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "is_assigned_job_provider",
+      "signature": "private.is_assigned_job_provider(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121300_participant_reads.sql"
+    },
+    {
+      "name": "is_job_participant",
+      "signature": "private.is_job_participant(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120400_proofs_and_media.sql"
+    },
+    {
+      "name": "is_matched_provider",
+      "signature": "private.is_matched_provider(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121300_participant_reads.sql"
+    },
+    {
+      "name": "is_org_member",
+      "signature": "private.is_org_member(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120800_business_and_zones.sql"
+    },
+    {
+      "name": "may_join_topic",
+      "signature": "private.may_join_topic(text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    },
+    {
+      "name": "may_read_request_media",
+      "signature": "private.may_read_request_media(text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120500_ratings_and_reputation.sql"
+    },
+    {
+      "name": "moderation_subject_countries",
+      "signature": "private.moderation_subject_countries(text, text, uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121000_polymorphic_scope.sql"
+    },
+    {
+      "name": "org_role",
+      "signature": "private.org_role(uuid, uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120800_business_and_zones.sql"
+    },
+    {
+      "name": "path_request_id",
+      "signature": "private.path_request_id(text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120400_proofs_and_media.sql"
+    },
+    {
+      "name": "staff_may_read_request_media",
+      "signature": "private.staff_may_read_request_media(text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922120200_scoped_reads.sql"
+    },
+    {
+      "name": "support_ticket_scope",
+      "signature": "private.support_ticket_scope(uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260921120800_support_and_admin.sql"
+    },
+    {
+      "name": "try_uuid",
+      "signature": "private.try_uuid(text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    }
+  ]
+}
