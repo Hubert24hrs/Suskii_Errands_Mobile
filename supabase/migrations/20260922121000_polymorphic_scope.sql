@@ -104,14 +104,16 @@ AS $$
          JOIN public.requests r ON r.id = rt.request_id
          WHERE rt.id = private.try_uuid(p_subject_id))
       WHEN 'message' THEN
-        -- `messages` is partitioned and its primary key carries the partition key, so a lookup
-        -- by id alone visits every partition. Reachable only through this fallback, which needs
-        -- a case whose author has been deleted, so the cost is paid on the rare path.
+        -- A message id is a `bigint`, not a uuid, so the text is checked for digits before it is
+        -- cast — a subject id is free text and a cast that raises inside a policy takes the whole
+        -- query with it. `messages` is also partitioned with the partition key in its primary
+        -- key, so a lookup by id alone visits every partition; reachable only through this
+        -- fallback, which needs a case whose author has been deleted, so the cost is rare.
         (SELECT array_remove(array_agg(r.country_code), NULL)
          FROM public.messages m
          JOIN public.conversations c ON c.id = m.conversation_id
          JOIN public.requests r ON r.id = c.request_id
-         WHERE m.id = private.try_uuid(p_subject_id))
+         WHERE p_subject_id ~ '^[0-9]{1,18}$' AND m.id = p_subject_id::bigint)
     END);
 $$;
 
