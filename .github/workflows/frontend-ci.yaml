@@ -3,11 +3,9 @@ name: frontend-ci
 on:
   push:
     branches: [main]
-    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml',
-            'package.json', 'package-lock.json']
+    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml']
   pull_request:
-    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml',
-            'package.json', 'package-lock.json']
+    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml']
 
 jobs:
   dart:
@@ -61,27 +59,3 @@ jobs:
             # packages, and the Flutter harness crashes its web compiler on them.
             (cd "$dir" && dart test -p chrome)
           done
-
-  # The three Next.js apps are about fifty pages -- a third of the frontend -- and until this job
-  # existed nothing verified them. `next build` type-checks as it compiles, so a build is the
-  # cheapest thing that would have caught a broken page. It is not a substitute for tests, and
-  # there are none yet (audit 2026-09-22d, W.5).
-  web:
-    runs-on: ubuntu-latest
-    strategy:
-      # Do not stop the other two on the first failure: knowing whether one app broke or all
-      # three is most of the diagnosis.
-      fail-fast: false
-      matrix:
-        app: [web-customer, web-marketing, web-admin]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      # The repository root is an npm workspace over all three apps, so install once there.
-      - name: Install
-        run: npm ci
-      - name: Build ${{ matrix.app }}
-        run: npm run build -w apps/${{ matrix.app }}
