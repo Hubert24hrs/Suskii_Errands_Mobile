@@ -8,6 +8,41 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.1.0] - 2026-09-22
+
+The fourth audit pass (`docs/audit/AUDIT-2026-09-22d.md`). One new function, one **breaking**
+column grant, and two policies narrowed. MINOR rather than MAJOR because the breaking half is a
+column nothing reads yet.
+
+### Breaking, narrowly
+
+- **`payments.checkout_url` is no longer granted to `authenticated`.** It is a capability -- whoever
+  holds the URL can open the customer's hosted payment page -- and `private.is_job_participant`
+  includes the provider, so a job's provider could read the customer's. The column is NULL today and
+  stays NULL until a real gateway exists (client action 4), which is why this is a correction now
+  rather than an incident later.
+
+  **`select('*')` on `payments` will now fail.** Select explicit columns; `db-types/tables.json`
+  lists the twenty that remain. Every other column is unchanged, including the whole amount
+  breakdown, because a provider legitimately needs it to understand their own earnings.
+
+### Added
+
+- **`get_payment_checkout(p_request_id uuid)`** -> `(payment_id, checkout_url, status, expires_at)`.
+  Answers the **payer only**, most recent payment first. This is where the checkout URL lives now.
+  Catalogue goes from 121 functions to 122.
+
+### Changed, and visible in the admin console
+
+- **`profiles` is country-scoped for admins.** It read through `private.is_any_admin()`, so a
+  support agent scoped to Nigeria read every profile on the platform. Now Support, Verification,
+  Finance and Dispute are scoped and super admin is not, which is what the matrix always said.
+- **`approvals` is finance-and-super-admin only, and scoped.** It also read through
+  `is_any_admin()`, so a verification officer read every withdrawal approval in every country.
+
+Both changes make the admin console show **less** than it did. That is the correction, not a
+regression.
+
 ## [1.0.0] - 2026-09-22 - **contracts v1, binding**
 
 Kimi Code's M8.5 hand-off landed on 2026-09-21 and unblocked Stage B. `contracts/v1/` is now the

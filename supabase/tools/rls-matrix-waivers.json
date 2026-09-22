@@ -1,0 +1,95 @@
+{
+  "$comment": "Divergences between docs/plan/rls-policy-matrix.md and the schema that are deliberate. check_rls_matrix.py refuses to pass on anything not either fixed or listed here, and warns when a waiver stops matching anything -- a waiver for something that no longer diverges is its own small lie. Every entry needs a reason a stranger can evaluate, not just an id.",
+  "waivers": [
+    {
+      "id": "fn:get_document_url",
+      "reason": "Renamed. The matrix's `get_document_url(upload_ref, reason_code)` is `public.request_document_access`, which does exactly what the matrix describes including writing `audit.kyc_access` before any URL exists. The matrix text is stale, not the schema.",
+      "action": "Rename in the matrix at the next edit of that section."
+    },
+    {
+      "id": "fn:get_my_verification",
+      "reason": "Renamed. The matrix itself writes it as `get_my_verification() / get_my_kyc_profile()`; the second name is the one that shipped.",
+      "action": "Drop the old name from the matrix."
+    },
+    {
+      "id": "fn:get_wallet",
+      "reason": "Split. `get_wallet()` became `public.my_balances()` plus `public.available_balance()`, because a balance and what is spendable from it are different questions -- `available_balance` subtracts referral commissions that are posted but still holding.",
+      "action": "Update the matrix row to name both."
+    },
+    {
+      "id": "fn:attribute_referral",
+      "reason": "Renamed. `attribute_referral(code)` shipped as `public.claim_referral_code`, with the same before-first-job rule the matrix states.",
+      "action": "Rename in the matrix."
+    },
+    {
+      "id": "fn:review_queue",
+      "reason": "Renamed and split per surface: kyc_review_queue, dispute_queue, fraud_queue, moderation_queue, ticket_queue, business_verification_queue, config_change_queue. The matrix's generic `review_queue()` never existed as one function.",
+      "action": "Replace the generic name in the matrix with the list."
+    },
+    {
+      "id": "fn:resolve_payout_account",
+      "reason": "Not a client function. Name enquiry happens gateway-side in payments-worker and the result comes back through gateway_record_account_verification; `add_payout_account` is the client's half. Exposing a name-resolution endpoint to clients would be an account-enumeration oracle.",
+      "action": "Correct the matrix: this is a worker path, not a client one."
+    },
+    {
+      "id": "fn:get_price_breakdown",
+      "reason": "Superseded by reading the payment row, which carries the whole breakdown as columns (job_amount_minor, float_minor, float_surcharge_minor, discount_minor, fee_minor, amount_minor) under the same RLS the matrix specifies. A function returning the same numbers would be a second source of truth for money.",
+      "action": "Replace the matrix row with a pointer to the payments columns."
+    },
+    {
+      "id": "fn:reveal_access_note",
+      "reason": "Not built, and blocks nothing today: it belongs to `saved_places`, which is not built either. Recorded in AUDIT-2026-09-22c as an open item for before the first live country.",
+      "action": "Build with saved_places. Tracked."
+    },
+    {
+      "id": "table:saved_places",
+      "reason": "Not built. Saved addresses with an access note revealed to the assigned provider during an active job only. A product feature, not a policy gap; it has no backend because it has no screen yet.",
+      "action": "Build before the first live country (AUDIT-2026-09-22c)."
+    },
+    {
+      "id": "table:availability_schedules",
+      "reason": "Not built. Kimi's provider tools page has an availability editor on mock data, so this is a real gap between the app and the backend -- but it is a missing feature rather than a broken control, and it is filed for Kimi in HANDOFF.md so the two halves land together.",
+      "action": "Build alongside Kimi's M9 wiring of the provider tools page."
+    },
+    {
+      "id": "table:category_country_settings",
+      "reason": "Not built as a table. Per-country category settings live in `countries.config` jsonb and in the country packs, which is where the go-live gap check reads them from. A separate table would be a second place for the same fact.",
+      "action": "Correct the matrix to name countries.config."
+    },
+    {
+      "id": "table:referral_attributions",
+      "reason": "Not built as a separate table. Attribution is `referrals` plus `referral_commissions`; the UNIQUE on one referrer per referee is what makes single-level structural, and a third table would let those disagree.",
+      "action": "Correct the matrix."
+    },
+    {
+      "id": "table:ai_conversations",
+      "reason": "Not built. Phase 7's model half needs Vertex AI and GCP billing (client action 1). The deterministic half shipped without it.",
+      "action": "Build with the FastAPI service."
+    },
+    {
+      "id": "cols:payments:SELECT",
+      "reason": "Deliberate, and narrower than it was. The matrix gives a participant `R:part (status, amount)`; the grant is wider because a provider legitimately needs the amount breakdown that decides their own earnings, and a customer needs the fee and discount lines to understand what they paid. What was genuinely wrong -- `checkout_url`, which is a capability rather than a reference -- is revoked in 20260922121400_matrix_gaps.sql and moved behind `get_payment_checkout`, which checks the caller is the payer.",
+      "action": "Correct the matrix cell to name the columns the product actually needs."
+    },
+    {
+      "id": "scope:support_tickets",
+      "reason": "Not a divergence. The matrix gives Support plain `R + F` on support_tickets -- they own the queue -- and the `R:scope` in that row belongs to the Dispute column, which the policy denies entirely. Narrower than specified, and fail-closed.",
+      "action": "None. The heuristic reads the row, not the column."
+    },
+    {
+      "id": "scope:notifications",
+      "reason": "Narrower than specified, deliberately. The matrix gives Support `R:scope` on a user's notifications; the policy gives own-only and no admin clause at all. Reading somebody's notification history is the kind of blanket access S.1 was about, and support has the ticket thread for context.",
+      "action": "Correct the matrix, or widen deliberately if support genuinely needs it."
+    },
+    {
+      "id": "part:message_reads",
+      "reason": "Narrower than specified. The matrix gives `R:part`, which would make read receipts possible; the policy gives own-only, so a 'seen' indicator has no backend. Fail-closed and harmless, but it is a product gap rather than a security one and the contract should not imply the feature works.",
+      "action": "Decide whether read receipts ship. If they do, widen to participants; if not, correct the matrix."
+    },
+    {
+      "id": "part:dispute_evidence",
+      "reason": "Not a divergence. The matrix cell is `R:part (own submissions)` and the policy tests `submitted_by = auth.uid()`, which is exactly that. The heuristic looks for participation helpers and does not recognise an ownership column as satisfying a narrowed R:part.",
+      "action": "None."
+    }
+  ]
+}

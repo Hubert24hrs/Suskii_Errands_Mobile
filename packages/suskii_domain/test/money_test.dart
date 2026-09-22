@@ -11,6 +11,19 @@ void main() {
       expect(Money.exponentOf('KWD'), 3);
     });
 
+    test('fromMajorAmount respects exponent for a typed amount', () {
+      // The bug this replaced: `Money((major * 100).round(), code)` on the
+      // withdraw and instant-payout sheets. In UGX that asked for 100x the
+      // intended amount, so the request was refused for insufficient funds
+      // against a balance that plainly covered it.
+      expect(Money.fromMajorAmount(50000, 'UGX').minorUnits, 50000);
+      expect(Money.fromMajorAmount(12.50, 'NGN').minorUnits, 1250);
+      expect(Money.fromMajorAmount(100, 'USD').minorUnits, 10000);
+      // A fractional amount in a zero-exponent currency rounds; it cannot be
+      // represented, and silently truncating would lose the person money.
+      expect(Money.fromMajorAmount(4500.6, 'XOF').minorUnits, 4501);
+    });
+
     test('fromMajorUnits respects exponent', () {
       expect(Money.fromMajorUnits(100, 'USD').minorUnits, 10000);
       expect(Money.fromMajorUnits(4500, 'XOF').minorUnits, 4500);

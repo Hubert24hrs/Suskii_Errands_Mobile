@@ -196,7 +196,7 @@ class _WithdrawSheetState extends ConsumerState<WithdrawSheet> {
   Money? get _parsed {
     final major = double.tryParse(_amount.text.trim());
     if (major == null || major <= 0) return null;
-    return Money((major * 100).round(), widget.currencyCode);
+    return Money.fromMajorAmount(major, widget.currencyCode);
   }
 
   Future<void> _submit() async {
