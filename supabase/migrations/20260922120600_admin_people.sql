@@ -119,17 +119,19 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ERR_ORGANIZATION_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
-  IF v_org.verification_status = 'verified' AND p_approve THEN
-    RETURN 'verified'::public.verification_status;   -- already decided; nothing new happened
-  END IF;
   -- Nobody verifies a business they are part of, however senior they are. The same rule the
-  -- individual KYC queue has, and for the same reason.
+  -- individual KYC queue has, and for the same reason — and it is checked **before** the
+  -- already-decided shortcut below, because somebody who should not be touching this
+  -- organisation should be refused whatever state it happens to be in.
   IF EXISTS (SELECT 1 FROM public.organization_members m
              WHERE m.organization_id = p_organization_id AND m.user_id = v_uid
                AND m.status <> 'removed')
      OR v_org.created_by = v_uid THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501',
       DETAIL = 'you are part of this organisation';
+  END IF;
+  IF v_org.verification_status = 'verified' AND p_approve THEN
+    RETURN 'verified'::public.verification_status;   -- already decided; nothing new happened
   END IF;
 
   v_status := (CASE WHEN p_approve THEN 'verified' ELSE 'rejected' END)::public.verification_status;
