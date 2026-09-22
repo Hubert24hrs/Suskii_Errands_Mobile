@@ -33,24 +33,30 @@ GRANT ALL ON sf, sft TO anon, authenticated, service_role;
 SELECT set_config('request.jwt.claims',
   '{"sub": "5a111111-1111-4111-8111-eeeeeeeeeeee", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
-INSERT INTO sf VALUES ('tc1', public.add_trusted_contact(
-  'Chidi', '\x1111'::bytea, sha256('2348030000001'::bytea), 'brother'));
+INSERT INTO sf VALUES ('tc1', public.add_trusted_contact('key-sf-contact-chidi1',
+            'Chidi', '\x1111'::bytea, sha256('2348030000001'::bytea), 'brother'));
 SELECT ok((SELECT id FROM sf WHERE name = 'tc1') IS NOT NULL, 'a user adds a trusted contact');
 SELECT is((SELECT count(*)::int FROM public.trusted_contacts), 1, 'and sees their own list');
 SELECT throws_ok(
-  $$SELECT public.add_trusted_contact('Chidi again', '\x2222'::bytea,
+  $$SELECT public.add_trusted_contact('key-sf-contact-again1',
+            'Chidi again', '\x2222'::bytea,
       sha256('2348030000001'::bytea))$$,
   '23505', NULL, 'the same number twice is a mistake, not a second contact');
-SELECT ok(public.add_trusted_contact('Ada', '\x33'::bytea, sha256('2348030000002'::bytea))
+SELECT ok(public.add_trusted_contact('key-sf-contact-ada001',
+            'Ada', '\x33'::bytea, sha256('2348030000002'::bytea))
           IS NOT NULL, 'a second contact is fine');
-SELECT ok(public.add_trusted_contact('Musa', '\x44'::bytea, sha256('2348030000003'::bytea))
+SELECT ok(public.add_trusted_contact('key-sf-contact-musa01',
+            'Musa', '\x44'::bytea, sha256('2348030000003'::bytea))
           IS NOT NULL, 'and a third');
-SELECT ok(public.add_trusted_contact('Ngozi', '\x55'::bytea, sha256('2348030000004'::bytea))
+SELECT ok(public.add_trusted_contact('key-sf-contact-ngozi1',
+            'Ngozi', '\x55'::bytea, sha256('2348030000004'::bytea))
           IS NOT NULL, 'and a fourth');
-SELECT ok(public.add_trusted_contact('Tunde', '\x66'::bytea, sha256('2348030000005'::bytea))
+SELECT ok(public.add_trusted_contact('key-sf-contact-tunde1',
+            'Tunde', '\x66'::bytea, sha256('2348030000005'::bytea))
           IS NOT NULL, 'and a fifth');
 SELECT throws_ok(
-  $$SELECT public.add_trusted_contact('One too many', '\x77'::bytea,
+  $$SELECT public.add_trusted_contact('key-sf-contact-sixth1',
+            'One too many', '\x77'::bytea,
       sha256('2348030000006'::bytea))$$,
   'P0001', 'ERR_TRUSTED_CONTACT_LIMIT', 'the sixth is refused by the database, not by a screen');
 SELECT ok(public.remove_trusted_contact((SELECT id FROM sf WHERE name = 'tc1')),

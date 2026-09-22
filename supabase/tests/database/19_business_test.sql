@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(34);
+SELECT plan(35);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('aaaaaaaa-1111-4111-8111-bbbbbbbbbbbb', '2348000000121'),   -- customer
@@ -54,9 +54,11 @@ SELECT ok(NOT (SELECT private.org_can_bid((SELECT id FROM bz WHERE name = 'org')
 SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-2222-4222-8222-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
-SELECT ok(public.invite_member((SELECT id FROM bz WHERE name = 'org'),
+SELECT ok(public.invite_member('key-bz-inv-dispatch-01',
+            (SELECT id FROM bz WHERE name = 'org'),
             'aaaaaaaa-3333-4333-8333-bbbbbbbbbbbb', 'dispatcher'), 'the owner invites a dispatcher');
-SELECT ok(public.invite_member((SELECT id FROM bz WHERE name = 'org'),
+SELECT ok(public.invite_member('key-bz-inv-worker-001',
+            (SELECT id FROM bz WHERE name = 'org'),
             'aaaaaaaa-4444-4444-8444-bbbbbbbbbbbb', 'worker'), 'and a worker');
 RESET ROLE;
 
@@ -68,7 +70,8 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-5555-4555-8555-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
-  format($$SELECT public.invite_member(%L, 'aaaaaaaa-1111-4111-8111-bbbbbbbbbbbb', 'worker')$$,
+  format($$SELECT public.invite_member('key-bz-inv-outsider-1', %L,
+             'aaaaaaaa-1111-4111-8111-bbbbbbbbbbbb', 'worker')$$,
     (SELECT id FROM bz WHERE name = 'org')),
   'P0001', 'ERR_ORG_ROLE_REQUIRED', 'an outsider cannot add people to somebody else''s business');
 SELECT is((SELECT count(*)::int FROM public.organizations), 0,
@@ -78,14 +81,21 @@ RESET ROLE;
 SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-4444-4444-8444-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
-SELECT is(public.accept_organization_invite((SELECT id FROM bz WHERE name = 'org')),
+SELECT is(public.accept_organization_invite('key-bz-accept-worker1',
+            (SELECT id FROM bz WHERE name = 'org')),
   'worker'::public.business_role, 'the worker accepts and joins');
+-- A retry after a lost response used to be told the business did not exist, because the UPDATE
+-- matches on `status = 'invited'` and the first call had already changed it (audit N.1).
+SELECT is(public.accept_organization_invite('key-bz-accept-worker1',
+            (SELECT id FROM bz WHERE name = 'org')),
+  'worker'::public.business_role, 'and the same key replays the answer rather than raising');
 SELECT is((SELECT count(*)::int FROM public.organizations), 1, 'now they can see the business');
 RESET ROLE;
 SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-3333-4333-8333-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
-SELECT is(public.accept_organization_invite((SELECT id FROM bz WHERE name = 'org')),
+SELECT is(public.accept_organization_invite('key-bz-accept-disp-01',
+            (SELECT id FROM bz WHERE name = 'org')),
   'dispatcher'::public.business_role, 'so does the dispatcher');
 RESET ROLE;
 
