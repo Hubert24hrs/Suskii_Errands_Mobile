@@ -13,5 +13,10 @@
     "dev:web-admin": "npm run dev -w apps/web-admin",
     "dev:web-customer": "npm run dev -w apps/web-customer",
     "dev:web-marketing": "npm run dev -w apps/web-marketing"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.28"
+    }
   }
 }
