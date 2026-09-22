@@ -47,12 +47,17 @@ class _ProviderOnboardingPageState
       (_kind == ProviderKind.individual ||
           _businessNameController.text.trim().isNotEmpty);
 
+  /// One key per save intent (M3.14): kept on failure so a retry replays
+  /// instead of writing a second onboarding record.
+  String? _saveKey;
+
   Future<void> _save() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
+      _saveKey ??= newIdempotencyKey();
       await ref
           .read(providerKycRepositoryProvider)
           .saveOnboarding(
@@ -65,8 +70,9 @@ class _ProviderOnboardingPageState
                   ? _businessNameController.text.trim()
                   : null,
             ),
-            idempotencyKey: newIdempotencyKey(),
+            idempotencyKey: _saveKey!,
           );
+      _saveKey = null;
       if (mounted) context.go(AppRoutes.providerKyc);
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);

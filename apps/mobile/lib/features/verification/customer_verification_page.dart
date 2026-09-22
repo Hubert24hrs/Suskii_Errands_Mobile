@@ -54,6 +54,15 @@ class _CustomerVerificationPageState
     super.dispose();
   }
 
+  /// One key per intent, cleared only on success (M3.14). `_run` swallows the
+  /// error, so a key that survives it is what makes the next tap a replay
+  /// rather than a second consent record or a second verification session --
+  /// `start_verification_session` has no natural uniqueness behind it, which
+  /// is what audit N.1 singled out.
+  String? _consentKey;
+  String? _startKey;
+  String? _idLookupKey;
+
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
@@ -68,22 +77,28 @@ class _CustomerVerificationPageState
     }
   }
 
-  Future<void> _giveConsent() => _run(
-    () => ref
+  Future<void> _giveConsent() => _run(() async {
+    _consentKey ??= newIdempotencyKey();
+    await ref
         .read(verificationRepositoryProvider)
-        .giveBiometricConsent(idempotencyKey: newIdempotencyKey()),
-  );
+        .giveBiometricConsent(idempotencyKey: _consentKey!);
+    _consentKey = null;
+  });
 
   Future<void> _retryFlow() async {
     setState(() {
       _livenessDone = false;
       _livenessFailureKey = null;
     });
-    await _run(
-      () => ref
+    // Starting over is a new intent and gets a new key; a failed start keeps
+    // its key so tapping again replays rather than opening a second session.
+    await _run(() async {
+      _startKey ??= newIdempotencyKey();
+      await ref
           .read(verificationRepositoryProvider)
-          .startFacialVerification(idempotencyKey: newIdempotencyKey()),
-    );
+          .startFacialVerification(idempotencyKey: _startKey!);
+      _startKey = null;
+    });
   }
 
   Future<void> _captureLiveness() async {
@@ -111,16 +126,18 @@ class _CustomerVerificationPageState
     }
   }
 
-  Future<void> _submitIdLookup(String sessionId) => _run(
-    () => ref
+  Future<void> _submitIdLookup(String sessionId) => _run(() async {
+    _idLookupKey ??= newIdempotencyKey();
+    await ref
         .read(verificationRepositoryProvider)
         .submitIdLookup(
           sessionId,
           _idType,
           _idNumberController.text.trim(),
-          idempotencyKey: newIdempotencyKey(),
-        ),
-  );
+          idempotencyKey: _idLookupKey!,
+        );
+    _idLookupKey = null;
+  });
 
   @override
   Widget build(BuildContext context) {

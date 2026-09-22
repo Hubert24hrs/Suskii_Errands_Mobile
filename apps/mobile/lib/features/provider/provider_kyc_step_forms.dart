@@ -85,15 +85,21 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
     super.dispose();
   }
 
+  /// One key per submission intent (M3.14): kept on failure so a retry
+  /// replays instead of creating a second step record.
+  String? _submitKey;
+
   Future<void> _submit(Object input) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
+      _submitKey ??= newIdempotencyKey();
       await ref
           .read(providerKycRepositoryProvider)
-          .submitStep(widget.kind, input, idempotencyKey: newIdempotencyKey());
+          .submitStep(widget.kind, input, idempotencyKey: _submitKey!);
+      _submitKey = null;
       if (mounted) Navigator.of(context).pop();
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);
