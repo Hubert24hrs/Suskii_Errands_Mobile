@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.15",
+  "version": "1.0.0-preview.16",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -1195,6 +1195,17 @@
       "retryable": false,
       "description": "A worker was handed a money operation whose amount is zero or negative - a refund of nothing, for example. Not retried: it is a row somebody should look at, not a call to a gateway.",
       "client_action": "Internal: recorded on the outbox event as a permanent failure."
+    },
+    {
+      "code": "ERR_NOTIFICATION_UNDELIVERED",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": true,
+      "description": "Every channel a notification was decided for failed to send, so the outbox event is retried. One channel succeeding is enough to complete it - retrying then would re-send the one that worked.",
+      "client_action": "Internal: recorded on the outbox event. The inbox row exists either way, so the app is not missing anything."
     }
   ]
 }

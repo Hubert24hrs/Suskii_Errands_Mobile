@@ -118,7 +118,7 @@ def check(root: Path) -> list[Finding]:
 def write_enums(root: Path) -> None:
     path = root / "contracts" / "v1-preview" / "enums.json"
     doc = {
-        "version": "1.0.0-preview.15",
+        "version": "1.0.0-preview.16",
         "binding": False,
         "source": "Generated from CREATE TYPE ... AS ENUM in supabase/migrations by contracts/tools/check_preview.py. "
                   "Values are the snake_case wire format. Adding a value is additive; renaming or removing one is breaking.",

@@ -372,6 +372,13 @@
           "npm:@supabase/server@1.6.1"
         ]
       },
+      "notifications-worker": {
+        "dependencies": [
+          "jsr:@supabase/functions-js@2",
+          "npm:@sentry/deno@10.74.0",
+          "npm:@supabase/server@1.6.1"
+        ]
+      },
       "payments-webhook": {
         "dependencies": [
           "jsr:@supabase/functions-js@2",

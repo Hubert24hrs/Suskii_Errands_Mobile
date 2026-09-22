@@ -4,7 +4,8 @@
     "./device-integrity",
     "./health",
     "./payments-webhook",
-    "./payments-worker"
+    "./payments-worker",
+    "./notifications-worker"
   ],
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

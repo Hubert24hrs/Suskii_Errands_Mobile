@@ -459,6 +459,14 @@ verify_jwt = false
 import_map = "./functions/payments-worker/deno.json"
 entrypoint = "./functions/payments-worker/index.ts"
 
+[functions.notifications-worker]
+enabled = true
+# Invoked on a schedule, like payments-worker, and authenticated the same way: a named secret API
+# key inside the function (withSupabase auth "secret:worker").
+verify_jwt = false
+import_map = "./functions/notifications-worker/deno.json"
+entrypoint = "./functions/notifications-worker/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false

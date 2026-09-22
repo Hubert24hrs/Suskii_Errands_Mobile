@@ -8,6 +8,30 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.16] — 2026-09-22 (preview, not binding)
+
+Phase 9's second pass: the RLS surface, the notification dispatcher, and four signature changes.
+
+- **BREAKING (preview): four client functions take an idempotency key as their first argument.**
+  `add_trusted_contact`, `invite_member`, `accept_organization_invite` and
+  `start_verification_session` now match every other create and transition on the platform.
+  Free today because contracts are non-binding and no client calls the backend yet; it will not
+  be free after M8.5, which is why it is done now. Audit N.1.
+- **Added** `public.get_provider_card(provider_id)` — **the offers board's missing half.** The RLS
+  matrix has named this function since Phase 1 and it did not exist, so a customer comparing
+  offers could learn nothing about the providers. Returns name, avatar, trust level, verified
+  badge, rating **with its count**, vehicle type, verified business name and member-since.
+  A reason is required: you have an offer from them, or a job with them, or you are an admin who
+  may read them. Anything else is `ERR_PERMISSION_DENIED`, not an empty row.
+- **Added** `ERR_NOTIFICATION_UNDELIVERED` (`surface: internal`). 109 codes in all.
+- **Note for the admin dashboard (M8):** `admin_users.country_scope` is enforced now. An officer
+  with a scope sees only their countries, on twenty-eight tables. A screen that assumed a
+  support agent could see the whole platform will show fewer rows, and that is the fix, not a
+  bug. `super_admin` is never scoped.
+- **Note for every app:** a business can no longer be renamed after it is verified, so a
+  "change legal name" control must be hidden once `verification_status = 'verified'`. RLS matches
+  nothing, so the update silently writes nothing rather than erroring — check the row back.
+
 ## [1.0.0-preview.15] — 2026-09-22 (preview, not binding)
 
 Phase 9's first hardening pass, the trip trail, and the admin verbs for people and businesses.
