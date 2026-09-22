@@ -8,6 +8,27 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.18] — 2026-09-22 (preview, not binding)
+
+The Participant column of the RLS matrix, which was never implemented. No new error codes, no
+signature changes — a read that the matrix always specified and no policy delivered.
+
+- **`requests` is now readable by the assigned provider.** Through RLS, not a new function: a
+  plain select on the request behind a job the caller is assigned to. The gate is
+  `jobs.assigned_at`, so it opens when the customer's money is held and not when the offer is
+  accepted. Before this, a provider who accepted a delivery could not read the address.
+- **`request_media` rows are readable by the assigned provider and by a matched one** — a
+  provider with an offer thread. The storage objects were already reachable (Phase 3 widened
+  `may_read_request_media` to the feed's own test); it was the rows describing them that were
+  customer-only, so the table and the bucket disagreed. They agree now.
+- **`job_events` is readable by the provider.** Its provider clause had never evaluated true.
+- **A bidding provider still reads no request.** Deliberate and tested. Do not build a surface
+  that shows an exact address to a provider who has not been assigned a funded job.
+- **Clarification:** `ERR_PROOF_REQUIRED`'s description was stale — it said per-category proof
+  sets were future work, and they shipped on 2026-09-18. It now names both gates (the category's
+  `proof_requirements` counts and the delivery PIN) and says that `DETAIL` carries the kind and
+  the count that is short.
+
 ## [1.0.0-preview.17] — 2026-09-22 (preview, not binding)
 
 Phase 7's deterministic layer and the last of the country scope. No new error codes.

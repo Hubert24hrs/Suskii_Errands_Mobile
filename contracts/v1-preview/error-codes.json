@@ -687,7 +687,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The job cannot be completed until its required proof exists — today the delivery PIN; per-category proof sets arrive with the proofs work.",
+      "description": "The job cannot be completed until its required proof exists: every kind in the category's `proof_requirements` must have enough rows in `proofs`, and a job with a destination needs its delivery PIN verified. `DETAIL` names the kind and the count that is short.",
       "client_action": "Send the provider to the outstanding proof step."
     },
     {
