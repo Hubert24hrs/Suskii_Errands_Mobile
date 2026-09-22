@@ -92,6 +92,8 @@ BEGIN
   RETURN NULL;
 END $$;
 
+REVOKE ALL ON FUNCTION private.refunds_request_execution() FROM PUBLIC, anon, authenticated;
+
 CREATE TRIGGER refunds_request_execution
   AFTER INSERT ON public.refunds
   FOR EACH ROW WHEN (NEW.status = 'pending')

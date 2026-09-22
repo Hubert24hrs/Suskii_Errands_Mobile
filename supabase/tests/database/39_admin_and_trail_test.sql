@@ -167,7 +167,7 @@ SELECT is((SELECT count(*)::int FROM audit.log WHERE action = 'location.trail_re
 SELECT pg_temp.act('f7777777-7777-4777-8777-666666666666', 'aal1');
 SET LOCAL ROLE authenticated;
 INSERT INTO ad VALUES ('org', public.register_organization('key-ad-org-000000001',
-  'Okonkwo Logistics Ltd', 'NG', '\xdeadbeef'::bytea, sha256('RC123456'::bytea))::text);
+  'Okonkwo Logistics Ltd', '\xdeadbeef'::bytea, sha256('RC123456'::bytea))::text);
 RESET ROLE;
 SELECT is((SELECT verification_status FROM public.organizations
            WHERE id = (SELECT val FROM ad WHERE name = 'org')::uuid),

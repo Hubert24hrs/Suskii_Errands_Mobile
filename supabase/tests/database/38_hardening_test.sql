@@ -105,11 +105,12 @@ INSERT INTO hd VALUES ('pay2', (SELECT p.id::text FROM public.payments p
 SELECT ok(private.record_chargeback((SELECT val FROM hd WHERE name = 'pay2')::uuid, 1500,
             'issuer_dispute') IS NOT NULL,
   'the card issuer takes the money back before the job ever settled');
-SELECT is((SELECT -b.balance_minor FROM ledger.balances b
+SELECT is((SELECT coalesce(-sum(b.balance_minor), 0)::bigint FROM ledger.balances b
            JOIN ledger.accounts a ON a.id = b.account_id
            WHERE a.owner_id = 'd2222222-2222-4222-8222-555555555555'
              AND a.account_type = 'provider_earnings'), 0::bigint,
-  'the provider owes nothing: they were never paid, so there is nothing to claw back');
+  'the provider owes nothing — in fact no earnings account exists for them at all, because '
+  'nothing was ever posted to one');
 SELECT is((SELECT count(*)::int FROM ledger.balances b
            JOIN ledger.accounts a ON a.id = b.account_id
            WHERE a.account_type = 'platform_revenue' AND b.balance_minor > 0), 0,
