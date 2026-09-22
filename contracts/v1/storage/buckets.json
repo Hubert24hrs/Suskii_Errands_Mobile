@@ -1,0 +1,170 @@
+{
+  "$comment": "Generated. Every bucket is private; uploads and reads go through a signed URL. The path convention is enforced by the policies listed, not by convention.",
+  "buckets": {
+    "avatars": {
+      "id": "avatars",
+      "public": false,
+      "defined_in": "20260917120200_storage_buckets.sql",
+      "max_bytes": 5242880,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
+      "policies": [
+        {
+          "policy": "avatars_own_folder_delete",
+          "action": "DELETE",
+          "role": "authenticated",
+          "clause": "USING"
+        },
+        {
+          "policy": "avatars_own_folder_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        },
+        {
+          "policy": "avatars_own_folder_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        },
+        {
+          "policy": "avatars_own_folder_update",
+          "action": "UPDATE",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    },
+    "chat-media": {
+      "id": "chat-media",
+      "public": false,
+      "defined_in": "20260918120600_chat_and_realtime.sql",
+      "max_bytes": 10485760,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "audio/mp4",
+        "audio/aac",
+        "audio/ogg"
+      ],
+      "policies": [
+        {
+          "policy": "chat_media_participant_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        },
+        {
+          "policy": "chat_media_participant_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    },
+    "job-proofs": {
+      "id": "job-proofs",
+      "public": false,
+      "defined_in": "20260918120400_proofs_and_media.sql",
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "policies": [
+        {
+          "policy": "job_proofs_provider_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        },
+        {
+          "policy": "job_proofs_participant_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    },
+    "kyc-docs": {
+      "id": "kyc-docs",
+      "public": false,
+      "defined_in": "20260917120200_storage_buckets.sql",
+      "max_bytes": 15728640,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "application/pdf"
+      ],
+      "policies": [
+        {
+          "policy": "kyc_docs_own_folder_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        }
+      ]
+    },
+    "receipts": {
+      "id": "receipts",
+      "public": false,
+      "defined_in": "20260922120200_scoped_reads.sql",
+      "max_bytes": 10485760,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "policies": [
+        {
+          "policy": "receipts_provider_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        },
+        {
+          "policy": "receipts_participant_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    },
+    "request-media": {
+      "id": "request-media",
+      "public": false,
+      "defined_in": "20260918120400_proofs_and_media.sql",
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
+      "policies": [
+        {
+          "policy": "request_media_own_folder_delete",
+          "action": "DELETE",
+          "role": "authenticated",
+          "clause": "USING"
+        },
+        {
+          "policy": "request_media_own_folder_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        },
+        {
+          "policy": "request_media_own_folder_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    }
+  }
+}

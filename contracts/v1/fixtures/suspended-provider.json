@@ -1,0 +1,28 @@
+{
+  "$comment": "Suspension is bounded, explicit and audited by design (OD-25). There is no permanent-ban fixture because no single function call can impose one: an end date is required.",
+  "provider_card": {
+    "provider_id": "9fb10432-76ee-4c2a-b053-812d5eaf4099",
+    "display_name": "Chidi O.",
+    "avatar_path": null,
+    "rating_average": "4.62",
+    "rating_count": 58,
+    "jobs_completed": 61,
+    "member_since": "2026-06-04",
+    "trust_level": "established",
+    "vehicle_types": [
+      "motorcycle"
+    ],
+    "is_available": false
+  },
+  "suspension": {
+    "user_id": "9fb10432-76ee-4c2a-b053-812d5eaf4099",
+    "reason_code": "repeated_late_cancellation",
+    "starts_at": "2026-09-22T09:00:00+01:00",
+    "ends_at": "2026-10-06T09:00:00+01:00",
+    "decided_by": "7d6e35a8-af52-4eb1-b347-4091c26fbe55"
+  },
+  "what_each_side_sees": {
+    "the_provider": "set_online raises ERR_PROVIDER_SUSPENDED, and so does create_offer. Existing assigned jobs are NOT cancelled: they still owe the work and still get paid for it.",
+    "a_customer": "get_provider_card still returns the card, with is_available false. A suspension is not published to customers: it is an employment matter, not a rating."
+  }
+}

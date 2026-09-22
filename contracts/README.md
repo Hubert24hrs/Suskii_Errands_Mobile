@@ -2,22 +2,31 @@
 
 The API and data agreement both agents build against. **Owned by Claude Code.** Read-only for Kimi Code once published.
 
-## Status: not yet published — preview available
+## Status: **published — v1.0.0, 2026-09-22, binding**
 
-Official contracts are published as **v1 in Phase 1**, after Kimi Code hands off at M8.5 and Claude Code has reconciled the draft against `master_spec`.
-
-**Preview (not binding):** [`v1-preview/`](v1-preview/README.md) pins what both agents already use — error codes, the Supabase Auth error mapping, enum wire values and the `Money` shape — and CI keeps it in step with the backend code. Until v1:
+[`v1/`](v1/README.md) is the agreement. Kimi Code hands off at M8.5 landed on 2026-09-21 and v1
+followed the next day. [`v1-preview/`](v1-preview/README.md) is superseded and kept only for the
+four decisions it made.
 
 | Path | Owner | State |
 |---|---|---|
+| `v1/` | Claude Code | **Binding.** Read-only for Kimi Code |
+| `tools/` | Claude Code | `generate_v1.py` regenerates the derived half; `check_preview.py` checks the error catalogue. Both run in CI |
 | `draft/ui-data-requirements.md` | Kimi Code | Live — the frontend records every data need, action, realtime event and error state here. Input, not authority |
-| `CHANGE_REQUESTS.md` | Kimi Code writes, Claude Code resolves | Opens once v1 exists |
-| `v1-preview/`, `tools/` | Claude Code | Live preview, CI-checked |
-| everything else here | Claude Code | Arrives with v1 |
+| `CHANGE_REQUESTS.md` | Kimi Code writes, Claude Code resolves | **Open now that v1 exists** |
+| `v1-preview/` | Claude Code | Superseded |
+
+Most of `v1/` is **generated from `supabase/migrations`** rather than written, because a catalogue
+of 121 functions maintained by hand is a catalogue that is wrong by the end of the week. What is
+authored — the state machines, the error catalogue, the Edge Function surface, the fixtures — is
+authored because it encodes decisions rather than facts, and each carries whatever mechanical
+cross-check is available: a job transition written as two literals in SQL and missing from
+`state-machines/job.json` fails CI, as does an `ERR_` code the backend raises and the catalogue
+does not list.
 
 Where the draft conflicts with `master_spec` on money, security or the state machine, the spec wins and the UI changes. Those changes are listed in `HANDOFF.md`, not negotiated in the draft.
 
-## What v1 will contain
+## What v1 contains
 
 | Artefact | Contents |
 |---|---|

@@ -1,0 +1,6942 @@
+{
+  "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
+  "count": 64,
+  "tables": [
+    {
+      "name": "public.admin_users",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "roles",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "super_admin",
+                "verification_officer",
+                "support_agent",
+                "finance_officer",
+                "dispute_officer"
+              ],
+              "enum_name": "admin_role"
+            }
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_scope",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "mfa_enrolled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "disabled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.approvals",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "subject_kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "subject_id",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "action",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "payload",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "requested_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "approved_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "level",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "decided_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.blocks",
+      "columns": [
+        {
+          "name": "blocker_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "blocked_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120700_relationships.sql"
+    },
+    {
+      "name": "public.calls",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "room_name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "caller_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "callee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "ringing",
+              "active",
+              "ended",
+              "missed",
+              "declined",
+              "failed"
+            ],
+            "enum_name": "call_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "pstn_fallback",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "quality",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "started_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "answered_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "ended_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "duration_s",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120500_calls.sql"
+    },
+    {
+      "name": "public.cities",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "timezone",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "center",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "anon": [
+            "*"
+          ],
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.config_changes",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "target",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "target_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "proposed",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "previous",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "approvals_required",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "requested_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "decided_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "applied_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120000_admin_config.sql"
+    },
+    {
+      "name": "public.consents",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "biometric",
+              "criminal_record_check",
+              "location",
+              "marketing",
+              "voice_processing"
+            ],
+            "enum_name": "consent_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "granted",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "legal_document_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "device_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "recorded_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120600_identity.sql"
+    },
+    {
+      "name": "public.conversations",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    },
+    {
+      "name": "public.countries",
+      "columns": [
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "beta",
+              "live"
+            ],
+            "enum_name": "country_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "currency_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "calling_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "default_language",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "supported_languages",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "commission_rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "referral_rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "config",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "version",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "approved_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "approved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.currencies",
+      "columns": [
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "exponent",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "anon": [
+            "*"
+          ],
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120200_money_primitives.sql"
+    },
+    {
+      "name": "public.dispute_evidence",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "dispute_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "photo",
+              "receipt",
+              "message_range",
+              "location_range",
+              "call_record",
+              "pin_log",
+              "note"
+            ],
+            "enum_name": "evidence_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "storage_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reference",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "submitted_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121400_disputes.sql"
+    },
+    {
+      "name": "public.disputes",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "opened_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "description",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "under_review",
+              "resolved",
+              "withdrawn"
+            ],
+            "enum_name": "dispute_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "frozen_from",
+          "type": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "offers_received",
+              "negotiating",
+              "agreed",
+              "payment_pending",
+              "paid_held",
+              "assigned",
+              "en_route",
+              "arrived",
+              "in_progress",
+              "completed_by_provider",
+              "confirmed",
+              "settlement_pending",
+              "settled",
+              "closed",
+              "cancelled",
+              "expired",
+              "disputed",
+              "refunded"
+            ],
+            "enum_name": "job_status"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "assigned_officer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "sla_due_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "resolution_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolution_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "refund_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121400_disputes.sql"
+    },
+    {
+      "name": "public.favorites",
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120700_relationships.sql"
+    },
+    {
+      "name": "public.feature_flags",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "rollout_pct",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "client_visible",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "payload",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.fraud_flags",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "subject_kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "subject_id",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "rule_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "score",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "cleared",
+              "confirmed"
+            ],
+            "enum_name": "fraud_flag_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "details",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "reviewer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reviewed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolution_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120300_risk.sql"
+    },
+    {
+      "name": "public.job_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "from_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "offers_received",
+              "negotiating",
+              "agreed",
+              "payment_pending",
+              "paid_held",
+              "assigned",
+              "en_route",
+              "arrived",
+              "in_progress",
+              "completed_by_provider",
+              "confirmed",
+              "settlement_pending",
+              "settled",
+              "closed",
+              "cancelled",
+              "expired",
+              "disputed",
+              "refunded"
+            ],
+            "enum_name": "job_status"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "to_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "offers_received",
+              "negotiating",
+              "agreed",
+              "payment_pending",
+              "paid_held",
+              "assigned",
+              "en_route",
+              "arrived",
+              "in_progress",
+              "completed_by_provider",
+              "confirmed",
+              "settlement_pending",
+              "settled",
+              "closed",
+              "cancelled",
+              "expired",
+              "disputed",
+              "refunded"
+            ],
+            "enum_name": "job_status"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "actor_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "actor_kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "provider",
+              "worker",
+              "system",
+              "admin"
+            ],
+            "enum_name": "job_actor_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "idempotency_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "payload",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120300_jobs.sql"
+    },
+    {
+      "name": "public.jobs",
+      "columns": [
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "accepted_offer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "worker_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "agreed_amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "commission_rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "commission_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "net_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "estimated_gateway_fee_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "actual_gateway_fee_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "tip_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "item_float_released_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "delivery_pin_required",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "pickup_pin_verified_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "delivery_pin_verified_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "assigned_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "en_route_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "arrived_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "arrived_reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "started_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "completed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "confirmed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "auto_confirmed",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "settled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "item_float_spent_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "item_float_receipt_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "item_float_approved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120300_jobs.sql"
+    },
+    {
+      "name": "public.legal_documents",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "type",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "version",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "locale",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "url",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "published_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "anon": [
+            "*"
+          ],
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.location_samples",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "pos",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "heading",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "speed_cm_s",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "accuracy_m",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "is_mock",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "recorded_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120500_location_samples.sql"
+    },
+    {
+      "name": "public.masked_numbers",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "proxy_number",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "vendor",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "vendor_ref",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120500_calls.sql"
+    },
+    {
+      "name": "public.message_reads",
+      "columns": [
+        {
+          "name": "conversation_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "last_read_message_id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "read_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    },
+    {
+      "name": "public.messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "conversation_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "sender_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "type",
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "voice_note",
+              "location",
+              "offer_card",
+              "system"
+            ],
+            "enum_name": "chat_message_type"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "body",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "media_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "offer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "location",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "moderation_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "enum_name": "moderation_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "moderation_flags",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120600_chat_and_realtime.sql"
+    },
+    {
+      "name": "public.moderation_cases",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "subject_kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "subject_id",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "author_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "action",
+          "type": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "hold",
+              "block"
+            ],
+            "enum_name": "moderation_action"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "labels",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "source",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "upheld",
+              "overturned"
+            ],
+            "enum_name": "moderation_case_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "reviewer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reviewed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120200_moderation.sql"
+    },
+    {
+      "name": "public.notification_deliveries",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "notification_id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "channel",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "attempted_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120900_notification_dispatch.sql"
+    },
+    {
+      "name": "public.notification_preferences",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "channel",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "category",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "quiet_start",
+          "type": {
+            "type": "object",
+            "sql_type": "time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "quiet_end",
+          "type": {
+            "type": "object",
+            "sql_type": "time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "INSERT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "enabled",
+            "quiet_end",
+            "quiet_start"
+          ]
+        }
+      },
+      "defined_in": "20260916120600_identity.sql"
+    },
+    {
+      "name": "public.notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "request_matched",
+              "offer_received",
+              "offer_countered",
+              "offer_accepted",
+              "offer_expired",
+              "job_assigned",
+              "job_status",
+              "chat_message",
+              "rating_received",
+              "system"
+            ],
+            "enum_name": "notification_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "title_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "body_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "params",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "deep_link",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "read_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120900_notifications_and_fanout.sql"
+    },
+    {
+      "name": "public.offer_threads",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "round_count",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "enum_name": "offer_thread_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "organization_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120100_marketplace_offers.sql"
+    },
+    {
+      "name": "public.offers",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "thread_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "author_side",
+          "type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "provider"
+            ],
+            "enum_name": "user_mode"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "message",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "countered",
+              "accepted",
+              "declined",
+              "expired",
+              "withdrawn"
+            ],
+            "enum_name": "offer_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status_reason",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "round",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "supersedes_offer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status_changed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120100_marketplace_offers.sql"
+    },
+    {
+      "name": "public.organization_members",
+      "columns": [
+        {
+          "name": "organization_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "role",
+          "type": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "dispatcher",
+              "worker"
+            ],
+            "enum_name": "business_role"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "invited",
+              "active",
+              "removed"
+            ],
+            "enum_name": "org_member_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "can_self_accept",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "invited_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "joined_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120800_business_and_zones.sql"
+    },
+    {
+      "name": "public.organizations",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "legal_name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "registration_number_ciphertext",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "registration_blind_index",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "verification_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "in_review",
+              "verified",
+              "rejected",
+              "suspended",
+              "expired"
+            ],
+            "enum_name": "verification_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "suspended_until",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "suspension_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "verification_note_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "verified_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reviewed_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "legal_name"
+          ]
+        }
+      },
+      "defined_in": "20260918120800_business_and_zones.sql"
+    },
+    {
+      "name": "public.payments",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "payer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "gateway",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "gateway_reference",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "method",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "pending",
+              "held",
+              "failed",
+              "refunded",
+              "partially_refunded"
+            ],
+            "enum_name": "payment_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "fee_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "checkout_url",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "confirmed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "failed_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "discount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "job_amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "float_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "float_surcharge_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121000_payments.sql"
+    },
+    {
+      "name": "public.payout_accounts",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "rail",
+          "type": {
+            "type": "string",
+            "enum": [
+              "bank",
+              "mobile_money"
+            ],
+            "enum_name": "payout_rail"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "account_ciphertext",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "account_blind_index",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "institution_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "holder_name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "verified_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "is_default",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "country_code",
+            "created_at",
+            "holder_name",
+            "id",
+            "institution_code",
+            "is_default",
+            "rail",
+            "user_id",
+            "verified_at"
+          ]
+        }
+      },
+      "defined_in": "20260921121500_payouts_and_withdrawals.sql"
+    },
+    {
+      "name": "public.payouts",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "beneficiary_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "payout_account_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "withdrawal_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "source_account",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "fee_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "submitted",
+              "pending",
+              "succeeded",
+              "failed",
+              "reversed"
+            ],
+            "enum_name": "payout_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "gateway",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "gateway_reference",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "failure_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "settled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121500_payouts_and_withdrawals.sql"
+    },
+    {
+      "name": "public.pricing_guardrails",
+      "columns": [
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "category_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "soft_min_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "soft_max_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "hard_max_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120100_marketplace_offers.sql"
+    },
+    {
+      "name": "public.profiles",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "display_name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "language",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "avatar_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "active_mode",
+          "type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "provider"
+            ],
+            "enum_name": "user_mode"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "customer_verification",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "in_review",
+              "verified",
+              "rejected",
+              "suspended",
+              "expired"
+            ],
+            "enum_name": "verification_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "provider_verification",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "in_review",
+              "verified",
+              "rejected",
+              "suspended",
+              "expired"
+            ],
+            "enum_name": "verification_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "trust_level",
+          "type": {
+            "type": "string",
+            "enum": [
+              "new",
+              "verified",
+              "trusted",
+              "elite"
+            ],
+            "enum_name": "trust_level"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "version",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "timezone",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "avatar_path",
+            "display_name",
+            "language",
+            "timezone"
+          ]
+        }
+      },
+      "defined_in": "20260916120600_identity.sql"
+    },
+    {
+      "name": "public.prohibited_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "match_terms",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "action",
+          "type": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "hold",
+              "block"
+            ],
+            "enum_name": "moderation_action"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "active",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120200_moderation.sql"
+    },
+    {
+      "name": "public.promo_codes",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "discount_kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "percent"
+            ],
+            "enum_name": "discount_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "discount_value",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "max_discount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "budget_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "spent_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "max_uses",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "per_user_limit",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "stacks_with_referral",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "starts_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "ends_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "active",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "active",
+            "code",
+            "country_code",
+            "currency",
+            "discount_kind",
+            "discount_value",
+            "ends_at",
+            "id",
+            "max_discount_minor",
+            "stacks_with_referral",
+            "starts_at"
+          ]
+        }
+      },
+      "defined_in": "20260921121200_promos_and_tips.sql"
+    },
+    {
+      "name": "public.promo_redemptions",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "promo_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "discount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121200_promos_and_tips.sql"
+    },
+    {
+      "name": "public.proofs",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "photo",
+              "receipt",
+              "signature"
+            ],
+            "enum_name": "proof_kind"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "storage_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "display_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "device_captured_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "device_point",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "server_received_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "uploaded_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120400_proofs_and_media.sql"
+    },
+    {
+      "name": "public.provider_profiles",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string",
+            "enum": [
+              "individual",
+              "business"
+            ],
+            "enum_name": "provider_kind"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "bio",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "vehicle_type",
+          "type": {
+            "type": "string",
+            "enum": [
+              "walking",
+              "bicycle",
+              "motorcycle",
+              "tricycle",
+              "car",
+              "van",
+              "truck"
+            ],
+            "enum_name": "vehicle_type"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "online",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "online_since",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "suspended_until",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "suspension_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "rating_avg_milli",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "rating_count",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "completion_rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "cancellation_rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "response_time_p50_s",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "organization_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "bio",
+            "vehicle_type"
+          ]
+        }
+      },
+      "defined_in": "20260918120200_providers_and_matching.sql"
+    },
+    {
+      "name": "public.provider_service_areas",
+      "columns": [
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "city_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120200_providers_and_matching.sql"
+    },
+    {
+      "name": "public.provider_services",
+      "columns": [
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "category_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "credential_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "in_review",
+              "verified",
+              "rejected",
+              "suspended",
+              "expired"
+            ],
+            "enum_name": "verification_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120200_providers_and_matching.sql"
+    },
+    {
+      "name": "public.ratings",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "rater_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "ratee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "direction",
+          "type": {
+            "type": "string",
+            "enum": [
+              "customer_to_provider",
+              "provider_to_customer"
+            ],
+            "enum_name": "rating_direction"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "stars",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "tags",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "comment",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "moderation_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "enum_name": "moderation_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "moderation_flags",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "visible_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120500_ratings_and_reputation.sql"
+    },
+    {
+      "name": "public.referral_campaigns",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "budget_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "spent_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "starts_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "ends_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "active",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "active",
+            "country_code",
+            "currency",
+            "ends_at",
+            "id",
+            "name",
+            "rate_bps",
+            "starts_at"
+          ]
+        }
+      },
+      "defined_in": "20260922120100_referrals.sql"
+    },
+    {
+      "name": "public.referral_codes",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120100_referrals.sql"
+    },
+    {
+      "name": "public.referral_commissions",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "referral_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "referrer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "referee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "referee_role",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "base_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "rate_bps",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "campaign_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "earned",
+              "holding",
+              "available",
+              "reversed"
+            ],
+            "enum_name": "referral_commission_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "available_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "posted_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reversed_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120100_referrals.sql"
+    },
+    {
+      "name": "public.referrals",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "referrer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "referee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "source",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "attributed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "blocked_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "blocked_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260922120100_referrals.sql"
+    },
+    {
+      "name": "public.refunds",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "payment_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "succeeded",
+              "failed"
+            ],
+            "enum_name": "refund_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "gateway_reference",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "requested_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "approved_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "settled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121100_refunds_and_cancellations.sql"
+    },
+    {
+      "name": "public.remote_config",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "value",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "client_visible",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.reports",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "reporter_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "subject_user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "details",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "reviewing",
+              "actioned",
+              "dismissed"
+            ],
+            "enum_name": "report_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "resolution_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolved_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120700_relationships.sql"
+    },
+    {
+      "name": "public.request_media",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "storage_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "kind",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120000_marketplace_requests.sql"
+    },
+    {
+      "name": "public.requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "customer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "city_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "category_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "is_custom_category",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "custom_category_label",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "description",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "urgency",
+          "type": {
+            "type": "string",
+            "enum": [
+              "flexible",
+              "standard",
+              "urgent",
+              "emergency"
+            ],
+            "enum_name": "urgency"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "offers_received",
+              "negotiating",
+              "agreed",
+              "payment_pending",
+              "paid_held",
+              "assigned",
+              "en_route",
+              "arrived",
+              "in_progress",
+              "completed_by_provider",
+              "confirmed",
+              "settlement_pending",
+              "settled",
+              "closed",
+              "cancelled",
+              "expired",
+              "disputed",
+              "refunded"
+            ],
+            "enum_name": "job_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "pickup_point",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "pickup_label",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "pickup_landmark_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "destination_point",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "destination_label",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "destination_landmark_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "scheduled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "preferred_price_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "item_float_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "declared_value_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_via",
+          "type": {
+            "type": "string",
+            "enum": [
+              "app",
+              "web",
+              "concierge",
+              "voice"
+            ],
+            "enum_name": "request_channel"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "version",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "published_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "cancelled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "cancellation_reason_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "moderation_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "enum_name": "moderation_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "moderation_flags",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "declared_value_minor",
+            "description",
+            "destination_label",
+            "destination_landmark_note",
+            "item_float_minor",
+            "pickup_label",
+            "pickup_landmark_note",
+            "preferred_price_minor",
+            "scheduled_at",
+            "urgency"
+          ]
+        }
+      },
+      "defined_in": "20260918120000_marketplace_requests.sql"
+    },
+    {
+      "name": "public.service_categories",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "parent_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "name_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "icon_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "requires_vehicle",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "allows_custom",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "proof_requirements",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "offer_ttl_seconds",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "max_counter_rounds",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "sort_order",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "active",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "anon": [
+            "*"
+          ],
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120000_marketplace_requests.sql"
+    },
+    {
+      "name": "public.sos_incidents",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "raised_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "point",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "acknowledged",
+              "dispatched",
+              "resolved",
+              "false_alarm"
+            ],
+            "enum_name": "sos_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "partner_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "partner_notified_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "partner_ack_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "ops_assignee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "ops_ack_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "trusted_contacts_notified",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "resolution_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "resolved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "escalated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120000_safety.sql"
+    },
+    {
+      "name": "public.sos_partners",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "city_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "integration",
+          "type": {
+            "type": "string",
+            "enum": [
+              "api",
+              "console",
+              "phone"
+            ],
+            "enum_name": "sos_partner_integration"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "secret_ref",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "escalation_phone",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "active",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120000_safety.sql"
+    },
+    {
+      "name": "public.support_tickets",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "category",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "open",
+              "waiting_on_user",
+              "waiting_on_support",
+              "resolved",
+              "closed"
+            ],
+            "enum_name": "support_ticket_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "priority",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "ai_triage",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "assignee_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "resolved_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120800_support_and_admin.sql"
+    },
+    {
+      "name": "public.ticket_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "ticket_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "author_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "body",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "internal",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120800_support_and_admin.sql"
+    },
+    {
+      "name": "public.tips",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "customer_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "payment_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121200_promos_and_tips.sql"
+    },
+    {
+      "name": "public.trip_share_links",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "token_hash",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "revoked_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "last_seen_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120000_safety.sql"
+    },
+    {
+      "name": "public.trusted_contacts",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "phone_ciphertext",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "phone_blind_index",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "relationship_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921120000_safety.sql"
+    },
+    {
+      "name": "public.user_devices",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "platform",
+          "type": {
+            "type": "string",
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ],
+            "enum_name": "device_platform"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "device_fingerprint_hash",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "push_token",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "voip_token",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "app_version",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "integrity_verdict",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "rasp_signals",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "last_seen_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "app_version",
+            "created_at",
+            "id",
+            "last_seen_at",
+            "platform",
+            "user_id"
+          ]
+        }
+      },
+      "defined_in": "20260916120600_identity.sql"
+    },
+    {
+      "name": "public.vehicles",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "organization_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "owner_user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "type",
+          "type": {
+            "type": "string",
+            "enum": [
+              "walking",
+              "bicycle",
+              "motorcycle",
+              "tricycle",
+              "car",
+              "van",
+              "truck"
+            ],
+            "enum_name": "vehicle_type"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "plate_ciphertext",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "plate_blind_index",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "assigned_worker_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "documents_status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "in_review",
+              "verified",
+              "rejected",
+              "suspended",
+              "expired"
+            ],
+            "enum_name": "verification_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "documents_expire_on",
+          "type": {
+            "type": "string",
+            "format": "date"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120800_business_and_zones.sql"
+    },
+    {
+      "name": "public.withdrawals",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "source_account",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "payout_account_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "awaiting_approval",
+              "approved",
+              "rejected",
+              "processing",
+              "paid",
+              "failed"
+            ],
+            "enum_name": "withdrawal_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "approvals_required",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "rejection_reason_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "decided_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "paid_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260921121500_payouts_and_withdrawals.sql"
+    },
+    {
+      "name": "public.zones",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "city_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "boundary",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "allowed_vehicle_types",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "walking",
+                "bicycle",
+                "motorcycle",
+                "tricycle",
+                "car",
+                "van",
+                "truck"
+              ],
+              "enum_name": "vehicle_type"
+            }
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260918120800_business_and_zones.sql"
+    }
+  ]
+}

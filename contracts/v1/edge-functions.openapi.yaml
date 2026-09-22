@@ -1,0 +1,204 @@
+openapi: 3.1.0
+
+# Authored, not generated: a Deno handler's routing is code, and inferring an HTTP contract from
+# it would be guesswork dressed as a fact. What IS mechanical lives in rpc-catalog/index.json.
+#
+# The headline for a client developer: of the six Edge Functions deployed, exactly ONE is called
+# by an app (`device-integrity`). Two are called by Supabase Auth and by payment gateways with
+# their own signatures, and three are workers invoked on a schedule with a named secret. An app
+# that finds itself wanting to call a worker has found a bug in its own design, not a missing
+# endpoint.
+
+info:
+  title: Suskii Errands — Edge Functions
+  version: 1.0.0
+  description: >
+    Every endpoint returns errors as `{ "error": { "code": "ERR_...", "request_id": "..." } }`
+    with the code drawn from contracts/v1/error-codes/codes.json, and echoes `x-request-id`.
+    Money never appears in a request body here: the server computes it. See money.schema.json.
+
+servers:
+  - url: https://{project_ref}.supabase.co/functions/v1
+    variables:
+      project_ref:
+        default: localhost
+        description: Per environment; the app reads it from its bootstrap configuration.
+
+tags:
+  - name: app
+    description: Callable by a signed-in app.
+  - name: platform
+    description: Called by Supabase Auth or a payment gateway, authenticated by a signature over the raw body.
+  - name: worker
+    description: Invoked on a schedule with a named secret API key. Never callable by an app.
+
+components:
+  securitySchemes:
+    supabaseJwt:
+      type: http
+      scheme: bearer
+      description: The signed-in user's Supabase access token.
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: webhook-signature
+      description: >
+        Standard Webhooks signature over the raw request body. The body is stored before it is
+        parsed and de-duplicated before it is acted on, so a replay is cheap and a forgery is
+        rejected before it can reach the ledger.
+    workerKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: A named secret, so one caller's key can be rotated without touching another's.
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              pattern: '^ERR_[A-Z0-9_]+$'
+            request_id:
+              type: string
+  responses:
+    Error:
+      description: A stable error code. Never a raw exception or a vendor message.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /device-integrity:
+    post:
+      tags: [app]
+      operationId: verifyDeviceIntegrity
+      security:
+        - supabaseJwt: []
+      summary: Attest that the app is running on a genuine, unmodified device.
+      description: >
+        Play Integrity on Android, App Attest on iOS, both verified server-side against the
+        vendor's own keys. The verdict is recorded against the device; the app is told only
+        whether it passed. A failed verdict is a risk signal, not a refusal: the risk engine
+        raises a flag and a person decides (OD-25).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform, token]
+              properties:
+                platform:
+                  type: string
+                  enum: [android, ios]
+                token:
+                  type: string
+                  description: Play Integrity token, or the App Attest attestation/assertion.
+                key_id:
+                  type: string
+                  description: iOS only. The App Attest key identifier.
+                challenge:
+                  type: string
+      responses:
+        '200':
+          description: Verdict recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  passed: { type: boolean }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /auth-send-sms:
+    post:
+      tags: [platform]
+      operationId: authSendSms
+      security:
+        - webhookSignature: []
+      summary: Supabase Auth's send-SMS hook. Not callable by an app.
+      description: >
+        `verify_jwt = false` in config.toml, because Auth calls it without one; the Standard
+        Webhooks signature inside the handler is the authentication. **The vendor adapters are
+        deliberately unwritten** — Nigerian sender-ID registration and DND whitelisting take
+        weeks and have not started (client action 5), so there is no account to send through.
+      responses:
+        '200': { description: Accepted for delivery. }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /payments-webhook:
+    post:
+      tags: [platform]
+      operationId: paymentsWebhook
+      security:
+        - webhookSignature: []
+      summary: A payment gateway reporting a charge, a transfer or a refund.
+      description: >
+        The order is the contract: verify the signature over the **raw** body, store the raw
+        event, de-duplicate across partitions, verify server-side with the gateway, and only then
+        post to the ledger. A client cannot reach this path and cannot confirm its own payment —
+        `confirm_payment` has no grant to any client role, and a pgTAP test asserts it.
+      responses:
+        '200': { description: Stored. Idempotent on the gateway's event id. }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /payments-worker:
+    post:
+      tags: [worker]
+      operationId: paymentsWorker
+      security:
+        - workerKey: []
+      summary: Drain the payment outbox — checkout, transfer, name enquiry, refund.
+      description: >
+        Claims work with FOR UPDATE SKIP LOCKED and calls the country pack's gateway. The
+        Flutterwave and Paystack adapters are deliberately unwritten: their payload shapes and
+        signature schemes are not in the research and spike S-12 settles them against a sandbox
+        that needs merchant accounts (client action 4). The console provider refuses to run in
+        production, so a country pack still routing to it fails loudly rather than silently
+        pretending to move money.
+      responses:
+        '200': { description: Batch processed. }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /notifications-worker:
+    post:
+      tags: [worker]
+      operationId: notificationsWorker
+      security:
+        - workerKey: []
+      summary: Drain the notification outbox and send per channel.
+      description: >
+        Re-decides nothing: `private.notify` already applied channel preferences and quiet hours
+        and wrote the decision onto the event. Records an outcome per channel and retries only
+        when every channel failed. The push payload is built from the message rather than copied
+        from it, so an amount or a name can never reach a lock screen. **No push actually leaves
+        the building**: APNs and FCM credentials do not exist (client action 6).
+      responses:
+        '200': { description: Batch processed. }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /health:
+    get:
+      tags: [platform]
+      operationId: health
+      security:
+        - workerKey: []
+      summary: Uptime and dependency check for Cloud Monitoring.
+      responses:
+        '200':
+          description: Healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+                  checks: { type: object, additionalProperties: true }
+        '503': { $ref: '#/components/responses/Error' }

@@ -1,0 +1,39 @@
+{
+  "$comment": "Authored from docs/plan/state-machines/offer-negotiation.md. The invariants below are the ones spike S-10 measured under 750 concurrent acceptances: zero double acceptances, zero deadlocks.",
+  "machine": "offer",
+  "subject": "public.offers.status",
+  "enum": "offer_status",
+  "states": [
+    { "name": "pending", "terminal": false, "meaning": "Live, within TTL, awaiting the counterparty" },
+    { "name": "countered", "terminal": true, "meaning": "Superseded by a counter-offer in the same thread" },
+    { "name": "accepted", "terminal": true, "meaning": "Won the request. Exactly one per request, ever" },
+    { "name": "declined", "terminal": true, "meaning": "Declined explicitly by the counterparty" },
+    { "name": "withdrawn", "terminal": true, "meaning": "Pulled by its author before acceptance" },
+    { "name": "expired", "terminal": true, "meaning": "TTL elapsed, or a sibling offer was accepted" }
+  ],
+  "transitions": [
+    { "id": 1, "from": null, "to": "pending", "actor": "P", "rpc": "create_offer", "guard": "Provider eligible; request published, offers_received or negotiating; not self-dealing; amount within the country's guardrails; no unresolved blocking job", "effects": ["notify customer", "request to offers_received", "start the TTL"] },
+    { "id": 2, "from": ["pending"], "to": "countered", "actor": "C or P", "rpc": "counter_offer", "guard": "Round count below the max (default 5); the author is the counterparty, not the same side twice", "effects": ["a new pending offer in the thread", "request to negotiating", "TTL resets"] },
+    { "id": 3, "from": ["pending"], "to": "accepted", "actor": "C", "rpc": "accept_offer", "guard": "Offer pending and unexpired; provider still eligible; request in an acceptable state", "effects": ["all sibling offers to expired in the same transaction", "request to agreed", "commission rate and amount snapshotted"] },
+    { "id": 4, "from": ["pending"], "to": "declined", "actor": "C", "rpc": "decline_offer", "guard": null, "effects": ["notify provider", "thread closed, other threads unaffected"] },
+    { "id": 5, "from": ["pending"], "to": "withdrawn", "actor": "P", "rpc": "withdraw_offer", "guard": "Not yet accepted", "effects": ["notify the customer if it was the last active offer"] },
+    { "id": 6, "from": ["pending"], "to": "expired", "actor": "S", "rpc": null, "guard": "TTL elapsed", "effects": ["if no pending offers remain, request back to published"] },
+    { "id": 7, "from": ["pending"], "to": "expired", "actor": "S", "rpc": null, "guard": "A sibling was accepted (transition 3)", "effects": ["emitted as part of the accept transaction, never separately"] },
+    { "id": 8, "from": ["pending"], "to": "expired", "actor": "S", "rpc": null, "guard": "Provider became ineligible: suspended, documents expired, or offline past the grace period", "effects": ["notify the provider with the reason"] }
+  ],
+  "invariants": [
+    "At most one accepted offer per request, ever. Enforced by locking the request row, not by a unique index alone: the index would reject the second write, but the lock lets the server return a meaningful error instead of a constraint violation.",
+    "Accepting expires siblings in the same transaction. A provider must never see an offer as live after losing it.",
+    "Exactly one offer-accepted event. The outbox drives payment, notifications and analytics, and a double fire would double-charge.",
+    "A replayed accept with the same idempotency key returns the original outcome and does not act again.",
+    "A losing caller gets a stable code, never a raw exception: ERR_OFFER_NOT_ACTIVE, ERR_ILLEGAL_TRANSITION or ERR_OFFER_EXPIRED."
+  ],
+  "competitive_invariant": {
+    "rule": "A provider never reads another provider's offer amount.",
+    "enforced_at": [
+      "RLS: offers_read limits a provider to their own thread",
+      "Realtime: the offer broadcast goes to request:{id}:customer and to request:{id}:provider:{provider_id}, never to a shared request topic"
+    ],
+    "note": "Neither layer relies on the client choosing not to render something."
+  }
+}
