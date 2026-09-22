@@ -40,10 +40,12 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "6b111111-1111-4111-8111-ffffffffffff", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
-  $$SELECT public.start_verification_session('provider_facial')$$,
+  $$SELECT public.start_verification_session('key-ky-sess-noconsent1',
+  'provider_facial')$$,
   'P0001', 'ERR_CONSENT_REQUIRED', 'a facial check needs biometric consent first');
 SELECT public.record_consent('biometric', true, 'key-ky-consent-bio-00001');
-INSERT INTO ky VALUES ('sess', public.start_verification_session('provider_facial'));
+INSERT INTO ky VALUES ('sess', public.start_verification_session('key-ky-sess-facial001',
+  'provider_facial'));
 SELECT ok((SELECT id FROM ky WHERE name = 'sess') IS NOT NULL,
   'with consent recorded, a session starts');
 SELECT is((SELECT count(*)::int FROM public.get_my_kyc_profile() WHERE required), 4,

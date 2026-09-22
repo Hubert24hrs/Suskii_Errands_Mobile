@@ -4,7 +4,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(13);
+SELECT plan(16);
 
 -- Internal schemas are unreachable for client roles.
 SELECT is(
@@ -100,7 +100,9 @@ SELECT is(
        'public.my_referral_summary', 'public.my_referrals',
        'public.propose_config_change', 'public.review_config_change',
        'public.config_change_queue', 'public.country_pack_readiness',
-       'public.analytics_report', 'public.job_trail',
+       'public.analytics_report', 'public.job_trail', 'public.get_provider_card',
+       'private.admin_scope_allows', 'private.admin_may_read_country',
+       'private.admin_may_read_request', 'private.admin_may_read_user',
        'public.business_verification_queue', 'public.decide_business_verification',
        'public.suspend_organization', 'public.reinstate_organization',
        'public.admin_organization_summary', 'public.admin_user_search',
@@ -152,6 +154,31 @@ SELECT set_eq(
       AND has_column_privilege('authenticated', 'public.profiles'::regclass, attnum, 'UPDATE')$$,
   ARRAY['display_name', 'language', 'avatar_path', 'timezone'],
   'profiles: authenticated may update only display_name, language, avatar_path, timezone');
+
+-- Every other table with a column-level write grant, for the same reason: the assertion claimed
+-- to cover "client-writable columns" and covered two of the five tables that have any (U.4).
+SELECT set_eq(
+  $$SELECT attname::text FROM pg_attribute
+    WHERE attrelid = 'public.requests'::regclass AND attnum > 0 AND NOT attisdropped
+      AND has_column_privilege('authenticated', 'public.requests'::regclass, attnum, 'UPDATE')$$,
+  ARRAY['description', 'urgency', 'pickup_label', 'pickup_landmark_note', 'destination_label',
+        'destination_landmark_note', 'scheduled_at', 'preferred_price_minor', 'item_float_minor',
+        'declared_value_minor'],
+  'requests: a draft is edited in place, and status and the money snapshot stay server-owned');
+SELECT set_eq(
+  $$SELECT attname::text FROM pg_attribute
+    WHERE attrelid = 'public.provider_profiles'::regclass AND attnum > 0 AND NOT attisdropped
+      AND has_column_privilege('authenticated', 'public.provider_profiles'::regclass, attnum,
+                               'UPDATE')$$,
+  ARRAY['bio', 'vehicle_type'],
+  'provider_profiles: never online, never suspended_until, never a reputation aggregate');
+SELECT set_eq(
+  $$SELECT attname::text FROM pg_attribute
+    WHERE attrelid = 'public.organizations'::regclass AND attnum > 0 AND NOT attisdropped
+      AND has_column_privilege('authenticated', 'public.organizations'::regclass, attnum,
+                               'UPDATE')$$,
+  ARRAY['legal_name'],
+  'organizations: the owner renames it and nothing else — never its verification status');
 
 SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute
