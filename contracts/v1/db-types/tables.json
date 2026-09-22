@@ -3240,7 +3240,26 @@
       "privileges": {
         "SELECT": {
           "authenticated": [
-            "*"
+            "amount_minor",
+            "confirmed_at",
+            "created_at",
+            "currency",
+            "discount_minor",
+            "expires_at",
+            "failed_reason_key",
+            "fee_minor",
+            "float_minor",
+            "float_surcharge_minor",
+            "gateway",
+            "gateway_reference",
+            "id",
+            "job_amount_minor",
+            "kind",
+            "method",
+            "payer_id",
+            "request_id",
+            "status",
+            "updated_at"
           ]
         }
       },

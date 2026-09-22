@@ -313,7 +313,7 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
       await ref
           .read(providerToolsRepositoryProvider)
           .setEarningsGoal(
-            Money((major * 100).round(), currency),
+            Money.fromMajorAmount(major, currency),
             _period,
             idempotencyKey: _goalKey!,
           );
@@ -413,7 +413,7 @@ class _InstantPayoutCardState extends ConsumerState<_InstantPayoutCard> {
   Money? get _parsed {
     final major = double.tryParse(_amount.text.trim());
     if (major == null || major <= 0) return null;
-    return Money((major * 100).round(), _currency);
+    return Money.fromMajorAmount(major, _currency);
   }
 
   Future<void> _getQuote() async {

@@ -59,6 +59,23 @@ final class Money implements Comparable<Money> {
   factory Money.fromMajorUnits(int majorUnits, String currencyCode) =>
       Money(majorUnits * _pow10(exponentOf(currencyCode)), currencyCode);
 
+  /// A major-unit amount a person typed, converted for [currencyCode].
+  ///
+  /// This exists because `Money((major * 100).round(), code)` is the thing
+  /// people write, and it is wrong wherever the exponent is not 2. In UGX
+  /// (exponent 0) it asks for a hundred times the intended amount, which on a
+  /// withdrawal screen means the request is refused and the person is told
+  /// they have insufficient funds while looking at a balance that covers it.
+  /// Review M3.20 was this same arithmetic in the request form.
+  ///
+  /// [majorUnits] is a double because the entry field is text: 12.50 in a
+  /// two-exponent currency must survive, so this cannot take an int.
+  factory Money.fromMajorAmount(double majorUnits, String currencyCode) =>
+      Money(
+        (majorUnits * _pow10(exponentOf(currencyCode))).round(),
+        currencyCode,
+      );
+
   Money operator +(Money other) {
     _checkSameCurrency(other);
     return Money(minorUnits + other.minorUnits, currencyCode);

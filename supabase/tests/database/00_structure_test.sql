@@ -111,6 +111,7 @@ SELECT is(
        'private.admin_scope_allows_any', 'private.admin_may_read_countries',
        'private.fraud_subject_countries', 'private.moderation_subject_countries',
        'private.is_assigned_job_provider', 'private.is_matched_provider',
+       'private.approval_subject_country', 'public.get_payment_checkout',
        'public.business_verification_queue', 'public.decide_business_verification',
        'public.suspend_organization', 'public.reinstate_organization',
        'public.admin_organization_summary', 'public.admin_user_search',

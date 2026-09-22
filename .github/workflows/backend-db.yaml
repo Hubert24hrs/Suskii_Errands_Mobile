@@ -37,6 +37,13 @@ jobs:
       - name: AI tool allowlist (ai-design 4.2)
         run: python services/ai/tools/check_allowlist.py .
 
+      # The control that would have caught U.1, U.3 and V.1. A deny test passes whether the
+      # denial is correct or the allow clause was never written; this tells those apart by
+      # checking the matrix and the schema describe the same things. Divergences are either
+      # fixed or waived with a reason in supabase/tools/rls-matrix-waivers.json.
+      - name: RLS matrix coverage
+        run: python supabase/tools/check_rls_matrix.py .
+
       - name: Start local stack
         run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,postgres-meta
 

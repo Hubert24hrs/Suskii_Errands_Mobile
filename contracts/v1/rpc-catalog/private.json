@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. These are NOT callable by a client: PostgREST exposes only the public schema. They are granted to authenticated because an RLS policy calls them as the invoking role, and a grant with no explanation reads like a mistake. Listed so it does not.",
-  "count": 23,
+  "count": 24,
   "functions": [
     {
       "name": "admin_may_read_countries",
@@ -49,6 +49,14 @@
         "authenticated"
       ],
       "defined_in": "20260922121000_polymorphic_scope.sql"
+    },
+    {
+      "name": "approval_subject_country",
+      "signature": "private.approval_subject_country(text, text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20260922121400_matrix_gaps.sql"
     },
     {
       "name": "chat_is_open",
