@@ -12,6 +12,7 @@ export 'src/entities/offer.dart';
 export 'src/entities/organization.dart';
 export 'src/entities/payment.dart';
 export 'src/entities/promo.dart';
+export 'src/entities/proof.dart';
 export 'src/entities/provider_tools.dart';
 export 'src/entities/rating.dart';
 export 'src/entities/referral.dart';

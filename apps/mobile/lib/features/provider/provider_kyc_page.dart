@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/idempotency_keys.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
 import 'provider_kyc_step_forms.dart';
@@ -32,10 +32,15 @@ class ProviderKycPage extends ConsumerWidget {
   }
 
   Future<void> _submitForReview(BuildContext context, WidgetRef ref) async {
+    // Held per intent (M3.14): this page is a ConsumerWidget with nowhere to
+    // put a field, and a retry with a fresh key would submit a second review.
+    final keys = ref.read(idempotencyKeysProvider);
+    const intent = 'kyc.submitForReview';
     try {
       await ref
           .read(providerKycRepositoryProvider)
-          .submitForReview(idempotencyKey: newIdempotencyKey());
+          .submitForReview(idempotencyKey: keys.forIntent(intent));
+      keys.done(intent);
     } on Object catch (error) {
       if (context.mounted) {
         showSToast(

@@ -150,6 +150,7 @@ export type WalletTransactionKind =
 
 export type WalletTransactionStatus =
   | 'pending'
+  | 'awaiting_approval'
   | 'completed'
   | 'failed'
   | 'reversed';

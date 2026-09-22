@@ -8,6 +8,7 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/idempotency_keys.dart';
 import '../../app/providers.dart';
 
 /// Settings (M5): notification preferences with quiet hours, trusted
@@ -139,10 +140,15 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _exportData(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
+    // One export per intent (M3.14): a retry after a timeout should return
+    // the first export rather than queue a second one.
+    final keys = ref.read(idempotencyKeysProvider);
+    const intent = 'settings.exportData';
     try {
       final exportRef = await ref
           .read(settingsRepositoryProvider)
-          .requestDataExport(idempotencyKey: newIdempotencyKey());
+          .requestDataExport(idempotencyKey: keys.forIntent(intent));
+      keys.done(intent);
       if (context.mounted) {
         showSToast(context, l10n.settingsExportRequested(exportRef));
       }
@@ -164,10 +170,13 @@ class SettingsPage extends ConsumerWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
+    final keys = ref.read(idempotencyKeysProvider);
+    const intent = 'settings.deleteAccount';
     try {
       final when = await ref
           .read(settingsRepositoryProvider)
-          .requestAccountDeletion(idempotencyKey: newIdempotencyKey());
+          .requestAccountDeletion(idempotencyKey: keys.forIntent(intent));
+      keys.done(intent);
       if (context.mounted) {
         showSToast(
           context,
@@ -290,13 +299,16 @@ class SettingsPage extends ConsumerWidget {
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () async {
+                          final keys = ref.read(idempotencyKeysProvider);
+                          final intent = 'settings.removeContact:${contact.id}';
                           try {
                             await ref
                                 .read(settingsRepositoryProvider)
                                 .removeTrustedContact(
                                   contact.id,
-                                  idempotencyKey: newIdempotencyKey(),
+                                  idempotencyKey: keys.forIntent(intent),
                                 );
+                            keys.done(intent);
                             ref.invalidate(trustedContactsProvider);
                           } on Object catch (error) {
                             if (context.mounted) {

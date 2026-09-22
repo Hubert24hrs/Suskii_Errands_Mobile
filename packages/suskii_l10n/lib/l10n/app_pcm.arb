@@ -89,7 +89,7 @@
   "errPaymentTtlExpired": "Payment time don pass — the job don go back to negotiation.",
   "errInsufficientBalance": "Money no reach.",
   "errWithdrawalBelowMinimum": "The amount small pass the minimum withdrawal.",
-  "errWithdrawalNeedsApproval": "Finance people suppose approve this withdrawal.",
+  "errPinAttemptsExceeded": "You don enter wrong PIN too many times. Talk to support to continue.",
   "errOtpInvalid": "That code no correct. Try am again.",
   "errOtpRateLimited": "You don try am too many times. Wait small.",
   "errVerificationFailed": "Verification no work. Try am again.",
@@ -180,6 +180,7 @@
   "txnReferral": "Referral commission",
   "txnRefundItemFloat": "Item float refund",
   "txnWithdrawal": "Withdrawal",
+  "txnWithdrawalAwaitingApproval": "Withdrawal (dey wait approval)",
   "txnReferralWithdrawal": "Referral withdrawal",
 
   "welcomeTitle": "Welcome to Suskii",
@@ -680,5 +681,33 @@
   "orgNoVerifiedWorkers": "No verified worker dey yet.",
   "profileProviderTools": "Provider tools",
   "profileBusinessConsole": "Business console",
-  "txnInstantPayout": "Instant payout"
+  "txnInstantPayout": "Instant payout",
+
+  "offerComposerTitle": "Drop your offer",
+  "offerComposerAmountLabel": "How much you wan collect",
+  "offerComposerSend": "Send offer",
+  "offerWithdraw": "Comot my offer",
+  "offerAcceptCounter": "Accept the counter",
+  "myOffersTitle": "My offers",
+  "myOffersEmpty": "You never drop offer — check open requests wey dey near you.",
+  "myJobsTitle": "My jobs",
+  "myJobsHistoryTitle": "Old jobs",
+
+  "jobActionStartJourney": "Start to dey go",
+  "jobActionArrived": "I don arrive",
+  "jobActionVerifyPickupPin": "Enter pickup PIN",
+  "jobActionVerifyDeliveryPin": "Enter delivery PIN",
+  "jobActionAddProofPhoto": "Add photo proof",
+  "jobActionAddProofReceipt": "Add receipt",
+  "jobActionAddProofSignature": "Capture signature",
+  "jobProofsRequiredNote": "You must add proof before you fit mark this job done.",
+  "jobActionMarkComplete": "Mark am done",
+  "jobWaitingCustomerConfirmation": "Dey wait for customer to confirm say the job don complete.",
+  "pinEntryTitle": "Handover PIN",
+  "pinEntryHint": "Ask the customer for their 4-digit PIN.",
+  "pinAttemptsRemaining": "{count} attempts remain",
+  "@pinAttemptsRemaining": {"placeholders": {"count": {"type": "int"}}},
+  "jobArrivalGeofenceNote": "We dey record arrival with your location — only mark arrived when you don reach the pickup point.",
+
+  "errProofRequired": "Proof dey required before you fit complete this job — add the photos or receipt wey dem need, and verify the delivery PIN."
 }

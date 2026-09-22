@@ -53,6 +53,7 @@ String transactionLabel(AppLocalizations l10n, String? key) => switch (key) {
   'txnReferral' => l10n.txnReferral,
   'txnRefundItemFloat' => l10n.txnRefundItemFloat,
   'txnWithdrawal' => l10n.txnWithdrawal,
+  'txnWithdrawalAwaitingApproval' => l10n.txnWithdrawalAwaitingApproval,
   'txnReferralWithdrawal' => l10n.txnReferralWithdrawal,
   'txnInstantPayout' => l10n.txnInstantPayout,
   _ => key ?? '',

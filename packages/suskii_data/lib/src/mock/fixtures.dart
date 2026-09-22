@@ -42,6 +42,9 @@ class MockDatabase {
   late final Map<String, Payment> payments;
   late final Map<String, String> paymentByJob;
 
+  /// Proofs of execution per job id (M8.6 provider execution).
+  late final Map<String, List<Proof>> proofs;
+
   /// Ratings per job (both directions live in one list).
   late final Map<String, List<Rating>> ratings;
 
@@ -116,6 +119,7 @@ class MockDatabase {
     paymentByJob = <String, String>{};
     ratings = <String, List<Rating>>{};
     sosAlerts = <String, SosAlert>{};
+    proofs = <String, List<Proof>>{};
 
     // M5 fixtures: an in-review dispute on req-3 (the job is already
     // `disputed`), one open support ticket with an AI-triage reply, one
@@ -551,24 +555,28 @@ class MockDatabase {
         labelKey: 'catErrandsDelivery',
         iconKey: 'package',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1},
       ),
       const ServiceCategory(
         id: 'shopping',
         labelKey: 'catShopping',
         iconKey: 'cart',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1, 'receipt': 1},
       ),
       const ServiceCategory(
         id: 'cleaning_laundry',
         labelKey: 'catCleaningLaundry',
         iconKey: 'sparkles',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1},
       ),
       const ServiceCategory(
         id: 'moving',
         labelKey: 'catMoving',
         iconKey: 'truck',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1},
       ),
       const ServiceCategory(
         id: 'repairs',
@@ -587,18 +595,21 @@ class MockDatabase {
         labelKey: 'catDocumentDelivery',
         iconKey: 'document',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1, 'signature': 1},
       ),
       const ServiceCategory(
         id: 'food_pickup',
         labelKey: 'catFoodPickup',
         iconKey: 'food',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1, 'receipt': 1},
       ),
       const ServiceCategory(
         id: 'transportation',
         labelKey: 'catTransportation',
         iconKey: 'car',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1},
       ),
       const ServiceCategory(
         id: 'tech_business',
@@ -611,6 +622,7 @@ class MockDatabase {
         labelKey: 'catEventAssistance',
         iconKey: 'calendar',
         allowsCustom: false,
+        proofRequirements: <String, int>{'photo': 1},
       ),
       const ServiceCategory(
         id: 'custom',
@@ -873,6 +885,122 @@ class MockDatabase {
         providerId: 'provider-swift',
         expiresAt: now.add(const Duration(minutes: 9)),
       ),
+      // M8.6 provider execution fixtures: jobs assigned to the signed-in
+      // provider persona (user-ada) across the execution states, so
+      // watchMyJobs / proofs / completion gating are demoable.
+      'req-p1': JobRequest(
+        id: 'req-p1',
+        customerId: 'user-chidi',
+        categoryId: 'shopping',
+        isCustomCategory: false,
+        description: 'Buy toiletries from MedPlus Lekki — list in chat.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(
+          label: 'MedPlus, Lekki Phase 1',
+          point: GeoPoint(latitude: 6.4478, longitude: 3.4731),
+        ),
+        destination: const PlaceRef(
+          label: 'Chidi — Oniru Estate',
+          point: GeoPoint(latitude: 6.4379, longitude: 3.4442),
+        ),
+        urgency: Urgency.standard,
+        status: JobStatus.paidHeld,
+        createdAt: now.subtract(const Duration(minutes: 30)),
+        agreedPrice: const Money(380000, 'NGN'),
+        agreedBreakdown: simulateQuote(
+          const Money(380000, 'NGN'),
+          estimatedGatewayFee: const Money(5700, 'NGN'),
+        ),
+        itemFloat: const Money(900000, 'NGN'),
+        providerId: 'user-ada',
+        handoverPin: '4281',
+      ),
+      'req-p2': JobRequest(
+        id: 'req-p2',
+        customerId: 'user-emeka',
+        categoryId: 'errands_delivery',
+        isCustomCategory: false,
+        description: 'Collect a laptop from a repair shop in VI.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(
+          label: 'Repair shop, Adeola Odeku St, VI',
+          point: GeoPoint(latitude: 6.4281, longitude: 3.4219),
+        ),
+        destination: const PlaceRef(
+          label: 'Emeka — Yaba Tech Hub',
+          point: GeoPoint(latitude: 6.5095, longitude: 3.3711),
+        ),
+        urgency: Urgency.urgent,
+        status: JobStatus.inProgress,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        agreedPrice: const Money(450000, 'NGN'),
+        agreedBreakdown: simulateQuote(
+          const Money(450000, 'NGN'),
+          estimatedGatewayFee: const Money(6750, 'NGN'),
+        ),
+        declaredValue: const Money(85000000, 'NGN'),
+        providerId: 'user-ada',
+        handoverPin: '4281',
+      ),
+      'req-p3': JobRequest(
+        id: 'req-p3',
+        customerId: 'user-chidi',
+        categoryId: 'personal_assistance',
+        isCustomCategory: false,
+        description: 'Queue at the bank and deposit a cheque.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(label: 'GTBank, Lekki Phase 1'),
+        urgency: Urgency.standard,
+        status: JobStatus.completedByProvider,
+        createdAt: now.subtract(const Duration(hours: 5)),
+        agreedPrice: const Money(250000, 'NGN'),
+        agreedBreakdown: simulateQuote(
+          const Money(250000, 'NGN'),
+          estimatedGatewayFee: const Money(3750, 'NGN'),
+        ),
+        providerId: 'user-ada',
+      ),
+      'req-p4': JobRequest(
+        id: 'req-p4',
+        customerId: 'user-emeka',
+        categoryId: 'food_pickup',
+        isCustomCategory: false,
+        description: 'Pick up a birthday cake from Cakes & Cream, VI.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(
+          label: 'Cakes & Cream, VI',
+          point: GeoPoint(latitude: 6.4302, longitude: 3.4195),
+        ),
+        destination: const PlaceRef(label: 'Emeka — Yaba Tech Hub'),
+        urgency: Urgency.standard,
+        status: JobStatus.confirmed,
+        createdAt: now.subtract(const Duration(days: 2)),
+        agreedPrice: const Money(300000, 'NGN'),
+        agreedBreakdown: simulateQuote(
+          const Money(300000, 'NGN'),
+          estimatedGatewayFee: const Money(4500, 'NGN'),
+        ),
+        providerId: 'user-ada',
+      ),
+      'req-p5': JobRequest(
+        id: 'req-p5',
+        customerId: 'user-chidi',
+        categoryId: 'document_delivery',
+        isCustomCategory: false,
+        description: 'Deliver signed tenancy documents to a lawyer in Ikoyi.',
+        mediaPaths: const <String>[],
+        pickup: const PlaceRef(label: 'Chidi — Oniru Estate'),
+        destination: const PlaceRef(label: 'Chambers, Bourdillon Rd, Ikoyi'),
+        urgency: Urgency.standard,
+        status: JobStatus.closed,
+        createdAt: now.subtract(const Duration(days: 8)),
+        agreedPrice: const Money(420000, 'NGN'),
+        agreedBreakdown: simulateQuote(
+          const Money(420000, 'NGN'),
+          estimatedGatewayFee: const Money(6300, 'NGN'),
+        ),
+        providerId: 'user-ada',
+      ),
       // Nearby open requests for the provider feed, one per wave-1 country
       // (plus a disabled-country one); the feed only serves the signed-in
       // provider's own country.
@@ -955,6 +1083,21 @@ class MockDatabase {
         preferredPrice: const Money(4500, 'USD'),
       ),
     };
+
+    // A submitted proof on the completed personal-assistance job (M8.6).
+    proofs['req-p3'] = <Proof>[
+      Proof(
+        id: 'proof-p3-1',
+        jobId: 'req-p3',
+        providerId: 'user-ada',
+        kind: ProofKind.signature,
+        storagePath: 'req-p3/signature-1.png',
+        createdAt: now.subtract(const Duration(hours: 4, minutes: 30)),
+        capturedAt: now.subtract(const Duration(hours: 4, minutes: 32)),
+        lat: 6.4478,
+        lng: 3.4731,
+      ),
+    ];
 
     offers = <String, List<Offer>>{
       'req-1': <Offer>[

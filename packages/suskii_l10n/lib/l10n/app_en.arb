@@ -89,7 +89,7 @@
   "errPaymentTtlExpired": "Payment window expired — the job returned to negotiation.",
   "errInsufficientBalance": "Insufficient balance.",
   "errWithdrawalBelowMinimum": "Amount is below the minimum withdrawal.",
-  "errWithdrawalNeedsApproval": "This withdrawal needs finance approval.",
+  "errPinAttemptsExceeded": "Too many wrong PIN attempts. Contact support to continue.",
   "errOtpInvalid": "That code is not correct. Try again.",
   "errOtpRateLimited": "Too many attempts. Wait a moment and try again.",
   "errVerificationFailed": "Verification failed. Please try again.",
@@ -180,6 +180,7 @@
   "txnReferral": "Referral commission",
   "txnRefundItemFloat": "Item float refund",
   "txnWithdrawal": "Withdrawal",
+  "txnWithdrawalAwaitingApproval": "Withdrawal (awaiting approval)",
   "txnReferralWithdrawal": "Referral withdrawal",
 
   "welcomeTitle": "Welcome to Suskii",
@@ -680,5 +681,33 @@
   "orgNoVerifiedWorkers": "No verified workers available yet.",
   "profileProviderTools": "Provider tools",
   "profileBusinessConsole": "Business console",
-  "txnInstantPayout": "Instant payout"
+  "txnInstantPayout": "Instant payout",
+
+  "offerComposerTitle": "Make an offer",
+  "offerComposerAmountLabel": "Your amount",
+  "offerComposerSend": "Send offer",
+  "offerWithdraw": "Withdraw offer",
+  "offerAcceptCounter": "Accept counter",
+  "myOffersTitle": "My offers",
+  "myOffersEmpty": "No offers yet — browse open requests near you.",
+  "myJobsTitle": "My jobs",
+  "myJobsHistoryTitle": "Job history",
+
+  "jobActionStartJourney": "Start journey",
+  "jobActionArrived": "I've arrived",
+  "jobActionVerifyPickupPin": "Verify pickup PIN",
+  "jobActionVerifyDeliveryPin": "Verify delivery PIN",
+  "jobActionAddProofPhoto": "Add photo proof",
+  "jobActionAddProofReceipt": "Add receipt",
+  "jobActionAddProofSignature": "Capture signature",
+  "jobProofsRequiredNote": "This job needs proof before you can mark it complete.",
+  "jobActionMarkComplete": "Mark as complete",
+  "jobWaitingCustomerConfirmation": "Waiting for the customer to confirm completion.",
+  "pinEntryTitle": "Handover PIN",
+  "pinEntryHint": "Ask the customer for their 4-digit PIN.",
+  "pinAttemptsRemaining": "{count} attempts remaining",
+  "@pinAttemptsRemaining": {"placeholders": {"count": {"type": "int"}}},
+  "jobArrivalGeofenceNote": "Arrival is recorded with your location — mark arrived only when you are at the pickup point.",
+
+  "errProofRequired": "Proof is required before this job can be completed — add the required photos or receipts, and verify the delivery PIN."
 }

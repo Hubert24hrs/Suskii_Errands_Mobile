@@ -58,6 +58,20 @@ abstract class _MockRepo {
   /// against this, never raw device time.
   DateTime serverNow() => DateTime.now().toUtc().add(behavior.serverClockSkew);
 
+  /// Per-category offer TTL (behavior override wins, else the category's
+  /// `offerTtlSeconds`). Shared by the offer repo and the provider repo's
+  /// submitOffer so both mint offers with identical expiry semantics.
+  Duration offerTtlFor(String categoryId) =>
+      behavior.offerTtlOverride ??
+      Duration(
+        seconds: db.categories
+            .firstWhere(
+              (ServiceCategory c) => c.id == categoryId,
+              orElse: () => db.categories.last,
+            )
+            .offerTtlSeconds,
+      );
+
   AppUser get currentUser {
     final user = db.users[behavior.currentUserId];
     if (user == null) throw const AppError(ErrorCodes.unauthenticated);
@@ -377,17 +391,6 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
 
   final List<Timer> _timers = <Timer>[];
 
-  Duration _offerTtl(String categoryId) =>
-      behavior.offerTtlOverride ??
-      Duration(
-        seconds: db.categories
-            .firstWhere(
-              (ServiceCategory c) => c.id == categoryId,
-              orElse: () => db.categories.last,
-            )
-            .offerTtlSeconds,
-      );
-
   int _maxRounds(String categoryId) => db.categories
       .firstWhere(
         (ServiceCategory c) => c.id == categoryId,
@@ -489,7 +492,7 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
                       amount.currencyCode,
                     ),
                   ),
-                  expiresAt: serverNow().add(_offerTtl(current.categoryId)),
+                  expiresAt: serverNow().add(offerTtlFor(current.categoryId)),
                 );
                 db.offers.putIfAbsent(requestId, () => <Offer>[]).add(offer);
                 db.offerEvents.add(offer);
@@ -640,7 +643,7 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
           amount: amount,
           message: message,
           round: offer.round + 1,
-          expiresAt: serverNow().add(_offerTtl(categoryId)),
+          expiresAt: serverNow().add(offerTtlFor(categoryId)),
         );
         db.offers[requestId]![index] = countered;
         db.offerEvents.add(countered);
@@ -761,6 +764,53 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
         .toList();
   }
 
+  List<JobRequest> _myActiveJobs() =>
+      db.requests.values
+          .where(
+            (JobRequest r) =>
+                r.providerId == currentUser.id && !r.status.isTerminal,
+          )
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  @override
+  Stream<List<JobRequest>> watchMyJobs() {
+    late StreamController<List<JobRequest>> controller;
+    StreamSubscription<JobRequest>? jobEvents;
+    controller = StreamController<List<JobRequest>>(
+      onListen: () {
+        void emit() => controller.add(List.unmodifiable(_myActiveJobs()));
+        emit();
+        jobEvents = db.jobEvents.stream.listen((_) => emit());
+      },
+      onCancel: () {
+        unawaited(jobEvents?.cancel());
+        unawaited(controller.close());
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<List<JobRequest>> getMyJobsHistory({
+    String? cursor,
+    int limit = 20,
+  }) async {
+    await gate();
+    final history =
+        db.requests.values
+            .where(
+              (JobRequest r) =>
+                  r.providerId == currentUser.id && r.status.isTerminal,
+            )
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final start = cursor == null
+        ? 0
+        : history.indexWhere((JobRequest r) => r.id == cursor) + 1;
+    return history.skip(start).take(limit).toList();
+  }
+
   @override
   Future<Offer> submitOffer({
     required String requestId,
@@ -779,6 +829,7 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
           throw const AppError(ErrorCodes.selfDealingBlocked);
         }
         final user = currentUser;
+        final now = serverNow();
         final offer = Offer(
           id: _mockId('offer'),
           requestId: requestId,
@@ -789,10 +840,12 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
           amount: amount,
           status: OfferStatus.pending,
           round: 1,
-          createdAt: DateTime.now(),
+          createdAt: now,
           message: message,
           payoutEstimate: simulateQuote(amount),
-          expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+          // Server clock + the request's own category TTL — never a
+          // hardcoded device-side duration.
+          expiresAt: now.add(offerTtlFor(request.categoryId)),
         );
         db.offers.putIfAbsent(requestId, () => <Offer>[]).add(offer);
         db.offerEvents.add(offer);
@@ -833,11 +886,13 @@ class MockJobProgressRepository extends _MockRepo
     implements JobProgressRepository {
   MockJobProgressRepository(super.db, super.behavior);
 
+  /// Provider-settable targets (server: `set_job_status` accepts en_route,
+  /// arrived, completed_by_provider only — in_progress is reached through the
+  /// pickup PIN, never set directly).
   static const Map<JobStatus, Set<JobStatus>> _allowed =
       <JobStatus, Set<JobStatus>>{
         JobStatus.assigned: <JobStatus>{JobStatus.enRoute},
         JobStatus.enRoute: <JobStatus>{JobStatus.arrived},
-        JobStatus.arrived: <JobStatus>{JobStatus.inProgress},
         JobStatus.inProgress: <JobStatus>{JobStatus.completedByProvider},
       };
 
@@ -855,11 +910,103 @@ class MockJobProgressRepository extends _MockRepo
       if (!allowedTargets.contains(target)) {
         throw const AppError(ErrorCodes.permissionDenied);
       }
+      if (target == JobStatus.completedByProvider) {
+        _requireCompletionProofs(request);
+      }
       final updated = request.copyWith(status: target);
       db.requests[jobId] = updated;
       db.jobEvents.add(updated);
       return updated;
     }, argsHash: '$target');
+  }
+
+  /// Completion gate (spec: job_lifecycle.proof, mirrors the backend's
+  /// `submit_proof` rules): every proof kind the category requires must have
+  /// enough submissions, and a job with a destination needs its delivery PIN
+  /// verified. Anything missing raises ERR_PROOF_REQUIRED.
+  void _requireCompletionProofs(JobRequest request) {
+    final requirements = db.categories
+        .firstWhere(
+          (ServiceCategory c) => c.id == request.categoryId,
+          orElse: () => db.categories.last,
+        )
+        .proofRequirements;
+    final submitted = db.proofs[request.id] ?? const <Proof>[];
+    final missing = <String>[];
+    requirements.forEach((String kind, int requiredCount) {
+      final have = submitted
+          .where((Proof p) => _proofKindWire(p.kind) == kind)
+          .length;
+      if (have < requiredCount) missing.add(kind);
+    });
+    if (request.destination != null &&
+        !_verifiedPins.contains('${request.id}:delivery')) {
+      missing.add('delivery_pin');
+    }
+    if (missing.isNotEmpty) {
+      throw AppError(ErrorCodes.proofRequired, details: missing);
+    }
+  }
+
+  /// ProofKind → wire value without depending on generated JSON helpers.
+  static String _proofKindWire(ProofKind kind) => switch (kind) {
+    ProofKind.photo => 'photo',
+    ProofKind.receipt => 'receipt',
+    ProofKind.signature => 'signature',
+  };
+
+  @override
+  Future<Proof> submitProof({
+    required String jobId,
+    required ProofKind kind,
+    required String storagePath,
+    required String idempotencyKey,
+    DateTime? capturedAt,
+    double? lat,
+    double? lng,
+  }) async {
+    await gate();
+    return idempotent('submitProof:$jobId', idempotencyKey, () async {
+      final request = db.requests[jobId];
+      if (request == null) throw const AppError(ErrorCodes.unknown);
+      if (request.providerId != currentUser.id) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      if (request.status != JobStatus.inProgress &&
+          request.status != JobStatus.completedByProvider) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      // Storage objects are namespaced per job; the server signs uploads
+      // only into the job's own prefix.
+      if (!storagePath.startsWith('$jobId/')) {
+        throw const AppError(ErrorCodes.permissionDenied);
+      }
+      final proof = Proof(
+        id: _mockId('proof'),
+        jobId: jobId,
+        providerId: currentUser.id,
+        kind: kind,
+        storagePath: storagePath,
+        createdAt: serverNow(),
+        capturedAt: capturedAt,
+        lat: lat,
+        lng: lng,
+      );
+      db.proofs.putIfAbsent(jobId, () => <Proof>[]).add(proof);
+      return proof;
+    }, argsHash: '${_proofKindWire(kind)}|$storagePath');
+  }
+
+  @override
+  Future<List<Proof>> getProofs(String jobId) async {
+    await gate();
+    final request = db.requests[jobId];
+    if (request == null) throw const AppError(ErrorCodes.unknown);
+    final me = currentUser.id;
+    if (request.customerId != me && request.providerId != me) {
+      throw const AppError(ErrorCodes.permissionDenied);
+    }
+    return List.unmodifiable(db.proofs[jobId] ?? const <Proof>[]);
   }
 
   @override
@@ -881,25 +1028,62 @@ class MockJobProgressRepository extends _MockRepo
     });
   }
 
+  /// PIN attempt counters, keyed '$jobId:<kind>' — pickup and delivery are
+  /// two different PINs with two different limits (mirrors verify_pin).
   final Map<String, int> _pinAttempts = <String, int>{};
 
+  /// '$jobId:<kind>' entries whose PIN verified. The completion gate checks
+  /// the delivery entry for jobs with a destination (delivery PIN gate).
+  final Set<String> _verifiedPins = <String>{};
+
   @override
-  Future<bool> verifyHandoverPin(
+  Future<PinVerificationResult> verifyHandoverPin(
     String jobId,
     String pin, {
+    required HandoverPinKind kind,
     required String idempotencyKey,
   }) async {
     await gate();
-    return idempotent('verifyHandoverPin:$jobId', idempotencyKey, () async {
-      // Attempt counting mirrors verify_pin: a wrong PIN spends one
-      // attempt; replaying the same intent key does not.
-      if ((_pinAttempts[jobId] ?? 0) >= 5) {
-        throw const AppError(ErrorCodes.permissionDenied);
-      }
-      final ok = pin == '4281';
-      if (!ok) _pinAttempts[jobId] = (_pinAttempts[jobId] ?? 0) + 1;
-      return ok;
-    }, argsHash: pin);
+    return idempotent(
+      'verifyHandoverPin:$jobId:${kind.name}',
+      idempotencyKey,
+      () async {
+        final scope = '$jobId:${kind.name}';
+        final attempts = _pinAttempts[scope] ?? 0;
+        // Terminal: the attempt limit is its own error, not a denial.
+        if (attempts >= 5) {
+          throw const AppError(ErrorCodes.pinAttemptsExceeded);
+        }
+        final request = db.requests[jobId];
+        if (request == null) throw const AppError(ErrorCodes.unknown);
+        // A wrong PIN spends an attempt; replaying the same intent key does
+        // not.
+        final ok = pin == '4281';
+        if (ok) {
+          _verifiedPins.add(scope);
+        } else {
+          _pinAttempts[scope] = attempts + 1;
+        }
+        var status = request.status;
+        if (ok &&
+            kind == HandoverPinKind.pickup &&
+            request.status == JobStatus.arrived) {
+          // The pickup PIN is what starts the work (job lifecycle transition
+          // 14): arrived → in_progress happens inside verify_pin; it is not a
+          // settable target of requestStatusChange.
+          final updated = request.copyWith(status: JobStatus.inProgress);
+          db.requests[jobId] = updated;
+          db.jobEvents.add(updated);
+          status = JobStatus.inProgress;
+        }
+        return PinVerificationResult(
+          verified: ok,
+          status: status,
+          attemptsRemaining: 5 - (ok ? attempts : attempts + 1),
+        );
+      },
+      argsHash: '${kind.name}:$pin',
+    );
   }
 }
 
@@ -1430,18 +1614,21 @@ class MockWalletRepository extends _MockRepo implements WalletRepository {
       if (amount > summary.available) {
         throw const AppError(ErrorCodes.insufficientBalance);
       }
-      // Mock of the finance-approval threshold (configurable per country).
+      // Above the finance-approval threshold the withdrawal still succeeds —
+      // it is created with an awaiting-approval status (contracts:
+      // withdrawal_status = 'awaiting_approval'), it is NOT an error.
       final threshold = Money.fromMajorUnits(500, 'USD');
-      if (amount.minorUnits > threshold.minorUnits &&
-          amount.currencyCode == 'USD') {
-        throw const AppError(ErrorCodes.withdrawalNeedsApproval);
-      }
+      final needsApproval =
+          amount.minorUnits > threshold.minorUnits &&
+          amount.currencyCode == 'USD';
       final txn = WalletTransaction(
         id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.pending,
         amount: amount,
-        descriptionKey: 'txnWithdrawal',
+        descriptionKey: needsApproval
+            ? 'txnWithdrawalAwaitingApproval'
+            : 'txnWithdrawal',
         createdAt: DateTime.now(),
       );
       db.walletTransactions

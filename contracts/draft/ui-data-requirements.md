@@ -321,8 +321,10 @@ Sections for M3..M8 screens get appended here as those milestones are built.
   from the double-entry ledger) + `WalletTransaction` list (kind, status, amount, createdAt,
   referenceId?, descriptionKey — a localization key, not free text).
 - Actions: `requestWithdrawal(amount, idempotencyKey)` | `ERR_INSUFFICIENT_BALANCE`,
-  `ERR_WITHDRAWAL_BELOW_MINIMUM`, `ERR_WITHDRAWAL_NEEDS_APPROVAL`, KYC/name-match enforced
-  server-side.
+  `ERR_WITHDRAWAL_BELOW_MINIMUM`, KYC/name-match enforced server-side. Above the
+  finance-approval threshold the withdrawal SUCCEEDS with withdrawal_status
+  `awaiting_approval` (a status, not an error — `ERR_WITHDRAWAL_NEEDS_APPROVAL`
+  does not exist on the wire).
 - Open needs: pagination cursor semantics for `getTransactions`, withdrawal review SLA,
   payout-account linking flow.
 

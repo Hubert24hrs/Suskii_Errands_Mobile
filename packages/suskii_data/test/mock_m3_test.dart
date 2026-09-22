@@ -129,22 +129,21 @@ void main() {
   group('handover PIN (review M3.9)', () {
     test('correct PIN verifies; wrong PIN spends an attempt', () async {
       final repo = MockJobProgressRepository(db, behavior);
-      expect(
-        await repo.verifyHandoverPin(
-          'req-3',
-          '4281',
-          idempotencyKey: newIdempotencyKey(),
-        ),
-        isTrue,
+      final ok = await repo.verifyHandoverPin(
+        'req-3',
+        '4281',
+        kind: HandoverPinKind.pickup,
+        idempotencyKey: newIdempotencyKey(),
       );
-      expect(
-        await repo.verifyHandoverPin(
-          'req-2',
-          '0000',
-          idempotencyKey: newIdempotencyKey(),
-        ),
-        isFalse,
+      expect(ok.verified, isTrue);
+      final wrong = await repo.verifyHandoverPin(
+        'req-2',
+        '0000',
+        kind: HandoverPinKind.delivery,
+        idempotencyKey: newIdempotencyKey(),
       );
+      expect(wrong.verified, isFalse);
+      expect(wrong.attemptsRemaining, 4);
     });
 
     test(
@@ -152,16 +151,27 @@ void main() {
       () async {
         final repo = MockJobProgressRepository(db, behavior);
         final key = newIdempotencyKey();
-        await repo.verifyHandoverPin('req-2', '0000', idempotencyKey: key);
+        await repo.verifyHandoverPin(
+          'req-2',
+          '0000',
+          kind: HandoverPinKind.delivery,
+          idempotencyKey: key,
+        );
         // Same key + same PIN: replay. Four more DISTINCT intents spend the
         // remaining attempts; the sixth distinct attempt is locked out. If
         // the replay above had spent an attempt, the lockout would hit one
         // call earlier.
-        await repo.verifyHandoverPin('req-2', '0000', idempotencyKey: key);
+        await repo.verifyHandoverPin(
+          'req-2',
+          '0000',
+          kind: HandoverPinKind.delivery,
+          idempotencyKey: key,
+        );
         for (var i = 0; i < 4; i++) {
           await repo.verifyHandoverPin(
             'req-2',
             '0000',
+            kind: HandoverPinKind.delivery,
             idempotencyKey: newIdempotencyKey(),
           );
         }
@@ -169,15 +179,19 @@ void main() {
           () => repo.verifyHandoverPin(
             'req-2',
             '0000',
+            kind: HandoverPinKind.delivery,
             idempotencyKey: newIdempotencyKey(),
           ),
-          throwsA(expectCode(ErrorCodes.permissionDenied)),
+          throwsA(expectCode(ErrorCodes.pinAttemptsExceeded)),
         );
         // The replay path still works after the lockout.
-        expect(
-          await repo.verifyHandoverPin('req-2', '0000', idempotencyKey: key),
-          isFalse,
+        final replay = await repo.verifyHandoverPin(
+          'req-2',
+          '0000',
+          kind: HandoverPinKind.delivery,
+          idempotencyKey: key,
         );
+        expect(replay.verified, isFalse);
       },
     );
   });

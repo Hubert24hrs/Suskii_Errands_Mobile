@@ -100,7 +100,6 @@ const pcm = {
     ERR_OFFER_ROUNDS_EXHAUSTED: 'Negotiation don reach limit for this request.',
     ERR_INSUFFICIENT_BALANCE: 'Money no reach.',
     ERR_WITHDRAWAL_BELOW_MINIMUM: 'The amount small pass the minimum withdrawal.',
-    ERR_WITHDRAWAL_NEEDS_APPROVAL: 'Finance people suppose approve this withdrawal.',
     ERR_CONSENT_REQUIRED: 'Abeg give consent before you continue.',
     ERR_KYC_STEP_INVALID: 'You no fit submit this step right now.',
     ERR_OTP_INVALID: 'That code no correct. Try am again.',
@@ -416,6 +415,7 @@ const pcm = {
     },
     transactionStatuses: {
       pending: 'E dey wait',
+      awaiting_approval: 'E dey wait approval',
       completed: 'Don complete',
       failed: 'E no go',
       reversed: 'Dem reverse am',

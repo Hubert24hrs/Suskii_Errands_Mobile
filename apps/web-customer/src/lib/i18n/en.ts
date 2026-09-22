@@ -98,7 +98,6 @@ const en = {
     ERR_OFFER_ROUNDS_EXHAUSTED: 'Negotiation limit reached for this request.',
     ERR_INSUFFICIENT_BALANCE: 'Insufficient balance.',
     ERR_WITHDRAWAL_BELOW_MINIMUM: 'Amount is below the minimum withdrawal.',
-    ERR_WITHDRAWAL_NEEDS_APPROVAL: 'This withdrawal needs finance approval.',
     ERR_CONSENT_REQUIRED: 'Please give consent before continuing.',
     ERR_KYC_STEP_INVALID: 'This step cannot be submitted right now.',
     ERR_OTP_INVALID: 'That code is not correct. Try again.',
@@ -414,6 +413,7 @@ const en = {
     },
     transactionStatuses: {
       pending: 'Pending',
+      awaiting_approval: 'Awaiting approval',
       completed: 'Completed',
       failed: 'Failed',
       reversed: 'Reversed',

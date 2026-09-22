@@ -31,8 +31,7 @@ export function walletKindLabel(dict: Dictionary, kind: WalletTransactionKind): 
 }
 
 /**
- * Localized transaction-status label. dict.wallet.transactionStatuses does
- * not exist yet — falls back to the raw status (reported as missing keys).
+ * Localized transaction-status label from dict.wallet.transactionStatuses.
  */
 export function walletTxnStatusLabel(
   dict: Dictionary,
@@ -48,6 +47,7 @@ export function walletTxnStatusTone(status: WalletTransactionStatus): ChipTone {
     case 'completed':
       return 'success';
     case 'pending':
+    case 'awaiting_approval':
       return 'warning';
     case 'failed':
     case 'reversed':

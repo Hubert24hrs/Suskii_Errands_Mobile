@@ -29,12 +29,21 @@ abstract final class ErrorCodes {
   static const String invalidState = 'ERR_ILLEGAL_TRANSITION';
   static const String callInProgress = 'ERR_CALL_IN_PROGRESS';
 
+  /// Completion was attempted without the required proof-of-execution
+  /// (category proof requirements unmet, or the delivery PIN not yet
+  /// verified for a job with a destination).
+  static const String proofRequired = 'ERR_PROOF_REQUIRED';
+
+  /// Handover-PIN attempt limit reached. Terminal for that PIN: stop asking
+  /// and route to support (verify_pin returns wrong-PIN results WITHOUT
+  /// raising precisely so this limit cannot be rolled back).
+  static const String pinAttemptsExceeded = 'ERR_PIN_ATTEMPTS_EXCEEDED';
+
   // Money
   static const String paymentFailed = 'ERR_PAYMENT_FAILED';
   static const String paymentTtlExpired = 'ERR_PAYMENT_TTL_EXPIRED';
   static const String insufficientBalance = 'ERR_INSUFFICIENT_BALANCE';
   static const String withdrawalBelowMinimum = 'ERR_WITHDRAWAL_BELOW_MINIMUM';
-  static const String withdrawalNeedsApproval = 'ERR_WITHDRAWAL_NEEDS_APPROVAL';
 
   // Verification
   static const String otpInvalid = 'ERR_OTP_INVALID';

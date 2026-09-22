@@ -85,4 +85,48 @@ void main() {
       expect(keys.length, 500);
     });
   });
+
+  group('IdempotencyKeys', () {
+    test('the same intent keeps its key until it is done', () {
+      final keys = IdempotencyKeys();
+      final first = keys.forIntent('kyc.submit');
+      expect(
+        keys.forIntent('kyc.submit'),
+        first,
+        reason: 'a retry of the same intent must replay, not act again',
+      );
+      keys.done('kyc.submit');
+      expect(
+        keys.forIntent('kyc.submit'),
+        isNot(first),
+        reason: 'a new intent after success is a new operation',
+      );
+    });
+
+    test('different intents never share a key', () {
+      final keys = IdempotencyKeys();
+      expect(
+        keys.forIntent('org.invite:+2348000000001'),
+        isNot(keys.forIntent('org.invite:+2348000000002')),
+      );
+    });
+
+    test('done on an intent that was never started is harmless', () {
+      final keys = IdempotencyKeys();
+      expect(() => keys.done('never.started'), returnsNormally);
+    });
+
+    test('clear forgets everything, because keys belong to a session', () {
+      final keys = IdempotencyKeys();
+      final first = keys.forIntent('settings.exportData');
+      expect(keys.pending, contains('settings.exportData'));
+      keys.clear();
+      expect(keys.pending, isEmpty);
+      expect(
+        keys.forIntent('settings.exportData'),
+        isNot(first),
+        reason: 'a second person on the same handset must not inherit a key',
+      );
+    });
+  });
 }

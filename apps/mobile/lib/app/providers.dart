@@ -264,6 +264,26 @@ final nearbyRequestsProvider = StreamProvider<List<JobRequest>>(
   (ref) => ref.watch(providerRepositoryProvider).watchNearbyRequests(),
 );
 
+/// The signed-in provider's own offers across all requests (M8.6).
+final myOffersProvider = FutureProvider<List<Offer>>(
+  (ref) => ref.watch(providerRepositoryProvider).getMyOffers(),
+);
+
+/// Active jobs assigned to the signed-in provider (M8.6).
+final providerJobsProvider = StreamProvider<List<JobRequest>>(
+  (ref) => ref.watch(providerRepositoryProvider).watchMyJobs(),
+);
+
+/// Terminal jobs of the signed-in provider, first page (M8.6).
+final providerJobsHistoryProvider = FutureProvider<List<JobRequest>>(
+  (ref) => ref.watch(providerRepositoryProvider).getMyJobsHistory(),
+);
+
+/// Proofs attached to a job (M8.6 job execution).
+final jobProofsProvider = FutureProvider.family<List<Proof>, String>(
+  (ref, jobId) => ref.watch(jobProgressRepositoryProvider).getProofs(jobId),
+);
+
 final walletSummaryProvider = FutureProvider<WalletSummary>(
   (ref) => ref.watch(walletRepositoryProvider).getSummary(),
 );

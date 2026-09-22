@@ -21,6 +21,13 @@ abstract class ServiceCategory with _$ServiceCategory {
 
     /// Max counter rounds per negotiation thread (spec default: 5).
     @Default(5) int maxCounterRounds,
+
+    /// Proof-of-execution required before the provider can mark a job of
+    /// this category complete (spec: job_lifecycle.proof; backend
+    /// `service_categories.proof_requirements`). Keys are [ProofKind] wire
+    /// values ('photo', 'receipt', 'signature'), values the required count.
+    /// Server-owned; empty map = no proofs required.
+    @Default(<String, int>{}) Map<String, int> proofRequirements,
   }) = _ServiceCategory;
 
   factory ServiceCategory.fromJson(Map<String, dynamic> json) =>

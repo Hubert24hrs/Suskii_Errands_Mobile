@@ -16,6 +16,7 @@ import type {
   TrustedContact,
   WalletSummary,
   WalletTransaction,
+  WalletTransactionStatus,
 } from '../types';
 import { MockRepo, type Unsubscribe } from './base';
 
@@ -78,15 +79,19 @@ export class MockWalletRepository extends MockRepo {
           throw new AppError(ErrorCodes.insufficientBalance);
         }
         // Finance-approval threshold, per currency (like the backend's
-        // per-country rule — not a hard-coded USD check).
+        // per-country rule — not a hard-coded USD check). Above it the
+        // withdrawal still SUCCEEDS with an awaiting-approval status
+        // (contracts: withdrawal_status = 'awaiting_approval') — it is not
+        // an error.
         const threshold = this.behavior.withdrawalApprovalThresholds[amount.currency];
-        if (threshold !== undefined && amount.amountMinor > threshold) {
-          throw new AppError(ErrorCodes.withdrawalNeedsApproval);
-        }
+        const status: WalletTransactionStatus =
+          threshold !== undefined && amount.amountMinor > threshold
+            ? 'awaiting_approval'
+            : 'pending';
         const txn: WalletTransaction = {
           id: `txn-${Date.now()}`,
           kind: 'payout',
-          status: 'pending',
+          status,
           amount,
           descriptionKey: 'txnWithdrawal',
           createdAt: this.now(),

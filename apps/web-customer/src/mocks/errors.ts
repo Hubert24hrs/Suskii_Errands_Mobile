@@ -38,7 +38,6 @@ export const ErrorCodes = {
   paymentTtlExpired: 'ERR_PAYMENT_TTL_EXPIRED',
   insufficientBalance: 'ERR_INSUFFICIENT_BALANCE',
   withdrawalBelowMinimum: 'ERR_WITHDRAWAL_BELOW_MINIMUM',
-  withdrawalNeedsApproval: 'ERR_WITHDRAWAL_NEEDS_APPROVAL',
 
   // Verification
   otpInvalid: 'ERR_OTP_INVALID',

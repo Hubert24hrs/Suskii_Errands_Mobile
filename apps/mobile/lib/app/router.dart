@@ -27,8 +27,10 @@ import '../features/customer/voice_concierge_page.dart';
 import '../features/customer/wallet_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
+import '../features/provider/my_offers_page.dart';
 import '../features/provider/organization_page.dart';
 import '../features/provider/provider_feed_page.dart';
+import '../features/provider/provider_job_execution_page.dart';
 import '../features/provider/provider_jobs_page.dart';
 import '../features/provider/provider_kyc_page.dart';
 import '../features/provider/provider_onboarding_page.dart';
@@ -99,6 +101,14 @@ abstract final class AppRoutes {
 
   static const String providerTools = '/provider/tools';
   static const String providerOrg = '/provider/org';
+
+  // M8.6: provider offers + job execution — job-scoped like the M4 routes.
+  static const String providerOffers = '/provider/offers';
+  static const String providerJobExecution = '/provider/jobs/:id';
+  static const String providerJobChat = '/provider/jobs/:id/chat';
+
+  static String providerJobExecutionPath(String id) => '/provider/jobs/$id';
+  static String providerJobChatPath(String id) => '/provider/jobs/$id/chat';
 }
 
 /// Simple boolean flag controller (Riverpod 3 has no legacy StateProvider).
@@ -329,6 +339,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.providerOrg,
         builder: (context, state) => const OrganizationPage(),
+      ),
+      // M8.6 routes — provider offers, job execution and provider-scoped chat
+      // (the customer chat route redirects away in provider mode).
+      GoRoute(
+        path: AppRoutes.providerOffers,
+        builder: (context, state) => const MyOffersPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerJobExecution,
+        builder: (context, state) =>
+            ProviderJobExecutionPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.providerJobChat,
+        builder: (context, state) =>
+            ChatPage(jobId: state.pathParameters['id']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

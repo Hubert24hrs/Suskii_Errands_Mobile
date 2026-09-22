@@ -8,6 +8,7 @@ import '../entities/offer.dart';
 import '../entities/organization.dart';
 import '../entities/payment.dart';
 import '../entities/promo.dart';
+import '../entities/proof.dart';
 import '../entities/provider_tools.dart';
 import '../entities/rating.dart';
 import '../entities/referral.dart';
@@ -154,6 +155,16 @@ abstract interface class ProviderRepository {
   Future<ProviderHomeSummary> getHomeSummary();
   Stream<List<JobRequest>> watchNearbyRequests();
   Future<List<Offer>> getMyOffers();
+
+  /// Jobs assigned to the signed-in provider (from PAID_HELD onward, until
+  /// terminal), newest activity first. Re-emits on every job event.
+  Stream<List<JobRequest>> watchMyJobs();
+
+  /// Terminal jobs of the signed-in provider, newest first. Cursor is the
+  /// id of the last job of the previous page (same shape as
+  /// [RequestRepository.getMyRequestHistory]).
+  Future<List<JobRequest>> getMyJobsHistory({String? cursor, int limit = 20});
+
   Future<Offer> submitOffer({
     required String requestId,
     required Money amount,
@@ -166,8 +177,34 @@ abstract interface class ProviderRepository {
   Future<bool> setOnline(bool online, {required String idempotencyKey});
 }
 
+/// Outcome of a handover-PIN verification (mirrors `verify_pin`'s jsonb
+/// result). A wrong PIN is reported here rather than thrown, because raising
+/// would roll back the server's attempt counter; the exhausted case is the
+/// exception, ERR_PIN_ATTEMPTS_EXCEEDED.
+class PinVerificationResult {
+  const PinVerificationResult({
+    required this.verified,
+    required this.status,
+    required this.attemptsRemaining,
+  });
+
+  final bool verified;
+
+  /// The job's status after the call — a verified pickup PIN has already
+  /// moved it to IN_PROGRESS.
+  final JobStatus status;
+  final int attemptsRemaining;
+}
+
 abstract interface class JobProgressRepository {
   /// Provider requests a status change; the server runs the state machine.
+  ///
+  /// IN_PROGRESS → COMPLETED_BY_PROVIDER additionally requires the job's
+  /// proof-of-execution to be complete (spec: job_lifecycle.proof): every
+  /// [ServiceCategory.proofRequirements] kind must have enough [Proof]s
+  /// submitted via [submitProof], and when the job has a destination the
+  /// delivery handover PIN must have been verified via [verifyHandoverPin].
+  /// Violations throw AppError(ERR_PROOF_REQUIRED).
   Future<JobRequest> requestStatusChange(
     String jobId,
     JobStatus target, {
@@ -180,14 +217,44 @@ abstract interface class JobProgressRepository {
     required String idempotencyKey,
   });
 
-  /// PIN verification for pickup/delivery. Server-side attempt limits apply:
-  /// a wrong PIN consumes an attempt, but a retry with the SAME
+  /// PIN verification for pickup/delivery. [kind] selects which PIN: the
+  /// pickup PIN starts the work (a verified pickup PIN moves the job to
+  /// IN_PROGRESS — that transition is not settable directly), the delivery
+  /// PIN satisfies the completion gate on jobs with a destination.
+  ///
+  /// A WRONG PIN is a result, not an error (mirrors `verify_pin`, which
+  /// returns rather than raises so the attempt counter survives): check
+  /// [PinVerificationResult.verified] and render
+  /// [PinVerificationResult.attemptsRemaining]. The terminal case raises
+  /// AppError(ERR_PIN_ATTEMPTS_EXCEEDED) instead. Server-side attempt limits
+  /// apply: a wrong PIN consumes an attempt, but a retry with the SAME
   /// [idempotencyKey] replays the earlier result without spending another.
-  Future<bool> verifyHandoverPin(
+  Future<PinVerificationResult> verifyHandoverPin(
     String jobId,
     String pin, {
+    required HandoverPinKind kind,
     required String idempotencyKey,
   });
+
+  /// Records a proof-of-execution row (mirrors the backend's
+  /// `submit_proof`). Provider-only, only while the job is IN_PROGRESS or
+  /// COMPLETED_BY_PROVIDER; [storagePath] must be namespaced under the job
+  /// (`<jobId>/…`) — the server signs uploads only into that prefix.
+  /// Throws AppError(ERR_PERMISSION_DENIED) for a foreign job or an
+  /// out-of-prefix path, AppError(ERR_ILLEGAL_TRANSITION) outside the
+  /// execution window.
+  Future<Proof> submitProof({
+    required String jobId,
+    required ProofKind kind,
+    required String storagePath,
+    required String idempotencyKey,
+    DateTime? capturedAt,
+    double? lat,
+    double? lng,
+  });
+
+  /// Proofs attached to a job, visible to its two participants.
+  Future<List<Proof>> getProofs(String jobId);
 }
 
 abstract interface class TrackingRepository {

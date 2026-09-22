@@ -155,6 +155,28 @@ enum OfferStatus {
   withdrawn,
 }
 
+/// Proof-of-execution attachment kinds (spec: job_lifecycle.proof). The
+/// backend's `service_categories.proof_requirements` counts required proofs
+/// per kind; the wire values below are the keys of that map.
+enum ProofKind {
+  @JsonValue('photo')
+  photo,
+  @JsonValue('receipt')
+  receipt,
+  @JsonValue('signature')
+  signature,
+}
+
+/// Which handover PIN is being verified (the backend's `verify_pin`
+/// `p_kind`). The pickup PIN starts the work (arrived → in_progress); the
+/// delivery PIN clears completion on jobs with a destination.
+enum HandoverPinKind {
+  @JsonValue('pickup')
+  pickup,
+  @JsonValue('delivery')
+  delivery,
+}
+
 enum PaymentStatus {
   @JsonValue('unpaid')
   unpaid,

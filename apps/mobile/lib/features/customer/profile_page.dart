@@ -9,6 +9,7 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/idempotency_keys.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 
@@ -52,6 +53,9 @@ class ProfilePage extends ConsumerWidget {
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     try {
       await ref.read(authRepositoryProvider).signOut();
+      // Keys belong to a session: the next person on this handset must not
+      // inherit one that would replay the previous person's action.
+      ref.read(idempotencyKeysProvider).clear();
       // Router redirect returns to the auth route.
     } on Object catch (error) {
       if (context.mounted) {

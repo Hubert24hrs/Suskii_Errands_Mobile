@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/idempotency_keys.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
 
@@ -113,14 +113,20 @@ class _OrgBody extends ConsumerWidget {
     );
 
     if (invited != true || !context.mounted) return;
+    // Keyed per phone number, not per screen (M3.14): two invitations can be
+    // in flight, and they are different intents.
+    final keys = ref.read(idempotencyKeysProvider);
+    final phone = phoneController.text.trim();
+    final intent = 'org.invite:$phone';
     try {
       await ref
           .read(organizationRepositoryProvider)
           .inviteMember(
-            phoneE164: phoneController.text.trim(),
+            phoneE164: phone,
             role: role,
-            idempotencyKey: newIdempotencyKey(),
+            idempotencyKey: keys.forIntent(intent),
           );
+      keys.done(intent);
       ref.invalidate(orgMembersProvider);
       if (context.mounted) {
         showSToast(context, l10n.orgInviteSent);
@@ -151,10 +157,13 @@ class _OrgBody extends ConsumerWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
+    final keys = ref.read(idempotencyKeysProvider);
+    final intent = 'org.removeMember:${member.userId}';
     try {
       await ref
           .read(organizationRepositoryProvider)
-          .removeMember(member.userId, idempotencyKey: newIdempotencyKey());
+          .removeMember(member.userId, idempotencyKey: keys.forIntent(intent));
+      keys.done(intent);
       ref.invalidate(orgMembersProvider);
       if (context.mounted) {
         showSToast(context, l10n.orgMemberRemoved);
@@ -226,6 +235,9 @@ class _OrgBody extends ConsumerWidget {
     );
 
     if (added != true || !context.mounted) return;
+    final keys = ref.read(idempotencyKeysProvider);
+    final plate = plateController.text.trim();
+    final intent = 'org.addVehicle:$plate';
     try {
       await ref
           .read(organizationRepositoryProvider)
@@ -234,10 +246,11 @@ class _OrgBody extends ConsumerWidget {
               id: 'veh-${DateTime.now().millisecondsSinceEpoch}',
               organizationId: '',
               type: type,
-              plate: plateController.text.trim(),
+              plate: plate,
             ),
-            idempotencyKey: newIdempotencyKey(),
+            idempotencyKey: keys.forIntent(intent),
           );
+      keys.done(intent);
       ref.invalidate(orgVehiclesProvider);
       if (context.mounted) {
         showSToast(context, l10n.orgVehicleSaved);
@@ -307,14 +320,17 @@ class _OrgBody extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final workerId = await _pickWorker(context, ref, l10n.orgVehicleAssign);
     if (workerId == null || !context.mounted) return;
+    final keys = ref.read(idempotencyKeysProvider);
+    final intent = 'org.assignVehicle:${vehicle.id}:$workerId';
     try {
       await ref
           .read(organizationRepositoryProvider)
           .assignVehicle(
             vehicle.id,
             workerId,
-            idempotencyKey: newIdempotencyKey(),
+            idempotencyKey: keys.forIntent(intent),
           );
+      keys.done(intent);
       ref.invalidate(orgVehiclesProvider);
       if (context.mounted) {
         showSToast(context, l10n.orgVehicleSaved);
@@ -342,14 +358,17 @@ class _OrgBody extends ConsumerWidget {
       l10n.orgDispatchPickWorker,
     );
     if (workerId == null || !context.mounted) return;
+    final keys = ref.read(idempotencyKeysProvider);
+    final intent = 'org.dispatchJob:${job.id}:$workerId';
     try {
       await ref
           .read(organizationRepositoryProvider)
           .assignJob(
             jobId: job.id,
             workerId: workerId,
-            idempotencyKey: newIdempotencyKey(),
+            idempotencyKey: keys.forIntent(intent),
           );
+      keys.done(intent);
       ref.invalidate(orgAssignableJobsProvider);
       if (context.mounted) {
         showSToast(context, l10n.orgDispatchAssigned);

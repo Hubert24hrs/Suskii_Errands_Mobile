@@ -41,3 +41,41 @@ String newIdempotencyKey() {
       '-$variant${_randomHex(2).substring(1)}'
       '-${_randomHex(6)}';
 }
+
+/// Keys held per intent, so a retry replays instead of acting twice.
+///
+/// [newIdempotencyKey] says to reuse the same key when retrying the same
+/// intent, and that is the part screens get wrong: calling it inline at the
+/// call site mints a *fresh* key on every attempt, so a retry after a failure
+/// looks to the server like a new operation. Where there is no natural
+/// uniqueness behind it — `start_verification_session` is the example — that
+/// creates a second row rather than replaying the first (audit finding M3.14).
+///
+/// A screen that already has State can hold a `String?` field and do this
+/// itself; `WithdrawSheet` does. This exists for the ones that cannot, because
+/// the action lives on a `ConsumerWidget` or is fired from a dialog.
+///
+/// Intents are named by the caller and must be specific enough to be one
+/// intent: `'org.invite'` is wrong if two invitations can be in flight, while
+/// `'org.invite:$email'` is right.
+class IdempotencyKeys {
+  final Map<String, String> _keys = <String, String>{};
+
+  /// The key for [intent], minting one the first time and returning the same
+  /// one on every retry until [done] is called.
+  String forIntent(String intent) =>
+      _keys.putIfAbsent(intent, newIdempotencyKey);
+
+  /// Call after the intent succeeds, so the next one starts a new key.
+  ///
+  /// Deliberately NOT called on failure: retaining the key is what makes the
+  /// retry a replay.
+  void done(String intent) => _keys.remove(intent);
+
+  /// Forget everything. For sign-out: keys belong to a session, and a second
+  /// person on the same handset must not inherit them.
+  void clear() => _keys.clear();
+
+  /// Intents with a key outstanding. For tests and diagnostics.
+  Iterable<String> get pending => _keys.keys;
+}
