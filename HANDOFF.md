@@ -5,6 +5,27 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-21 — Kimi Code — M8.5 hand-off: screen inventory ↔ PRD mapping + demo builds
+
+**Screen inventory**: `contracts/draft/screen-inventory-m85.md` maps all 82 shipped routes
+(mobile customer 24, mobile provider 8, web customer 18, web marketing 13, admin 19) to PRD
+story IDs. 28 of 147 stories have no screen; 6 screens have no story (mostly plumbing).
+**The change-list headline: provider job execution (PR-15…PR-20) has no UI** — `/provider/jobs`
+is still the M1 empty-state stub and nothing calls `verifyHandoverPin` / `submitProof` /
+`setJobStatus` — and provider offer-making (PR-12/13) is unwired. Safety reporting
+(SH-27/SH-28) is absent on all surfaces. Customer gaps: CU-30 tip, CU-31 favourites/rebook,
+CU-20 reassign, CU-22 float-receipt review, CU-32 scheduled list. Admin gaps: AD-11 taxonomy
+editor, AD-12 moderation queue, AD-15 reconciliation, AD-23 notification templates, AD-08
+expiry monitoring. Web: sign-in is a stub pending @supabase/ssr (WB-01), no browser calls
+(WB-07). Proposed plan: close the provider job-execution + offer-making gaps as an M8.6
+before M9 wiring — the provider half of the core loop is what a demo needs most.
+
+**Verification snapshot**: `flutter analyze` apps/mobile clean; package suites green
+(core/domain/data); all three web apps `next build` green. Demo APK: debug build from
+apps/mobile (release signing + TestFlight remain client-account items — OD list).
+
+---
+
 ## 2026-09-21 — Kimi Code — M8 done: admin dashboard (apps/web-admin)
 
 All 15 spec modules are in on mocks. Verify: `npx tsc --noEmit --incremental false` clean;
@@ -54,6 +75,133 @@ dispute "reject" moves the job to confirmed with zeroed quote; document-view exp
 ERR_SESSION_EXPIRED; approved withdrawals move to `processing` (rail transfer not
 simulated); admin JobAdminView carries agreedPrice only (no full server breakdown yet — open
 need if the admin detail should show commission/net).
+
+---
+
+## 2026-09-22 — Claude Code — the offers board and the price hint have backends now
+
+Contracts at `1.0.0-preview.17`. No new error codes, no breaking changes. Two of these unblock
+screens you built on mocks in M3.
+
+### `rank_offers(request_id)` — the offers board's compare
+
+Returns every live offer on **your own** request with a `score`, the provider's display name, the
+amount, their rating and count, and a `factors` object. Somebody else's request raises
+`ERR_REQUEST_NOT_FOUND` — the same answer the table gives, because somebody else's offers are not
+admitted to exist.
+
+**It is not a price sort, and the card should not present it as one.** Half the weight is the
+price *relative to the offers actually on the table* — "cheap" only means anything next to the
+alternatives — and the rest is reputation. So a cheaper newcomer can outrank a dearer veteran,
+and at the same price the veteran wins. An unrated provider scores a neutral 0.6 rather than
+zero, deliberately: a marketplace that starves newcomers never gets a second provider.
+
+`factors` carries `cheapest`, `new_provider` and `offers_compared` so the card can say *why* this
+one is on top. Please use them. A bare ranking with no explanation is the thing people distrust.
+
+Pair it with `get_provider_card(provider_id)` from preview.16 for the rest of the card.
+
+### `get_price_band(category_id, urgency, city_id)` — the request form's hint
+
+Returns `p25_minor`, `p50_minor`, `p75_minor`, `currency`, `sample_size` and **`basis`**.
+
+Two things the UI has to respect:
+
+- **`basis` is `rules` or `history`.** `rules` means the band is the country's configured
+  guardrails widened by urgency — a suggestion. `history` means trimmed quantiles over real
+  agreed prices, and `sample_size` says how many. Rendering both the same way is lying about one
+  of them; "typical range" for history and "suggested range" for rules is the least you can do.
+- **It can return no row at all.** That is the honest answer for a category nobody has priced
+  yet. Show no hint. Do not render a zero band.
+
+Currency is the caller's own and is never converted.
+
+### Also new
+
+- `get_availability_summary(category_id, lat, lng, radius_m)` — `providers_online`,
+  `response_time_p50_s`, `radius_m`. **Counts only, never a provider**: no name, no id, no
+  position. Good for "7 couriers nearby, usually reply in 2 minutes" before somebody types
+  anything.
+- `get_job_summary(request_id)` — state, the timestamps, and a `next_step` **key** the app
+  translates. A request with no job yet returns `job.next.none` rather than an error.
+- `get_category_requirements(category_id)` — what a request of this category needs.
+- Eight `kpi_*` functions for M8's dashboard. **Every cell below ten comes back NULL, not zero.**
+  A suppressed cell and an empty one are different claims; render NULL as "—", never as `0`, or
+  the dashboard will confidently report a market that does not exist. `kpi_gmv` returns one row
+  per currency and no total, on purpose.
+
+### Not built, so you do not wait for it
+
+The AI service itself — the FastAPI/Gemini gateway, redaction, the eval suites and the voice
+concierge — needs Vertex AI and GCP billing. The concierge's *tools* exist and are the boundary
+it will sit behind, which is the right order: the boundary should be testable before anything is
+pointed at it.
+
+---
+
+## 2026-09-22 — Claude Code — four signatures change, the offers board gets its backend
+
+Contracts at `1.0.0-preview.16` (109 codes). Three things here affect screens you have already
+built or are about to.
+
+### Breaking: four functions take an idempotency key first
+
+`add_trusted_contact`, `invite_member`, `accept_organization_invite` and
+`start_verification_session` now take `p_idempotency_key text` as their **first** argument, like
+every other create and transition on the platform. The old signatures are gone, not deprecated.
+
+This is free today — contracts are `v1-preview`, non-binding, and nothing calls the backend yet —
+and it will not be free after M8.5, which is why it is done now rather than later.
+
+One of them is a real behaviour fix rather than consistency: `accept_organization_invite` matches
+on `status = 'invited'`, so a client retrying after a lost response used to be told the
+organisation did not exist. With a key it replays the role it returned the first time.
+
+### `get_provider_card()` — the offers board's missing half
+
+This is new ground and it unblocks M3's offers board against the real backend.
+
+`profiles` is own-read-only, deliberately: nobody can enumerate users. The consequence was that a
+customer comparing three offers could learn **nothing** about the providers — not a name, not a
+rating, not whether they are verified. The RLS matrix has named `get_provider_card()` since Phase
+1 as the narrow way through; it had never been written.
+
+`get_provider_card(provider_id)` returns `display_name`, `avatar_path`, `trust_level`, `verified`,
+`rating_avg_milli`, `rating_count`, `jobs_completed`, `vehicle_type`, `business_name`,
+`member_since`.
+
+Two things to build around:
+
+- **A reason is required.** You get a card for a provider who has made you an offer, or who is on
+  a job with you. Anything else raises `ERR_PERMISSION_DENIED` — not an empty row, because an
+  empty row is a lookup service. So fetch cards from the offers you already have, never from a
+  free-text id.
+- **`rating_avg_milli` is thousandths of a star** (4730 is 4.73), and `rating_count` is beside it
+  because a 5.0 from one job is not a 5.0 from two hundred. Please show the count; hiding it is
+  how a number lies. `jobs_completed` is a count, not an aggregate somebody wrote down.
+
+### Admin: country scope is enforced now
+
+`admin_users.country_scope` has existed since Phase 2 and nothing read it. It now scopes reads on
+twenty-eight tables. An officer with `country_scope = ['NG']` sees Nigerian rows and no others; an
+officer with `NULL` sees everything, as before; `super_admin` is **never** scoped.
+
+If an admin screen assumed a support agent could see the whole platform, it will now show fewer
+rows. That is the fix, not a bug — and it is worth a visible "scoped to Nigeria" label somewhere,
+because an empty list with no explanation reads as an outage.
+
+Also: **a business can no longer be renamed once it is verified.** RLS matches nothing rather than
+raising, so the UPDATE silently writes zero rows — hide the control when
+`verification_status = 'verified'` rather than relying on an error.
+
+### Not yours, but worth knowing
+
+The notification dispatcher exists (`notifications-worker`). Nothing actually sends yet: APNs and
+FCM need push credentials and a device lab (client action 6). The push payload rule is enforced
+in the worker rather than trusted to a sender — an amount, a name or a body key never reaches a
+lock screen or a vendor's logs, only an id, a kind, a title key and a request id. When you build
+the push handler, expect exactly those fields and fetch the rest over the authenticated
+connection.
 
 ---
 
