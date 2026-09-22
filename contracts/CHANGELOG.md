@@ -17,10 +17,10 @@ signature changes — a read that the matrix always specified and no policy deli
   plain select on the request behind a job the caller is assigned to. The gate is
   `jobs.assigned_at`, so it opens when the customer's money is held and not when the offer is
   accepted. Before this, a provider who accepted a delivery could not read the address.
-- **`request_media` is readable by the assigned provider and by a matched one** — a provider
-  with an offer thread. `provider_feed` has returned `media_paths` since Phase 3 and no policy
-  let a bidding provider fetch one of those objects, so the feed card has been rendering broken
-  images for as long as it has existed. The row and the storage object now agree.
+- **`request_media` rows are readable by the assigned provider and by a matched one** — a
+  provider with an offer thread. The storage objects were already reachable (Phase 3 widened
+  `may_read_request_media` to the feed's own test); it was the rows describing them that were
+  customer-only, so the table and the bucket disagreed. They agree now.
 - **`job_events` is readable by the provider.** Its provider clause had never evaluated true.
 - **A bidding provider still reads no request.** Deliberate and tested. Do not build a surface
   that shows an exact address to a provider who has not been assigned a funded job.

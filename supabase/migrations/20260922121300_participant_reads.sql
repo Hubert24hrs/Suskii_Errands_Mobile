@@ -20,9 +20,10 @@
 -- Three limbs, and a fourth found while fixing them:
 --   a) an **assigned** provider reads the request. Gated on `jobs.assigned_at`, not on the
 --      current status -- see the helper.
---   b) a **matched** provider reads the request's media, which is the feed card the matrix
---      already promises. `provider_feed` returns `media_paths` and no policy let a bidding
---      provider fetch a single one of them.
+--   b) a **matched** provider reads the `request_media` rows for a request they have bid on.
+--      The storage objects were already reachable -- Phase 3 widened
+--      `private.may_read_request_media` for exactly this -- but the rows describing them were
+--      customer-only, so the table and the bucket disagreed.
 --   c) `request_media` gains the staff scope every other media surface got in S.1.
 --   d) `job_events` was **already broken for providers** and would have stayed broken after
 --      (a): its provider clause is nested inside a subquery on `public.requests`, and a
@@ -110,26 +111,13 @@ CREATE POLICY request_media_read_own ON public.request_media FOR SELECT TO authe
          OR (SELECT private.support_ticket_scope(request_media.request_id))
          OR (SELECT private.dispute_scope(request_media.request_id)));
 
--- The object behind the row. A matched provider is handed `media_paths` by `provider_feed` and
--- until now could not fetch one of them, so the feed card has been rendering broken images for
--- as long as there has been a feed.
-CREATE OR REPLACE FUNCTION private.may_read_request_media(p_name text)
-RETURNS boolean
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.request_media rm
-    WHERE rm.storage_path = p_name
-      AND (EXISTS (SELECT 1 FROM public.jobs j
-                   WHERE j.request_id = rm.request_id
-                     AND (j.provider_id = (SELECT auth.uid())
-                          OR j.worker_id = (SELECT auth.uid())))
-           OR EXISTS (SELECT 1 FROM public.offer_threads t
-                      WHERE t.request_id = rm.request_id
-                        AND t.provider_id = (SELECT auth.uid()))));
-$$;
+-- The object behind the row is **not** touched here. `private.may_read_request_media` was
+-- widened in Phase 3 (`...120500_ratings_and_reputation`) to the same test the feed applies --
+-- active, same country, registered for the category, request still open -- so a provider who
+-- could be matched can already fetch the photos the feed card lists. That is deliberately wider
+-- than the row policy above, and correctly so: the feed hands a provider `media_paths` directly
+-- and never needs them to read `request_media` first. The row is for somebody working with a
+-- specific request, which is the participant.
 
 -- ---------------------------------------------------------------------------
 -- job_events -- the provider clause moves out of the `requests` subquery and into the helper

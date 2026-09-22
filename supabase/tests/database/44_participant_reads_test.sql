@@ -11,7 +11,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(30);
+SELECT plan(29);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('d1111111-1111-4111-8111-111111111111', '2348000002001'),   -- customer
@@ -199,22 +199,21 @@ SELECT pg_temp.act('d2222222-2222-4222-8222-222222222222');
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.request_media), 1,
   'so does the assigned provider');
+SELECT ok(private.may_read_request_media('d1111111-1111-4111-8111-111111111111/parcel.jpg'),
+  'and the object agrees with the row, which is the pair that has to hold');
 RESET ROLE;
 
 SELECT pg_temp.act('d3333333-3333-4333-8333-333333333333');
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.request_media), 1,
-  'and so does a matched provider, whose feed card lists this path and could not fetch it');
-SELECT ok(private.may_read_request_media('d1111111-1111-4111-8111-111111111111/parcel.jpg'),
-  'the storage side agrees, or the row would describe an object the same person cannot open');
+  'and so does a matched provider: they bid on it, so the row describing the photo on their '
+  'card is theirs to read');
 RESET ROLE;
 
 SELECT pg_temp.act('d4444444-4444-4444-8444-444444444444');
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.request_media), 0,
   'a provider matched to a different request reads no media here');
-SELECT ok(NOT private.may_read_request_media('d1111111-1111-4111-8111-111111111111/parcel.jpg'),
-  'and cannot open the object either');
 RESET ROLE;
 
 SELECT pg_temp.act('d5555555-5555-4555-8555-555555555555');
