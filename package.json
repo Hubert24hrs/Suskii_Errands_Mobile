@@ -2,12 +2,15 @@
   "name": "suskii-web",
   "private": true,
   "workspaces": [
+    "apps/web-admin",
     "apps/web-customer",
     "apps/web-marketing"
   ],
   "scripts": {
+    "build:web-admin": "npm run build -w apps/web-admin",
     "build:web-customer": "npm run build -w apps/web-customer",
     "build:web-marketing": "npm run build -w apps/web-marketing",
+    "dev:web-admin": "npm run dev -w apps/web-admin",
     "dev:web-customer": "npm run dev -w apps/web-customer",
     "dev:web-marketing": "npm run dev -w apps/web-marketing"
   }

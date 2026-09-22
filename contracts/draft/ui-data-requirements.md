@@ -449,3 +449,51 @@ M1–M5 sections above apply unchanged. Web-specific deltas:
 - **Auth**: the web app currently signs in as a mock persona (`switchPersona` demo hook). The
   M9 wiring needs `@supabase/ssr` session handling; phone OTP on web reuses the same
   `auth-send-sms` hook — no new contract surface expected.
+
+## M8 — Admin dashboard (2026-09-21)
+
+New app `apps/web-admin` (Next.js workspace alongside web-customer/web-marketing). The admin
+console reuses the customer-facing entities (jobs, payments, disputes, …) — its NEW data
+needs:
+
+- **Admin auth/session**: `admin_sign_in(email, password)` → MFA step → session with
+  server-side expiry (mock: 30 min sliding; every call re-checks → `ERR_SESSION_EXPIRED`).
+  Sensitive actions (document views, payment approvals, dispute resolutions, config changes,
+  admin-user management) require a fresh re-auth: `request_admin_reauth(purpose)` →
+  5-minute window, else `ERR_REAUTH_REQUIRED`. Every privileged read (e.g. document views)
+  and mutation must write an audit row.
+- **Role enforcement server-side**: role × action matrix (mock `PERMISSIONS`): super_admin
+  everything; verification_officer → verification queues; support_agent → directory
+  suspend, referrals/promos, support, SOS, disputes read; finance_officer → payments,
+  config propose/approve; dispute_officer → disputes resolve, risk. `ERR_PERMISSION_DENIED`
+  otherwise. Admin list/detail endpoints per directory entity (users, providers,
+  businesses, workers, vehicles) with suspension actions (reason required).
+- **Verification queues**: `list_verification_queue(kind, status)` (kinds: id_document,
+  facial, police_clearance, vehicle_document, business_document), claim/approve/reject
+  (fixed rejection reason keys), terminal items `ERR_ALREADY_REVIEWED`. **Document viewing
+  is short-lived and audited**: `request_document_view(item_id)` → `{ view_token,
+  opaque_url, expires_at }` (mock 60s); expired token refused.
+- **Payments admin**: lists by kind (holds/settlements/payouts/withdrawals) with server
+  quote breakdowns (gross/commission/net — never client-computed). Approvals: single
+  (below-threshold withdrawal → `approve_withdrawal`) and two-person (above per-country
+  threshold → `ERR_APPROVAL_REQUIRED` on direct approve, then `request_approval` →
+  `confirm_approval` by a DIFFERENT admin; same approver → `ERR_INVALID_STATE`).
+- **Disputes admin**: resolution is quote-first — `get_dispute_resolution_quote(id, action,
+  partial_percent?)` returns server-computed Money rows (refund to customer / release to
+  provider / platform retained), then `resolve_dispute(id, action, …)`. Actions:
+  refund_full, refund_partial, release_to_provider, reject.
+- **SOS console**: realtime `watch_alerts` with live location trail on active alerts;
+  acknowledge/resolve with note. (Matches the `ops:sos` channel from Phase 3.)
+- **Config changes are two-person**: feature flags / country packs / commissions are
+  read-only + `propose_change` → pending → second admin `approve_change` applies. Open
+  need: whether flag changes also need an audit-diff payload.
+- **Analytics**: server-computed time series per metric (gmv, jobs_completed, dau,
+  offer_acceptance_rate, dispute_rate) × country. **AI Admin Assistant**: streaming chat,
+  READ-ONLY — answers carry `proposed_action` cards that deep-link to modules; the
+  assistant must have no mutation capability (same rule as the customer concierge).
+- **Audit log**: append-only, filterable by actor/action; the client treats it as
+  server-truth (newest first, live tail via watch).
+- **Admin users**: list, invite (email+role), change role (not self), deactivate (kills
+  the target's sessions immediately), enforce MFA — super_admin only.
+- Mock-only extras to replace at wiring time: `switchPersona` demo hook; sign-in accepts
+  any password.

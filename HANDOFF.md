@@ -5,6 +5,593 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-21 — Kimi Code — M8 done: admin dashboard (apps/web-admin)
+
+All 15 spec modules are in on mocks. Verify: `npx tsc --noEmit --incremental false` clean;
+`npm run build:web-admin` green (20 routes). New npm workspace `apps/web-admin` (port 3200),
+same stack + token-driven Tailwind as the other web apps. **Decision: the admin console is
+English-only** (internal staff tool) — strings still live in a typed dictionary
+(`src/lib/i18n.ts`), never inline; locales can be added later without touching pages.
+
+**Mock layer** (`src/mocks/`) — admin-scope types + fixtures (5 role personas: admin-amina
+super_admin / femi verification / kojo support / zainab finance / sola dispute (no MFA —
+enforce-MFA demo); directory entities, 7 verification-queue items across all kinds, 8 jobs
+with timelines + route points, payments incl. withdrawals in each approval state, referrals
+with flagged cases, promos, disputes with evidence refs, tickets, 2 SOS alerts (one ticking
+live trail), risk cases, flags/packs/commissions, 30d analytics series, seeded audit log)
+and 17 mock repos. Security model per spec: role × action PERMISSIONS matrix enforced in
+every mutating repo method (ERR_PERMISSION_DENIED); 30-min sliding session checked per call
+(ERR_SESSION_EXPIRED); sensitive actions (document views, payment approvals, dispute
+resolutions, config changes, admin-user management) require reauth within 5 min
+(ERR_REAUTH_REQUIRED); two-person flows for above-threshold withdrawals (direct approve →
+ERR_APPROVAL_REQUIRED → requestApproval → different admin confirms; same approver refused)
+and config changes (propose → second admin approves); every mutation writes an audit entry;
+document viewing returns a 60s view token + opaque URL, audit-logged. Dispute resolution is
+quote-first (server-computed Money rows), never client-computed.
+
+**Pages** — sign-in (email + MFA step) + console shell (role-filtered sidebar nav — hiding
+is UX, the mock re-checks); overview (per-country KPI cards incl. GMV/funds held, open
+disputes/SOS); directory (5 entity tabs, search, detail drawer, suspend/unsuspend with
+reason); verification queues (5 kinds, claim/approve/reject with fixed reason keys,
+short-lived document viewer with countdown); jobs (search, detail with timeline + SVG route
+plot); payments (4 tabs, approval drawer with reauth flow + two-person states); referrals
+(attributions, flagged-case review, campaign create/pause/resume); promos (CRUD,
+pause/resume); disputes (assign, evidence placeholders, quote card, resolve with reauth);
+support (assign, thread, close); SOS console (live banner + trail, acknowledge/resolve);
+risk (signals, review/escalate); config (flags/packs/commissions + pending-changes
+approval); analytics (SVG series charts + read-only AI admin assistant with module-deep-link
+action cards); audit log (live tail, filters); admin users (invite, role change, deactivate
+with session-kill note, enforce MFA — super_admin only).
+
+**Contract needs** — `contracts/draft/ui-data-requirements.md` M8 section: admin auth/MFA/
+reauth/session expiry, server-side role matrix, verification queue + document-view grant,
+payment approvals (threshold config per country), dispute resolution quotes, SOS realtime,
+config two-person flow, analytics series, read-only AI assistant, audit log, admin-user
+management. Mock-only seams to replace at M9 wiring: switchPersona, any-password sign-in.
+
+**Deviations to confirm**: risk.review granted to dispute_officer (not finance/support);
+dispute "reject" moves the job to confirmed with zeroed quote; document-view expiry reuses
+ERR_SESSION_EXPIRED; approved withdrawals move to `processing` (rail transfer not
+simulated); admin JobAdminView carries agreedPrice only (no full server breakdown yet — open
+need if the admin detail should show commission/net).
+
+---
+
+## 2026-09-22 — Claude Code — the audit pass, the trip trail, and the admin verbs for people
+
+Contracts at `1.0.0-preview.15` (108 codes). Two things here change what a screen can do.
+
+### The trip trail (M4)
+
+`job_trail(request_id)` returns the recorded route for a job: `recorded_at`, `lat`, `lng`,
+`heading`, `speed_cm_s`, `accuracy_m`, `is_mock`, oldest first.
+
+**It returns the route only after the job ends.** While a job is live it raises
+`ERR_PERMISSION_DENIED` for the customer, every time. A live tracking screen keeps doing exactly
+what it does now — one point at a time off the realtime channel — and the trail is what you show
+afterwards, on the completion or receipt screen. Please do not call `job_trail` during a job and
+fall back to realtime on the error; it is a guaranteed 403, not a race.
+
+The provider can call it at any point for their own job: it is their movement.
+
+Samples are recorded **only while the provider is on an active job** (`assigned`, `en_route`,
+`arrived`, `in_progress`), and only at the same movement threshold `heartbeat` already uses, so
+the trail is coarser than the tick rate. There is nothing to show for a job that never left
+`agreed`.
+
+### Admin: people and businesses (M8)
+
+- `business_verification_queue(limit)` and `decide_business_verification(key, org_id, approve,
+  reason_key)`. **This is new ground, not a rename**: `organizations.verification_status` has
+  existed since Phase 3 with no verb behind it, so every business in any environment you have
+  seen is `unverified`. A rejection needs a `reason_key`; an approval does not. An officer who is
+  a member of the organisation gets `ERR_PERMISSION_DENIED`, which is worth a distinct message
+  rather than a generic one.
+- `suspend_organization(key, org_id, reason_key, until)` and `reinstate_organization`. An end
+  date is required and capped at a year. Suspending a business takes its workers offline and
+  makes them ineligible for work; reinstating gives it back.
+- `admin_organization_summary(org_id)` — counts, status, suspension. The registration number is
+  **not** in it and cannot be: it is ciphertext with a blind index and nothing in SQL reads it.
+- `admin_user_search(query, limit)` — **four characters minimum**, and it matches an exact user
+  id, a **phone-number suffix**, or a **display-name prefix**. Not a substring. A box that
+  expects `%term%` behaviour will look broken to whoever uses it, so say what it matches; "last 4
+  digits or start of name" is the honest placeholder.
+- `admin_user_summary(user_id)` — standing as counts: requests, jobs, disputes, open flags, open
+  tickets, devices, organisations. Never contents.
+- `admin_revoke_user_sessions(key, user_id, reason_key)` — signs somebody out everywhere, for a
+  reported account takeover. Returns how many sessions went.
+
+**Every search and every profile read writes an audit row before it returns.** A screen that
+polls `admin_user_summary` on a timer, or re-searches on every keystroke, generates audit noise
+that makes the log less useful. Debounce the search and load the summary once.
+
+### Fixes that change nothing for you
+
+Five defects from `docs/audit/AUDIT-2026-09-22.md`, all server-side: a missing partition schedule
+that would have stopped every payment about three months after deploy; a refund that was created
+and never asked to be paid; a chargeback before settlement that reversed postings that were never
+made; `stacks_with_referral` finally being read; and a health check that cried wolf. No client
+contract moved.
+
+### Still open
+
+`ERR_WITHDRAWAL_NEEDS_APPROVAL` is still in `packages/suskii_core/lib/src/errors.dart` and still
+not a code — `withdrawal_status = 'awaiting_approval'` is the thing to switch on. The contracts
+check warns on every run until that constant goes.
+
+---
+
+## 2026-09-22 — Claude Code — referrals, the referral hub's whole backend, and admin config
+
+M5's referral hub has a backend now, and M8's settings screens have one too. Contracts are at
+`1.0.0-preview.14` (105 codes).
+
+### The referral hub (M5)
+
+Four functions, all `authenticated`:
+
+- `my_referral_code()` → `text`. Creates the code on first call, so there is nothing to "set up".
+  Eight characters from an alphabet with no letter that reads as a digit (no O/0, no I/1/L), which
+  matters because people read these down a phone line. Asking twice returns the same one.
+- `claim_referral_code(idempotency_key, code)` → `uuid`. Entered at sign-up. **Only before the
+  account's first errand** — after that it raises `ERR_REFERRAL_TOO_LATE`, so put the field in the
+  onboarding flow and hide it afterwards. Other refusals: `ERR_REFERRAL_CODE_NOT_FOUND`,
+  `ERR_REFERRAL_ALREADY_ATTRIBUTED` (one referrer per account, for ever),
+  `ERR_REFERRAL_SELF`.
+- `my_referrals(limit)` → the list: referral id, the referee's display name, when they joined,
+  when the attribution expires (NULL = never), how many jobs have earned, and how much.
+- `my_referral_summary()` → amounts and counts grouped by currency and status, which is the shape
+  the "earnings by status" panel wants.
+
+**The five statuses are the spec's and they are not interchangeable.** `pending` — their job is
+paid but not done. `earned` — the customer confirmed it. `holding` — the money is on the books and
+owed, but a fraud hold (72 h, configurable) has not elapsed. `available` — withdrawable.
+`reversed` — a refund or chargeback took it back. Only `available` can be withdrawn:
+`available_balance('referral_earnings', currency)` already subtracts everything still holding, so
+trust that number rather than summing the list.
+
+**One thing to get right in the UI:** a successful `claim_referral_code` does not guarantee the
+referral will ever earn. A claim from a handset the referrer has also used is accepted and
+silently blocked — deliberately, so that nobody can probe which signal caught them. The referral
+simply never appears in `my_referrals()` and never earns. Do not build a screen that promises
+earnings on the strength of a successful claim; show the attribution, and let the amounts come
+from `my_referral_summary()`.
+
+A referee cannot see what their referrer earned from them, and a campaign's budget is not
+readable by anyone — both are column- and policy-level, so a query for them is a 403, not an
+empty result.
+
+### Admin configuration (M8)
+
+`countries`, `feature_flags` and `remote_config` still have **no write grant for any client
+role**, and they never will. Changes go through:
+
+- `propose_config_change(idempotency_key, target, target_key, proposed, country_code, note)` →
+  `uuid`. `target` is `country`, `feature_flag`, `remote_config` or `referral_campaign`.
+  `proposed` is a **diff**: a field it does not name is left alone.
+- `review_config_change(idempotency_key, change_id, approve, reason_key)` → `'pending'`,
+  `'applied'` or `'rejected'`.
+- `config_change_queue(limit)` → the pending list with `approvals_required` and
+  `approvals_given`. **Show both.** A commission or referral rate, a country going live, and a
+  referral campaign each need **two** different approvers; everything else needs one. The
+  proposer can never be one of them, and nobody can sign twice.
+- `country_pack_readiness(code)` → `gaps text[]` and `ready boolean`. A country cannot go live
+  until `gaps` is empty; the approval is refused with `ERR_COUNTRY_PACK_INCOMPLETE` and the change
+  stays **pending**, not applied — so render a "blocked" state on the change rather than an error
+  toast that loses it.
+- `analytics_report(view, from, to, limit)` → `SETOF jsonb`, for super admin and finance officer.
+  Sixteen daily views: `requests_daily`, `offers_daily`, `jobs_daily`, `funnel_daily`,
+  `payments_daily`, `ledger_daily`, `refunds_daily`, `payouts_daily`, `referrals_daily`,
+  `referral_commissions_daily`, `disputes_daily`, `support_daily`, `moderation_daily`,
+  `fraud_daily`, `ratings_daily`, `providers_daily`. Every one is an aggregate — no user ids, no
+  names — so per-user drill-down is not available from them and should not be designed around.
+
+### Also in this change
+
+Audit finding **S.1** is closed. Support and dispute roles now read `job_events`, chat media,
+request photos and proofs only for a job a ticket or a case names. Nothing changes for a
+participant. If an admin screen assumed a support agent could browse any job's history, it cannot
+any more.
+
+### Still yours to decide nothing about
+
+OD-01, OD-02 and OD-03 remain open with the client, but all three are now configuration rather
+than code: the referral rate, the duration and amount caps, and the per-job referrer ceiling all
+move by an UPDATE. Nothing in the app should hard-code 2.5%; read the amount from the server, as
+`money_rules` requires.
+
+---
+
+## 2026-09-21 — Claude Code — the payment seam is closed, and the checkout URL will now appear
+
+Two migrations and two Edge Functions. Nothing changes for you except one thing that starts
+working.
+
+- **`payments.checkout_url` stops being permanently NULL.** `payments-worker` picks up
+  `payment.requested`, asks a provider for a checkout and writes the reference and URL back. With
+  only the console provider registered the URL is `https://checkout.invalid/…` — deliberately not
+  openable — but the *path* is live, and `payment.checkout_ready` broadcasts on
+  `request:{id}:customer` when it lands. Build the wait-for-checkout state now; swapping in a real
+  provider will not change your side.
+- **Still nothing to open.** Flutterwave and Paystack adapters are not written: their payload
+  shapes and signature schemes are not in our research and spike S-12 settles them against a
+  sandbox nobody can reach yet. Keep the pay screen behind its flag.
+- **Payouts and bank name enquiries do not run at all yet**, and that is separate from the
+  gateway: they need the real account number, and the KMS key that decrypts it needs GCP billing.
+  The worker records a retryable `ERR_PAYOUT_KEY_UNAVAILABLE` rather than pretending. So
+  `payout_accounts.verified_at` stays NULL for now — show "checking with your bank", not an error.
+- No new client functions, no new client error codes. `ERR_NO_PROVIDER_CONFIGURED` and
+  `ERR_PAYOUT_KEY_UNAVAILABLE` are worker outcomes and never reach an app.
+
+Contracts `1.0.0-preview.13`: 99 codes.
+
+---
+
+## 2026-09-21 — Claude Code — payouts and withdrawals, and `ERR_WITHDRAWAL_NEEDS_APPROVAL` can go
+
+`…121500_payouts_and_withdrawals.sql`. **Phase 5's database half is done.**
+
+### The code you have that does not exist
+
+`ERR_WITHDRAWAL_NEEDS_APPROVAL` in `suskii_core/lib/src/errors.dart` is the last thing keeping the
+contracts check on a warning. The decision in preview.1 was that a withdrawal awaiting approval is
+a **status, not an error**, and there is now a real one to use:
+`request_withdrawal` returns `withdrawal_status`, which is `approved` when it is under the
+threshold and **`awaiting_approval`** when it is not. Switch on that and delete the constant.
+
+### What to build against
+
+- **`add_payout_account(key, rail, institution_code, holder_name, ciphertext, blind_index,
+  make_default?)`**. `rail` is `bank` or `mobile_money`. The **ciphertext and the 32-byte blind
+  index are produced on the device**, same as trusted contacts — the account number must never
+  reach us in plain text, and a blind index of the wrong length is refused.
+- **You cannot read an account number back**, including your own. Show the institution, the
+  holder name the bank returned, and `verified_at`. A `42501` on `account_ciphertext` is by
+  design.
+- **An unverified account cannot be paid to.** `verified_at` is set by the bank's name enquiry,
+  which has no vendor yet — so today no payout can be made at all. Show the pending state
+  honestly rather than a spinner.
+- **`available_balance(source, currency)`** → what can actually be withdrawn: the ledger balance
+  **less anything already in flight**. Use it for the withdraw screen, not `my_balances()`, or you
+  will offer money that is already on its way out.
+- **`request_withdrawal(key, source, amount_minor, payout_account_id)`**. `source` is
+  `provider_earnings` or `referral_earnings`. Below the country minimum →
+  `ERR_WITHDRAWAL_BELOW_MINIMUM`; above available → `ERR_INSUFFICIENT_BALANCE`. Both are worth a
+  specific message.
+- Admin: `approve_withdrawal(key, withdrawal_id, approve, reason_key?)`, finance officers only,
+  and the same person cannot sign twice.
+
+New codes: `ERR_PAYOUT_ACCOUNT_NOT_FOUND`, `ERR_PAYOUT_NOT_FOUND`, `ERR_WITHDRAWAL_NOT_FOUND`.
+
+Contracts `1.0.0-preview.12`: 97 codes, 45 enums.
+
+---
+
+## 2026-09-21 — Claude Code — disputes, and `dispute_officer` has tools again
+
+`…121400_disputes.sql`.
+
+- **`open_dispute(key, request_id, reason_code, description?)`** — either party, while money is
+  still held. `reason_code` is a key; `description` is free text, and it is the one place in the
+  system where what somebody wants to say matters more than what a screen can render in their
+  language, so give them a real text field.
+- **Opening one freezes the job** at `disputed` and stops settlement. It is not a status to hide:
+  show it, show the case, show who opened it. Both parties are notified, including the opener.
+- **`withdraw_dispute(key, dispute_id)`** — only the person who opened it, and only before an
+  officer takes it. The job returns to exactly the status it was frozen at.
+- **`submit_dispute_evidence(key, dispute_id, kind, storage_path?, reference?, note?)`**.
+  `kind` is one of `photo`, `receipt`, `message_range`, `location_range`, `call_record`,
+  `pin_log`, `note`. Files live under `<request_id>/…` in `job-proofs`.
+  **Each side sees only their own submissions** — do not build a shared evidence thread; it does
+  not exist, on purpose.
+- Admin console: `dispute_queue(limit)` (ordered by SLA), `assign_dispute`, `resolve_dispute(key,
+  dispute_id, resolution_key, refund_minor, note)`. The note is **required**. An officer who was
+  on the job is refused at both assign and resolve.
+- New codes `ERR_DISPUTE_NOT_FOUND`, `ERR_DISPUTE_ALREADY_OPEN`, `ERR_DISPUTE_WINDOW_CLOSED`.
+  The last one means the money has already gone — hide the dispute button once a job has settled
+  and route to support instead.
+
+Contracts `1.0.0-preview.11`: 94 codes, 42 enums.
+
+---
+
+## 2026-09-21 — Claude Code — the item float: `amount_minor` is no longer the job price
+
+`…121300_item_float.sql`. This one changes an assumption your payment screens probably make.
+
+- **On a request with `item_float_minor`, `payments.amount_minor` is job + goods + a surcharge.**
+  Do not show it as the job price, and do not subtract to find the parts. Read
+  `job_amount_minor`, `float_minor` and `float_surcharge_minor` — they are on the row precisely so
+  nothing has to re-derive them.
+- The surcharge covers the gateway's fee on the goods money, so the provider is reimbursed exactly
+  what they spend (OD-04). It is `item_float_fee_surcharge_bps`, client-visible, 3% by default.
+  Show it as its own line at checkout: a customer who sees 50.90 for a 20.00 errand and no
+  explanation will assume they are being overcharged.
+- **`submit_float_receipt(key, request_id, spent_minor, storage_path)`** — provider only, while
+  the job is `in_progress` or `completed_by_provider`. The path must be under
+  `<request_id>/…` in `job-proofs`. Spending more than was prepaid is refused
+  (`ERR_INVALID_ARGUMENT`), not topped up.
+- **`approve_float_receipt(key, request_id)`** — customer only. After that the provider has their
+  reimbursement and the unused remainder becomes a `refunds` row with reason
+  `item_float_unused`. If nobody approves, it auto-approves after `float_auto_approve_hours` (24).
+- A job with no float returns `ERR_NO_ITEM_FLOAT` — do not show the receipt screen unless
+  `item_float_minor` is set.
+- **Cancelling is refused once the float is released.** That is a dispute, not a cancellation, so
+  hide the cancel button at that point.
+
+Contracts `1.0.0-preview.10`: 91 codes.
+
+---
+
+## 2026-09-21 — Claude Code — promo codes and tips, and one signature change
+
+`…121200_promos_and_tips.sql`.
+
+### `start_payment` changed signature
+
+It now takes a fourth argument, `p_promo_code`. **The three-argument version was dropped, not
+kept** — two overloads with defaults would make `start_payment(key, request_id)` ambiguous rather
+than defaulting to NULL. If you call it positionally with two or three arguments you are fine; if
+your generated client pins the old three-arg signature, regenerate it.
+
+### Promos
+
+- **`preview_promo(code, request_id)`** → `(discount_minor, currency, stacks_with_referral)`.
+  Call it as the customer types, and show the number from it — `start_payment` runs the same
+  arithmetic, so what you preview is what they are charged.
+- Everything invalid comes back as `ERR_PROMO_INVALID`: unknown, expired, already used, budget
+  exhausted, wrong currency. PostgREST's `details` distinguishes them (`exhausted`,
+  `already_used`, `budget_exhausted`) if you want a specific message, but do not depend on it for
+  logic.
+- `promo_codes` is readable **column by column**. `spent_minor` and `max_uses` are not granted;
+  selecting them is a `42501`. Do not build a "only 3 left!" badge — the data is deliberately not
+  there.
+
+### Tips
+
+- **`add_tip(key, request_id, amount_minor)`** → payment id. Only after the work: statuses
+  `completed_by_provider` onwards. Earlier gets `ERR_ILLEGAL_TRANSITION`, because a tip mid-job is
+  a price negotiation happening outside the offer.
+- A tip is a separate charge — a `payments` row with `kind = 'tip'` — so a job can have both in
+  flight. **It carries no commission**, and confirming one moves no job state.
+- `tips` is readable by both participants, so a provider's earnings screen can show them.
+
+Still no gateway, so none of these charges can actually be paid yet. The calls are real.
+
+Contracts `1.0.0-preview.9`: 89 codes, 40 enums. `ERR_PROMO_INVALID` is now raised for real.
+
+---
+
+## 2026-09-21 — Claude Code — cancelling a paid job: show the fee before they tap
+
+`…121100_refunds_and_cancellations.sql`.
+
+- **`cancel_job(key, request_id, reason_code)`** → `(refund_minor, fee_minor, currency)`. Use it
+  once a job is paid; `cancel_request` still covers a request nobody has paid for.
+- **`reason_code` is a key**, `^[a-z0-9_]{3,60}$` — `no_longer_needed`, not "I don't need it any
+  more". A typed sentence gets `ERR_INVALID_ARGUMENT`.
+- **The fee is knowable before they confirm, so show it.** `cancellation_fee_bps` is
+  client-visible remote config (10%). It applies only when the customer cancels at `en_route` or
+  later; before that it is zero, and a provider cancelling never charges. On a late customer
+  cancellation the gateway fee also comes out of the refund, so the number they get back is
+  `amount − fee − gateway_fee`. A confirm dialog that says "you will be refunded in full" and then
+  isn't is the worst version of this screen.
+- Both parties get a `job_status` notification with `refund_minor` / `compensation_minor` and a
+  `by_provider` flag — the provider's copy is about what they are owed for the trip, not about a
+  refund.
+- **New table `refunds`**, readable by both participants. A refund sits `pending` until the gateway
+  confirms it, which today is never, because there is no gateway. Render "refund on its way", not
+  "refunded".
+- Once a job is `confirmed`, cancelling is refused with `ERR_JOB_NOT_CANCELLABLE`. That path is a
+  dispute, and disputes are not built yet — do not offer a cancel button there.
+
+Contracts `1.0.0-preview.8`: 89 codes, 39 enums.
+
+---
+
+## 2026-09-21 — Claude Code — payments: one new call, and a warning about what it does not do
+
+`…121000_payments.sql`.
+
+- **`start_payment(key, request_id, method?)`** → `(payment_id, amount_minor, currency, status)`.
+  Call it once the job is `agreed`. It moves the job to `payment_pending` and creates the record.
+- **`checkout_url` is NULL and will stay NULL** until somebody opens a Flutterwave or Paystack
+  merchant account. There is nothing to open in a Custom Tab yet. Keep the pay screen behind a
+  flag; the call is real, the checkout is not.
+- Calling `start_payment` again while an intent is live returns **the same payment**, not a second
+  one. Do not guard against that yourself — but do not rely on a new idempotency key giving you a
+  fresh charge either.
+- **You cannot confirm a payment, and neither can the app.** The only path into `paid_held` is a
+  verified webhook. If your mock lets the client mark a payment successful, that path has to go —
+  it will not exist against the real backend.
+- `payments` is readable by both participants: the customer sees what they paid, the provider what
+  is held for them. Poll it or watch the job channel; `payment.checkout_ready` broadcasts on
+  `request:{id}:customer` when a checkout eventually exists.
+- Earnings appear in `my_balances()` **a day after the job is confirmed**, not at confirmation —
+  that is the dispute window. An earnings screen that expects money the moment a job completes
+  will look broken; show "clearing" until it lands.
+- New code `ERR_PAYMENT_NOT_FOUND` is internal. `ERR_PAYMENT_FAILED` is now raised for real, but
+  only inside the webhook seam.
+
+Contracts `1.0.0-preview.7`: 87 codes.
+
+---
+
+## 2026-09-21 — Claude Code — the money ledger (nothing for you to build against yet, except one screen)
+
+`…120900_ledger.sql`. The double-entry ledger is in, in the `ledger` schema, which **no client
+role can reach** — not `anon`, not `authenticated`, not even `service_role`. There is no REST
+surface on any of it and there never will be.
+
+The one thing you can use:
+
+- **`my_balances()`** → rows of `(account_type, currency, balance_minor)` for the signed-in user:
+  `customer_wallet`, `provider_earnings`, `referral_earnings`. **Amounts come back positive.**
+  These are liabilities in the books, so the stored balance is negative and the function negates
+  it for you — do not negate again, and do not divide by 100 (read the exponent from
+  `currencies`, as `Money` already does).
+- A user with no money yet gets **no rows**, not zeroes. Render an empty wallet, not a missing one.
+
+Everything else — payments, refunds, payouts, withdrawals, promos, tips — is still to come and
+still needs the gateway. Flutterwave and Paystack need merchant accounts nobody has opened, so
+keep the wallet and earnings screens on your mocks; the numbers they will eventually show are the
+ones `my_balances()` returns.
+
+New codes `ERR_LEDGER_UNBALANCED`, `ERR_LEDGER_CURRENCY_MISMATCH`, `ERR_LEDGER_EMPTY_ENTRY` are
+all `surface: internal`. You will never see them; if you somehow do, it is a money incident, not a
+retry.
+
+Contracts `1.0.0-preview.6`: 86 codes.
+
+---
+
+## 2026-09-21 — Claude Code — support tickets, and an access change your admin app must know about
+
+`…120800_support_and_admin.sql`. One new feature and one **tightening** that will break an admin
+screen if you built it the obvious way.
+
+### The tightening (audit finding S.1)
+
+A `support_agent` could read **every** conversation, message and call on the platform. The RLS
+matrix always said support reads a job's chat only when a support ticket names that job — a
+data-minimisation control the DPIA relies on — but the table that makes scoping possible did not
+exist until now, and the Phase 3 policy was written to the role instead.
+
+- **If web-admin lists conversations or messages directly, it will now return nothing.** Go
+  through a ticket: open or find a `support_tickets` row whose `request_id` is the job, and the
+  chat, the messages and the call history become readable.
+- `dispute_officer` loses that read entirely. Its scope is the `disputes` table, which is Phase 5
+  work because a dispute ends in a refund. Don't build a dispute console against chat yet.
+
+### Support tickets
+
+- `open_ticket(key, category, body, request_id?)` → ticket id. Categories: `payment`, `job`,
+  `account`, `verification`, `safety`, `provider`, `other`. A `request_id` you are not a
+  participant on is refused with `ERR_JOB_NOT_FOUND` — that field is what widens support's reach.
+- `reply_to_ticket(key, ticket_id, body, internal?)` → message id. **`internal` is a staff note**,
+  invisible to the customer; a non-staff caller setting it gets `ERR_PERMISSION_DENIED`. A reply
+  from staff moves the ticket to `waiting_on_user` and notifies; a reply from the user moves it to
+  `waiting_on_support`; an internal note moves nothing.
+- `ticket_queue(limit)` and `update_ticket(key, ticket_id, status?, assignee?, priority?)` are
+  staff-only. An assignee who cannot work the queue is refused, because the ticket would vanish.
+- New codes: `ERR_TICKET_NOT_FOUND` (also the answer for somebody else's ticket — it is not
+  admitted to exist), `ERR_TICKET_CLOSED`. A *resolved* ticket still accepts replies and reopens;
+  a *closed* one does not.
+
+### Suspension
+
+`suspend_provider(key, user_id, reason_key, until)` and `reinstate_provider(key, user_id,
+reason_key)`, **super admin only**. An end date is required and capped at a year — there is no
+permanent ban through this call. The provider is notified with the reason key and the date, so
+the account screen should render both. New code: `ERR_PROVIDER_NOT_FOUND`.
+
+### Contracts
+
+`1.0.0-preview.5`: 83 codes, 38 enums, new category `support`.
+
+---
+
+## 2026-09-21 — Claude Code — Phase 6's database half: calls, notification delivery, scheduled errands
+
+Four migrations. Three of them change something you build against.
+
+### Calls (`…120500_calls.sql`) — SH-12, SH-14, SH-15
+
+- `start_call(key, request_id)` returns a **row**, not an id: `call_id`, `room_name`, `identity`,
+  `counterparty_id`, `status`, `is_caller`. You never name the callee — the server reads it off
+  the job.
+- **Branch on `is_caller`, not on an error.** If the other party is already ringing you, you get
+  *their* call back with `is_caller = false`: show "answer", not a second ring.
+  `ERR_CALL_IN_PROGRESS` is reserved and never raised; if your mock raises it, drop that path.
+- `answer_call(key, call_id)` — callee only. `end_call(key, call_id, quality?, failed?)` — the
+  outcome is derived: an answered call ends, a callee hanging up on a ring declines, a caller
+  hanging up on a ring is a missed call. Do not send a status; you will not be believed.
+- New codes: `ERR_CALL_NOT_FOUND`, `ERR_CALL_WINDOW_CLOSED`. The window is the chat window, so
+  hide the call button when chat is closed rather than letting the call fail.
+- `request_pstn_fallback(key, call_id)` returns **NULL every time today** — no telephony
+  provider is contracted. NULL means "not available yet": show that and stay on the in-app call;
+  do not retry in a loop. `ERR_PSTN_UNAVAILABLE` exists in the catalogue but is never raised yet,
+  so handle the NULL, not the code.
+- **The LiveKit access token is not minted yet.** `start_call` gives you the room name and the
+  identity the token must carry; the Edge Function that signs it needs an API key for an account
+  that does not exist. Keep your call screen behind a feature flag.
+- Two new `notification_kind` values: `call_incoming` and `call_missed`. If you switch
+  exhaustively on `kind`, add them. A missed call also writes a `system` message into the job
+  chat — render it as an event, not as a bubble with no text.
+
+### Notification delivery (`…120600_notification_delivery.sql`) — SH-16, SH-17
+
+- **New client-writable column `profiles.timezone`** (IANA name). Please write the device zone at
+  sign-in and whenever it changes. Quiet hours are evaluated in it; unset, it falls back to the
+  country's first city, which is wrong for anyone travelling.
+- Channel preferences and quiet hours are now honoured server-side. Defaults, with no preference
+  row: push on, SMS/email/WhatsApp off.
+- Job-critical kinds are never suppressed: `offer_accepted`, `job_assigned`, `job_status`,
+  `call_incoming`.
+
+### Scheduled errands (`…120700_scheduled_requests.sql`) — CU-08, CU-32
+
+- A request with `scheduled_at` **stays a draft** and publishes itself
+  `scheduled_publish_lead_minutes` (60) before the time. List scheduled drafts separately and keep
+  edit and cancel available until they publish.
+- If it cannot publish when the time comes, the customer gets a `system` notification whose
+  `params.reason_key` is an `ERR_` code — render that, it is always one of ours.
+
+### Contracts
+
+`1.0.0-preview.4`: 80 codes, 37 enums, new category `communication`.
+
+---
+
+## 2026-09-21 — Claude Code — moderation and the risk engine (Phase 4 closed)
+
+Two migrations, both additive, both with things your screens need to know about.
+
+### Moderation (`20260921120200_moderation.sql`)
+
+New tables `prohibited_items` (readable by any signed-in user) and `moderation_cases` (readable by
+its own author, and by support). New columns on `requests`: `moderation_status`, `moderation_flags`
+— the same pair `messages` and `ratings` already carry.
+
+**What changes for the apps:**
+
+- `publish_request` can now fail with **`ERR_CONTENT_NOT_ALLOWED`** (`P0001`, HTTP 400). PostgREST's
+  `details` field carries the rule key that fired — `firearms_ammunition`, `illegal_drugs`, and so
+  on. Show the rule, let the person edit the text; do **not** retry the same text, it will be
+  refused again. This is the only refusal moderation makes.
+- Everything else **publishes or delivers**. A held request is published and a flagged message is
+  delivered; `moderation_status` stays `pending` until a reviewer looks. Do not treat a hold as an
+  error and do not hide `pending` content — `rejected` is the only status that hides anything, and
+  never from its own author.
+- `prohibited_items` is worth rendering on the request screen: `key` (i18n key), `kind`
+  (`item`/`service`) and `action`. Telling someone what we will not carry before they type it is
+  better than refusing them afterwards.
+- Admin console: `moderation_queue(limit)` and `decide_moderation_case(key, case_id, uphold)`.
+  New code `ERR_MODERATION_CASE_NOT_FOUND`.
+
+Every rule is `[A]` — the country packs tag `restricted: assumption`, and counsel has not read
+them (new **OD-24**). The terms are data, so a false positive is an ops fix, not a release.
+
+### Risk engine (`20260921120300_risk.sql`)
+
+`fraud_flags`, plus triggers and an hourly sweep. **Nothing in it is client-facing**, on purpose:
+the subject of a flag cannot read it, because a visible score is a score you can tune against.
+There is nothing to build here except the admin console — `fraud_queue(limit)` and
+`review_fraud_flag(key, flag_id, confirmed, note)`, which needs a note. New code
+`ERR_FRAUD_FLAG_NOT_FOUND`.
+
+Worth knowing on the mobile side: **`heartbeat(..., p_is_mock)` matters**. A `true` there raises a
+flag against that provider. Pass the platform's real mock-location signal — don't default it to
+`false` to keep the flag quiet, and don't send `true` speculatively. Confirming a flag suspends
+nobody (new **OD-25**); it records a finding for a person to act on.
+
+### Contracts
+
+`1.0.0-preview.3`: 77 error codes, 36 enums, new category `moderation`. Regenerate whatever you
+generate from `contracts/v1-preview/`.
+
+---
+
 ## 2026-09-21 — Claude Code — the safety backend behind your M4 screens
 
 Phase 4 has started. Your SOS sheet and trip-share button now have a server to talk to.
