@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-preview.14",
+  "version": "1.0.0-preview.15",
   "binding": false,
   "conventions": {
     "database_functions": "RAISE EXCEPTION '<ERR_ code>' USING ERRCODE = '<sqlstate>'. PostgREST maps the sqlstate to HTTP (28* 403; 42501 403 when authenticated, else 401; P0001 and 22* 400; 23505 409) and returns {code: <sqlstate>, message: <ERR_ code>, details, hint}. Read the ERR_ code from `message`.",
@@ -1162,6 +1162,39 @@
       "retryable": false,
       "description": "A country cannot go live while its pack is missing something the running system reads — cities, published terms and privacy, accepted ID types, SMS providers, payment providers, payout providers, or a payment route that is only the development provider. DETAIL names what is missing.",
       "client_action": "Show the gaps from country_pack_readiness; the change stays pending until they are filled."
+    },
+    {
+      "code": "ERR_CHARGEBACK_NEEDS_REVIEW",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": 409,
+      "retryable": false,
+      "description": "A chargeback arrived on a payment that has already been refunded, or on a job with an item float. The customer has been paid twice and which of the two to unwind is a person's decision, not arithmetic.",
+      "client_action": "Internal: the webhook is acknowledged and the case goes to finance. No client surface."
+    },
+    {
+      "code": "ERR_ORGANIZATION_NOT_FOUND",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 404,
+      "retryable": false,
+      "description": "No organisation with that id. Admin surface only.",
+      "client_action": "Refresh the business list."
+    },
+    {
+      "code": "ERR_INVALID_AMOUNT",
+      "status": "implemented",
+      "category": "money",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": false,
+      "description": "A worker was handed a money operation whose amount is zero or negative - a refund of nothing, for example. Not retried: it is a row somebody should look at, not a call to a gateway.",
+      "client_action": "Internal: recorded on the outbox event as a permanent failure."
     }
   ]
 }

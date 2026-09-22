@@ -8,6 +8,28 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.15] — 2026-09-22 (preview, not binding)
+
+Phase 9's first hardening pass, the trip trail, and the admin verbs for people and businesses.
+
+- **Added** `ERR_CHARGEBACK_NEEDS_REVIEW` and `ERR_INVALID_AMOUNT` (both `surface: internal`) and
+  `ERR_ORGANIZATION_NOT_FOUND`. 108 codes in all.
+- **New client functions**: `job_trail(request_id)` for the trip replay, and the admin set —
+  `business_verification_queue`, `decide_business_verification`, `suspend_organization`,
+  `reinstate_organization`, `admin_organization_summary`, `admin_user_search`,
+  `admin_user_summary`, `admin_revoke_user_sessions`.
+- **Note for the mobile and web apps (M4, M5):** `job_trail` returns the route **only after the
+  job ends**. While it is live, the provider's position comes from the realtime channel, one
+  point at a time, exactly as it does today. A tracking screen must not call `job_trail` during a
+  job and fall back to realtime on the error; it will get a 403 every time.
+- **Note for the admin dashboard (M8):** `admin_user_search` takes at least four characters and
+  matches an exact id, a **phone-number suffix** or a **display-name prefix** — not a substring.
+  A search box that expects `LIKE '%term%'` behaviour will look broken; say what it matches.
+  Every search and every profile read writes an audit row before returning, so a screen that
+  polls the summary on a timer is generating audit noise.
+- **No behaviour change for a payment client.** The five fixes are all server-side: partition
+  scheduling, the refund seam, a chargeback posting, promo/referral stacking, and a health check.
+
 ## [1.0.0-preview.14] — 2026-09-22 (preview, not binding)
 
 The referral programme, the admin configuration verbs, and the analytics views. Three new client
