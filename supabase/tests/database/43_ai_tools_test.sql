@@ -7,7 +7,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(31);
+SELECT plan(33);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('c0111111-1111-4111-8111-bbbbbbbbbbbb', '2348000001101'),   -- customer
@@ -171,13 +171,23 @@ RESET ROLE;
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.act('c0111111-1111-4111-8111-bbbbbbbbbbbb');
 SET LOCAL ROLE authenticated;
-SELECT is((SELECT requires_vehicle FROM public.get_category_requirements(
-             (SELECT val FROM ai WHERE name = 'cat')::uuid)), false,
+SELECT is((SELECT category_key FROM public.get_category_requirements(
+             (SELECT val FROM ai WHERE name = 'cat')::uuid)), 'errands_delivery',
   'a category says what a request of it needs');
+SELECT is((SELECT next_step FROM public.get_job_summary(
+             (SELECT val FROM ai WHERE name = 'req')::uuid)), 'job.next.none',
+  'a request with no job yet has a summary and no next step — the concierge reads a key rather '
+  'than inventing a sentence');
+SELECT is((SELECT agreed_amount_minor FROM public.get_job_summary(
+             (SELECT val FROM ai WHERE name = 'req')::uuid)), NULL,
+  'and no amount, because nothing has been agreed');
+RESET ROLE;
+
+SELECT pg_temp.act('c0444444-4444-4444-8444-bbbbbbbbbbbb');
+SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT * FROM public.get_job_summary(%L)$$, (SELECT val FROM ai WHERE name = 'req')),
-  'P0001', 'ERR_JOB_NOT_FOUND',
-  'and a job summary needs a job — a published request is not one yet');
+  'P0001', 'ERR_JOB_NOT_FOUND', 'and somebody with no part in it gets nothing');
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------

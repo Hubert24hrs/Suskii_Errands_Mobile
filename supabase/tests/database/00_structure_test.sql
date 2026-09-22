@@ -108,6 +108,8 @@ SELECT is(
        'public.kpi_referral_campaign', 'public.kpi_supply_demand',
        'private.admin_scope_allows', 'private.admin_may_read_country',
        'private.admin_may_read_request', 'private.admin_may_read_user',
+       'private.admin_scope_allows_any', 'private.admin_may_read_countries',
+       'private.fraud_subject_countries', 'private.moderation_subject_countries',
        'public.business_verification_queue', 'public.decide_business_verification',
        'public.suspend_organization', 'public.reinstate_organization',
        'public.admin_organization_summary', 'public.admin_user_search',

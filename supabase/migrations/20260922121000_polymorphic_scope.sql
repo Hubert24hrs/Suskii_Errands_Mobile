@@ -55,7 +55,9 @@ LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 AS $$
-  SELECT CASE p_subject_kind
+  -- `coalesce` to an empty array rather than NULL: "this subject belongs to no country" is an
+  -- answer, and an absent one reads at a glance like a bug in the caller.
+  SELECT coalesce((SELECT CASE p_subject_kind
     WHEN 'user' THEN
       (SELECT array_remove(array_agg(p.country_code), NULL) FROM public.profiles p
        WHERE p.user_id = private.try_uuid(p_subject_id))
@@ -75,7 +77,7 @@ AS $$
       (SELECT array_remove(array_agg(DISTINCT p.country_code), NULL)
        FROM unnest(string_to_array(p_subject_id, ':')) AS s(part)
        JOIN public.profiles p ON p.user_id = private.try_uuid(s.part))
-  END;
+  END), '{}'::char(2)[]);
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -114,7 +116,8 @@ AS $$
          JOIN public.conversations c ON c.id = m.conversation_id
          JOIN public.requests r ON r.id = c.request_id
          WHERE p_subject_id ~ '^[0-9]{1,18}$' AND m.id = p_subject_id::bigint)
-    END);
+    END,
+    '{}'::char(2)[]);
 $$;
 
 REVOKE ALL ON FUNCTION
