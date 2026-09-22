@@ -8,6 +8,33 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Contracts v1 is written in Phase 1, after Kimi Code hands off at M8.5. Nothing is published yet, so no client may call a backend endpoint.
 
+## [1.0.0-preview.17] — 2026-09-22 (preview, not binding)
+
+Phase 7's deterministic layer and the last of the country scope. No new error codes.
+
+- **New client functions, and none of them needs a model.** `get_price_band(category, urgency,
+  city)` for the request form's price hint; `get_availability_summary(category, lat, lng, radius)`
+  for "are there people nearby"; `rank_offers(request_id)` for the offers board's compare;
+  `get_job_summary(request_id)` for the tracking screen; `get_category_requirements(category_id)`.
+- **Eight admin KPI functions** — `kpi_jobs_by_state`, `kpi_gmv`, `kpi_funnel`,
+  `kpi_verification_queue`, `kpi_disputes`, `kpi_payout_failures`, `kpi_referral_campaign`,
+  `kpi_supply_demand`. These are the admin dashboard's numbers whether or not an assistant ever
+  asks for them.
+- **Note for the offers board (M3):** `rank_offers` returns a `score` and a `factors` object. It
+  is **not a price sort** — half the weight is price relative to the offers on the table, and the
+  rest is reputation, so a cheap newcomer can beat a dearer veteran and an equally-priced veteran
+  beats the newcomer. `factors.cheapest` and `factors.new_provider` are there so the card can say
+  *why* rather than presenting a number nobody can argue with. An unrated provider scores a
+  neutral 0.6, not zero.
+- **Note for the request form (M3):** `get_price_band` returns `basis` — `rules` or `history` —
+  and `sample_size`. Show them. A band resting on a country's configured guardrails is a
+  suggestion; a band resting on two hundred jobs is a measurement, and a UI that renders both the
+  same way is lying about one of them. **It can also return no row at all**, which is the honest
+  answer for a category nobody has priced; show no hint rather than a zero.
+- **Note for any admin screen:** every `kpi_*` cell below ten comes back **NULL**, not zero.
+  A suppressed cell and an empty one are different claims and a dashboard that renders both as
+  `0` will confidently report a market that does not exist. Render NULL as "—".
+
 ## [1.0.0-preview.16] — 2026-09-22 (preview, not binding)
 
 Phase 9's second pass: the RLS surface, the notification dispatcher, and four signature changes.

@@ -34,6 +34,9 @@ jobs:
 
       # Auth (gotrue) and storage stay up so the hook wiring in config.toml and the bucket
       # policies are exercised against the real services; the rest is skipped.
+      - name: AI tool allowlist (ai-design 4.2)
+        run: python services/ai/tools/check_allowlist.py .
+
       - name: Start local stack
         run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,postgres-meta
 
