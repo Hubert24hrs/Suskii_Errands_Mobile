@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_data/suskii_data.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
 /// ---------------------------------------------------------------------------
 /// Dependency injection. Screens depend ONLY on the repository interfaces from
-/// suskii_domain; these providers bind them to the mock implementations.
-/// At M9, the mock bindings get replaced by Supabase implementations —
-/// screens do not change.
+/// suskii_domain. When the flavor carries Supabase credentials (M9), providers
+/// bind to the Supabase implementations module by module; everything not yet
+/// wired stays on the mock implementations — screens do not change.
 /// ---------------------------------------------------------------------------
 
 final appConfigProvider = Provider<AppConfig>(
@@ -16,6 +17,18 @@ final appConfigProvider = Provider<AppConfig>(
 );
 
 final loggerProvider = Provider<AppLogger>((ref) => const ConsoleAppLogger());
+
+/// The Supabase gateway, or null when the flavor has no project credentials
+/// (the default until a project is provisioned) — the app then runs on mocks.
+/// `Supabase.instance` is initialized in `main.dart` under the same condition,
+/// so it is safe to reach here only when configured.
+final supabaseGatewayProvider = Provider<SupabaseGateway?>((ref) {
+  final config = ref.watch(appConfigProvider);
+  if (config.supabaseUrl.isEmpty || config.supabaseAnonKey.isEmpty) {
+    return null;
+  }
+  return SupabaseGateway(Supabase.instance.client);
+});
 
 final mockBehaviorProvider = Provider<MockBehavior>((ref) => MockBehavior());
 
@@ -28,12 +41,14 @@ final bootstrapRepositoryProvider = Provider<BootstrapRepository>(
   ),
 );
 
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => MockAuthRepository(
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseAuthRepository(gateway);
+  return MockAuthRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final userRepositoryProvider = Provider<UserRepository>(
   (ref) => MockUserRepository(

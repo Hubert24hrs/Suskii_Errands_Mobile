@@ -10,6 +10,7 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  supabase: ^2.16.1
   suskii_core:
     path: ../suskii_core
   suskii_domain:

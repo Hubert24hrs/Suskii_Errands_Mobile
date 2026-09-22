@@ -5,6 +5,46 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9 started: Supabase wiring foundation + auth
+
+Contracts v1 is binding, so M9 has begun. This slice is the seam every later
+module wires through; no screen changes, and **the app still runs on mocks by
+default** — a flavor without `SUPABASE_URL`/`SUPABASE_ANON_KEY` (all of them
+today) never touches the network.
+
+- **`supabase` ^2.16.1 in suskii_data** (pure Dart, tests stay offline);
+  `supabase_flutter` ^2.17.2 in apps/mobile for session persistence.
+- **`SupabaseGateway`** (`suskii_data/lib/src/supabase/`): the contracts-v1
+  calling conventions in one place — RPC args by name with **nulls omitted,
+  never sent**; `asMinorUnits` for `numeric`-as-string money (BigInt parse,
+  no doubles, 2^53-safe); `asId` for bigint ids as opaque strings; explicit
+  column lists on selects (no `select('*')` — four tables have narrowed column
+  grants and `payments.checkout_url` is gone, so `*` now fails).
+- **`mapSupabaseError`**: PostgREST surfaces `raise exception 'ERR_*'` as the
+  exception *message* — the wire code is recovered from there, `details` rides
+  along on [AppError.details] for the codes that use it (rule keys, missing
+  proof lists). GoTrue OTP errors map to `ERR_OTP_INVALID`/`ERR_OTP_RATE_LIMITED`;
+  retryable fetch → `ERR_NETWORK`. Raw exception text never reaches a screen.
+- **`SupabaseAuthRepository`** — phone/email OTP, session stream, sign-out,
+  profile fetch (own `profiles` row, RLS-scoped; phone/email come from GoTrue,
+  not the table). Social sign-in still throws ERR_FEATURE_UNAVAILABLE per the
+  interface contract.
+- **App wiring**: `main.dart` initializes Supabase only when the flavor has
+  credentials; `supabaseGatewayProvider` is null otherwise, and
+  `authRepositoryProvider` is the first provider that switches on it. All other
+  modules stay mock-bound until their M9 slice.
+
+Verify: 10 new gateway/error-mapping tests green, full suskii_data suite green,
+analyze clean. Next slices in dependency order: catalog/bootstrap reads →
+requests/offers → jobs → money.
+
+**For you:** nothing needed yet. When a Supabase project exists, the anon key +
+URL go in `apps/mobile/config/env/*.json` (public values only) and the app
+starts switching modules over. One thing worth confirming at that point: the
+GoTrue phone-OTP template and rate limits are project settings, not migrations.
+
+---
+
 ## 2026-09-23 — Kimi Code — M8.6 done: provider offer + job-execution screens, audit follow-ups closed
 
 **Screens (the change-list headline from M8.5 is closed).** PR-12/13 and PR-15…PR-20

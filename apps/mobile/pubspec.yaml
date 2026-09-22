@@ -25,6 +25,7 @@ dependencies:
     path: ../../packages/suskii_domain
   suskii_l10n:
     path: ../../packages/suskii_l10n
+  supabase_flutter: ^2.17.2
 
 dev_dependencies:
   flutter_test:
