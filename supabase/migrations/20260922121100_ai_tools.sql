@@ -285,9 +285,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE
-  v_uid uuid := private.require_user();
 BEGIN
+  -- Read-only, so nothing here needs the caller's id; `is_job_participant` reads `auth.uid()`
+  -- itself, and it needs there to be a caller.
+  PERFORM private.require_user();
   IF NOT private.is_job_participant(p_request_id) THEN
     RAISE EXCEPTION 'ERR_JOB_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;

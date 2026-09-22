@@ -228,15 +228,15 @@ SET search_path = ''
 AS $$
 DECLARE
   v_country char(2);
-  v_scope   char(2)[];
 BEGIN
   SELECT c.country_code INTO v_country FROM public.referral_campaigns c WHERE c.id = p_campaign_id;
   IF v_country IS NULL THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
   -- The campaign's own country is the filter, so an officer scoped elsewhere is refused by the
-  -- guard rather than shown an empty row that reads as "no spend".
-  v_scope := private.kpi_guard(
+  -- guard rather than shown an empty row that reads as "no spend". The guard's answer is not
+  -- needed beyond that refusal: one campaign is one country.
+  PERFORM private.kpi_guard(
     ARRAY['super_admin', 'finance_officer']::public.admin_role[], v_country);
 
   RETURN QUERY
