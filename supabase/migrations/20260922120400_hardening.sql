@@ -120,7 +120,6 @@ DECLARE
   v_refund   bigint;
   v_comm     bigint;
   v_entries  jsonb;
-  v_refund_id uuid;
 BEGIN
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'cancel_job',
     jsonb_build_object('request_id', p_request_id, 'reason', p_reason_code));
@@ -203,8 +202,8 @@ BEGIN
 
   INSERT INTO public.refunds (payment_id, request_id, amount_minor, currency, reason_code,
                               requested_by)
-  VALUES (v_payment.id, p_request_id, v_refund, v_payment.currency, p_reason_code, v_uid)
-  RETURNING id INTO v_refund_id;
+  -- No `RETURNING`: the id was only ever wanted for the emit, and the trigger reads it off NEW.
+  VALUES (v_payment.id, p_request_id, v_refund, v_payment.currency, p_reason_code, v_uid);
 
   UPDATE public.payments p SET status = 'refunded' WHERE p.id = v_payment.id;
   PERFORM private.job_transition(p_request_id, v_request.status, 'cancelled', v_uid,

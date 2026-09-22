@@ -277,9 +277,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE
-  v_uid uuid := private.require_user();
 BEGIN
+  -- Read-only, so nothing here needs the caller's id; it still needs there to be a caller.
+  PERFORM private.require_user();
   IF NOT private.has_admin_role(
        ARRAY['super_admin', 'verification_officer', 'support_agent',
              'finance_officer']::public.admin_role[]) THEN
@@ -326,9 +326,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_uid  uuid := private.require_user();
   v_term text := btrim(coalesce(p_query, ''));
 BEGIN
+  -- Read-only, so nothing here needs the caller's id; it still needs there to be a caller.
+  PERFORM private.require_user();
   IF NOT private.has_admin_role(
        ARRAY['super_admin', 'support_agent', 'verification_officer']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
@@ -367,9 +368,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE
-  v_uid uuid := private.require_user();
 BEGIN
+  -- Read-only, so nothing here needs the caller's id; it still needs there to be a caller.
+  PERFORM private.require_user();
   IF NOT private.has_admin_role(
        ARRAY['super_admin', 'support_agent', 'verification_officer',
              'finance_officer']::public.admin_role[]) THEN
