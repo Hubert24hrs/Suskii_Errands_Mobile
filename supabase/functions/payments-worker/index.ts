@@ -87,6 +87,39 @@ const run = createPaymentsWorker({
     });
     if (error) throw new Error(error.message);
   },
+  // A refund names the charge it reverses, and the charge names the gateway it was taken on:
+  // a refund has to go back through the same one, whatever the country pack now routes to.
+  async resolveRefund(refundId) {
+    const { data, error } = await admin
+      .from("refunds")
+      .select("payments(gateway, gateway_reference), requests(country_code)")
+      .eq("id", refundId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const payment = (data as
+      | { payments?: { gateway?: string | null; gateway_reference?: string | null } | null }
+      | null)?.payments;
+    const country = (data as { requests?: { country_code?: string } | null } | null)
+      ?.requests?.country_code;
+    if (!payment?.gateway || !payment.gateway_reference) return null;
+    return {
+      gatewayReference: payment.gateway_reference,
+      countryCode: country ?? "",
+      gateway: payment.gateway,
+    };
+  },
+  async recordRefundResult(refundId, succeeded, reference, reasonKey) {
+    const { error } = succeeded
+      ? await admin.rpc("gateway_execute_refund", {
+        p_refund_id: refundId,
+        p_gateway_reference: reference,
+      })
+      : await admin.rpc("gateway_fail_refund", {
+        p_refund_id: refundId,
+        p_reason_key: reasonKey ?? "gateway_refused",
+      });
+    if (error) throw new Error(error.message);
+  },
   log,
 });
 

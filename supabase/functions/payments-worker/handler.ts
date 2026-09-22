@@ -6,6 +6,7 @@ import { type CountryPaymentRoute, providersFor, routeFor } from "../_shared/pay
 //   payment.requested             → create a checkout, write the reference back
 //   payout.requested              → create a transfer, write the reference back
 //   payout_account.registered     → name enquiry, write the answer back
+//   refund.requested              → reverse a charge, write the answer back
 //
 // Nothing here decides anything about money. It takes an event, calls a provider, and hands the
 // answer to a database function that does the deciding — which is why a worker that dies halfway
@@ -55,6 +56,18 @@ export interface WorkerDeps {
     verified: boolean,
     holderName?: string,
   ): Promise<void>;
+  recordRefundResult(
+    refundId: string,
+    succeeded: boolean,
+    reference: string,
+    reasonKey?: string,
+  ): Promise<void>;
+  /** The charge a refund reverses, and the country that routes it. */
+  resolveRefund?(
+    refundId: string,
+  ): Promise<
+    { gatewayReference: string; countryCode: string; gateway: string } | null
+  >;
   /** Decrypts `payout_accounts.account_ciphertext`. Absent until the KMS key exists. */
   resolvePayoutTarget?(payoutId: string): Promise<PayoutTarget | null>;
   log(level: "info" | "warn" | "error", event: string, fields?: Record<string, unknown>): void;
@@ -119,7 +132,15 @@ async function dispatch(
       return await doTransfer(deps, routes, event);
     case "payout_account.registered":
       return await doNameEnquiry(deps, routes, event);
+    case "refund.requested":
+      return await doRefund(deps, routes, event);
     default:
+      // Not ours, but it arrived on an aggregate we claim, so say so at a level somebody reads.
+      // A refund spent a release being silently completed here (audit T.2).
+      deps.log("warn", "payments.worker.unhandled_event", {
+        event_id: event.id,
+        event_type: event.event_type,
+      });
       return "ignored";
   }
 }
@@ -226,6 +247,55 @@ async function doTransfer(
     chosen.name,
     result.gatewayReference,
   );
+  return "done";
+}
+
+async function doRefund(
+  deps: WorkerDeps,
+  routes: CountryPaymentRoute[],
+  event: ClaimedEvent,
+): Promise<Outcome> {
+  const p = event.payload;
+  const refundId = String(p.refund_id ?? event.aggregate_id);
+  const amountMinor = Number(p.amount_minor ?? 0);
+  if (amountMinor <= 0) {
+    // A refund of nothing is a row somebody should look at, not a call to a gateway.
+    return { reason: "ERR_INVALID_AMOUNT", retry: false };
+  }
+  if (!deps.resolveRefund) return { reason: "ERR_INTERNAL", retry: true };
+
+  const target = await deps.resolveRefund(refundId);
+  // No charge reference means the payment never reached a gateway — there is nothing to reverse
+  // and the money is still with the customer. Permanent, because retrying cannot change it.
+  if (!target) return { reason: "ERR_REFUND_NOT_FOUND", retry: false };
+
+  // The charge was taken on a particular gateway and must be reversed on that one; the country
+  // route is only a fallback for a refund whose payment predates the gateway column.
+  const chosen = deps.providers.get(target.gateway) ??
+    pickProvider(deps, routes, target.countryCode, {});
+  if ("reason" in chosen) return { reason: chosen.reason, retry: false };
+
+  const result = await chosen.createRefund({
+    refundId,
+    gatewayReference: target.gatewayReference,
+    amountMinor,
+    currency: String(p.currency ?? ""),
+    reasonCode: String(p.reason_code ?? "refund"),
+  }, AbortSignal.timeout(TIMEOUT_MS));
+
+  // **Either answer is written back.** A refund the gateway refuses must be recorded as failed,
+  // because the platform still owes the money and the books should say so (money-flows 5c);
+  // leaving it `pending` is how somebody waits for ever.
+  await deps.recordRefundResult(
+    refundId,
+    result.ok,
+    result.gatewayReference ?? "",
+    result.ok ? undefined : (result.reason ?? "gateway_refused"),
+  );
+  deps.log("info", "payments.worker.refund_recorded", {
+    refund_id: refundId,
+    succeeded: result.ok,
+  });
   return "done";
 }
 

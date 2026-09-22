@@ -77,6 +77,26 @@ export interface AccountResolveResult {
   reason?: string;
 }
 
+/**
+ * A refund, from our side. The gateway is told which charge to reverse and by how much; a partial
+ * refund is the normal case, because a dispute can end in one.
+ */
+export interface RefundRequest {
+  refundId: string;
+  /** The charge being reversed, as the gateway knows it. */
+  gatewayReference: string;
+  amountMinor: number;
+  currency: string;
+  /** Stable, non-personal reason for the gateway's own records. */
+  reasonCode: string;
+}
+
+export interface RefundResult {
+  ok: boolean;
+  gatewayReference?: string;
+  reason?: string;
+}
+
 export interface WebhookVerification {
   /** False means the signature did not check out. The event is still stored, as evidence. */
   valid: boolean;
@@ -114,6 +134,7 @@ export interface PaymentProvider {
   readonly name: string;
   createCheckout(request: CheckoutRequest, signal: AbortSignal): Promise<CheckoutResult>;
   createTransfer(request: TransferRequest, signal: AbortSignal): Promise<TransferResult>;
+  createRefund(request: RefundRequest, signal: AbortSignal): Promise<RefundResult>;
   resolveAccount(
     request: AccountResolveRequest,
     signal: AbortSignal,
@@ -164,6 +185,15 @@ export class ConsolePaymentProvider implements PaymentProvider {
       gatewayReference: `console-payout-${request.payoutId}`,
       status: "pending",
       feeMinor: 0,
+    });
+  }
+
+  createRefund(request: RefundRequest): Promise<RefundResult> {
+    const off = this.disabled();
+    if (off) return Promise.resolve(off);
+    return Promise.resolve({
+      ok: true,
+      gatewayReference: `console-refund-${request.refundId}`,
     });
   }
 
