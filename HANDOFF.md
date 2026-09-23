@@ -5,6 +5,32 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.5: provider feed + provider repo wired
+
+Sixth M9 slice. New: `SupabaseProviderRepository` — `provider_feed` for the
+open-requests feed (approximate coordinates and area labels only; the
+customer's exact pickup stays hidden until assignment), `create_offer`,
+`set_online` (the contract toggle takes no idempotency key — replays are
+naturally idempotent; the interface's key is unused), my-offers from the
+`offers` select, my-jobs via the `jobs` stream + the shared request-row
+loader, and paginated job history (jobs-for-provider ids → requests IN
+filter, terminal filter client-side since PostgREST allows one IN per
+query). The feed "stream" re-runs the RPC whenever a published request
+changes, with a dirty-flag coalescing guard. Wired behind
+`supabaseGatewayProvider`; mocks stay the default.
+
+**Gaps filed as CR-20260923-05** (provider home + tools): no contract source
+for `todayEarnings`/`completedToday`/`documentWarnings` — the home summary
+reports zeros/empty rather than fabricating numbers — and no tables/RPCs at
+all for availability windows, earnings goals, demand heatmap, provider
+insights or instant payout. `ProviderToolsRepository` and the organization
+console stay on mocks this slice (nothing honest to bind to).
+
+Verify: feed mapper tests (approx-point mapping, no-customer-id, custom
+category, null-safety), full suites green (169 suskii_data), analyze clean.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.4: wallet + referrals + disputes wired
 
 Fifth M9 slice. New: `SupabaseWalletRepository` (balance via

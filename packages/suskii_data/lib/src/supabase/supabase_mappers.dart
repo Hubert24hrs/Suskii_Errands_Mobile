@@ -576,3 +576,58 @@ WalletTransaction withdrawalTransactionFromRow(
     available: Money(available, currency),
   );
 }
+
+// ---------------------------------------------------------------------------
+// M9.5: provider feed.
+// ---------------------------------------------------------------------------
+
+/// A `provider_feed` row. The feed deliberately exposes only approximate
+/// coordinates and an area label (provider privacy of the customer's exact
+/// pickup until assignment); the customer id is never in the payload.
+JobRequest jobRequestFromFeedRow(Map<String, dynamic> row) {
+  final currency = row['currency'] as String? ?? 'NGN';
+  final isCustom = row['is_custom_category'] as bool? ?? false;
+  GeoPoint? approxPoint(Object? lat, Object? lng) {
+    final la = (lat as num?)?.toDouble();
+    final lo = (lng as num?)?.toDouble();
+    if (la == null || lo == null) return null;
+    return GeoPoint(latitude: la, longitude: lo);
+  }
+
+  final hasDestination = row['has_destination'] as bool? ?? false;
+  return JobRequest(
+    id: SupabaseGateway.asId(row['request_id']),
+    customerId: '',
+    categoryId: isCustom
+        ? 'custom'
+        : (row['category_key'] as String? ?? 'custom'),
+    isCustomCategory: isCustom,
+    description: row['description'] as String? ?? '',
+    mediaPaths: (row['media_paths'] as List<dynamic>? ?? const <dynamic>[])
+        .cast<String>(),
+    pickup: PlaceRef(
+      label: row['pickup_area'] as String? ?? '',
+      point: approxPoint(row['pickup_approx_lat'], row['pickup_approx_lng']),
+    ),
+    destination: hasDestination
+        ? PlaceRef(
+            label: '',
+            point: approxPoint(
+              row['destination_approx_lat'],
+              row['destination_approx_lng'],
+            ),
+          )
+        : null,
+    urgency: urgencyFromWire(row['urgency']),
+    status: JobStatus.published,
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    scheduledAt: row['scheduled_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['scheduled_at']),
+    preferredPrice: moneyOrNull(row['preferred_price_minor'], currency),
+    itemFloat: moneyOrNull(row['item_float_minor'], currency),
+    expiresAt: row['expires_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+  );
+}

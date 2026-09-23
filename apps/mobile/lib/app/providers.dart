@@ -77,12 +77,14 @@ final offerRepositoryProvider = Provider<OfferRepository>((ref) {
   );
 });
 
-final providerRepositoryProvider = Provider<ProviderRepository>(
-  (ref) => MockProviderRepository(
+final providerRepositoryProvider = Provider<ProviderRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseProviderRepository(gateway);
+  return MockProviderRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final jobProgressRepositoryProvider = Provider<JobProgressRepository>((ref) {
   final gateway = ref.watch(supabaseGatewayProvider);

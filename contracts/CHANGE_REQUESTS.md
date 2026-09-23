@@ -51,3 +51,12 @@ No requests yet — official contracts do not exist (frontend-first phase).
 - Proposed change: a `redeem_promo(p_idempotency_key, p_code)` RPC (account-level voucher wallet), or confirm that promo entry happens only at checkout and drop the standalone redeem screen. If listings are wanted: add `title_key`/`description_key` to `promo_codes` and its grants.
 - Backwards compatible? yes (new function / new nullable columns).
 - Status: OPEN
+
+## CR-20260923-05 — provider home summary + provider tools
+- Requested by: Kimi Code
+- Milestone/screen: M9.5 — provider home (`ProviderRepository.getHomeSummary`) and provider tools (`ProviderToolsRepository`)
+- Current contract (v1): `provider_profiles` carries `online`/rating/completion stats; `provider_feed` covers open requests. There is no RPC for today's earnings, jobs completed today, or document-expiry warnings — and no tables/RPCs at all for availability windows, earnings goals, demand heatmap, provider insights, or instant payout quotes.
+- Problem / missing capability: the provider home screen renders `todayEarnings`, `completedToday` and `documentWarnings`; the tools screen renders availability slots, an earnings goal with server-computed progress, a demand heatmap, insights, and instant payout (a paid feature with server-computed fees). Today `getHomeSummary` reports zeros/empty lists for the missing fields and `ProviderToolsRepository` stays on the mock.
+- Proposed change: a `provider_home_summary()` RPC returning `(online, verification_status, today_earnings_minor, currency, completed_today, nearby_open_requests, document_warnings jsonb)`; plus the provider-tools surface (availability slots table + RPCs, earnings goal, heatmap/insights RPCs, instant payout quote/request). The tools items may be separate migrations — flagged here as one tracked gap.
+- Backwards compatible? yes (new functions/tables).
+- Status: OPEN

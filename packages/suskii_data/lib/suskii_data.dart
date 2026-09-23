@@ -16,6 +16,7 @@ export 'src/supabase/supabase_job_progress_repository.dart';
 export 'src/supabase/supabase_mappers.dart';
 export 'src/supabase/supabase_offer_repository.dart';
 export 'src/supabase/supabase_payment_repository.dart';
+export 'src/supabase/supabase_provider_repository.dart';
 export 'src/supabase/supabase_rating_repository.dart';
 export 'src/supabase/supabase_referral_repository.dart';
 export 'src/supabase/supabase_request_repository.dart';

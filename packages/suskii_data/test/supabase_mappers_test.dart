@@ -138,6 +138,7 @@ void main() {
   requestMapperTests();
   paymentProgressMapperTests();
   walletDisputeMapperTests();
+  providerFeedMapperTests();
 }
 
 // ---------------------------------------------------------------------------
@@ -604,6 +605,78 @@ void walletDisputeMapperTests() {
       expect(totals.available, const Money(0, 'KES'));
       expect(totals.holding, const Money(0, 'KES'));
       expect(totals.earnedTotal, const Money(0, 'KES'));
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// M9.5: provider feed.
+// ---------------------------------------------------------------------------
+
+void providerFeedMapperTests() {
+  group('jobRequestFromFeedRow', () {
+    test('maps the feed row with approximate coordinates only', () {
+      final request = jobRequestFromFeedRow(<String, dynamic>{
+        'request_id': 'req-uuid-9',
+        'category_key': 'food_pickup',
+        'is_custom_category': false,
+        'custom_category_label': null,
+        'description': 'Pick up my order',
+        'urgency': 'urgent',
+        'pickup_area': 'Lekki Phase 1',
+        'pickup_approx_lat': 6.44,
+        'pickup_approx_lng': 3.47,
+        'has_destination': true,
+        'destination_approx_lat': 6.45,
+        'destination_approx_lng': 3.43,
+        'distance_m': 1200,
+        'media_paths': <dynamic>['req-uuid-9/photo.jpg'],
+        'scheduled_at': null,
+        'preferred_price_minor': '300000',
+        'item_float_minor': null,
+        'currency': 'NGN',
+        'created_at': '2026-09-23T10:00:00.000Z',
+        'expires_at': '2026-09-23T14:00:00.000Z',
+        'already_offered': false,
+      });
+      expect(request.id, 'req-uuid-9');
+      // The feed never exposes the customer id.
+      expect(request.customerId, '');
+      expect(request.categoryId, 'food_pickup');
+      expect(request.status, JobStatus.published);
+      expect(request.pickup.label, 'Lekki Phase 1');
+      expect(
+        request.pickup.point,
+        const GeoPoint(latitude: 6.44, longitude: 3.47),
+      );
+      expect(request.destination, isNotNull);
+      expect(request.destination!.point!.latitude, 6.45);
+      expect(request.preferredPrice, const Money(300000, 'NGN'));
+      expect(request.mediaPaths, <String>['req-uuid-9/photo.jpg']);
+      expect(request.agreedPrice, isNull);
+    });
+
+    test('no destination and no approx point → nulls, not fake zeros', () {
+      final request = jobRequestFromFeedRow(<String, dynamic>{
+        'request_id': 'req-uuid-10',
+        'category_key': null,
+        'is_custom_category': true,
+        'custom_category_label': 'Queue for me',
+        'description': 'Queue at the bank',
+        'urgency': 'standard',
+        'pickup_area': 'Ikoyi',
+        'pickup_approx_lat': null,
+        'pickup_approx_lng': null,
+        'has_destination': false,
+        'media_paths': <dynamic>[],
+        'currency': 'NGN',
+        'created_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(request.isCustomCategory, isTrue);
+      expect(request.categoryId, 'custom');
+      expect(request.destination, isNull);
+      expect(request.pickup.point, isNull);
+      expect(request.preferredPrice, isNull);
     });
   });
 }
