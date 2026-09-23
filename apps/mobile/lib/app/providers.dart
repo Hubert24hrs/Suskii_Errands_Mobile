@@ -412,12 +412,14 @@ final disputeRepositoryProvider = Provider<DisputeRepository>((ref) {
   );
 });
 
-final supportRepositoryProvider = Provider<SupportRepository>(
-  (ref) => MockSupportRepository(
+final supportRepositoryProvider = Provider<SupportRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseSupportRepository(gateway);
+  return MockSupportRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final promoRepositoryProvider = Provider<PromoRepository>(
   (ref) => MockPromoRepository(
@@ -426,12 +428,14 @@ final promoRepositoryProvider = Provider<PromoRepository>(
   ),
 );
 
-final settingsRepositoryProvider = Provider<SettingsRepository>(
-  (ref) => MockSettingsRepository(
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseSettingsRepository(gateway);
+  return MockSettingsRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final myDisputesProvider = FutureProvider<List<Dispute>>(
   (ref) => ref.watch(disputeRepositoryProvider).getMyDisputes(),

@@ -680,3 +680,132 @@ ChatMessage chatMessageFromRow(
     readAt: readAt,
   );
 }
+
+// ---------------------------------------------------------------------------
+// M9.7: support + settings.
+// ---------------------------------------------------------------------------
+
+SupportTicketStatus supportTicketStatusFromWire(Object? value) =>
+    switch (value) {
+      'waiting_on_user' => SupportTicketStatus.awaitingUser,
+      'waiting_on_support' => SupportTicketStatus.awaitingSupport,
+      'resolved' => SupportTicketStatus.resolved,
+      'closed' => SupportTicketStatus.closed,
+      _ => SupportTicketStatus.open,
+    };
+
+/// A `support_tickets` row. The wire has no subject field — the category
+/// plays that role in the domain model. Messages are assembled by the
+/// repository (batch-fetched from `ticket_messages` and grouped client-side).
+SupportTicket supportTicketFromRow(
+  Map<String, dynamic> row, {
+  List<SupportMessage> messages = const <SupportMessage>[],
+}) => SupportTicket(
+  id: SupabaseGateway.asId(row['id']),
+  subject: (row['category'] as String?) ?? '',
+  status: supportTicketStatusFromWire(row['status']),
+  createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+  messages: messages,
+);
+
+/// A `ticket_messages` row. `fromUser` is derived by comparing `author_id`
+/// with the signed-in user's auth id. The wire marks AI triage on the ticket
+/// (`ai_triage` jsonb), not per message, so [SupportMessage.aiTriage] is
+/// always false here — see HANDOFF M9.7.
+SupportMessage supportMessageFromRow(
+  Map<String, dynamic> row, {
+  required String myId,
+}) => SupportMessage(
+  id: SupabaseGateway.asId(row['id']),
+  body: (row['body'] as String?) ?? '',
+  fromUser: row['author_id'] == myId,
+  createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+);
+
+/// A `trusted_contacts` row. The phone number is stored encrypted
+/// (`phone_ciphertext` + blind index) and never returned in plaintext, so the
+/// domain `phoneE164` cannot be populated — tracked as CR-20260923-06.
+TrustedContact trustedContactFromRow(Map<String, dynamic> row) =>
+    TrustedContact(
+      id: SupabaseGateway.asId(row['id']),
+      name: (row['name'] as String?) ?? '',
+      phoneE164: '',
+    );
+
+/// Postgres `time` column → minutes since midnight ('HH:MM:SS').
+int? quietMinutesFromWire(Object? value) {
+  if (value is! String) return null;
+  final parts = value.split(':');
+  if (parts.length < 2) return null;
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) return null;
+  return hour * 60 + minute;
+}
+
+/// Minutes since midnight → Postgres `time` literal ('HH:MM:SS').
+String? quietMinutesToWire(int? minutes) {
+  if (minutes == null) return null;
+  final hour = (minutes ~/ 60).toString().padLeft(2, '0');
+  final minute = (minutes % 60).toString().padLeft(2, '0');
+  return '$hour:$minute:00';
+}
+
+/// Composes the flat domain preferences from `notification_preferences`
+/// rows: push/sms/email read the (channel, 'transactional') rows, marketing
+/// reads the ('push', 'marketing') row. Missing rows default to enabled
+/// (matching the mock defaults); quiet hours come from any row that has them.
+NotificationPreferences notificationPreferencesFromRows(
+  List<Map<String, dynamic>> rows,
+) {
+  bool enabledFor(String channel, String category) {
+    for (final row in rows) {
+      if (row['channel'] == channel && row['category'] == category) {
+        return row['enabled'] as bool? ?? true;
+      }
+    }
+    return true;
+  }
+
+  int? quietStart;
+  int? quietEnd;
+  for (final row in rows) {
+    quietStart ??= quietMinutesFromWire(row['quiet_start']);
+    quietEnd ??= quietMinutesFromWire(row['quiet_end']);
+  }
+
+  return NotificationPreferences(
+    push: enabledFor('push', 'transactional'),
+    sms: enabledFor('sms', 'transactional'),
+    email: enabledFor('email', 'transactional'),
+    marketing: enabledFor('push', 'marketing'),
+    quietStartMinutes: quietStart,
+    quietEndMinutes: quietEnd,
+  );
+}
+
+/// Explodes the flat domain preferences into `notification_preferences`
+/// rows for upsert (PK: user_id, channel, category). The quiet window is
+/// applied to every row.
+List<Map<String, Object?>> notificationPreferenceRows(
+  String userId,
+  NotificationPreferences prefs,
+) {
+  final quietStart = quietMinutesToWire(prefs.quietStartMinutes);
+  final quietEnd = quietMinutesToWire(prefs.quietEndMinutes);
+  Map<String, Object?> row(String channel, String category, bool enabled) =>
+      <String, Object?>{
+        'user_id': userId,
+        'channel': channel,
+        'category': category,
+        'enabled': enabled,
+        'quiet_start': quietStart,
+        'quiet_end': quietEnd,
+      };
+  return <Map<String, Object?>>[
+    row('push', 'transactional', prefs.push),
+    row('sms', 'transactional', prefs.sms),
+    row('email', 'transactional', prefs.email),
+    row('push', 'marketing', prefs.marketing),
+  ];
+}

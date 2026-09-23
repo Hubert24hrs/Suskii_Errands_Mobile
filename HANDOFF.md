@@ -5,6 +5,42 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.7: support + settings wired
+
+Eighth M9 slice. New: `SupabaseSupportRepository` (`open_ticket` /
+`reply_to_ticket` RPCs for writes — the wire has no subject field, so the
+domain `subject` maps to the ticket **category**; reads batch-fetch
+`ticket_messages` and group client-side to avoid N+1) and
+`SupabaseSettingsRepository` (notification preferences composed from /
+exploded into `notification_preferences` rows — push/sms/email read the
+(channel, 'transactional') rows, marketing reads ('push', 'marketing'),
+quiet window applied to every row on upsert; gateway gained `upsertRows`).
+Both wired behind `supabaseGatewayProvider`; mocks stay the default.
+
+**Model notes.** Wire `waiting_on_support` had no domain value — added
+`SupportTicketStatus.awaitingSupport` (+ en/pcm labels). AI triage is stored
+per ticket (`ai_triage` jsonb), not per message, so `SupportMessage.aiTriage`
+is always false over Supabase (the mock marks its canned triage reply).
+`fromUser` derives from `author_id == currentAuthUserId`.
+
+**Feature-unavailable surfaces (tracked, not weakened).** Trusted-contact add
+needs client-side phone encryption the contract has no key story for — throws
+ERR_FEATURE_UNAVAILABLE and reads map `phoneE164` to '' (CR-20260923-06:
+server-side encrypt helper + masked display column). Account deletion and
+data export have no RPCs — throw ERR_FEATURE_UNAVAILABLE (CR-20260923-07).
+`removeTrustedContact` works as-is.
+
+Verify: 8 new mapper test groups (status folding incl. waiting_on_support,
+message fromUser/aiTriage, prefs row round-trip + defaults, trusted contact),
+full suites green (180 suskii_data, 23 domain, 13 core), analyze clean.
+
+**Remaining mock-only surfaces** (all tracked): concierge (services/ai),
+masked calls (LiveKit adapter — `start_call` returns no LiveKit token, known
+gap), verification/KYC adapters (Dojah), promos (CR-20260923-04), provider
+tools + organization console (CR-20260923-05).
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.6: chat + tracking wired
 
 Seventh M9 slice. New: `SupabaseChatRepository` (`send_message` — moderation

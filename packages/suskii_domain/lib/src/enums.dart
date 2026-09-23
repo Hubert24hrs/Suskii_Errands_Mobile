@@ -251,6 +251,8 @@ enum SupportTicketStatus {
   open,
   @JsonValue('awaiting_user')
   awaitingUser,
+  @JsonValue('awaiting_support')
+  awaitingSupport,
   @JsonValue('resolved')
   resolved,
   @JsonValue('closed')

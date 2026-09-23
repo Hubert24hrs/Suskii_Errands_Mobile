@@ -211,6 +211,7 @@ String ticketStatusLabel(AppLocalizations l10n, SupportTicketStatus status) =>
     switch (status) {
       SupportTicketStatus.open => l10n.supportStatusOpen,
       SupportTicketStatus.awaitingUser => l10n.supportStatusAwaitingUser,
+      SupportTicketStatus.awaitingSupport => l10n.supportStatusAwaitingSupport,
       SupportTicketStatus.resolved => l10n.supportStatusResolved,
       SupportTicketStatus.closed => l10n.supportStatusClosed,
     };

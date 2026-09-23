@@ -113,6 +113,25 @@ class SupabaseGateway {
     }
   }
 
+  /// Upserts rows, returning the upserted rows. `onConflict` names the
+  /// unique key columns (PostgREST `on_conflict`).
+  Future<List<Map<String, dynamic>>> upsertRows(
+    String table,
+    List<Map<String, Object?>> rows, {
+    required String onConflict,
+    String columns = '*',
+  }) async {
+    try {
+      final result = await _client
+          .from(table)
+          .upsert(rows, onConflict: onConflict)
+          .select(columns);
+      return List<Map<String, dynamic>>.from(result as List<dynamic>);
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
   /// Live rows of a table as a stream (RLS scopes them server-side). An
   /// optional equality filter narrows the subscription server-side.
   Stream<List<Map<String, dynamic>>> streamRows(

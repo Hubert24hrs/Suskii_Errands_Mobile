@@ -734,4 +734,130 @@ void chatMapperTests() {
       expect(chatMessageTypeFromWire('offer_card'), ChatMessageType.offerCard);
     });
   });
+
+  group('supportTicketStatusFromWire', () {
+    test('folds every wire value; unknown → open', () {
+      expect(supportTicketStatusFromWire('open'), SupportTicketStatus.open);
+      expect(
+        supportTicketStatusFromWire('waiting_on_user'),
+        SupportTicketStatus.awaitingUser,
+      );
+      expect(
+        supportTicketStatusFromWire('waiting_on_support'),
+        SupportTicketStatus.awaitingSupport,
+      );
+      expect(
+        supportTicketStatusFromWire('resolved'),
+        SupportTicketStatus.resolved,
+      );
+      expect(supportTicketStatusFromWire('closed'), SupportTicketStatus.closed);
+      expect(
+        supportTicketStatusFromWire('some_future_status'),
+        SupportTicketStatus.open,
+      );
+    });
+  });
+
+  group('supportTicketFromRow', () {
+    test('category plays the subject role', () {
+      final ticket = supportTicketFromRow(<String, dynamic>{
+        'id': 'ticket-uuid-1',
+        'category': 'payment_issue',
+        'status': 'waiting_on_support',
+        'created_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(ticket.id, 'ticket-uuid-1');
+      expect(ticket.subject, 'payment_issue');
+      expect(ticket.status, SupportTicketStatus.awaitingSupport);
+      expect(ticket.messages, isEmpty);
+    });
+  });
+
+  group('supportMessageFromRow', () {
+    Map<String, dynamic> row(String authorId) => <String, dynamic>{
+      'id': 42,
+      'ticket_id': 'ticket-uuid-1',
+      'author_id': authorId,
+      'body': 'Where is my refund?',
+      'created_at': '2026-09-23T10:00:00.000Z',
+    };
+
+    test('fromUser compares author_id with the signed-in user', () {
+      expect(
+        supportMessageFromRow(row('me-uuid'), myId: 'me-uuid').fromUser,
+        isTrue,
+      );
+      expect(
+        supportMessageFromRow(row('agent-uuid'), myId: 'me-uuid').fromUser,
+        isFalse,
+      );
+    });
+
+    test('aiTriage is always false (triage lives on the ticket jsonb)', () {
+      expect(
+        supportMessageFromRow(row('me-uuid'), myId: 'me-uuid').aiTriage,
+        isFalse,
+      );
+    });
+  });
+
+  group('trustedContactFromRow', () {
+    test(
+      'phoneE164 is empty (wire carries only ciphertext, CR-20260923-06)',
+      () {
+        final contact = trustedContactFromRow(<String, dynamic>{
+          'id': 'contact-uuid-1',
+          'name': 'Mama Ngozi',
+        });
+        expect(contact.id, 'contact-uuid-1');
+        expect(contact.name, 'Mama Ngozi');
+        expect(contact.phoneE164, isEmpty);
+      },
+    );
+  });
+
+  group('notificationPreferencesFromRows / notificationPreferenceRows', () {
+    test('round-trips the flat model through the row explosion', () {
+      const prefs = NotificationPreferences(
+        push: true,
+        sms: false,
+        email: true,
+        marketing: false,
+        quietStartMinutes: 1320, // 22:00
+        quietEndMinutes: 360, // 06:00
+      );
+      final rows = notificationPreferenceRows('user-uuid-1', prefs);
+      expect(rows, hasLength(4));
+      expect(
+        rows.firstWhere(
+          (r) => r['channel'] == 'push' && r['category'] == 'marketing',
+        )['enabled'],
+        isFalse,
+      );
+      expect(rows.every((r) => r['quiet_start'] == '22:00:00'), isTrue);
+      expect(rows.every((r) => r['quiet_end'] == '06:00:00'), isTrue);
+      expect(rows.every((r) => r['user_id'] == 'user-uuid-1'), isTrue);
+      expect(notificationPreferencesFromRows(rows), prefs);
+    });
+
+    test('missing rows default to enabled; null quiet window stays null', () {
+      const defaults = NotificationPreferences(
+        push: true,
+        sms: true,
+        email: true,
+        marketing: true,
+      );
+      expect(
+        notificationPreferencesFromRows(const <Map<String, dynamic>>[]),
+        defaults,
+      );
+    });
+
+    test('quiet minutes parse both directions', () {
+      expect(quietMinutesFromWire('07:30:00'), 450);
+      expect(quietMinutesFromWire(null), isNull);
+      expect(quietMinutesToWire(450), '07:30:00');
+      expect(quietMinutesToWire(null), isNull);
+    });
+  });
 }

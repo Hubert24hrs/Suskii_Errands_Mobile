@@ -560,6 +560,7 @@
   "supportAiTriageBadge": "Automatic reply",
   "supportStatusOpen": "Open",
   "supportStatusAwaitingUser": "Dey wait for you",
+  "supportStatusAwaitingSupport": "Support still dey on am",
   "supportStatusResolved": "Resolved",
   "supportStatusClosed": "Closed",
   "settingsTitle": "Settings",

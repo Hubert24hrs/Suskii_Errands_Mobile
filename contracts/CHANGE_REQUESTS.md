@@ -60,3 +60,21 @@ No requests yet — official contracts do not exist (frontend-first phase).
 - Proposed change: a `provider_home_summary()` RPC returning `(online, verification_status, today_earnings_minor, currency, completed_today, nearby_open_requests, document_warnings jsonb)`; plus the provider-tools surface (availability slots table + RPCs, earnings goal, heatmap/insights RPCs, instant payout quote/request). The tools items may be separate migrations — flagged here as one tracked gap.
 - Backwards compatible? yes (new functions/tables).
 - Status: OPEN
+
+## CR-20260923-06 — trusted-contact phone: client encryption story + masked display
+- Requested by: Kimi Code
+- Milestone/screen: M9.7 — trusted contacts (`SettingsRepository.addTrustedContact` / `getTrustedContacts`)
+- Current contract (v1): `add_trusted_contact(p_idempotency_key, p_name, p_phone_ciphertext bytea, p_phone_blind_index bytea, p_relationship_key)` expects the client to encrypt the phone number and compute the blind index; `trusted_contacts` SELECT returns only `phone_ciphertext`/`phone_blind_index`, never plaintext.
+- Problem / missing capability: there is no client-side key-management story (no key delivery, no algorithm spec), so the app cannot produce valid ciphertext — and sending plaintext as "ciphertext" would silently weaken the security model. Reads are also broken UX-wise: the list can show names but never the (even masked) phone number. Today `addTrustedContact` throws ERR_FEATURE_UNAVAILABLE and `phoneE164` maps to ''.
+- Proposed change: a server-side `add_trusted_contact_plaintext(p_idempotency_key, p_name, p_phone_e164 text, p_relationship_key)` that encrypts inside the database (consistent with how other PII is handled), plus a `phone_masked text` display column (e.g. `+234••••••1234`) on the SELECT grant.
+- Backwards compatible? yes (new function; new nullable column).
+- Status: OPEN
+
+## CR-20260923-07 — account deletion + data export RPCs
+- Requested by: Kimi Code
+- Milestone/screen: M9.7 — settings (`SettingsRepository.requestAccountDeletion` / `requestDataExport`)
+- Current contract (v1): no RPCs exist for self-serve account deletion or GDPR-style data export.
+- Problem / missing capability: store-readiness requires in-app account deletion with a grace period (signing back in cancels), and the data-export screen needs an opaque export reference. Both currently throw ERR_FEATURE_UNAVAILABLE.
+- Proposed change: `request_account_deletion(p_idempotency_key) → timestamptz` (scheduled deletion date; sign-in before it cancels) and `request_data_export(p_idempotency_key) → text` (export reference / ticket id).
+- Backwards compatible? yes (new functions).
+- Status: OPEN

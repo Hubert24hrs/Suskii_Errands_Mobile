@@ -22,5 +22,7 @@ export 'src/supabase/supabase_rating_repository.dart';
 export 'src/supabase/supabase_referral_repository.dart';
 export 'src/supabase/supabase_request_repository.dart';
 export 'src/supabase/supabase_safety_repository.dart';
+export 'src/supabase/supabase_settings_repository.dart';
+export 'src/supabase/supabase_support_repository.dart';
 export 'src/supabase/supabase_tracking_repository.dart';
 export 'src/supabase/supabase_wallet_repository.dart';
