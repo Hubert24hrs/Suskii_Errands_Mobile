@@ -64,21 +64,32 @@ class SupabaseGateway {
     }
   }
 
-  /// Reads rows with one equality filter and an optional ordering.
+  /// Reads rows with optional filters and an optional ordering. Supported
+  /// filters: one equality, one IN list, one `<` comparison (cursor
+  /// pagination), plus a row limit.
   Future<List<Map<String, dynamic>>> selectList(
     String table,
     String columns, {
     String? column,
     Object? value,
+    String? inColumn,
+    List<Object>? inValues,
+    String? ltColumn,
+    Object? ltValue,
     String? orderBy,
     bool ascending = true,
+    int? limit,
   }) async {
     try {
       var query = _client.from(table).select(columns);
       if (column != null) query = query.eq(column, value!);
-      final rows = orderBy == null
-          ? await query
-          : await query.order(orderBy, ascending: ascending);
+      if (inColumn != null) query = query.inFilter(inColumn, inValues!);
+      if (ltColumn != null) query = query.lt(ltColumn, ltValue!);
+      var ordered = orderBy == null
+          ? query
+          : query.order(orderBy, ascending: ascending);
+      if (limit != null) ordered = ordered.limit(limit);
+      final rows = await ordered;
       return List<Map<String, dynamic>>.from(rows as List<dynamic>);
     } on Object catch (error) {
       throw mapSupabaseError(error);
@@ -102,18 +113,22 @@ class SupabaseGateway {
     }
   }
 
-  /// Live rows of a table as a stream (RLS scopes them server-side).
+  /// Live rows of a table as a stream (RLS scopes them server-side). An
+  /// optional equality filter narrows the subscription server-side.
   Stream<List<Map<String, dynamic>>> streamRows(
     String table, {
     required List<String> primaryKey,
-  }) => _client
-      .from(table)
-      .stream(primaryKey: primaryKey)
-      .map(
-        (rows) => List<Map<String, dynamic>>.from(
-          rows.map((r) => Map<String, dynamic>.from(r)),
-        ),
-      );
+    String? filterColumn,
+    Object? filterValue,
+  }) {
+    var query = _client.from(table).stream(primaryKey: primaryKey);
+    if (filterColumn != null) query = query.eq(filterColumn, filterValue!);
+    return query.map(
+      (rows) => List<Map<String, dynamic>>.from(
+        rows.map((r) => Map<String, dynamic>.from(r)),
+      ),
+    );
+  }
 
   /// Opaque id string — safe for 64-bit ids that exceed 2^53.
   static String asId(Object? value) => value.toString();

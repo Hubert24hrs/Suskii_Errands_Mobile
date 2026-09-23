@@ -134,4 +134,179 @@ void main() {
       expect(user.trustLevel, TrustLevel.new_);
     });
   });
+
+  requestMapperTests();
+}
+
+// ---------------------------------------------------------------------------
+// M9.2: requests/offers rows (contracts v1: requests, jobs, offers,
+// request_media, get_provider_card).
+// ---------------------------------------------------------------------------
+
+Map<String, dynamic> _requestRow() => <String, dynamic>{
+  'id': 'req-uuid-1',
+  'customer_id': 'cust-uuid-1',
+  'is_custom_category': false,
+  'custom_category_label': null,
+  'description': 'Pick up my order',
+  'urgency': 'urgent',
+  'status': 'paid_held',
+  'pickup_point': <String, dynamic>{
+    'type': 'Point',
+    'coordinates': <dynamic>[3.4219, 6.4281],
+  },
+  'pickup_label': 'Chicken Republic, Admiralty Way',
+  'pickup_landmark_note': 'Blue gate',
+  'destination_point': null,
+  'destination_label': null,
+  'destination_landmark_note': null,
+  'scheduled_at': null,
+  // numeric minor units arrive as strings (bigint/numeric columns).
+  'preferred_price_minor': '300000',
+  'item_float_minor': null,
+  'declared_value_minor': null,
+  'currency': 'NGN',
+  'expires_at': '2026-09-23T14:00:00.000Z',
+  'created_at': '2026-09-23T10:00:00.000Z',
+  'service_categories': <String, dynamic>{'key': 'food_pickup'},
+  'jobs': null,
+};
+
+Map<String, dynamic> _jobRow() => <String, dynamic>{
+  'provider_id': 'prov-uuid-1',
+  'agreed_amount_minor': '320000',
+  'currency': 'NGN',
+  'commission_rate_bps': 1250,
+  'commission_minor': '40000',
+  'net_minor': '280000',
+  'estimated_gateway_fee_minor': '4800',
+  'actual_gateway_fee_minor': null,
+  'tip_minor': null,
+};
+
+void requestMapperTests() {
+  group('jobRequestFromRow', () {
+    test('maps a row with category embed and GeoJSON pickup point', () {
+      final request = jobRequestFromRow(
+        _requestRow(),
+        mediaPaths: const <String>['req-uuid-1/photo.jpg'],
+      );
+      expect(request.id, 'req-uuid-1');
+      expect(request.categoryId, 'food_pickup');
+      expect(request.urgency, Urgency.urgent);
+      expect(request.status, JobStatus.paidHeld);
+      expect(request.pickup.label, 'Chicken Republic, Admiralty Way');
+      expect(
+        request.pickup.point,
+        const GeoPoint(latitude: 6.4281, longitude: 3.4219),
+      );
+      expect(request.pickup.landmarkNote, 'Blue gate');
+      expect(request.destination, isNull);
+      expect(request.preferredPrice, const Money(300000, 'NGN'));
+      expect(request.mediaPaths, <String>['req-uuid-1/photo.jpg']);
+      expect(request.agreedPrice, isNull);
+      expect(request.agreedBreakdown, isNull);
+      expect(request.providerId, isNull);
+      expect(request.expiresAt, DateTime.utc(2026, 9, 23, 14));
+    });
+
+    test('agreed money + breakdown come from the embedded jobs row', () {
+      final row = _requestRow()..['jobs'] = _jobRow();
+      final request = jobRequestFromRow(row);
+      expect(request.agreedPrice, const Money(320000, 'NGN'));
+      expect(request.providerId, 'prov-uuid-1');
+      final breakdown = request.agreedBreakdown!;
+      expect(breakdown.gross, const Money(320000, 'NGN'));
+      expect(breakdown.platformCommission, const Money(40000, 'NGN'));
+      expect(breakdown.net, const Money(280000, 'NGN'));
+      expect(breakdown.providerPayout, const Money(280000, 'NGN'));
+      expect(breakdown.commissionRateBps, 1250);
+      expect(breakdown.estimatedGatewayFee, const Money(4800, 'NGN'));
+      expect(breakdown.actualGatewayFee, isNull);
+      expect(breakdown.tip, isNull);
+    });
+
+    test('jobs embed as single-element array (PostgREST variant) maps too', () {
+      final row = _requestRow()..['jobs'] = <dynamic>[_jobRow()];
+      expect(jobRequestFromRow(row).agreedPrice, const Money(320000, 'NGN'));
+    });
+
+    test('money null until the payment phase → no breakdown', () {
+      final row = _requestRow()
+        ..['jobs'] = (_jobRow()
+          ..['commission_minor'] = null
+          ..['net_minor'] = null);
+      final request = jobRequestFromRow(row);
+      // The job exists (agreed), but the commission is not computed yet.
+      expect(request.agreedPrice, const Money(320000, 'NGN'));
+      expect(request.agreedBreakdown, isNull);
+    });
+
+    test('custom category rows carry the key custom regardless of embed', () {
+      final row = _requestRow()
+        ..['is_custom_category'] = true
+        ..['custom_category_label'] = 'Queue for me'
+        ..['service_categories'] = null;
+      final request = jobRequestFromRow(row);
+      expect(request.isCustomCategory, isTrue);
+      expect(request.categoryId, 'custom');
+    });
+
+    test('unknown status/urgency degrade to safe defaults', () {
+      final row = _requestRow()
+        ..['status'] = 'some_future_status'
+        ..['urgency'] = 'some_future_urgency';
+      final request = jobRequestFromRow(row);
+      expect(request.status, JobStatus.cancelled);
+      expect(request.status.isTerminal, isTrue);
+      expect(request.urgency, Urgency.standard);
+    });
+  });
+
+  group('offerFromRow', () {
+    Map<String, dynamic> offerRow() => <String, dynamic>{
+      'id': 'offer-uuid-1',
+      'request_id': 'req-uuid-1',
+      'provider_id': 'prov-uuid-1',
+      'amount_minor': '350000',
+      'currency': 'NGN',
+      'message': 'Can do it now',
+      'status': 'pending',
+      'round': 2,
+      'expires_at': '2026-09-23T10:10:00.000Z',
+      'created_at': '2026-09-23T10:00:00.000Z',
+    };
+
+    test('maps the row with the provider card display fields', () {
+      final offer = offerFromRow(
+        offerRow(),
+        card: <String, dynamic>{
+          'display_name': 'Musa K.',
+          'trust_level': 'trusted',
+          'rating_avg_milli': 4250,
+        },
+      );
+      expect(offer.id, 'offer-uuid-1');
+      expect(offer.requestId, 'req-uuid-1');
+      expect(offer.providerName, 'Musa K.');
+      expect(offer.providerRating, 4.25);
+      expect(offer.providerTrustLevel, TrustLevel.trusted);
+      expect(offer.amount, const Money(350000, 'NGN'));
+      expect(offer.status, OfferStatus.pending);
+      expect(offer.round, 2);
+      expect(offer.expiresAt, DateTime.utc(2026, 9, 23, 10, 10));
+    });
+
+    test('no card → blank name, zero rating, new trust level', () {
+      final offer = offerFromRow(offerRow());
+      expect(offer.providerName, '');
+      expect(offer.providerRating, 0);
+      expect(offer.providerTrustLevel, TrustLevel.new_);
+    });
+
+    test('unknown offer status degrades to expired (terminal)', () {
+      final offer = offerFromRow(offerRow()..['status'] = 'some_future_status');
+      expect(offer.status, OfferStatus.expired);
+    });
+  });
 }

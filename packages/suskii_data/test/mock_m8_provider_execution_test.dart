@@ -311,6 +311,18 @@ void main() {
   });
 
   group('pickup PIN starts the work', () {
+    test('revealHandoverPin hands out the PIN on demand', () async {
+      final repo = MockJobProgressRepository(db, behavior);
+      expect(
+        await repo.revealHandoverPin('req-p1', kind: HandoverPinKind.pickup),
+        '4281',
+      );
+      expect(
+        await repo.revealHandoverPin('req-p1', kind: HandoverPinKind.delivery),
+        '4281',
+      );
+    });
+
     test('a verified pickup PIN moves arrived → inProgress', () async {
       final repo = MockJobProgressRepository(db, behavior);
       db.requests['req-p1'] = db.requests['req-p1']!.copyWith(

@@ -53,6 +53,7 @@ class CreateRequestInput {
     required this.pickup,
     this.destination,
     this.isCustomCategory = false,
+    this.customCategoryLabel,
     this.mediaPaths = const <String>[],
     this.urgency = Urgency.standard,
     this.scheduledAt,
@@ -63,6 +64,11 @@ class CreateRequestInput {
 
   final String categoryId;
   final bool isCustomCategory;
+
+  /// The customer's own label when [isCustomCategory] is set (the backend's
+  /// `p_custom_category_label`). Separate from [description] so the server
+  /// stores a clean label instead of a "label: description" prefix.
+  final String? customCategoryLabel;
   final String description;
   final List<String> mediaPaths;
   final PlaceRef pickup;
@@ -234,6 +240,16 @@ abstract interface class JobProgressRepository {
     String pin, {
     required HandoverPinKind kind,
     required String idempotencyKey,
+  });
+
+  /// Reveals a handover PIN (mirrors `reveal_job_pin`). PINs are never stored
+  /// on the [JobRequest] entity — the server generates/rotates them and hands
+  /// one out only on demand. [kind] selects the pickup or delivery PIN.
+  /// Throws AppError(ERR_ILLEGAL_TRANSITION) when the job is not in a state
+  /// where that PIN exists.
+  Future<String> revealHandoverPin(
+    String jobId, {
+    required HandoverPinKind kind,
   });
 
   /// Records a proof-of-execution row (mirrors the backend's

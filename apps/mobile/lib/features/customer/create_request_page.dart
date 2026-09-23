@@ -123,10 +123,10 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
     return CreateRequestInput(
       categoryId: _isCustom ? 'custom' : _categoryId!,
       isCustomCategory: _isCustom,
-      description: _isCustom
-          ? '${_customCategoryController.text.trim()}: '
-                '${_descriptionController.text.trim()}'
-          : _descriptionController.text.trim(),
+      customCategoryLabel: _isCustom
+          ? _customCategoryController.text.trim()
+          : null,
+      description: _descriptionController.text.trim(),
       mediaPaths: _mediaPaths,
       pickup: PlaceRef(
         label: _pickupController.text.trim(),

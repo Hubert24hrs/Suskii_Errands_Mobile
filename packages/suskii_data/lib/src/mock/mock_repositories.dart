@@ -319,7 +319,8 @@ class MockRequestRepository extends _MockRepo implements RequestRepository {
         return request;
       },
       argsHash:
-          '${input.categoryId}|${input.isCustomCategory}|${input.description}'
+          '${input.categoryId}|${input.isCustomCategory}'
+          '|${input.customCategoryLabel}|${input.description}'
           '|${input.mediaPaths.join(',')}'
           '|${input.pickup.label}|${input.pickup.landmarkNote}'
           '|${input.destination?.label}|${input.destination?.landmarkNote}'
@@ -572,8 +573,6 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
         agreedPrice: accepted.amount,
         agreedBreakdown: simulateQuote(accepted.amount),
         providerId: accepted.providerId,
-        // Server-generated handover PIN (the mock's known PIN is 4281).
-        handoverPin: '4281',
       );
       db.requests[requestId] = updated;
       db.jobEvents.add(updated);
@@ -1035,6 +1034,18 @@ class MockJobProgressRepository extends _MockRepo
   /// '$jobId:<kind>' entries whose PIN verified. The completion gate checks
   /// the delivery entry for jobs with a destination (delivery PIN gate).
   final Set<String> _verifiedPins = <String>{};
+
+  @override
+  Future<String> revealHandoverPin(
+    String jobId, {
+    required HandoverPinKind kind,
+  }) async {
+    await gate();
+    final request = db.requests[jobId];
+    if (request == null) throw const AppError(ErrorCodes.unknown);
+    // The mock's known PIN for both kinds (mirrors verifyHandoverPin).
+    return '4281';
+  }
 
   @override
   Future<PinVerificationResult> verifyHandoverPin(

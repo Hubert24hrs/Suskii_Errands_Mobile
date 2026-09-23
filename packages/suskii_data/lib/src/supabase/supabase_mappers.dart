@@ -150,3 +150,207 @@ ServiceCategory serviceCategoryFromRow(Map<String, dynamic> row) {
     proofRequirements: requirements,
   );
 }
+
+JobStatus jobStatusFromWire(Object? value) => switch (value) {
+  'draft' => JobStatus.draft,
+  'published' => JobStatus.published,
+  'offers_received' => JobStatus.offersReceived,
+  'negotiating' => JobStatus.negotiating,
+  'agreed' => JobStatus.agreed,
+  'payment_pending' => JobStatus.paymentPending,
+  'paid_held' => JobStatus.paidHeld,
+  'assigned' => JobStatus.assigned,
+  'en_route' => JobStatus.enRoute,
+  'arrived' => JobStatus.arrived,
+  'in_progress' => JobStatus.inProgress,
+  'completed_by_provider' => JobStatus.completedByProvider,
+  'confirmed' => JobStatus.confirmed,
+  'settlement_pending' => JobStatus.settlementPending,
+  'settled' => JobStatus.settled,
+  'closed' => JobStatus.closed,
+  'expired' => JobStatus.expired,
+  'disputed' => JobStatus.disputed,
+  'refunded' => JobStatus.refunded,
+  // Unknown values degrade to a terminal, non-actionable state.
+  _ => JobStatus.cancelled,
+};
+
+String jobStatusToWire(JobStatus status) => switch (status) {
+  JobStatus.draft => 'draft',
+  JobStatus.published => 'published',
+  JobStatus.offersReceived => 'offers_received',
+  JobStatus.negotiating => 'negotiating',
+  JobStatus.agreed => 'agreed',
+  JobStatus.paymentPending => 'payment_pending',
+  JobStatus.paidHeld => 'paid_held',
+  JobStatus.assigned => 'assigned',
+  JobStatus.enRoute => 'en_route',
+  JobStatus.arrived => 'arrived',
+  JobStatus.inProgress => 'in_progress',
+  JobStatus.completedByProvider => 'completed_by_provider',
+  JobStatus.confirmed => 'confirmed',
+  JobStatus.settlementPending => 'settlement_pending',
+  JobStatus.settled => 'settled',
+  JobStatus.closed => 'closed',
+  JobStatus.cancelled => 'cancelled',
+  JobStatus.expired => 'expired',
+  JobStatus.disputed => 'disputed',
+  JobStatus.refunded => 'refunded',
+};
+
+OfferStatus offerStatusFromWire(Object? value) => switch (value) {
+  'pending' => OfferStatus.pending,
+  'countered' => OfferStatus.countered,
+  'accepted' => OfferStatus.accepted,
+  'declined' => OfferStatus.declined,
+  'withdrawn' => OfferStatus.withdrawn,
+  // Unknown values degrade to a terminal, non-actionable state.
+  _ => OfferStatus.expired,
+};
+
+Urgency urgencyFromWire(Object? value) => switch (value) {
+  'flexible' => Urgency.flexible,
+  'urgent' => Urgency.urgent,
+  'emergency' => Urgency.emergency,
+  _ => Urgency.standard,
+};
+
+/// A PostGIS/GeoJSON point (`{type: 'Point', coordinates: [lng, lat]}`).
+GeoPoint? geoPointFromWire(Object? value) {
+  if (value is! Map<String, dynamic>) return null;
+  final coords = value['coordinates'];
+  if (coords is! List<dynamic> || coords.length < 2) return null;
+  final lng = (coords[0] as num?)?.toDouble();
+  final lat = (coords[1] as num?)?.toDouble();
+  if (lat == null || lng == null) return null;
+  return GeoPoint(latitude: lat, longitude: lng);
+}
+
+Money? moneyOrNull(Object? minorUnits, String currency) => minorUnits == null
+    ? null
+    : Money(SupabaseGateway.asMinorUnits(minorUnits), currency);
+
+/// The `jobs` row joined to a request, mapped to the agreed-price breakdown.
+/// Money columns stay null until the payment phase — the breakdown only
+/// exists once the server has computed the commission (contract: jobs table).
+PriceBreakdown? breakdownFromJobRow(Map<String, dynamic>? jobRow) {
+  if (jobRow == null) return null;
+  final gross = jobRow['agreed_amount_minor'];
+  final commission = jobRow['commission_minor'];
+  final net = jobRow['net_minor'];
+  if (gross == null || commission == null || net == null) return null;
+  final currency = jobRow['currency'] as String? ?? 'NGN';
+  return PriceBreakdown(
+    gross: Money(SupabaseGateway.asMinorUnits(gross), currency),
+    platformCommission: Money(
+      SupabaseGateway.asMinorUnits(commission),
+      currency,
+    ),
+    net: Money(SupabaseGateway.asMinorUnits(net), currency),
+    // The jobs table's net IS the provider payout basis (contract: jobs).
+    providerPayout: Money(SupabaseGateway.asMinorUnits(net), currency),
+    commissionRateBps: (jobRow['commission_rate_bps'] as num?)?.toInt() ?? 0,
+    estimatedGatewayFee: moneyOrNull(
+      jobRow['estimated_gateway_fee_minor'],
+      currency,
+    ),
+    actualGatewayFee: moneyOrNull(jobRow['actual_gateway_fee_minor'], currency),
+    tip: moneyOrNull(jobRow['tip_minor'], currency),
+  );
+}
+
+PlaceRef _placeRef(String? label, Object? point, String? landmarkNote) =>
+    PlaceRef(
+      label: label ?? '',
+      point: geoPointFromWire(point),
+      landmarkNote: landmarkNote,
+    );
+
+/// A `requests` row with the `service_categories(key)` embed and the to-one
+/// `jobs` embed. PostgREST returns a reverse-FK to-one as either an object or
+/// a single-element array depending on the uniqueness metadata — both are
+/// accepted. [mediaPaths] come from `request_media` (loaded separately to
+/// avoid an N+1 on list queries).
+JobRequest jobRequestFromRow(
+  Map<String, dynamic> row, {
+  List<String> mediaPaths = const <String>[],
+}) {
+  final currency = row['currency'] as String? ?? 'NGN';
+  final isCustom = row['is_custom_category'] as bool? ?? false;
+  final category = row['service_categories'];
+  final categoryKey = category is Map<String, dynamic>
+      ? category['key'] as String?
+      : null;
+  final jobsRaw = row['jobs'];
+  Map<String, dynamic>? jobRow;
+  if (jobsRaw is Map<String, dynamic>) {
+    jobRow = jobsRaw;
+  } else if (jobsRaw is List<dynamic> && jobsRaw.isNotEmpty) {
+    jobRow = jobsRaw.first as Map<String, dynamic>;
+  }
+  final breakdown = breakdownFromJobRow(jobRow);
+  final destinationLabel = row['destination_label'] as String?;
+  return JobRequest(
+    id: SupabaseGateway.asId(row['id']),
+    customerId: SupabaseGateway.asId(row['customer_id']),
+    categoryId: isCustom ? 'custom' : (categoryKey ?? 'custom'),
+    isCustomCategory: isCustom,
+    description: row['description'] as String? ?? '',
+    mediaPaths: mediaPaths,
+    pickup: _placeRef(
+      row['pickup_label'] as String?,
+      row['pickup_point'],
+      row['pickup_landmark_note'] as String?,
+    ),
+    destination: destinationLabel == null
+        ? null
+        : _placeRef(
+            destinationLabel,
+            row['destination_point'],
+            row['destination_landmark_note'] as String?,
+          ),
+    urgency: urgencyFromWire(row['urgency']),
+    status: jobStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    scheduledAt: row['scheduled_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['scheduled_at']),
+    preferredPrice: moneyOrNull(row['preferred_price_minor'], currency),
+    itemFloat: moneyOrNull(row['item_float_minor'], currency),
+    declaredValue: moneyOrNull(row['declared_value_minor'], currency),
+    agreedPrice: jobRow == null
+        ? null
+        : moneyOrNull(jobRow['agreed_amount_minor'], currency),
+    agreedBreakdown: breakdown,
+    providerId: jobRow?['provider_id'] as String?,
+    expiresAt: row['expires_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+  );
+}
+
+/// An `offers` row. Provider display fields (name/rating/trust) come from a
+/// `get_provider_card` row — the offers table deliberately does not denormalize
+/// them. [card] is a `get_provider_card` row or null (unknown provider).
+Offer offerFromRow(Map<String, dynamic> row, {Map<String, dynamic>? card}) {
+  final currency = row['currency'] as String? ?? 'NGN';
+  return Offer(
+    id: SupabaseGateway.asId(row['id']),
+    requestId: SupabaseGateway.asId(row['request_id']),
+    providerId: SupabaseGateway.asId(row['provider_id']),
+    providerName: card?['display_name'] as String? ?? '',
+    // rating_avg_milli is an integer milli-rating (4250 → 4.25 stars).
+    providerRating: ((card?['rating_avg_milli'] as num?)?.toInt() ?? 0) / 1000,
+    providerTrustLevel: trustLevelFromWire(card?['trust_level']),
+    amount: Money(SupabaseGateway.asMinorUnits(row['amount_minor']), currency),
+    status: offerStatusFromWire(row['status']),
+    round: (row['round'] as num?)?.toInt() ?? 1,
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    message: row['message'] as String?,
+    expiresAt: row['expires_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+    // distanceMeters / etaMinutes / payoutEstimate are rank_offers display
+    // fields — deferred (HANDOFF M9.2 follow-up).
+  );
+}

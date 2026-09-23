@@ -5,6 +5,44 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.2: requests + offers wired to contracts v1
+
+Third M9 slice. New: `SupabaseRequestRepository` (create/publish/cancel via
+the RPCs — every mutation re-selects the row since the RPCs return scalars;
+reads are RLS-scoped selects on `requests` with the `service_categories(key)`
+and to-one `jobs` embeds; history cursor is the last row's `created_at`) and
+`SupabaseOfferRepository` (accept/decline/withdraw/counter via RPCs;
+`counter_offer` returns the NEW offer's uuid so the re-select targets that
+row; provider display fields come from a cached `get_provider_card` call per
+provider — the offers table does not denormalize them). Both providers switch
+on `supabaseGatewayProvider`; mocks stay the default. The gateway grew
+`in`/`lt`/`limit` filters on `selectList` and an optional equality filter on
+`streamRows`.
+
+**Model alignment.**
+- `JobRequest.handoverPin` is **gone**. PINs are never stored on the entity —
+  the contract hands them out on demand via `reveal_job_pin` (and rotates
+  them), so a stored field was a lie. New
+  `JobProgressRepository.revealHandoverPin(jobId, kind:)`; the customer
+  detail PIN card is now reveal-on-tap (pickup PIN, plus delivery PIN when
+  the job has a destination). The mock reveals its known `4281`.
+- `CreateRequestInput.customCategoryLabel` added and the create form now
+  sends the label separately (`p_custom_category_label`) instead of baking a
+  "label: " prefix into the description.
+
+**Deferred deliberately:** `Offer.distanceMeters` / `etaMinutes` /
+`payoutEstimate` stay null — those are `rank_offers` display fields, and
+wiring that RPC belongs with the offers-ranking UI slice. `jobs` money
+columns are null until the payment phase, so `agreedBreakdown` only exists
+once `commission_minor` is set (contract: jobs table).
+
+Verify: mapper tests for both new mappings (numeric-as-string money, GeoJSON
+points, jobs embed as object AND as single-element array, null-breakdown,
+unknown-enum degradation, provider-card milli-rating), mock suite extended
+for `revealHandoverPin`, full suites green, analyze clean.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.1: catalog + bootstrap wired to contracts v1
 
 Second M9 slice. New: `SupabaseCatalogRepository` (service_categories select

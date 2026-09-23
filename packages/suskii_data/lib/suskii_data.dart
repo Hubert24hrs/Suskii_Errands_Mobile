@@ -12,3 +12,5 @@ export 'src/supabase/supabase_catalog_repository.dart';
 export 'src/supabase/supabase_error_mapping.dart';
 export 'src/supabase/supabase_gateway.dart';
 export 'src/supabase/supabase_mappers.dart';
+export 'src/supabase/supabase_offer_repository.dart';
+export 'src/supabase/supabase_request_repository.dart';

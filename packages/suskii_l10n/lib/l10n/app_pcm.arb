@@ -479,6 +479,7 @@
   "detailCompletedByProvider": "The provider don mark this job as done — abeg confirm.",
   "detailHandoverPinTitle": "Handover PIN",
   "detailHandoverPinBody": "Show this PIN to the provider for handover. No share am before.",
+  "detailRevealPin": "Show PIN",
   "detailPayNow": "Pay now",
   "detailChat": "Chat",
   "detailCall": "Call",

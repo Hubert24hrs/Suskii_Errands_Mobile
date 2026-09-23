@@ -59,19 +59,23 @@ final userRepositoryProvider = Provider<UserRepository>(
   ),
 );
 
-final requestRepositoryProvider = Provider<RequestRepository>(
-  (ref) => MockRequestRepository(
+final requestRepositoryProvider = Provider<RequestRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseRequestRepository(gateway);
+  return MockRequestRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final offerRepositoryProvider = Provider<OfferRepository>(
-  (ref) => MockOfferRepository(
+final offerRepositoryProvider = Provider<OfferRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseOfferRepository(gateway);
+  return MockOfferRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final providerRepositoryProvider = Provider<ProviderRepository>(
   (ref) => MockProviderRepository(

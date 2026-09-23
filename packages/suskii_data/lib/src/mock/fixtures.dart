@@ -798,7 +798,6 @@ class MockDatabase {
           estimatedGatewayFee: const Money(4800, 'NGN'),
         ),
         providerId: 'provider-musa',
-        handoverPin: '4281',
       ),
       'req-3': JobRequest(
         id: 'req-3',
@@ -913,7 +912,6 @@ class MockDatabase {
         ),
         itemFloat: const Money(900000, 'NGN'),
         providerId: 'user-ada',
-        handoverPin: '4281',
       ),
       'req-p2': JobRequest(
         id: 'req-p2',
@@ -940,7 +938,6 @@ class MockDatabase {
         ),
         declaredValue: const Money(85000000, 'NGN'),
         providerId: 'user-ada',
-        handoverPin: '4281',
       ),
       'req-p3': JobRequest(
         id: 'req-p3',

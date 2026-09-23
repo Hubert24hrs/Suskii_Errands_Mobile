@@ -366,34 +366,11 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             ],
           ),
         ],
-        if (request.handoverPin != null &&
-            _contactStates.contains(request.status)) ...<Widget>[
+        if (_contactStates.contains(request.status)) ...<Widget>[
           const SizedBox(height: SSpacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(SSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    l10n.detailHandoverPinTitle,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: SSpacing.xs),
-                  Text(
-                    request.handoverPin!,
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      letterSpacing: 8,
-                    ),
-                  ),
-                  const SizedBox(height: SSpacing.xs),
-                  Text(
-                    l10n.detailHandoverPinBody,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
+          _HandoverPinCard(
+            jobId: widget.jobId,
+            hasDestination: request.destination != null,
           ),
         ],
         if (request.status == JobStatus.completedByProvider) ...<Widget>[
@@ -604,6 +581,114 @@ class _DisputeSection extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Handover PIN card (M9.2): PINs are never carried on the job entity — the
+/// server hands them out on demand via `reveal_job_pin`, so the card reveals
+/// on tap instead of rendering a stored value. Jobs with a destination have
+/// both a pickup and a delivery PIN.
+class _HandoverPinCard extends ConsumerStatefulWidget {
+  const _HandoverPinCard({required this.jobId, required this.hasDestination});
+
+  final String jobId;
+  final bool hasDestination;
+
+  @override
+  ConsumerState<_HandoverPinCard> createState() => _HandoverPinCardState();
+}
+
+class _HandoverPinCardState extends ConsumerState<_HandoverPinCard> {
+  bool _busy = false;
+  String? _pickupPin;
+  String? _deliveryPin;
+
+  Future<void> _reveal() async {
+    setState(() => _busy = true);
+    try {
+      final repo = ref.read(jobProgressRepositoryProvider);
+      final pickup = await repo.revealHandoverPin(
+        widget.jobId,
+        kind: HandoverPinKind.pickup,
+      );
+      String? delivery;
+      if (widget.hasDestination) {
+        delivery = await repo.revealHandoverPin(
+          widget.jobId,
+          kind: HandoverPinKind.delivery,
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _pickupPin = pickup;
+        _deliveryPin = delivery;
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showSToast(context, localizedError(l10n, error), isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(SSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              l10n.detailHandoverPinTitle,
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: SSpacing.xs),
+            if (_pickupPin == null) ...<Widget>[
+              Text(
+                l10n.detailHandoverPinBody,
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: SSpacing.sm),
+              SButton(
+                label: l10n.detailRevealPin,
+                variant: SButtonVariant.secondary,
+                icon: Icons.pin_outlined,
+                loading: _busy,
+                onPressed: _busy ? null : _reveal,
+              ),
+            ] else ...<Widget>[
+              _pinRow(l10n.detailPickupLabel, _pickupPin!, theme),
+              if (_deliveryPin != null) ...<Widget>[
+                const SizedBox(height: SSpacing.xs),
+                _pinRow(l10n.detailDestinationLabel, _deliveryPin!, theme),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pinRow(String label, String pin, ThemeData theme) {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 120,
+          child: Text(label, style: theme.textTheme.bodySmall),
+        ),
+        Expanded(
+          child: Text(
+            pin,
+            style: theme.textTheme.displaySmall?.copyWith(letterSpacing: 8),
+          ),
+        ),
+      ],
     );
   }
 }
