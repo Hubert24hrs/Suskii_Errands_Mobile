@@ -52,12 +52,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
-final userRepositoryProvider = Provider<UserRepository>(
-  (ref) => MockUserRepository(
+final userRepositoryProvider = Provider<UserRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseUserRepository(gateway);
+  return MockUserRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final requestRepositoryProvider = Provider<RequestRepository>((ref) {
   final gateway = ref.watch(supabaseGatewayProvider);

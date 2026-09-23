@@ -6,6 +6,14 @@ import 'supabase_error_mapping.dart';
 import 'supabase_gateway.dart';
 import 'supabase_mappers.dart';
 
+/// Column list for the caller's own `profiles` row, shared with
+/// SupabaseUserRepository (explicit lists — `*` naming an ungranted column
+/// fails the whole query).
+const String profileRowColumns =
+    'user_id, display_name, country_code, language, avatar_path, '
+    'active_mode, customer_verification, provider_verification, '
+    'trust_level, created_at';
+
 /// AuthRepository over Supabase Auth (GoTrue) + the `profiles` row (own row
 /// only — RLS). Phone/email OTP are GoTrue's; social providers stay
 /// unavailable until vendor accounts exist (see the interface contract).
@@ -103,9 +111,7 @@ class SupabaseAuthRepository implements AuthRepository {
     if (authUser == null) throw const AppError(ErrorCodes.unauthenticated);
     final row = await _gateway.selectSingle(
       'profiles',
-      'user_id, display_name, country_code, language, avatar_path, '
-          'active_mode, customer_verification, provider_verification, '
-          'trust_level, created_at',
+      profileRowColumns,
       column: 'user_id',
       value: authUser.id,
     );

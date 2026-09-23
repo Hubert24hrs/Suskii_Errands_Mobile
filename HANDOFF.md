@@ -5,6 +5,31 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.9: user profile + mode switch wired
+
+Tenth M9 slice, and the last wireable one. New: `SupabaseUserRepository` —
+the caller's own `profiles` row (RLS-scoped, merged with the GoTrue identity
+for phone/email; the column list is now the shared top-level
+`profileRowColumns` in `supabase_auth_repository.dart`), `watchProfile` via
+the profiles stream, and `set_active_mode` for the customer/provider switch
+(the server enforces provider KYC with `ERR_PROVIDER_NOT_VERIFIED`; the RPC
+takes no idempotency key — the switch is naturally idempotent).
+
+**M9 status: every wireable surface is now wired.** Remaining mock-only
+surfaces are all blocked on open CRs or other agents' services, not on
+frontend work: concierge + voice concierge (services/ai), masked calls
+(LiveKit token missing from `start_call`), Dojah liveness SDK adapter,
+promos (CR-20260923-04), provider tools + organization console
+(CR-20260923-05), trusted-contact add (CR-06), account deletion / data
+export (CR-07), KYC ciphertext steps (CR-08), liveness-result submission
+(CR-09), KYC payloads / submit-for-review / name enquiry (CR-10), wallet
+transaction feed (CR-03), trip-share token/expiry (CR-01), USSD/reference on
+start_payment (CR-02).
+
+Verify: analyze clean, suites green (188 suskii_data).
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.8: KYC / verification wired
 
 Ninth M9 slice. New: `SupabaseVerificationRepository` (customer facial:

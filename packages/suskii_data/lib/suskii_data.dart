@@ -26,5 +26,6 @@ export 'src/supabase/supabase_safety_repository.dart';
 export 'src/supabase/supabase_settings_repository.dart';
 export 'src/supabase/supabase_support_repository.dart';
 export 'src/supabase/supabase_tracking_repository.dart';
+export 'src/supabase/supabase_user_repository.dart';
 export 'src/supabase/supabase_verification_repository.dart';
 export 'src/supabase/supabase_wallet_repository.dart';
