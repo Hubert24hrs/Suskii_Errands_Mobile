@@ -238,6 +238,10 @@ enum DisputeStatus {
   resolved,
   @JsonValue('rejected')
   rejected,
+
+  /// The opener pulled the dispute themselves (wire: `withdrawn`).
+  @JsonValue('withdrawn')
+  withdrawn,
 }
 
 /// Help-center ticket lifecycle (M5). `awaitingUser` is set when support (or

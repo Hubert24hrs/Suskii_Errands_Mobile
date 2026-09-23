@@ -543,6 +543,7 @@
   "disputeStatusInReview": "Dem dey review am",
   "disputeStatusResolved": "Resolved",
   "disputeStatusRejected": "Rejected",
+  "disputeStatusWithdrawn": "You don comot am",
   "disputeSlaLabel": "We go respond by {date}",
   "@disputeSlaLabel": {"placeholders": {"date": {"type": "String"}}},
   "disputeRefundLabel": "Refund",

@@ -477,3 +477,102 @@ PinVerificationResult pinVerificationFromWire(Object? value) {
     attemptsRemaining: (map['attempts_remaining'] as num?)?.toInt() ?? 0,
   );
 }
+
+// ---------------------------------------------------------------------------
+// M9.4: wallet, referrals, disputes.
+// ---------------------------------------------------------------------------
+
+DisputeStatus disputeStatusFromWire(Object? value) => switch (value) {
+  'under_review' => DisputeStatus.inReview,
+  'resolved' => DisputeStatus.resolved,
+  'withdrawn' => DisputeStatus.withdrawn,
+  // Unknown values render as open (still active) rather than closing a
+  // dispute the user may still need to act on.
+  _ => DisputeStatus.open,
+};
+
+/// A `disputes` row with the `requests(currency)` embed (the table itself
+/// carries no currency, so the refund money needs the request's). Evidence
+/// paths come from `dispute_evidence`, loaded separately.
+Dispute disputeFromRow(
+  Map<String, dynamic> row, {
+  List<String> evidencePaths = const <String>[],
+}) {
+  final request = row['requests'];
+  final currency = request is Map<String, dynamic>
+      ? request['currency'] as String? ?? 'NGN'
+      : 'NGN';
+  return Dispute(
+    id: SupabaseGateway.asId(row['id']),
+    jobId: SupabaseGateway.asId(row['request_id']),
+    openedBy: SupabaseGateway.asId(row['opened_by']),
+    reasonKey: row['reason_code'] as String? ?? '',
+    status: disputeStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    details: row['description'] as String?,
+    evidencePaths: evidencePaths.isEmpty ? null : evidencePaths,
+    slaDeadline: row['sla_due_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['sla_due_at']),
+    resolutionNoteKey: row['resolution_key'] as String?,
+    refundAmount: moneyOrNull(row['refund_minor'], currency),
+  );
+}
+
+/// A `withdrawals` row rendered as a wallet transaction. PROVISIONAL until
+/// CR-20260923-03 lands a client-readable ledger: the private double-entry
+/// ledger is deliberately not exposed, so withdrawals are the only real
+/// wallet-history rows the contract offers today.
+WalletTransaction withdrawalTransactionFromRow(
+  Map<String, dynamic> row, {
+  required WalletTransactionKind kind,
+}) {
+  final status = row['status'] as String? ?? 'requested';
+  return WalletTransaction(
+    id: SupabaseGateway.asId(row['id']),
+    kind: kind,
+    status: switch (status) {
+      'paid' => WalletTransactionStatus.completed,
+      'failed' || 'rejected' => WalletTransactionStatus.failed,
+      _ => WalletTransactionStatus.pending,
+    },
+    amount: Money(
+      SupabaseGateway.asMinorUnits(row['amount_minor']),
+      row['currency'] as String? ?? 'NGN',
+    ),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    descriptionKey: status == 'awaiting_approval'
+        ? 'txnWithdrawalAwaitingApproval'
+        : 'txnWithdrawal',
+  );
+}
+
+/// Aggregates `my_referral_summary` rows (currency, status, commissions,
+/// amount_minor) into the domain's totals: `available` is the withdrawable
+/// balance, `holding` is everything not yet withdrawable (pending/earned/
+/// holding), `earnedTotal` is the lifetime total excluding reversed
+/// commissions. Statuses the client doesn't know yet count toward holding
+/// rather than vanishing.
+({Money earnedTotal, Money holding, Money available}) referralTotalsFromRows(
+  List<Map<String, dynamic>> rows,
+  String currency,
+) {
+  var available = 0;
+  var holding = 0;
+  for (final row in rows) {
+    final amount = SupabaseGateway.asMinorUnits(row['amount_minor']);
+    switch (row['status']) {
+      case 'available':
+        available += amount;
+      case 'reversed':
+        break;
+      default:
+        holding += amount;
+    }
+  }
+  return (
+    earnedTotal: Money(available + holding, currency),
+    holding: Money(holding, currency),
+    available: Money(available, currency),
+  );
+}

@@ -107,19 +107,23 @@ final chatRepositoryProvider = Provider<ChatRepository>(
   ),
 );
 
-final walletRepositoryProvider = Provider<WalletRepository>(
-  (ref) => MockWalletRepository(
+final walletRepositoryProvider = Provider<WalletRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseWalletRepository(gateway);
+  return MockWalletRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final referralRepositoryProvider = Provider<ReferralRepository>(
-  (ref) => MockReferralRepository(
+final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseReferralRepository(gateway);
+  return MockReferralRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final conciergeRepositoryProvider = Provider<ConciergeRepository>(
   (ref) => MockConciergeRepository(
@@ -393,12 +397,14 @@ final myRatingProvider = FutureProvider.family<Rating?, String>(
 /// M5: disputes, support, promos, settings
 /// ---------------------------------------------------------------------------
 
-final disputeRepositoryProvider = Provider<DisputeRepository>(
-  (ref) => MockDisputeRepository(
+final disputeRepositoryProvider = Provider<DisputeRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseDisputeRepository(gateway);
+  return MockDisputeRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final supportRepositoryProvider = Provider<SupportRepository>(
   (ref) => MockSupportRepository(

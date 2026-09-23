@@ -196,6 +196,7 @@ String disputeStatusLabel(AppLocalizations l10n, DisputeStatus status) =>
       DisputeStatus.inReview => l10n.disputeStatusInReview,
       DisputeStatus.resolved => l10n.disputeStatusResolved,
       DisputeStatus.rejected => l10n.disputeStatusRejected,
+      DisputeStatus.withdrawn => l10n.disputeStatusWithdrawn,
     };
 
 /// Dispute reasons are localization keys sent to the server, never free text.

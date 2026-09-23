@@ -33,3 +33,21 @@ No requests yet — official contracts do not exist (frontend-first phase).
 - Proposed change: extend `start_payment`'s return rows with nullable `ussd_code text` and `reference text` (populated per method), or fold `get_payment_checkout`'s fields into the same row.
 - Backwards compatible? yes (added nullable columns to a rows return).
 - Status: OPEN
+
+## CR-20260923-03 — client-readable wallet transaction feed
+- Requested by: Kimi Code
+- Milestone/screen: M9.4 — wallet history (`WalletRepository.getTransactions`)
+- Current contract (v1): the double-entry ledger lives in the private schema (by design); the only client-visible movement rows are `withdrawals`/`payouts` table selects and the `available_balance`/`my_balances` RPCs.
+- Problem / missing capability: the wallet screen needs a chronological transaction feed (holds, releases, refunds, tips, payouts, referral credits — domain `WalletTransaction.kind` has 8 kinds) and a "pending" amount. Neither is derivable client-side from the exposed tables.
+- Proposed change: a `my_wallet_transactions(p_source text, p_cursor timestamptz, p_limit int)` RPC returning rows `(id, kind, status, amount_minor, currency, reference_id, description_key, created_at)` sourced from the ledger with client-safe projection, plus a `pending_balance(p_source, p_currency)` scalar (or a pending column in `my_balances`).
+- Backwards compatible? yes (new functions).
+- Status: OPEN
+
+## CR-20260923-04 — promo redemption outside a job
+- Requested by: Kimi Code
+- Milestone/screen: M9.4 — promos screen (`PromoRepository.redeemPromo`)
+- Current contract (v1): `preview_promo(p_code, p_request_id)` validates a code against a job; `start_payment` takes `p_promo_code`. There is no job-independent redeem/claim RPC.
+- Problem / missing capability: the promos screen lets users redeem a code to their account before any job exists (enter-code flow). The contract only supports applying a code at payment time. Also: the `promo_codes` table select exposes code/discount/ends_at but no title/description keys, so a promo listing can't render localized copy.
+- Proposed change: a `redeem_promo(p_idempotency_key, p_code)` RPC (account-level voucher wallet), or confirm that promo entry happens only at checkout and drop the standalone redeem screen. If listings are wanted: add `title_key`/`description_key` to `promo_codes` and its grants.
+- Backwards compatible? yes (new function / new nullable columns).
+- Status: OPEN

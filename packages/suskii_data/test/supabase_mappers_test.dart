@@ -137,6 +137,7 @@ void main() {
 
   requestMapperTests();
   paymentProgressMapperTests();
+  walletDisputeMapperTests();
 }
 
 // ---------------------------------------------------------------------------
@@ -471,6 +472,138 @@ void paymentProgressMapperTests() {
       });
       expect(result.verified, isTrue);
       expect(result.status, JobStatus.inProgress);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// M9.4: disputes, withdrawals, referral totals.
+// ---------------------------------------------------------------------------
+
+void walletDisputeMapperTests() {
+  group('disputeFromRow', () {
+    Map<String, dynamic> disputeRow() => <String, dynamic>{
+      'id': 'disp-uuid-1',
+      'request_id': 'req-uuid-1',
+      'opened_by': 'cust-uuid-1',
+      'reason_code': 'disputeReasonItemNotDelivered',
+      'description': 'Package never arrived',
+      'status': 'under_review',
+      'sla_due_at': '2026-09-25T10:00:00.000Z',
+      'resolution_key': null,
+      'refund_minor': null,
+      'created_at': '2026-09-23T12:00:00.000Z',
+      'requests': <String, dynamic>{'currency': 'NGN'},
+    };
+
+    test('maps the row; refund money uses the embedded request currency', () {
+      final dispute = disputeFromRow(
+        disputeRow()
+          ..['refund_minor'] = '160000'
+          ..['status'] = 'resolved'
+          ..['resolution_key'] = 'disputeResolvedPartialRefund',
+        evidencePaths: const <String>['disp-uuid-1/photo.jpg'],
+      );
+      expect(dispute.id, 'disp-uuid-1');
+      expect(dispute.jobId, 'req-uuid-1');
+      expect(dispute.reasonKey, 'disputeReasonItemNotDelivered');
+      expect(dispute.status, DisputeStatus.resolved);
+      expect(dispute.resolutionNoteKey, 'disputeResolvedPartialRefund');
+      expect(dispute.refundAmount, const Money(160000, 'NGN'));
+      expect(dispute.evidencePaths, <String>['disp-uuid-1/photo.jpg']);
+      expect(dispute.slaDeadline, DateTime.utc(2026, 9, 25, 10));
+    });
+
+    test(
+      'wire statuses fold: under_review → inReview, withdrawn stays distinct',
+      () {
+        expect(
+          disputeFromRow(disputeRow()..['status'] = 'under_review').status,
+          DisputeStatus.inReview,
+        );
+        expect(
+          disputeFromRow(disputeRow()..['status'] = 'withdrawn').status,
+          DisputeStatus.withdrawn,
+        );
+        // Unknown stays open (still active) rather than closing the dispute.
+        expect(
+          disputeFromRow(disputeRow()..['status'] = 'some_future_status')
+              .status,
+          DisputeStatus.open,
+        );
+      },
+    );
+
+    test('no embed and no refund → currency fallback, refund null', () {
+      final row = disputeRow()..['requests'] = null;
+      final dispute = disputeFromRow(row);
+      expect(dispute.refundAmount, isNull);
+      expect(dispute.evidencePaths, isNull);
+    });
+  });
+
+  group('withdrawalTransactionFromRow', () {
+    test('paid maps completed; awaiting_approval gets its label key', () {
+      final paid = withdrawalTransactionFromRow(<String, dynamic>{
+        'id': 'wd-1',
+        'amount_minor': '500000',
+        'currency': 'NGN',
+        'status': 'paid',
+        'created_at': '2026-09-23T12:00:00.000Z',
+      }, kind: WalletTransactionKind.payout);
+      expect(paid.status, WalletTransactionStatus.completed);
+      expect(paid.descriptionKey, 'txnWithdrawal');
+
+      final awaiting = withdrawalTransactionFromRow(<String, dynamic>{
+        'id': 'wd-2',
+        'amount_minor': 700000,
+        'currency': 'NGN',
+        'status': 'awaiting_approval',
+        'created_at': '2026-09-23T12:00:00.000Z',
+      }, kind: WalletTransactionKind.referral);
+      expect(awaiting.status, WalletTransactionStatus.pending);
+      expect(awaiting.descriptionKey, 'txnWithdrawalAwaitingApproval');
+      expect(awaiting.kind, WalletTransactionKind.referral);
+      expect(awaiting.amount, const Money(700000, 'NGN'));
+    });
+
+    test('failed and rejected both read as failed', () {
+      for (final wire in <String>['failed', 'rejected']) {
+        final txn = withdrawalTransactionFromRow(<String, dynamic>{
+          'id': 'wd-3',
+          'amount_minor': 1000,
+          'currency': 'NGN',
+          'status': wire,
+          'created_at': '2026-09-23T12:00:00.000Z',
+        }, kind: WalletTransactionKind.payout);
+        expect(txn.status, WalletTransactionStatus.failed, reason: wire);
+      }
+    });
+  });
+
+  group('referralTotalsFromRows', () {
+    test('available is withdrawable; everything else counts as holding', () {
+      final totals = referralTotalsFromRows(<Map<String, dynamic>>[
+        <String, dynamic>{'status': 'available', 'amount_minor': '50000'},
+        <String, dynamic>{'status': 'holding', 'amount_minor': 20000},
+        <String, dynamic>{'status': 'pending', 'amount_minor': 10000},
+        <String, dynamic>{'status': 'reversed', 'amount_minor': 5000},
+        // Unknown statuses count toward holding rather than vanishing.
+        <String, dynamic>{'status': 'some_future_status', 'amount_minor': 1},
+      ], 'NGN');
+      expect(totals.available, const Money(50000, 'NGN'));
+      expect(totals.holding, const Money(30001, 'NGN'));
+      expect(totals.earnedTotal, const Money(80001, 'NGN'));
+    });
+
+    test('empty rows zero out in the requested currency', () {
+      final totals = referralTotalsFromRows(
+        const <Map<String, dynamic>>[],
+        'KES',
+      );
+      expect(totals.available, const Money(0, 'KES'));
+      expect(totals.holding, const Money(0, 'KES'));
+      expect(totals.earnedTotal, const Money(0, 'KES'));
     });
   });
 }

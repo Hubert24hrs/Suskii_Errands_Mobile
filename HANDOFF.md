@@ -5,6 +5,47 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.4: wallet + referrals + disputes wired
+
+Fifth M9 slice. New: `SupabaseWalletRepository` (balance via
+`available_balance('provider_earnings')`, withdrawals via
+`request_withdrawal` with the default payout account resolved from
+`payout_accounts`), `SupabaseReferralRepository` (`my_referral_code` +
+`my_referral_summary` + `my_referrals` composed into ReferralSummary;
+withdrawals use the `referral_earnings` source) and
+`SupabaseDisputeRepository` (`open_dispute`, evidence via
+`submit_dispute_evidence`, disputes stream + `requests(currency)` embed for
+refund money). Shared helpers `myCurrencyCode` (bootstrap envelope) and
+`defaultPayoutAccountId` live in the wallet repo file. All three providers
+switch on `supabaseGatewayProvider`; mocks stay the default.
+
+**Model alignment.**
+- `DisputeStatus.withdrawn` added (the wire has it; mapping it to `rejected`
+  would mislabel a self-withdrawn dispute). Wire `under_review` → `inReview`.
+  New l10n key `disputeStatusWithdrawn` (en + pcm).
+- New `ErrorCodes.payoutAccountNotFound` — raised client-side when a
+  withdrawal is attempted with no default payout account (the server raises
+  the same code for a bad id); the UI should route to payout-account setup.
+- Wire `disputes` has no currency column; refund money takes the request's
+  currency via embed.
+
+**Change requests filed** (`contracts/CHANGE_REQUESTS.md`):
+- **CR-20260923-03**: no client-readable wallet transaction feed or pending
+  amount (private ledger by design). `getTransactions` is PROVISIONAL —
+  withdrawals-only — and `WalletSummary.pending` reports zero until then.
+- **CR-20260923-04**: no job-independent promo redemption (codes apply only
+  via `start_payment`'s `p_promo_code`) and `promo_codes` lacks
+  title/description keys. `PromoRepository` therefore stays on the mock this
+  slice; a wired build keeps the mock promo screen rather than faking a
+  redeem.
+
+Verify: mapper tests for dispute rows (currency embed, status folding,
+unknown → open), withdrawal → transaction mapping (paid/failed/awaiting
+labels), referral totals (reversed excluded, unknown statuses count toward
+holding) — 167 suskii_data tests, full suites green, analyze clean.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.3: payments + job progress + ratings + safety wired
 
 Fourth M9 slice. New: `SupabasePaymentRepository` (`start_payment` creates

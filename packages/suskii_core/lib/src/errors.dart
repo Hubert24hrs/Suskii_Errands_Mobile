@@ -44,6 +44,7 @@ abstract final class ErrorCodes {
   static const String paymentTtlExpired = 'ERR_PAYMENT_TTL_EXPIRED';
   static const String insufficientBalance = 'ERR_INSUFFICIENT_BALANCE';
   static const String withdrawalBelowMinimum = 'ERR_WITHDRAWAL_BELOW_MINIMUM';
+  static const String payoutAccountNotFound = 'ERR_PAYOUT_ACCOUNT_NOT_FOUND';
 
   // Verification
   static const String otpInvalid = 'ERR_OTP_INVALID';

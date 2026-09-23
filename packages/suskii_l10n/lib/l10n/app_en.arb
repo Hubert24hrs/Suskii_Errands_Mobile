@@ -543,6 +543,7 @@
   "disputeStatusInReview": "In review",
   "disputeStatusResolved": "Resolved",
   "disputeStatusRejected": "Rejected",
+  "disputeStatusWithdrawn": "Withdrawn",
   "disputeSlaLabel": "We respond by {date}",
   "@disputeSlaLabel": {"placeholders": {"date": {"type": "String"}}},
   "disputeRefundLabel": "Refund",
