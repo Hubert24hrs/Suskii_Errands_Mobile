@@ -571,7 +571,17 @@ abstract interface class CatalogRepository {
 
   /// Server-computed P25/P50/P75 price band for a category — an advisory
   /// hint next to the preferred-price field. Never used to set prices.
-  Future<PriceBand> getPriceBand({required String categoryId, GeoPoint? near});
+  ///
+  /// Mirrors `get_price_band(category_id, urgency, city_id)`: returns null
+  /// when the server has no basis at all for the category (no row — show no
+  /// hint, never a zero band). Render [PriceBand.basis]: 'rules' is a
+  /// suggestion, 'history' is trimmed quantiles over [PriceBand.sampleSize]
+  /// real agreed prices.
+  Future<PriceBand?> getPriceBand({
+    required String categoryId,
+    Urgency urgency = Urgency.standard,
+    String? cityId,
+  });
 }
 
 /// ---------------------------------------------------------------------------

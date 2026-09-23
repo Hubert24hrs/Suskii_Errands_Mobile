@@ -34,12 +34,14 @@ final mockBehaviorProvider = Provider<MockBehavior>((ref) => MockBehavior());
 
 final mockDatabaseProvider = Provider<MockDatabase>((ref) => MockDatabase());
 
-final bootstrapRepositoryProvider = Provider<BootstrapRepository>(
-  (ref) => MockBootstrapRepository(
+final bootstrapRepositoryProvider = Provider<BootstrapRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseBootstrapRepository(gateway);
+  return MockBootstrapRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final gateway = ref.watch(supabaseGatewayProvider);
@@ -149,12 +151,14 @@ final callAdapterProvider = Provider<CallAdapter>(
   ),
 );
 
-final catalogRepositoryProvider = Provider<CatalogRepository>(
-  (ref) => MockCatalogRepository(
+final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseCatalogRepository(gateway);
+  return MockCatalogRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final identityVerificationAdapterProvider =
     Provider<IdentityVerificationAdapter>(
@@ -336,11 +340,16 @@ final offersProvider = StreamProvider.family<List<Offer>, String>(
 );
 
 /// Advisory price band per category — a hint next to the preferred-price
-/// field, never used to set a price.
-final priceBandProvider = FutureProvider.family<PriceBand, String>(
-  (ref, categoryId) =>
-      ref.watch(catalogRepositoryProvider).getPriceBand(categoryId: categoryId),
-);
+/// field, never used to set a price. Keyed by (category, urgency); a null
+/// band means the server has no basis at all — show no hint.
+final priceBandProvider = FutureProvider.family<PriceBand?, (String, Urgency)>((
+  ref,
+  key,
+) {
+  return ref
+      .watch(catalogRepositoryProvider)
+      .getPriceBand(categoryId: key.$1, urgency: key.$2);
+});
 
 /// ---------------------------------------------------------------------------
 /// Screen-level data providers (M4: payments, tracking, chat, safety, ratings)

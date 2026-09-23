@@ -345,7 +345,8 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
           controller: _priceController,
           onChangedMinorUnits: (int? minor) => _priceMinor = minor,
         ),
-        if (_categoryId != null) _PriceBandHint(categoryId: _categoryId!),
+        if (_categoryId != null)
+          _PriceBandHint(categoryId: _categoryId!, urgency: _urgency),
         const SizedBox(height: SSpacing.md),
         SMoneyField(
           label: l10n.createItemFloatLabel,
@@ -403,38 +404,44 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
 /// Advisory price band next to the preferred-price field. Rules-based bands
 /// are labelled a rough guide (ai-design §9); never used to set the price.
 class _PriceBandHint extends ConsumerWidget {
-  const _PriceBandHint({required this.categoryId});
+  const _PriceBandHint({required this.categoryId, required this.urgency});
 
   final String categoryId;
+  final Urgency urgency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final band = ref.watch(priceBandProvider(categoryId));
+    final band = ref.watch(priceBandProvider((categoryId, urgency)));
     final theme = Theme.of(context);
     return band.when(
       loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),
-      data: (PriceBand b) => Padding(
-        padding: const EdgeInsets.only(top: SSpacing.xs),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              l10n.priceBandTitle('${b.p25.format()} – ${b.p75.format()}'),
-              style: theme.textTheme.bodySmall,
-            ),
-            Text(
-              b.basis == PriceBandBasis.rules
-                  ? l10n.priceBandRoughGuide
-                  : l10n.priceBandSample(b.sampleSize),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
+      // Null band: the server has no basis for this category — no hint.
+      data: (PriceBand? b) => b == null
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(top: SSpacing.xs),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.priceBandTitle(
+                      '${b.p25.format()} – ${b.p75.format()}',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  Text(
+                    b.basis == PriceBandBasis.rules
+                        ? l10n.priceBandRoughGuide
+                        : l10n.priceBandSample(b.sampleSize),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

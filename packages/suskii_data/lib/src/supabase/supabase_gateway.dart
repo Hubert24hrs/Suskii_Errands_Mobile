@@ -64,6 +64,57 @@ class SupabaseGateway {
     }
   }
 
+  /// Reads rows with one equality filter and an optional ordering.
+  Future<List<Map<String, dynamic>>> selectList(
+    String table,
+    String columns, {
+    String? column,
+    Object? value,
+    String? orderBy,
+    bool ascending = true,
+  }) async {
+    try {
+      var query = _client.from(table).select(columns);
+      if (column != null) query = query.eq(column, value!);
+      final rows = orderBy == null
+          ? await query
+          : await query.order(orderBy, ascending: ascending);
+      return List<Map<String, dynamic>>.from(rows as List<dynamic>);
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  /// Row count with one equality filter and/or one null filter.
+  Future<int> countRows(
+    String table, {
+    String? column,
+    Object? value,
+    String? isNullColumn,
+  }) async {
+    try {
+      var query = _client.from(table).count();
+      if (column != null) query = query.eq(column, value!);
+      if (isNullColumn != null) query = query.isFilter(isNullColumn, null);
+      return await query;
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  /// Live rows of a table as a stream (RLS scopes them server-side).
+  Stream<List<Map<String, dynamic>>> streamRows(
+    String table, {
+    required List<String> primaryKey,
+  }) => _client
+      .from(table)
+      .stream(primaryKey: primaryKey)
+      .map(
+        (rows) => List<Map<String, dynamic>>.from(
+          rows.map((r) => Map<String, dynamic>.from(r)),
+        ),
+      );
+
   /// Opaque id string — safe for 64-bit ids that exceed 2^53.
   static String asId(Object? value) => value.toString();
 

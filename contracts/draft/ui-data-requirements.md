@@ -37,6 +37,13 @@ Conventions used below:
   `ERR_FORCE_UPDATE_REQUIRED`
 - Realtime: none at bootstrap; banners subscribe after (see below).
 - Permissions: works logged-out (guest) and logged-in.
+- **M9.1 wiring findings (against contracts v1 `get_bootstrap`):**
+  - The payload has no **active-job banner** — deriving it client-side is an N+1 over
+    requests. Candidate change request: an `active_job_banner` field in the envelope.
+  - `country_pack.client` (seed) carries only `accepted_id_types`; the pack UI also needs
+    `emergency_numbers`, `offer_ttl_seconds`, `max_counter_rounds`, `min_withdrawal`.
+    Decide whether those live in `config->client` or remote_config — the SOS sheet reads
+    emergency numbers from the pack, so a wired app currently shows none.
 
 ### Mode switch (profile/drawer, both modes)
 - Data displayed: current mode, provider verification status (locked until provider KYC approved),

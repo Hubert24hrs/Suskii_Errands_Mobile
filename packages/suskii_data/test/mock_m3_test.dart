@@ -335,7 +335,8 @@ void main() {
     test('returns a plausible per-category band', () async {
       final repo = MockCatalogRepository(db, behavior);
       final band = await repo.getPriceBand(categoryId: 'cleaning_laundry');
-      expect(band.p25 < band.p50, isTrue);
+      expect(band, isNotNull);
+      expect(band!.p25 < band.p50, isTrue);
       expect(band.p50 < band.p75, isTrue);
       expect(band.p50.currencyCode, 'NGN');
       expect(band.sampleSize, greaterThan(0));
@@ -345,7 +346,8 @@ void main() {
     test('unknown category gets a low-confidence fallback band', () async {
       final repo = MockCatalogRepository(db, behavior);
       final band = await repo.getPriceBand(categoryId: 'custom');
-      expect(band.confidence, PriceBandConfidence.low);
+      expect(band, isNotNull);
+      expect(band!.confidence, PriceBandConfidence.low);
     });
   });
 

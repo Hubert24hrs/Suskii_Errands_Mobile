@@ -5,6 +5,53 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.1: catalog + bootstrap wired to contracts v1
+
+Second M9 slice. New: `SupabaseCatalogRepository` (service_categories select
+with the lazy key→uuid map — `create_request` takes `p_category_key`, only
+`get_price_band`/`get_availability_summary`/`get_category_requirements` take
+the uuid; country pack via `get_bootstrap`, which is anon-callable so the
+pre-login country picker works) and `SupabaseBootstrapRepository`
+(`get_bootstrap` envelope → AppBootstrap, unread count from `notifications`,
+live notifications from the table stream). Shared wire mappers in
+`supabase_mappers.dart`; the auth repo now uses them too. Both providers
+switch on `supabaseGatewayProvider` like auth did; mocks stay the default.
+
+**Model alignment (the first real one of M9).** `CatalogRepository.getPriceBand`
+now matches the contract: `{categoryId, urgency = standard, cityId}` (the
+mock-era `near: GeoPoint?` is gone), and the return is **nullable** — no row
+means no hint, never a zero band. The create-request form passes its selected
+urgency and renders nothing on null. `PriceBand.basis` already matched
+(rules/history); `confidence` stays as a display bucketing derived from
+`sample_size` client-side.
+
+**Gaps found while mapping — two are yours-adjacent, neither blocking:**
+
+1. **`get_bootstrap` has no active-job banner.** AppBootstrap wants the "you
+   have a job in flight" banner and the payload does not carry it; deriving it
+   client-side is an N+1 over requests. Candidate change request: an
+   `active_job_banner` object in the envelope. Returning null until then.
+2. **The country pack's client subset is thinner than CountryPack.** Seed
+   `config->client` carries only `accepted_id_types`; CountryPack also wants
+   `emergency_numbers`, `offer_ttl_seconds`, `max_counter_rounds` and a
+   `min_withdrawal`. The mapper reads them when present and falls back to spec
+   defaults (600s/5 rounds, no emergency numbers) when not. Worth deciding
+   whether those belong in `config->client` or remote_config — the SOS sheet
+   reads emergency numbers from the pack, so today the wired app would show
+   none. Filed in `contracts/draft/ui-data-requirements.md` below.
+
+**Deferred deliberately:** AppNotification still carries pre-rendered
+title/body while the wire sends title_key/body_key/params (keys currently map
+through verbatim). The right fix is the key-based model end-to-end, and it
+belongs with the notification-center UI slice, which doesn't exist yet —
+nothing consumes `watchNotifications` today.
+
+Verify: mapper tests for every new mapping (numeric-as-string money, bigint
+notification ids, bootstrap user shape, pack fallbacks), full suites green,
+analyze clean.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9 started: Supabase wiring foundation + auth
 
 Contracts v1 is binding, so M9 has begun. This slice is the seam every later

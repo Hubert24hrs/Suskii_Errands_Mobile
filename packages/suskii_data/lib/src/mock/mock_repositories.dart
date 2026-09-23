@@ -1734,9 +1734,10 @@ class MockCatalogRepository extends _MockRepo implements CatalogRepository {
   }
 
   @override
-  Future<PriceBand> getPriceBand({
+  Future<PriceBand?> getPriceBand({
     required String categoryId,
-    GeoPoint? near,
+    Urgency urgency = Urgency.standard,
+    String? cityId,
   }) async {
     await gate();
     final currency =

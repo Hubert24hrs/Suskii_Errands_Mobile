@@ -4,6 +4,7 @@ import 'package:suskii_domain/suskii_domain.dart';
 
 import 'supabase_error_mapping.dart';
 import 'supabase_gateway.dart';
+import 'supabase_mappers.dart';
 
 /// AuthRepository over Supabase Auth (GoTrue) + the `profiles` row (own row
 /// only — RLS). Phone/email OTP are GoTrue's; social providers stay
@@ -109,41 +110,10 @@ class SupabaseAuthRepository implements AuthRepository {
       value: authUser.id,
     );
     if (row == null) throw const AppError(ErrorCodes.unauthenticated);
-    return AppUser(
-      id: SupabaseGateway.asId(row['user_id']),
-      displayName: row['display_name'] as String? ?? '',
-      // Nullable on a fresh signup before onboarding completes.
-      countryCode: row['country_code'] as String? ?? '',
-      preferredLanguage: row['language'] as String? ?? 'en',
-      activeMode: _userMode(row['active_mode']),
-      customerVerification: _verification(row['customer_verification']),
-      providerVerification: _verification(row['provider_verification']),
-      trustLevel: _trustLevel(row['trust_level']),
-      createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    return appUserFromProfileRow(
+      row,
       phoneE164: authUser.phone,
       email: authUser.email,
-      // avatar_path is a storage path, not a URL — signed URLs are a
-      // later M9 slice (storage gateway), so photoUrl stays null for now.
     );
   }
-
-  static UserMode _userMode(Object? value) => switch (value) {
-    'provider' => UserMode.provider,
-    _ => UserMode.customer,
-  };
-
-  static VerificationStatus _verification(Object? value) => switch (value) {
-    'pending' => VerificationStatus.pending,
-    'in_review' => VerificationStatus.inReview,
-    'verified' => VerificationStatus.verified,
-    'rejected' => VerificationStatus.rejected,
-    _ => VerificationStatus.unverified,
-  };
-
-  static TrustLevel _trustLevel(Object? value) => switch (value) {
-    'verified' => TrustLevel.verified,
-    'trusted' => TrustLevel.trusted,
-    'elite' => TrustLevel.elite,
-    _ => TrustLevel.new_,
-  };
 }

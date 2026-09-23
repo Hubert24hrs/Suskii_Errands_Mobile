@@ -7,5 +7,8 @@ export 'src/mock/mock_behavior.dart';
 export 'src/mock/mock_repositories.dart';
 export 'src/mock/server_sim.dart';
 export 'src/supabase/supabase_auth_repository.dart';
+export 'src/supabase/supabase_bootstrap_repository.dart';
+export 'src/supabase/supabase_catalog_repository.dart';
 export 'src/supabase/supabase_error_mapping.dart';
 export 'src/supabase/supabase_gateway.dart';
+export 'src/supabase/supabase_mappers.dart';
