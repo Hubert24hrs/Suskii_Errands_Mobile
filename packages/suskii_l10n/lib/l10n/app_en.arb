@@ -417,6 +417,7 @@
   "@payUssdInstruction": {"placeholders": {"code": {"type": "String"}}},
   "payTransferInstruction": "Make the transfer from your bank app and quote reference {reference}.",
   "@payTransferInstruction": {"placeholders": {"reference": {"type": "String"}}},
+  "payCheckoutInstruction": "Open this secure link to finish the payment:",
   "paySuccess": "Payment received — held by Suskii until the job is done.",
   "payFailedTitle": "Payment failed",
   "payDeclinedReason": "Your payment was declined. You can try another method.",

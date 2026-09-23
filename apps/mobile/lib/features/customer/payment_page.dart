@@ -251,6 +251,20 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
+                  if (_session?.checkoutUrl != null) ...<Widget>[
+                    const SizedBox(height: SSpacing.sm),
+                    Text(
+                      l10n.payCheckoutInstruction,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: SSpacing.xs),
+                    SelectableText(
+                      _session!.checkoutUrl!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

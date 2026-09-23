@@ -5,6 +5,49 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.3: payments + job progress + ratings + safety wired
+
+Fourth M9 slice. New: `SupabasePaymentRepository` (`start_payment` creates
+the attempt, status flips arrive via the payments stream — the client never
+marks anything; the checkout page for card/mobile-money comes from
+`get_payment_checkout` because the payments table's column grants
+deliberately exclude `checkout_url`), `SupabaseJobProgressRepository`
+(`set_job_status` / `confirm_completion` with row re-select via the shared
+`loadJobRequestRow`, `verify_pin` jsonb → PinVerificationResult — a wrong PIN
+is a result, not an error — `reveal_job_pin`, `submit_proof` + proofs
+selects), `SupabaseRatingRepository` (`rate_job`, my-rating read filtered to
+the caller as rater) and `SupabaseSafetyRepository` (`raise_sos`,
+sos_incidents stream for the active alert, `create_trip_share`). All four
+providers switch on `supabaseGatewayProvider`; mocks stay the default.
+
+**Model alignment.**
+- `PaymentSession.checkoutUrl` added; the payment page renders it as a
+  selectable link when present (card/mobile-money completion happens in the
+  gateway's own UI).
+- Wire `sos_status` is richer than the domain enum (open/acknowledged/
+  dispatched/resolved/false_alarm): the three in-flight values map to
+  `active`, `false_alarm` to `resolved`. Domain stays 2-valued for now.
+- `revealHandoverPin` now has its real impl (`reveal_job_pin`) — the M9.2
+  interface addition is fully wired.
+
+**Two change requests filed (`contracts/CHANGE_REQUESTS.md`):**
+- **CR-20260923-01**: `create_trip_share` returns only the raw token — the
+  client can't build the share URL or know the expiry without inventing
+  server config. Proposed jsonb `{token, url, expires_at}`. Until then the
+  impl is provisional (token in `url`, documented default 60-min TTL) and
+  clearly marked.
+- **CR-20260923-02**: `start_payment` returns no method completion
+  instructions, so USSD code / transfer reference can't render on a wired
+  backend (only checkout_url methods work end-to-end). Proposed nullable
+  `ussd_code`/`reference` columns on its return rows.
+
+Verify: mapper tests for all five new mappings (payment method/status,
+proof GeoJSON device_point, rating tags, sos status folding + jobless
+alerts, verify_pin result shapes), full suites green (160 suskii_data),
+analyze clean.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.2: requests + offers wired to contracts v1
 
 Third M9 slice. New: `SupabaseRequestRepository` (create/publish/cancel via

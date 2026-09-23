@@ -417,6 +417,7 @@
   "@payUssdInstruction": {"placeholders": {"code": {"type": "String"}}},
   "payTransferInstruction": "Do the transfer for your bank app and quote reference {reference}.",
   "@payTransferInstruction": {"placeholders": {"reference": {"type": "String"}}},
+  "payCheckoutInstruction": "Open this secure link to finish the payment:",
   "paySuccess": "Payment don land — Suskii go hold am until the job finish.",
   "payFailedTitle": "Payment no go",
   "payDeclinedReason": "Dem decline your payment. You fit try another method.",

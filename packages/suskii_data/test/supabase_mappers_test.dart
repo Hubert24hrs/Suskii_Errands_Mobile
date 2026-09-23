@@ -136,6 +136,7 @@ void main() {
   });
 
   requestMapperTests();
+  paymentProgressMapperTests();
 }
 
 // ---------------------------------------------------------------------------
@@ -307,6 +308,169 @@ void requestMapperTests() {
     test('unknown offer status degrades to expired (terminal)', () {
       final offer = offerFromRow(offerRow()..['status'] = 'some_future_status');
       expect(offer.status, OfferStatus.expired);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// M9.3: payments, proofs, ratings, SOS, PIN verification.
+// ---------------------------------------------------------------------------
+
+void paymentProgressMapperTests() {
+  group('paymentFromRow', () {
+    test('maps the row; method null on the wire defaults to card', () {
+      final payment = paymentFromRow(<String, dynamic>{
+        'id': 'pay-uuid-1',
+        'request_id': 'req-uuid-1',
+        'amount_minor': '320000',
+        'currency': 'NGN',
+        'method': null,
+        'status': 'held',
+        'gateway_reference': 'FLW-123',
+        'confirmed_at': '2026-09-23T10:05:00.000Z',
+        'expires_at': '2026-09-23T10:15:00.000Z',
+        'failed_reason_key': null,
+        'created_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(payment.amount, const Money(320000, 'NGN'));
+      expect(payment.method, PaymentMethod.card);
+      expect(payment.status, PaymentStatus.held);
+      expect(payment.paidAt, DateTime.utc(2026, 9, 23, 10, 5));
+      expect(payment.failureReasonKey, isNull);
+    });
+
+    test('failed payments carry the localizable reason key', () {
+      final payment = paymentFromRow(<String, dynamic>{
+        'id': 'pay-uuid-2',
+        'request_id': 'req-uuid-1',
+        'amount_minor': 320000,
+        'currency': 'NGN',
+        'method': 'bank_transfer',
+        'status': 'failed',
+        'failed_reason_key': 'paymentDeclined',
+        'created_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(payment.method, PaymentMethod.bankTransfer);
+      expect(payment.status, PaymentStatus.failed);
+      expect(payment.failureReasonKey, 'paymentDeclined');
+      expect(payment.paidAt, isNull);
+    });
+  });
+
+  group('proofFromRow', () {
+    test('device_point GeoJSON maps to lat/lng doubles', () {
+      final proof = proofFromRow(<String, dynamic>{
+        'id': 'proof-uuid-1',
+        'request_id': 'req-uuid-1',
+        'uploaded_by': 'prov-uuid-1',
+        'kind': 'receipt',
+        'storage_path': 'req-uuid-1/receipt.jpg',
+        'device_point': <String, dynamic>{
+          'type': 'Point',
+          'coordinates': <dynamic>[3.4219, 6.4281],
+        },
+        'device_captured_at': '2026-09-23T09:58:00.000Z',
+        'server_received_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(proof.kind, ProofKind.receipt);
+      expect(proof.providerId, 'prov-uuid-1');
+      expect(proof.lat, 6.4281);
+      expect(proof.lng, 3.4219);
+      expect(proof.capturedAt, DateTime.utc(2026, 9, 23, 9, 58));
+      expect(proof.createdAt, DateTime.utc(2026, 9, 23, 10));
+    });
+
+    test('missing device data maps to nulls', () {
+      final proof = proofFromRow(<String, dynamic>{
+        'id': 'proof-uuid-2',
+        'request_id': 'req-uuid-1',
+        'uploaded_by': 'prov-uuid-1',
+        'kind': 'photo',
+        'storage_path': 'req-uuid-1/photo.jpg',
+        'device_point': null,
+        'device_captured_at': null,
+        'server_received_at': '2026-09-23T10:00:00.000Z',
+      });
+      expect(proof.lat, isNull);
+      expect(proof.lng, isNull);
+      expect(proof.capturedAt, isNull);
+    });
+  });
+
+  group('ratingFromRow', () {
+    test('tags map through as localization keys', () {
+      final rating = ratingFromRow(<String, dynamic>{
+        'id': 'rating-uuid-1',
+        'request_id': 'req-uuid-1',
+        'rater_id': 'cust-uuid-1',
+        'ratee_id': 'prov-uuid-1',
+        'stars': 5,
+        'tags': <dynamic>['ratingTagPunctual', 'ratingTagProfessional'],
+        'comment': 'Great',
+        'created_at': '2026-09-23T12:00:00.000Z',
+      });
+      expect(rating.stars, 5);
+      expect(rating.tagKeys, <String>[
+        'ratingTagPunctual',
+        'ratingTagProfessional',
+      ]);
+    });
+  });
+
+  group('sosAlertFromRow', () {
+    test('the three in-flight wire statuses all read as active', () {
+      for (final wire in <String>['open', 'acknowledged', 'dispatched']) {
+        final alert = sosAlertFromRow(<String, dynamic>{
+          'id': 'sos-uuid-1',
+          'request_id': 'req-uuid-1',
+          'raised_by': 'cust-uuid-1',
+          'status': wire,
+          'point': null,
+          'trusted_contacts_notified': 2,
+          'created_at': '2026-09-23T11:00:00.000Z',
+        });
+        expect(alert.status, SosStatus.active, reason: wire);
+        expect(alert.trustedContactsNotified, 2);
+      }
+    });
+
+    test('resolved and false_alarm read as resolved; jobless alerts get an empty job id', () {
+      for (final wire in <String>['resolved', 'false_alarm']) {
+        final alert = sosAlertFromRow(<String, dynamic>{
+          'id': 'sos-uuid-2',
+          'request_id': null,
+          'raised_by': 'cust-uuid-1',
+          'status': wire,
+          'point': null,
+          'trusted_contacts_notified': 0,
+          'created_at': '2026-09-23T11:00:00.000Z',
+        });
+        expect(alert.status, SosStatus.resolved, reason: wire);
+        expect(alert.jobId, '');
+      }
+    });
+  });
+
+  group('pinVerificationFromWire', () {
+    test('wrong PIN is a result, not an error', () {
+      final result = pinVerificationFromWire(<String, dynamic>{
+        'verified': false,
+        'status': 'arrived',
+        'attempts_remaining': 4,
+      });
+      expect(result.verified, isFalse);
+      expect(result.status, JobStatus.arrived);
+      expect(result.attemptsRemaining, 4);
+    });
+
+    test('a verified pickup PIN reports the in_progress transition', () {
+      final result = pinVerificationFromWire(<String, dynamic>{
+        'verified': true,
+        'status': 'in_progress',
+        'attempts_remaining': 5,
+      });
+      expect(result.verified, isTrue);
+      expect(result.status, JobStatus.inProgress);
     });
   });
 }

@@ -4,6 +4,50 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'supabase_gateway.dart';
 import 'supabase_mappers.dart';
 
+/// Explicit columns (contracts v1 narrows column grants on several tables).
+/// `service_categories(key)` embeds the category key via the category_id
+/// FK (rows store the uuid; the domain carries the key). `jobs(...)` embeds
+/// the to-one job row that exists once an offer has been accepted.
+const String requestRowColumns =
+    'id, customer_id, is_custom_category, custom_category_label, '
+    'description, urgency, status, pickup_point, pickup_label, '
+    'pickup_landmark_note, destination_point, destination_label, '
+    'destination_landmark_note, scheduled_at, preferred_price_minor, '
+    'item_float_minor, declared_value_minor, currency, expires_at, '
+    'created_at, service_categories(key), '
+    'jobs(provider_id, agreed_amount_minor, currency, commission_rate_bps, '
+    'commission_minor, net_minor, estimated_gateway_fee_minor, '
+    'actual_gateway_fee_minor, tip_minor)';
+
+/// Loads one request row (with embeds) and its media paths, mapped to the
+/// domain entity. Shared with the job-progress repository, whose status
+/// mutations return the same entity.
+Future<JobRequest?> loadJobRequestRow(
+  SupabaseGateway gateway,
+  String jobId,
+) async {
+  final row = await gateway.selectSingle(
+    'requests',
+    requestRowColumns,
+    column: 'id',
+    value: jobId,
+  );
+  if (row == null) return null;
+  final media = await gateway.selectList(
+    'request_media',
+    'storage_path',
+    column: 'request_id',
+    value: jobId,
+    orderBy: 'created_at',
+  );
+  return jobRequestFromRow(
+    row,
+    mediaPaths: media
+        .map((m) => m['storage_path'] as String)
+        .toList(growable: false),
+  );
+}
+
 /// RequestRepository over Supabase: drafts/publish/cancel go through the
 /// contract RPCs (the server owns the state machine and fees); reads are
 /// RLS-scoped selects on `requests` with the category-key and to-one `jobs`
@@ -12,21 +56,6 @@ class SupabaseRequestRepository implements RequestRepository {
   SupabaseRequestRepository(this._gateway);
 
   final SupabaseGateway _gateway;
-
-  /// Explicit columns (contracts v1 narrows column grants on several tables).
-  /// `service_categories(key)` embeds the category key via the category_id
-  /// FK (rows store the uuid; the domain carries the key). `jobs(...)` embeds
-  /// the to-one job row that exists once an offer has been accepted.
-  static const String _columns =
-      'id, customer_id, is_custom_category, custom_category_label, '
-      'description, urgency, status, pickup_point, pickup_label, '
-      'pickup_landmark_note, destination_point, destination_label, '
-      'destination_landmark_note, scheduled_at, preferred_price_minor, '
-      'item_float_minor, declared_value_minor, currency, expires_at, '
-      'created_at, service_categories(key), '
-      'jobs(provider_id, agreed_amount_minor, currency, commission_rate_bps, '
-      'commission_minor, net_minor, estimated_gateway_fee_minor, '
-      'actual_gateway_fee_minor, tip_minor)';
 
   static final List<String> _activeStatuses = <String>[
     for (final status in JobStatus.values)
@@ -42,7 +71,7 @@ class SupabaseRequestRepository implements RequestRepository {
   Future<List<JobRequest>> getMyActiveJobs() async {
     final rows = await _gateway.selectList(
       'requests',
-      _columns,
+      requestRowColumns,
       inColumn: 'status',
       inValues: _activeStatuses,
       orderBy: 'created_at',
@@ -59,7 +88,7 @@ class SupabaseRequestRepository implements RequestRepository {
     // same as the mock's use of the last row's id.
     final rows = await _gateway.selectList(
       'requests',
-      _columns,
+      requestRowColumns,
       inColumn: 'status',
       inValues: _terminalStatuses,
       ltColumn: cursor == null ? null : 'created_at',
@@ -83,32 +112,9 @@ class SupabaseRequestRepository implements RequestRepository {
           filterColumn: 'id',
           filterValue: jobId,
         )
-        .asyncMap((_) => _load(jobId))
+        .asyncMap((_) => loadJobRequestRow(_gateway, jobId))
         .where((request) => request != null)
         .cast<JobRequest>();
-  }
-
-  Future<JobRequest?> _load(String jobId) async {
-    final row = await _gateway.selectSingle(
-      'requests',
-      _columns,
-      column: 'id',
-      value: jobId,
-    );
-    if (row == null) return null;
-    final media = await _gateway.selectList(
-      'request_media',
-      'storage_path',
-      column: 'request_id',
-      value: jobId,
-      orderBy: 'created_at',
-    );
-    return jobRequestFromRow(
-      row,
-      mediaPaths: media
-          .map((m) => m['storage_path'] as String)
-          .toList(growable: false),
-    );
   }
 
   @override
@@ -139,7 +145,7 @@ class SupabaseRequestRepository implements RequestRepository {
       'p_declared_value_minor': input.declaredValue?.minorUnits,
       'p_media_paths': input.mediaPaths.isEmpty ? null : input.mediaPaths,
     });
-    final created = await _load(SupabaseGateway.asId(id));
+    final created = await loadJobRequestRow(_gateway, SupabaseGateway.asId(id));
     if (created == null) throw const AppError(ErrorCodes.unknown);
     return created;
   }
@@ -173,7 +179,7 @@ class SupabaseRequestRepository implements RequestRepository {
       'p_request_id': jobId,
       ...args,
     });
-    final updated = await _load(jobId);
+    final updated = await loadJobRequestRow(_gateway, jobId);
     if (updated == null) throw const AppError(ErrorCodes.unknown);
     return updated;
   }

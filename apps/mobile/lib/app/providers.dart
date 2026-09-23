@@ -84,12 +84,14 @@ final providerRepositoryProvider = Provider<ProviderRepository>(
   ),
 );
 
-final jobProgressRepositoryProvider = Provider<JobProgressRepository>(
-  (ref) => MockJobProgressRepository(
+final jobProgressRepositoryProvider = Provider<JobProgressRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseJobProgressRepository(gateway);
+  return MockJobProgressRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final trackingRepositoryProvider = Provider<TrackingRepository>(
   (ref) => MockTrackingRepository(
@@ -126,26 +128,32 @@ final conciergeRepositoryProvider = Provider<ConciergeRepository>(
   ),
 );
 
-final paymentRepositoryProvider = Provider<PaymentRepository>(
-  (ref) => MockPaymentRepository(
+final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabasePaymentRepository(gateway);
+  return MockPaymentRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final ratingRepositoryProvider = Provider<RatingRepository>(
-  (ref) => MockRatingRepository(
+final ratingRepositoryProvider = Provider<RatingRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseRatingRepository(gateway);
+  return MockRatingRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final safetyRepositoryProvider = Provider<SafetyRepository>(
-  (ref) => MockSafetyRepository(
+final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseSafetyRepository(gateway);
+  return MockSafetyRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 /// Masked calls (LiveKit plugs in behind this interface at M9).
 final callAdapterProvider = Provider<CallAdapter>(

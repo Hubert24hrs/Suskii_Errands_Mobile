@@ -34,13 +34,24 @@ abstract class Payment with _$Payment {
 }
 
 /// Result of server-side payment initialization: the created [Payment] plus
-/// whatever the customer needs to complete it off-app (USSD code to dial,
-/// transfer reference to quote). Card/mobile-money completion happens in the
-/// gateway's own UI; the app only watches the status.
+/// whatever the customer needs to complete it off-app (gateway checkout page,
+/// USSD code to dial, transfer reference to quote). Card/mobile-money
+/// completion happens in the gateway's own UI; the app only watches the
+/// status.
 class PaymentSession {
-  const PaymentSession({required this.payment, this.ussdCode, this.reference});
+  const PaymentSession({
+    required this.payment,
+    this.checkoutUrl,
+    this.ussdCode,
+    this.reference,
+  });
 
   final Payment payment;
+
+  /// Gateway checkout page to open (card/mobile-money). From
+  /// `get_payment_checkout` — the payments table's column grants deliberately
+  /// exclude it, so it never rides on the entity.
+  final String? checkoutUrl;
 
   /// USSD code to dial (method = ussd).
   final String? ussdCode;

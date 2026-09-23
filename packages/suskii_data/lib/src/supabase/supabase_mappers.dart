@@ -354,3 +354,126 @@ Offer offerFromRow(Map<String, dynamic> row, {Map<String, dynamic>? card}) {
     // fields — deferred (HANDOFF M9.2 follow-up).
   );
 }
+
+// ---------------------------------------------------------------------------
+// M9.3: payments, job progress (PINs/proofs), ratings, safety.
+// ---------------------------------------------------------------------------
+
+PaymentStatus paymentStatusFromWire(Object? value) => switch (value) {
+  'pending' => PaymentStatus.pending,
+  'held' => PaymentStatus.held,
+  'failed' => PaymentStatus.failed,
+  'refunded' => PaymentStatus.refunded,
+  'partially_refunded' => PaymentStatus.partiallyRefunded,
+  _ => PaymentStatus.unpaid,
+};
+
+PaymentMethod paymentMethodFromWire(Object? value) => switch (value) {
+  'bank_transfer' => PaymentMethod.bankTransfer,
+  'mobile_money' => PaymentMethod.mobileMoney,
+  'ussd' => PaymentMethod.ussd,
+  _ => PaymentMethod.card,
+};
+
+String paymentMethodToWire(PaymentMethod method) => switch (method) {
+  PaymentMethod.card => 'card',
+  PaymentMethod.bankTransfer => 'bank_transfer',
+  PaymentMethod.mobileMoney => 'mobile_money',
+  PaymentMethod.ussd => 'ussd',
+};
+
+ProofKind proofKindFromWire(Object? value) => switch (value) {
+  'receipt' => ProofKind.receipt,
+  'signature' => ProofKind.signature,
+  _ => ProofKind.photo,
+};
+
+/// The wire `sos_status` enum is richer than the domain's (open, acknowledged,
+/// dispatched, resolved, false_alarm): the three in-flight values all render
+/// as "active" in the app; false_alarm reads as resolved.
+SosStatus sosStatusFromWire(Object? value) => switch (value) {
+  'resolved' || 'false_alarm' => SosStatus.resolved,
+  _ => SosStatus.active,
+};
+
+/// A `payments` row. Column grants deliberately exclude `checkout_url` (it
+/// comes from `get_payment_checkout`), so the entity never carries it.
+/// `method` is nullable on the wire until start_payment fills it in; the safe
+/// default renders as card.
+Payment paymentFromRow(Map<String, dynamic> row) => Payment(
+  id: SupabaseGateway.asId(row['id']),
+  jobId: SupabaseGateway.asId(row['request_id']),
+  amount: Money(
+    SupabaseGateway.asMinorUnits(row['amount_minor']),
+    row['currency'] as String? ?? 'NGN',
+  ),
+  method: paymentMethodFromWire(row['method']),
+  status: paymentStatusFromWire(row['status']),
+  createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+  gatewayReference: row['gateway_reference'] as String?,
+  paidAt: row['confirmed_at'] == null
+      ? null
+      : SupabaseGateway.asTimestamp(row['confirmed_at']),
+  expiresAt: row['expires_at'] == null
+      ? null
+      : SupabaseGateway.asTimestamp(row['expires_at']),
+  failureReasonKey: row['failed_reason_key'] as String?,
+);
+
+/// A `proofs` row. `device_point` is the same GeoJSON shape as the request
+/// points; the domain keeps lat/lng as plain doubles.
+Proof proofFromRow(Map<String, dynamic> row) {
+  final point = geoPointFromWire(row['device_point']);
+  return Proof(
+    id: SupabaseGateway.asId(row['id']),
+    jobId: SupabaseGateway.asId(row['request_id']),
+    providerId: SupabaseGateway.asId(row['uploaded_by']),
+    kind: proofKindFromWire(row['kind']),
+    storagePath: row['storage_path'] as String? ?? '',
+    createdAt: SupabaseGateway.asTimestamp(row['server_received_at']),
+    capturedAt: row['device_captured_at'] == null
+        ? null
+        : SupabaseGateway.asTimestamp(row['device_captured_at']),
+    lat: point?.latitude,
+    lng: point?.longitude,
+  );
+}
+
+/// A `ratings` row (RLS scopes visibility to rater/ratee). `tags` are the
+/// localization keys the rater picked.
+Rating ratingFromRow(Map<String, dynamic> row) => Rating(
+  id: SupabaseGateway.asId(row['id']),
+  jobId: SupabaseGateway.asId(row['request_id']),
+  raterId: SupabaseGateway.asId(row['rater_id']),
+  rateeId: SupabaseGateway.asId(row['ratee_id']),
+  stars: (row['stars'] as num?)?.toInt() ?? 0,
+  tagKeys: (row['tags'] as List<dynamic>? ?? const <dynamic>[]).cast<String>(),
+  comment: row['comment'] as String?,
+  createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+);
+
+/// An `sos_incidents` row. `request_id` is nullable on the wire (SOS can be
+/// raised outside a job); the domain requires a job id, so a jobless alert
+/// carries an empty one — the SOS UI only exists inside a job today.
+SosAlert sosAlertFromRow(Map<String, dynamic> row) => SosAlert(
+  id: SupabaseGateway.asId(row['id']),
+  jobId: row['request_id'] as String? ?? '',
+  triggeredBy: SupabaseGateway.asId(row['raised_by']),
+  status: sosStatusFromWire(row['status']),
+  createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+  location: geoPointFromWire(row['point']),
+  trustedContactsNotified:
+      (row['trusted_contacts_notified'] as num?)?.toInt() ?? 0,
+);
+
+/// The `verify_pin` jsonb result: `{verified, status, attempts_remaining}` —
+/// a wrong PIN is a result, not an error (the attempt counter would roll back
+/// with the exception otherwise). ERR_PIN_ATTEMPTS_EXCEEDED still raises.
+PinVerificationResult pinVerificationFromWire(Object? value) {
+  final map = value as Map<String, dynamic>;
+  return PinVerificationResult(
+    verified: map['verified'] as bool? ?? false,
+    status: jobStatusFromWire(map['status']),
+    attemptsRemaining: (map['attempts_remaining'] as num?)?.toInt() ?? 0,
+  );
+}
