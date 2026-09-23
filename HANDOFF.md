@@ -5,6 +5,34 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.6: chat + tracking wired
+
+Seventh M9 slice. New: `SupabaseChatRepository` (`send_message` — moderation
+and the chat window stay server-side; messages stream from the `messages`
+table scoped via the `conversations` lookup, with the job id picked up from
+the `conversations(request_id)` embed; bigint message ids stay opaque
+strings) and `SupabaseTrackingRepository` (latest `location_samples` row for
+the job — the provider app samples GPS into the table, so the customer side
+reads the RLS-scoped stream; no Broadcast channel needed). Both wired behind
+`supabaseGatewayProvider`; mocks stay the default.
+
+**Model note.** Read receipts derive from the OTHER participant's
+`message_reads` pointer — the wire has no per-message read timestamp, so a
+message counts as read once the pointer has passed it and renders the
+pointer's `read_at`. Chat window closing (`ERR_CHAT_CLOSED`) and moderation
+surface as errors as before.
+
+Verify: chat mapper tests (bigint id, conversations embed, GeoJSON location,
+type round-trip, unknown → text), full suites green (172 suskii_data),
+analyze clean.
+
+**Remaining mock-only surfaces** (all tracked): concierge (services/ai),
+masked calls (LiveKit adapter), verification/KYC adapters (Dojah), support
+tickets, settings, promos (CR-20260923-04), provider tools + organization
+console (CR-20260923-05).
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.5: provider feed + provider repo wired
 
 Sixth M9 slice. New: `SupabaseProviderRepository` — `provider_feed` for the

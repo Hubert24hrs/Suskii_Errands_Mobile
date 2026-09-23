@@ -631,3 +631,52 @@ JobRequest jobRequestFromFeedRow(Map<String, dynamic> row) {
         : SupabaseGateway.asTimestamp(row['expires_at']),
   );
 }
+
+// ---------------------------------------------------------------------------
+// M9.6: chat + tracking.
+// ---------------------------------------------------------------------------
+
+ChatMessageType chatMessageTypeFromWire(Object? value) => switch (value) {
+  'image' => ChatMessageType.image,
+  'voice_note' => ChatMessageType.voiceNote,
+  'location' => ChatMessageType.location,
+  'offer_card' => ChatMessageType.offerCard,
+  'system' => ChatMessageType.system,
+  _ => ChatMessageType.text,
+};
+
+String chatMessageTypeToWire(ChatMessageType type) => switch (type) {
+  ChatMessageType.text => 'text',
+  ChatMessageType.image => 'image',
+  ChatMessageType.voiceNote => 'voice_note',
+  ChatMessageType.location => 'location',
+  ChatMessageType.offerCard => 'offer_card',
+  ChatMessageType.system => 'system',
+};
+
+/// A `messages` row. The job id comes from the `conversations(request_id)`
+/// embed (messages key on conversation, not request). [readAt] is derived
+/// from the OTHER participant's `message_reads` pointer — the wire has no
+/// per-message read timestamp.
+ChatMessage chatMessageFromRow(
+  Map<String, dynamic> row, {
+  String? jobId,
+  DateTime? readAt,
+}) {
+  final conversation = row['conversations'];
+  final embeddedJobId = conversation is Map<String, dynamic>
+      ? conversation['request_id'] as String?
+      : null;
+  return ChatMessage(
+    id: SupabaseGateway.asId(row['id']),
+    jobId: embeddedJobId ?? jobId ?? '',
+    senderId: SupabaseGateway.asId(row['sender_id']),
+    type: chatMessageTypeFromWire(row['type']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    text: row['body'] as String?,
+    mediaPath: row['media_path'] as String?,
+    offerId: row['offer_id'] as String?,
+    location: geoPointFromWire(row['location']),
+    readAt: readAt,
+  );
+}

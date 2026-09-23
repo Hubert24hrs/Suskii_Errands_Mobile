@@ -139,6 +139,7 @@ void main() {
   paymentProgressMapperTests();
   walletDisputeMapperTests();
   providerFeedMapperTests();
+  chatMapperTests();
 }
 
 // ---------------------------------------------------------------------------
@@ -677,6 +678,60 @@ void providerFeedMapperTests() {
       expect(request.destination, isNull);
       expect(request.pickup.point, isNull);
       expect(request.preferredPrice, isNull);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// M9.6: chat.
+// ---------------------------------------------------------------------------
+
+void chatMapperTests() {
+  group('chatMessageFromRow', () {
+    test('maps the row; job id comes from the conversations embed', () {
+      final message = chatMessageFromRow(<String, dynamic>{
+        'id': 9223372036854775807, // bigint beyond 2^53
+        'sender_id': 'cust-uuid-1',
+        'type': 'location',
+        'body': null,
+        'media_path': null,
+        'offer_id': null,
+        'location': <String, dynamic>{
+          'type': 'Point',
+          'coordinates': <dynamic>[3.4219, 6.4281],
+        },
+        'created_at': '2026-09-23T10:00:00.000Z',
+        'conversations': <String, dynamic>{'request_id': 'req-uuid-1'},
+      }, readAt: DateTime.utc(2026, 9, 23, 10, 5));
+      expect(message.id, '9223372036854775807');
+      expect(message.jobId, 'req-uuid-1');
+      expect(message.type, ChatMessageType.location);
+      expect(
+        message.location,
+        const GeoPoint(latitude: 6.4281, longitude: 3.4219),
+      );
+      expect(message.readAt, DateTime.utc(2026, 9, 23, 10, 5));
+    });
+
+    test('without the embed the explicit job id wins; unknown type → text', () {
+      final message = chatMessageFromRow(<String, dynamic>{
+        'id': 1,
+        'sender_id': 'prov-uuid-1',
+        'type': 'some_future_type',
+        'body': 'On my way',
+        'created_at': '2026-09-23T10:00:00.000Z',
+      }, jobId: 'req-uuid-2');
+      expect(message.jobId, 'req-uuid-2');
+      expect(message.type, ChatMessageType.text);
+      expect(message.text, 'On my way');
+      expect(message.readAt, isNull);
+    });
+
+    test('wire names round-trip (voiceNote/offerCard are snake_case)', () {
+      expect(chatMessageTypeToWire(ChatMessageType.voiceNote), 'voice_note');
+      expect(chatMessageTypeToWire(ChatMessageType.offerCard), 'offer_card');
+      expect(chatMessageTypeFromWire('voice_note'), ChatMessageType.voiceNote);
+      expect(chatMessageTypeFromWire('offer_card'), ChatMessageType.offerCard);
     });
   });
 }

@@ -95,19 +95,23 @@ final jobProgressRepositoryProvider = Provider<JobProgressRepository>((ref) {
   );
 });
 
-final trackingRepositoryProvider = Provider<TrackingRepository>(
-  (ref) => MockTrackingRepository(
+final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseTrackingRepository(gateway);
+  return MockTrackingRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final chatRepositoryProvider = Provider<ChatRepository>(
-  (ref) => MockChatRepository(
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseChatRepository(gateway);
+  return MockChatRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
   final gateway = ref.watch(supabaseGatewayProvider);
