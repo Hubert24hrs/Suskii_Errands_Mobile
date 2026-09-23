@@ -809,3 +809,101 @@ List<Map<String, Object?>> notificationPreferenceRows(
     row('push', 'marketing', prefs.marketing),
   ];
 }
+
+// ---------------------------------------------------------------------------
+// M9.8: KYC / verification.
+// ---------------------------------------------------------------------------
+
+KycStepKind kycStepKindFromWire(Object? value) => switch (value) {
+  'customer_facial' => KycStepKind.customerFacial,
+  'government_id' => KycStepKind.governmentId,
+  'provider_facial' => KycStepKind.providerFacial,
+  'id_document_capture' => KycStepKind.idDocumentCapture,
+  'police_clearance' => KycStepKind.policeClearance,
+  'address' => KycStepKind.address,
+  'guarantor' => KycStepKind.guarantor,
+  'payout_account' => KycStepKind.payoutAccount,
+  'vehicle_documents' => KycStepKind.vehicleDocuments,
+  'credentials' => KycStepKind.credentials,
+  _ => KycStepKind.credentials,
+};
+
+String kycStepKindToWire(KycStepKind kind) => switch (kind) {
+  KycStepKind.customerFacial => 'customer_facial',
+  KycStepKind.governmentId => 'government_id',
+  KycStepKind.providerFacial => 'provider_facial',
+  KycStepKind.idDocumentCapture => 'id_document_capture',
+  KycStepKind.policeClearance => 'police_clearance',
+  KycStepKind.address => 'address',
+  KycStepKind.guarantor => 'guarantor',
+  KycStepKind.payoutAccount => 'payout_account',
+  KycStepKind.vehicleDocuments => 'vehicle_documents',
+  KycStepKind.credentials => 'credentials',
+};
+
+KycStepStatus kycStepStatusFromWire(Object? value) => switch (value) {
+  'consent_pending' => KycStepStatus.consentPending,
+  'in_progress' => KycStepStatus.inProgress,
+  'in_review' => KycStepStatus.inReview,
+  'verified' => KycStepStatus.verified,
+  'rejected' => KycStepStatus.rejected,
+  'expired' => KycStepStatus.expired,
+  _ => KycStepStatus.notStarted,
+};
+
+VehicleType vehicleTypeFromWire(Object? value) => switch (value) {
+  'bicycle' => VehicleType.bicycle,
+  'motorcycle' => VehicleType.motorcycle,
+  'tricycle' => VehicleType.tricycle,
+  'car' => VehicleType.car,
+  'van' => VehicleType.van,
+  'truck' => VehicleType.truck,
+  _ => VehicleType.walking,
+};
+
+String vehicleTypeToWire(VehicleType type) => switch (type) {
+  VehicleType.walking => 'walking',
+  VehicleType.bicycle => 'bicycle',
+  VehicleType.motorcycle => 'motorcycle',
+  VehicleType.tricycle => 'tricycle',
+  VehicleType.car => 'car',
+  VehicleType.van => 'van',
+  VehicleType.truck => 'truck',
+};
+
+ProviderKind providerKindFromWire(Object? value) =>
+    value == 'business' ? ProviderKind.business : ProviderKind.individual;
+
+/// One row of `get_my_kyc_profile`. The wire carries no `submitted_at` /
+/// `reviewed_at` (CR-20260923-10), so those stay null.
+KycStep kycStepFromProfileRow(Map<String, dynamic> row) => KycStep(
+  kind: kycStepKindFromWire(row['kind']),
+  status: kycStepStatusFromWire(row['status']),
+  attemptCount: (row['attempt_count'] as num?)?.toInt() ?? 0,
+  rejectionReasonKey: row['rejection_reason_key'] as String?,
+);
+
+/// Display-only rollup replicating the mock's priority (rejected →
+/// submitted → all-not-started → any-in-review → all-verified → in-progress).
+/// The domain contract says this is server-computed; the wire has no rollup
+/// yet (CR-20260923-10), and computing an authoritative status client-side
+/// is forbidden — this only feeds the UI badge.
+KycStepStatus kycOverallRollup(
+  List<KycStep> steps, {
+  DateTime? submittedForReviewAt,
+}) {
+  if (steps.any((s) => s.status == KycStepStatus.rejected)) {
+    return KycStepStatus.rejected;
+  }
+  if (submittedForReviewAt != null) return KycStepStatus.inReview;
+  if (steps.every((s) => s.status == KycStepStatus.notStarted)) {
+    return KycStepStatus.notStarted;
+  }
+  if (steps.any((s) => s.status == KycStepStatus.inReview)) {
+    return KycStepStatus.inReview;
+  }
+  if (steps.every((s) => s.status == KycStepStatus.verified)) {
+    return KycStepStatus.verified;
+  }
+  return KycStepStatus.inProgress;
+}

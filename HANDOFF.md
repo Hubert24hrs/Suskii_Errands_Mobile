@@ -5,6 +5,46 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — M9.8: KYC / verification wired
+
+Ninth M9 slice. New: `SupabaseVerificationRepository` (customer facial:
+biometric consent via `record_consent`, session start via
+`start_verification_session`, state from the `customer_facial` row of
+`get_my_kyc_profile`) and `SupabaseProviderKycRepository` (step state from
+`get_my_kyc_profile` + `provider_profiles`/`provider_services`/
+`provider_service_areas`; onboarding via `update_provider_services` /
+`update_provider_service_areas` / vehicle-type update — the domain's
+category ids and area ids ARE the keys/codes those RPCs take, reads map the
+uuid FKs back via `service_categories`/`cities`; upload-ref steps
+`idDocumentCapture`/`vehicleDocuments`/`credentials` via `submit_kyc_step`).
+Gateway gained `updateRows`. Both wired behind `supabaseGatewayProvider`;
+mocks stay the default. The liveness SDK adapter (Dojah) stays mock.
+
+**Feature-unavailable surfaces (tracked, never weakened).** All ciphertext
+steps (government id, police clearance, payout account, customer id lookup)
+— CR-20260923-08 (extends the CR-06 encryption problem); liveness-result
+submission — CR-20260923-09 (the client must never send an authoritative
+verdict); address/guarantor/credentials payloads, submit-for-review, payout
+name enquiry — CR-20260923-10 (plus missing rollup/submitted_at fields,
+business_name, idempotency keys, realtime topic).
+
+**Model notes.** Watch* polls every 15 s (KYC state is RPC-only, no realtime
+topic). `overallStatus` uses a display-only client rollup replicating the
+mock's priority — flagged in CR-10; the server stays the authority on every
+step transition. VerificationSession id/updatedAt stand in from the step
+kind/expires_at (wire has neither).
+
+Verify: 6 new mapper test groups (kind/status/vehicle round-trips + safe
+defaults, profile-row mapping, rollup priority), full suites green
+(188 suskii_data), analyze clean.
+
+**Remaining mock-only surfaces** (all tracked): concierge (services/ai),
+masked calls (LiveKit adapter — `start_call` returns no LiveKit token),
+promos (CR-20260923-04), provider tools + organization console
+(CR-20260923-05).
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.7: support + settings wired
 
 Eighth M9 slice. New: `SupabaseSupportRepository` (`open_ticket` /

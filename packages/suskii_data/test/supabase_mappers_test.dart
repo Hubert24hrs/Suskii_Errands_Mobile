@@ -860,4 +860,113 @@ void chatMapperTests() {
       expect(quietMinutesToWire(null), isNull);
     });
   });
+
+  group('kycStepKindFromWire / kycStepKindToWire', () {
+    test('round-trips every kind', () {
+      for (final kind in KycStepKind.values) {
+        expect(kycStepKindFromWire(kycStepKindToWire(kind)), kind);
+      }
+    });
+
+    test('unknown wire value → credentials (safe default)', () {
+      expect(kycStepKindFromWire('some_future_step'), KycStepKind.credentials);
+    });
+  });
+
+  group('kycStepStatusFromWire', () {
+    test('folds every wire value; unknown → notStarted', () {
+      expect(kycStepStatusFromWire('not_started'), KycStepStatus.notStarted);
+      expect(
+        kycStepStatusFromWire('consent_pending'),
+        KycStepStatus.consentPending,
+      );
+      expect(kycStepStatusFromWire('in_progress'), KycStepStatus.inProgress);
+      expect(kycStepStatusFromWire('in_review'), KycStepStatus.inReview);
+      expect(kycStepStatusFromWire('verified'), KycStepStatus.verified);
+      expect(kycStepStatusFromWire('rejected'), KycStepStatus.rejected);
+      expect(kycStepStatusFromWire('expired'), KycStepStatus.expired);
+      expect(
+        kycStepStatusFromWire('some_future_status'),
+        KycStepStatus.notStarted,
+      );
+    });
+  });
+
+  group('vehicleTypeFromWire / vehicleTypeToWire', () {
+    test('round-trips every type; unknown → walking', () {
+      for (final type in VehicleType.values) {
+        expect(vehicleTypeFromWire(vehicleTypeToWire(type)), type);
+      }
+      expect(vehicleTypeFromWire('hovercraft'), VehicleType.walking);
+    });
+  });
+
+  group('kycStepFromProfileRow', () {
+    test('maps a get_my_kyc_profile row', () {
+      final step = kycStepFromProfileRow(<String, dynamic>{
+        'kind': 'police_clearance',
+        'status': 'in_review',
+        'rejection_reason_key': null,
+        'attempt_count': 2,
+        'expires_at': '2027-01-01T00:00:00.000Z',
+        'required': true,
+      });
+      expect(step.kind, KycStepKind.policeClearance);
+      expect(step.status, KycStepStatus.inReview);
+      expect(step.attemptCount, 2);
+      expect(step.rejectionReasonKey, isNull);
+      expect(step.submittedAt, isNull);
+      expect(step.reviewedAt, isNull);
+    });
+  });
+
+  group('kycOverallRollup', () {
+    KycStep step(KycStepStatus status) =>
+        KycStep(kind: KycStepKind.address, status: status, attemptCount: 0);
+
+    test('rejected wins over everything', () {
+      expect(
+        kycOverallRollup(<KycStep>[
+          step(KycStepStatus.verified),
+          step(KycStepStatus.rejected),
+        ], submittedForReviewAt: DateTime.utc(2026)),
+        KycStepStatus.rejected,
+      );
+    });
+
+    test('submitted for review → inReview', () {
+      expect(
+        kycOverallRollup(<KycStep>[
+          step(KycStepStatus.verified),
+        ], submittedForReviewAt: DateTime.utc(2026)),
+        KycStepStatus.inReview,
+      );
+    });
+
+    test('all notStarted → notStarted; any inReview → inReview; '
+        'all verified → verified; mixed → inProgress', () {
+      expect(
+        kycOverallRollup(<KycStep>[step(KycStepStatus.notStarted)]),
+        KycStepStatus.notStarted,
+      );
+      expect(
+        kycOverallRollup(<KycStep>[
+          step(KycStepStatus.verified),
+          step(KycStepStatus.inReview),
+        ]),
+        KycStepStatus.inReview,
+      );
+      expect(
+        kycOverallRollup(<KycStep>[step(KycStepStatus.verified)]),
+        KycStepStatus.verified,
+      );
+      expect(
+        kycOverallRollup(<KycStep>[
+          step(KycStepStatus.verified),
+          step(KycStepStatus.inProgress),
+        ]),
+        KycStepStatus.inProgress,
+      );
+    });
+  });
 }

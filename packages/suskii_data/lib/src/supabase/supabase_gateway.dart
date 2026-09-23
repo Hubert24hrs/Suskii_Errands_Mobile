@@ -132,6 +132,26 @@ class SupabaseGateway {
     }
   }
 
+  /// Updates rows matching one equality filter, returning the updated rows.
+  Future<List<Map<String, dynamic>>> updateRows(
+    String table,
+    Map<String, Object?> values, {
+    required String column,
+    required Object value,
+    String columns = '*',
+  }) async {
+    try {
+      final result = await _client
+          .from(table)
+          .update(values)
+          .eq(column, value)
+          .select(columns);
+      return List<Map<String, dynamic>>.from(result as List<dynamic>);
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
   /// Live rows of a table as a stream (RLS scopes them server-side). An
   /// optional equality filter narrows the subscription server-side.
   Stream<List<Map<String, dynamic>>> streamRows(

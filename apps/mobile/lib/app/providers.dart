@@ -190,19 +190,23 @@ final identityVerificationAdapterProvider =
       ),
     );
 
-final verificationRepositoryProvider = Provider<VerificationRepository>(
-  (ref) => MockVerificationRepository(
+final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseVerificationRepository(gateway);
+  return MockVerificationRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final providerKycRepositoryProvider = Provider<ProviderKycRepository>(
-  (ref) => MockProviderKycRepository(
+final providerKycRepositoryProvider = Provider<ProviderKycRepository>((ref) {
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseProviderKycRepository(gateway);
+  return MockProviderKycRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 /// ---------------------------------------------------------------------------
 /// Session / app state

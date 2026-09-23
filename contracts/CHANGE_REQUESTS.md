@@ -78,3 +78,30 @@ No requests yet — official contracts do not exist (frontend-first phase).
 - Proposed change: `request_account_deletion(p_idempotency_key) → timestamptz` (scheduled deletion date; sign-in before it cancels) and `request_data_export(p_idempotency_key) → text` (export reference / ticket id).
 - Backwards compatible? yes (new functions).
 - Status: OPEN
+
+## CR-20260923-08 — KYC PII: plaintext variants that encrypt server-side
+- Requested by: Kimi Code
+- Milestone/screen: M9.8 — provider KYC (`submitStep` for governmentId / policeClearance / payoutAccount) and customer `submitIdLookup`
+- Current contract (v1): `submit_identity_document`, `submit_police_clearance`, `add_payout_account` and `register_vehicle` all require client-produced `*_ciphertext bytea` + `*_blind_index bytea`.
+- Problem / missing capability: same unsolved client-encryption problem as CR-20260923-06 (no key delivery or algorithm spec). These four steps throw ERR_FEATURE_UNAVAILABLE rather than send plaintext as "ciphertext". `add_payout_account` additionally takes `p_holder_name`, which the client must not invent — the verified holder name lives server-side.
+- Proposed change: plaintext variants (e.g. `p_id_number text`, `p_certificate_number text`, `p_account_number text`) that encrypt inside the database, with holder name resolved server-side for payout accounts. One shared approach with CR-20260923-06 would keep the surface small.
+- Backwards compatible? yes (new optional parameters or new functions).
+- Status: OPEN
+
+## CR-20260923-09 — liveness result submission + server-side verdict
+- Requested by: Kimi Code
+- Milestone/screen: M9.8 — customer + provider facial verification (`submitIdLookup`, `submitStep(providerFacial)`)
+- Current contract (v1): `start_verification_session(p_kind)` creates the session, and the wire defines `identity_check_outcome`, but no client-callable RPC accepts the liveness capture result or advances a facial step to a verdict.
+- Problem / missing capability: after the liveness SDK captures, there is no way to submit the evidence; the step can never leave `in_progress`. The client must never decide or report an authoritative verification outcome, so we cannot fake the transition client-side.
+- Proposed change: a `submit_liveness_result(p_idempotency_key, p_kind, p_session_id, p_evidence_ref text)` RPC (evidence = Dojah/vendor reference or storage ref) that makes the verdict server-side and transitions the step; reading the outcome via `get_my_kyc_profile`.
+- Backwards compatible? yes (new function).
+- Status: OPEN
+
+## CR-20260923-10 — KYC profile completeness (payloads, submit-for-review, rollup)
+- Requested by: Kimi Code
+- Milestone/screen: M9.8 — provider KYC screens (`ProviderKycRepository`)
+- Current contract (v1): `submit_kyc_step` accepts only `p_upload_refs`; `get_my_kyc_profile` returns per-step kind/status/attempt_count/expires_at/required; there is no submit-for-review RPC and no payout name-enquiry RPC.
+- Problem / missing capability: (a) structured payloads for `address` (line1/line2/city/state/landmark), `guarantor` (name/phone/relationship) and `credentials.description` have nowhere to go — those steps throw ERR_FEATURE_UNAVAILABLE; (b) `submitForReview` cannot exist client-side (the client must not self-declare the profile in-review) — throws ERR_FEATURE_UNAVAILABLE; (c) `resolvePayoutAccount` needs a server-computed name match — throws ERR_FEATURE_UNAVAILABLE; (d) the profile lacks `overall_status`, `submitted_for_review_at`, per-step `submitted_at`/`reviewed_at`, a readable session id and `updated_at` — the UI falls back to a display-only client rollup and epoch timestamps; (e) `provider_profiles` has no `business_name` column and `kind` is not updatable; (f) `update_provider_services`/`update_provider_service_areas` take no idempotency key; (g) no realtime topic or streamable view for KYC step changes (watch* polls).
+- Proposed change: `p_payload jsonb` on `submit_kyc_step` (schema per kind); `submit_kyc_for_review(p_idempotency_key)`; a payout name-enquiry RPC returning `(masked_account, resolved_name, name_match)`; extend `get_my_kyc_profile` with `overall_status`, `submitted_for_review_at`, per-step `submitted_at`/`reviewed_at`; nullable `business_name` on `provider_profiles` + UPDATE grant (or an onboarding RPC); idempotency keys on the two update RPCs; optionally a `user:{id}:kyc` realtime topic.
+- Backwards compatible? yes (added columns/parameters/new functions).
+- Status: OPEN
