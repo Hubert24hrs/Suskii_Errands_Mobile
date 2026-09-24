@@ -5,7 +5,12 @@
 // break an old build.
 
 import type {
+  AppNotification,
   AppUser,
+  CountryPack,
+  CountryStatus,
+  PriceBand,
+  ServiceCategory,
   TrustLevel,
   UserMode,
   VerificationStatus,
@@ -75,5 +80,122 @@ export function appUserFromProfileRow(
     email: identity.email,
     // avatar_path is a storage path, not a URL — signed URLs are a later
     // slice (storage gateway), so photoUrl stays undefined for now.
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Bootstrap + catalog (W9.3)
+// ---------------------------------------------------------------------------
+
+export function countryStatusFromWire(value: unknown): CountryStatus {
+  switch (value) {
+    case 'beta':
+    case 'live':
+      return value;
+    default:
+      return 'disabled';
+  }
+}
+
+function intOr(value: unknown, fallback: number): number {
+  return typeof value === 'number' ? Math.trunc(value) : fallback;
+}
+
+/** The `country_pack` object inside `get_bootstrap`'s payload. Fields the
+ * server pack does not carry yet (emergency numbers, per-country TTL
+ * overrides) fall back to the spec defaults — tracked in HANDOFF (mobile
+ * M9.1 follow-ups). Never invent values: read what is present, default the
+ * rest. */
+export function countryPackFromBootstrap(
+  pack: Row,
+  launchCities: string[] = [],
+): CountryPack {
+  const currency = (pack['currency'] as Row | null) ?? {};
+  const client = (pack['client'] as Row | null) ?? {};
+  const emergency = Array.isArray(client['emergency_numbers'])
+    ? (client['emergency_numbers'] as unknown[])
+    : [];
+  const languages = pack['supported_languages'];
+  return {
+    countryCode: pack['code'] as string,
+    status: countryStatusFromWire(pack['status']),
+    currencyCode: (currency['code'] as string | null) ?? 'NGN',
+    supportedLanguages: Array.isArray(languages)
+      ? (languages as string[])
+      : ['en'],
+    defaultLanguage: (pack['default_language'] as string | null) ?? 'en',
+    launchCities,
+    emergencyNumbers: emergency
+      .filter((e): e is Row => typeof e === 'object' && e !== null)
+      .map((e) => ({
+        labelKey: (e['label_key'] as string | null) ?? 'sosEmergencyGeneral',
+        number: (e['number'] as string | null) ?? '',
+      })),
+    offerTtlSeconds: intOr(client['offer_ttl_seconds'], 600),
+    maxNegotiationRounds: intOr(client['max_counter_rounds'], 5),
+  };
+}
+
+/** A `notifications` row. The wire carries title_key/body_key/params and
+ * never text; the model still has pre-rendered title/body from the mock era,
+ * so the keys map through verbatim until the notification-center slice
+ * switches the model to keys + params and renders from the dictionary. */
+export function appNotificationFromRow(row: Row): AppNotification {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    kind: (row['kind'] as string | null) ?? '',
+    title: (row['title_key'] as string | null) ?? '',
+    body: (row['body_key'] as string | null) ?? '',
+    read: row['read_at'] != null,
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    deeplink: (row['deep_link'] as string | null) ?? undefined,
+  };
+}
+
+/** A `get_price_band` row. Confidence is a display bucketing derived from
+ * the sample size (not money arithmetic). */
+export function priceBandFromRow(row: Row): PriceBand {
+  const currency = row['currency'] as string;
+  const sampleSize = intOr(row['sample_size'], 0);
+  return {
+    p25: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['p25_minor']),
+      currency,
+    },
+    p50: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['p50_minor']),
+      currency,
+    },
+    p75: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['p75_minor']),
+      currency,
+    },
+    sampleSize,
+    confidence: sampleSize < 30 ? 'low' : sampleSize < 100 ? 'medium' : 'high',
+    basis: row['basis'] === 'history' ? 'history' : 'rules',
+  };
+}
+
+/** A `service_categories` row. The entity `id` stays the category KEY (the
+ * seed guarantees keys match the app fixtures and `create_request` resolves
+ * `category_key`); the uuid is kept only in the repository's key→uuid map
+ * for the RPCs that take `category_id`. */
+export function serviceCategoryFromRow(row: Row): ServiceCategory {
+  const requirements: Record<string, number> = {};
+  const raw = row['proof_requirements'];
+  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [kind, count] of Object.entries(raw as Row)) {
+      const n = typeof count === 'number' ? Math.trunc(count) : 0;
+      if (n > 0) requirements[kind] = n;
+    }
+  }
+  return {
+    id: row['key'] as string,
+    labelKey: (row['name_key'] as string | null) ?? 'catCustom',
+    iconKey: (row['icon_key'] as string | null) ?? 'magic',
+    allowsCustom: row['allows_custom'] === true,
+    offerTtlSeconds: intOr(row['offer_ttl_seconds'], 600),
+    maxCounterRounds: intOr(row['max_counter_rounds'], 5),
+    proofRequirements: requirements,
   };
 }

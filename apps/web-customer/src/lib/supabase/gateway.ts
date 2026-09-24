@@ -118,13 +118,21 @@ export class SupabaseGateway {
     }
   }
 
-  /** Row count with one equality filter. */
-  async countRows(table: string, column?: string, value?: unknown): Promise<number> {
+  /** Row count with an optional equality filter and/or an IS NULL filter. */
+  async countRows(
+    table: string,
+    options: { column?: string; value?: unknown; isNullColumn?: string } = {},
+  ): Promise<number> {
     try {
       let query = this.client
         .from(table)
         .select('*', { count: 'exact', head: true });
-      if (column !== undefined) query = query.eq(column, value as string);
+      if (options.column !== undefined) {
+        query = query.eq(options.column, options.value as string);
+      }
+      if (options.isNullColumn !== undefined) {
+        query = query.is(options.isNullColumn, null);
+      }
       const { count, error } = await query;
       if (error) throw error;
       return count ?? 0;

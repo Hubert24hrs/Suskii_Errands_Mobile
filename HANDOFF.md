@@ -5,6 +5,53 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-24 — Kimi Code — W9.3: web-customer bootstrap + catalog wired
+
+Second web wiring slice, mirroring mobile M9.1. New in `src/lib/supabase/`:
+`bootstrapRepository.ts` (`get_bootstrap` envelope → AppBootstrap — anon-callable,
+so the pre-login country picker works — plus the unread count from
+`notifications` with `read_at IS NULL`, and `watchNotifications` over the
+gateway's `watchRows`) and `catalogRepository.ts` (`service_categories` select
+with the lazy key→uuid map — `get_price_band` takes the uuid, everything else
+takes the key; country pack via `get_bootstrap`; `getPriceBand` returns **null**
+when the RPC returns no row — no hint, never a zero band). Mappers gained
+`countryPackFromBootstrap` (thin `config->client` reads what is present, spec
+defaults 600s/5 rounds/no emergency numbers when absent — never invented),
+`appNotificationFromRow`, `priceBandFromRow`, `serviceCategoryFromRow` and
+`countryStatusFromWire`. The gateway's `countRows` gained the `isNullColumn`
+filter the Dart gateway already had (no prior callers). Both repos switch on
+`supabaseGateway` in `src/lib/repositories.ts`; mocks stay the default.
+
+**Interface alignment with the Dart domain (mobile M9.1 did the same on
+mobile).** Web `getPriceBand` is now `{categoryId, urgency?, cityId?}` →
+`Promise<PriceBand | null>` — the mock-era `near: GeoPoint` is gone (the wire
+has no geo parameter) and the return is nullable. The only caller
+(`requests/new`) passes `{categoryId}` and already renders nothing on a falsy
+band, so no screen changes were needed; the mock still always returns a band.
+`ServiceCategory` gained optional `proofRequirements` (the web type simply
+lacked what the domain entity carries).
+
+**Web-specific note.** The Supabase bootstrap also calls `syncServerClock` —
+on web the *mock* repo owns that job and no screen does it, so the wired repo
+must too (on mobile the shell owns it).
+
+**Gaps (same two as mobile M9.1, still open):** `get_bootstrap` carries no
+active-job banner — it stays absent rather than fabricated (candidate CR: an
+`active_job_banner` field in the envelope); the seed `config->client` carries
+only a subset of CountryPack's fields (emergency numbers among them — the SOS
+sheet would show none on a wired build today). Also noted: `get_bootstrap`
+takes an optional `p_platform` ('web' exists in the enum) that gates
+`min_supported_app_version`; neither mobile nor web passes it yet, so the
+envelope always reports '0.0.0' — worth a decision when force-update UI lands.
+
+Verify: `npm run build -w apps/web-customer` green, route table identical to
+the pre-slice build (47 route-table lines; same 13 static locale routes + 5
+dynamic + root/not-found/icon). No test runner for the web app.
+
+**Next web slices**: requests + offers, then the same repo order as mobile M9.
+
+---
+
 ## 2026-09-24 — Kimi Code — W9.2: web-customer sign-in page + header wiring
 
 First screen to call the W9.1 `authRepository`. New

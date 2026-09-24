@@ -12,11 +12,11 @@ import {
   type AppUser,
   type AuthState,
   type CountryPack,
-  type GeoPoint,
   type PriceBand,
   type PriceBandBasis,
   type PriceBandConfidence,
   type ServiceCategory,
+  type Urgency,
   type UserMode,
 } from '../types';
 import { MockRepo, type Unsubscribe } from './base';
@@ -205,12 +205,14 @@ export class MockCatalogRepository extends MockRepo {
 
   /**
    * Server-computed P25/P50/P75 band for a category — advisory only, never
-   * used to set prices (ai-design §9).
+   * used to set prices (ai-design §9). Nullable per the contract: no row
+   * means no basis for a hint. The mock always has a band.
    */
   async getPriceBand(options: {
     categoryId: string;
-    near?: GeoPoint;
-  }): Promise<PriceBand> {
+    urgency?: Urgency;
+    cityId?: string;
+  }): Promise<PriceBand | null> {
     await this.gate();
     const currency =
       this.db.countryPacks[this.currentUser.countryCode]?.currencyCode ?? 'NGN';

@@ -553,6 +553,8 @@ export interface ServiceCategory {
   offerTtlSeconds: number;
   /** Max counter rounds per negotiation thread (spec default: 5). */
   maxCounterRounds: number;
+  /** Server-owned proof counts per kind (service_categories.proof_requirements). */
+  proofRequirements?: Record<string, number>;
 }
 
 /**
