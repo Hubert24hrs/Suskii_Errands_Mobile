@@ -75,6 +75,7 @@ class SupabaseRequestRepository implements RequestRepository {
       inColumn: 'status',
       inValues: _activeStatuses,
       orderBy: 'created_at',
+      ascending: false,
     );
     return rows.map(jobRequestFromRow).toList(growable: false);
   }
@@ -94,6 +95,7 @@ class SupabaseRequestRepository implements RequestRepository {
       ltColumn: cursor == null ? null : 'created_at',
       ltValue: cursor,
       orderBy: 'created_at',
+      ascending: false,
       limit: limit,
     );
     return rows.map(jobRequestFromRow).toList(growable: false);
