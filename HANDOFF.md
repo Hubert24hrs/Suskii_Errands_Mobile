@@ -5,6 +5,41 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-24 — Kimi Code — W9.2: web-customer sign-in page + header wiring
+
+First screen to call the W9.1 `authRepository`. New
+`src/app/[locale]/(app)/auth/` — `page.tsx` (locale-guarded shell) +
+`AuthClient.tsx`: phone/email OTP (tabs switch `requestPhoneOtp` /
+`requestEmailOtp`, then the 6-digit `verify*` call), busy + error states
+through the shared `errorText`, "already signed in" card with a continue
+button, and the demo hint rendered **only when `supabaseGateway` is null**
+(a wired build never promises any-code sign-in). Social stays absent —
+`ERR_FEATURE_UNAVAILABLE` behind the scenes, no dead buttons on screen.
+
+`AppHeader.tsx` is now a client component subscribed to
+`authRepository.authStateChanges`: renders nothing while `unknown` (no
+sign-in flash for a returning session), display name / phone / email +
+sign-out button when `signed_in`, and a real link to `/{locale}/auth`
+when `signed_out` (the TODO(M9) stub button is gone). Sign-out routes home
+and refreshes.
+
+New en/pcm keys under `auth` (subtitle, tabs, email label/hint, sending/
+verifying, codeSentTo, changeDestination, signedInAs, continue). The old
+`auth` section only had the keys the stub used.
+
+Verify: `npm run build -w apps/web-customer` green — 31 routes (was 29),
+`/{en,pcm}/auth` prerendered, types checked. Mocks stay the default; with
+no `NEXT_PUBLIC_SUPABASE_*` the page exercises the mock persona and any
+6-digit code signs in.
+
+**Next web slices**: bootstrap + catalog (country picker, home feed), then
+the same repo order as mobile M9. Also still open from W9.1: `@supabase/ssr`
+cookie sync once a server component or route protection needs the session —
+today all auth state is client-side, so a hard refresh briefly shows the
+signed-out header until INITIAL_SESSION lands.
+
+---
+
 ## 2026-09-23 — Kimi Code — W9.1: web-customer Supabase foundation
 
 First web wiring slice (apps/web-customer). New `src/lib/supabase/`:
