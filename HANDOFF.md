@@ -5,6 +5,69 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-24 — Kimi Code — W9.4: web-customer requests + offers wired
+
+Third web wiring slice, mirroring mobile M9.2. New in `src/lib/supabase/`:
+`requestRepository.ts` (create/publish/cancel via the RPCs — every mutation
+re-selects the row through the exported `loadJobRequestRow` since the RPCs
+return scalars/uuids; reads are RLS-scoped `requests` selects with the
+`service_categories(key)` embed and the to-one `jobs` embed, accepted as
+object OR single-element array; `watchJob` re-reads the full row on each
+requests-table event) and `offerRepository.ts` (accept/decline/withdraw via
+RPCs; `counter_offer` returns the NEW offer's uuid so the re-select targets
+that row; provider display fields via a session-cached `get_provider_card`
+per provider). Mappers gained `jobStatusFromWire` (unknown → cancelled),
+`offerStatusFromWire` (unknown → expired), `urgencyFromWire`,
+`geoPointFromWire`, `moneyOrNull`, `breakdownFromJobRow` (undefined until
+`jobs.commission_minor` is set), `jobRequestFromRow` and `offerFromRow`.
+`Offer.distanceMeters`/`etaMinutes`/`payoutEstimate` stay undefined — those
+are `rank_offers` display fields for a later offers-ranking slice. The gateway
+needed nothing new — W9.1's port already had `in`/`lt`/`limit` and the
+`watchRows` equality filter. Both repos switch on `supabaseGateway`; mocks
+stay the default. No screen changes.
+
+**Interface alignment.**
+- Web `CreateRequestInput` gained `customCategoryLabel?: string` (sent as
+  `p_custom_category_label`, never baked into the description). The web
+  create form never had the label-in-description hack, so no screen change.
+- **Deliberate divergence from Dart:** `create_request` is called with
+  `p_created_via: 'web'` — the contract arg defaults to `'app'` server-side,
+  correct for mobile but wrong for web-created requests.
+- **Deliberate divergence from Dart, now fixed on both sides:** active/history
+  selects pass `ascending: false`. The Dart repo relied on its gateway's
+  ascending default, which contradicted both mocks' newest-first contract
+  (web screen comment: "merged into one newest-first list") and broke the
+  `lt created_at` keyset cursor (lt + ascending re-reads the first page).
+  Reviewed while writing this slice and fixed in
+  `supabase_request_repository.dart` (`getMyActiveJobs` +
+  `getMyRequestHistory`); the other mobile repos already passed
+  `ascending: false` where newest-first was intended (the remaining
+  ascending reads — media, proofs, evidence, ticket messages — are
+  chronological, which is correct).
+- History cursor semantics: the Supabase impl uses the last row's
+  `created_at` ISO as the opaque page token (per M9.2); the web mock uses the
+  last row's id. No screen passes a cursor today — latent only.
+- `updateDraft` exists on the web mock but has no contract RPC (`contracts
+  v1` has no `update_request`; the Dart domain interface dropped it). The
+  Supabase impl throws `ERR_FEATURE_UNAVAILABLE`. No web screen calls it —
+  candidate CR if draft editing is wanted on web.
+
+**handoverPin — intentionally left in place.** Web `JobRequest.handoverPin`
+is rendered by `requests/[id]/RequestDetailClient.tsx` (HandoverPinCard at
+milestone ≥ 2), so removing the field would force screen changes. The
+Supabase mapper never sets it, so on a wired build the PIN card simply stays
+hidden; reveal-on-demand (`reveal_job_pin`) wiring comes with the
+job-progress slice, which should retire the field then (mobile did this in
+M9.2).
+
+Verify: `npm run build -w apps/web-customer` green, `tsc --noEmit` clean,
+route table identical (47 route-table lines — same set as W9.3).
+
+**Next web slices**: payments + job progress + ratings + safety (mobile
+M9.3), which owns the handoverPin retirement.
+
+---
+
 ## 2026-09-24 — Kimi Code — W9.3: web-customer bootstrap + catalog wired
 
 Second web wiring slice, mirroring mobile M9.1. New in `src/lib/supabase/`:

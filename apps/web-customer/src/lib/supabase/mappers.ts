@@ -9,9 +9,18 @@ import type {
   AppUser,
   CountryPack,
   CountryStatus,
+  GeoPoint,
+  JobRequest,
+  JobStatus,
+  Money,
+  Offer,
+  OfferStatus,
+  PlaceRef,
   PriceBand,
+  PriceBreakdown,
   ServiceCategory,
   TrustLevel,
+  Urgency,
   UserMode,
   VerificationStatus,
 } from '@/mocks/types';
@@ -197,5 +206,225 @@ export function serviceCategoryFromRow(row: Row): ServiceCategory {
     offerTtlSeconds: intOr(row['offer_ttl_seconds'], 600),
     maxCounterRounds: intOr(row['max_counter_rounds'], 5),
     proofRequirements: requirements,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Requests + offers (W9.4)
+// ---------------------------------------------------------------------------
+
+const JOB_STATUS_WIRE: readonly JobStatus[] = [
+  'draft',
+  'published',
+  'offers_received',
+  'negotiating',
+  'agreed',
+  'payment_pending',
+  'paid_held',
+  'assigned',
+  'en_route',
+  'arrived',
+  'in_progress',
+  'completed_by_provider',
+  'confirmed',
+  'settlement_pending',
+  'settled',
+  'closed',
+  'cancelled',
+  'expired',
+  'disputed',
+  'refunded',
+];
+
+export function jobStatusFromWire(value: unknown): JobStatus {
+  // Unknown values degrade to a terminal, non-actionable state.
+  return JOB_STATUS_WIRE.includes(value as JobStatus)
+    ? (value as JobStatus)
+    : 'cancelled';
+}
+
+export function offerStatusFromWire(value: unknown): OfferStatus {
+  switch (value) {
+    case 'pending':
+    case 'countered':
+    case 'accepted':
+    case 'declined':
+    case 'withdrawn':
+      return value;
+    default:
+      // Unknown values degrade to a terminal, non-actionable state.
+      return 'expired';
+  }
+}
+
+export function urgencyFromWire(value: unknown): Urgency {
+  switch (value) {
+    case 'flexible':
+    case 'urgent':
+    case 'emergency':
+      return value;
+    default:
+      return 'standard';
+  }
+}
+
+/** A PostGIS/GeoJSON point (`{type: 'Point', coordinates: [lng, lat]}`). */
+export function geoPointFromWire(value: unknown): GeoPoint | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const coords = (value as Row)['coordinates'];
+  if (!Array.isArray(coords) || coords.length < 2) return undefined;
+  const lng = typeof coords[0] === 'number' ? coords[0] : undefined;
+  const lat = typeof coords[1] === 'number' ? coords[1] : undefined;
+  if (lat === undefined || lng === undefined) return undefined;
+  return { latitude: lat, longitude: lng };
+}
+
+function moneyOrNull(value: unknown, currency: string): Money | undefined {
+  return value == null
+    ? undefined
+    : { amountMinor: SupabaseGateway.asMinorUnits(value), currency };
+}
+
+/** The `jobs` row joined to a request, mapped to the agreed-price breakdown.
+ * Money columns stay null until the payment phase — the breakdown only exists
+ * once the server has computed the commission (contract: jobs table). */
+export function breakdownFromJobRow(
+  jobRow: Row | null,
+): PriceBreakdown | undefined {
+  if (jobRow === null) return undefined;
+  const gross = jobRow['agreed_amount_minor'];
+  const commission = jobRow['commission_minor'];
+  const net = jobRow['net_minor'];
+  if (gross == null || commission == null || net == null) return undefined;
+  const currency = (jobRow['currency'] as string | null) ?? 'NGN';
+  return {
+    gross: { amountMinor: SupabaseGateway.asMinorUnits(gross), currency },
+    platformCommission: {
+      amountMinor: SupabaseGateway.asMinorUnits(commission),
+      currency,
+    },
+    net: { amountMinor: SupabaseGateway.asMinorUnits(net), currency },
+    // The jobs table's net IS the provider payout basis (contract: jobs).
+    providerPayout: { amountMinor: SupabaseGateway.asMinorUnits(net), currency },
+    commissionRateBps: intOr(jobRow['commission_rate_bps'], 0),
+    estimatedGatewayFee: moneyOrNull(
+      jobRow['estimated_gateway_fee_minor'],
+      currency,
+    ),
+    actualGatewayFee: moneyOrNull(jobRow['actual_gateway_fee_minor'], currency),
+    tip: moneyOrNull(jobRow['tip_minor'], currency),
+  };
+}
+
+function placeRef(
+  label: string | null,
+  point: unknown,
+  landmarkNote: string | null,
+): PlaceRef {
+  return {
+    label: label ?? '',
+    point: geoPointFromWire(point),
+    landmarkNote: landmarkNote ?? undefined,
+  };
+}
+
+/** A `requests` row with the `service_categories(key)` embed and the to-one
+ * `jobs` embed. PostgREST returns a reverse-FK to-one as either an object or
+ * a single-element array depending on the uniqueness metadata — both are
+ * accepted. [mediaPaths] come from `request_media` (loaded separately to
+ * avoid an N+1 on list queries). */
+export function jobRequestFromRow(row: Row, mediaPaths: string[] = []): JobRequest {
+  const currency = (row['currency'] as string | null) ?? 'NGN';
+  const isCustom = row['is_custom_category'] === true;
+  const category = row['service_categories'];
+  const categoryKey =
+    category !== null && typeof category === 'object' && !Array.isArray(category)
+      ? ((category as Row)['key'] as string | null)
+      : null;
+  const jobsRaw = row['jobs'];
+  let jobRow: Row | null = null;
+  if (jobsRaw !== null && typeof jobsRaw === 'object' && !Array.isArray(jobsRaw)) {
+    jobRow = jobsRaw as Row;
+  } else if (Array.isArray(jobsRaw) && jobsRaw.length > 0) {
+    jobRow = jobsRaw[0] as Row;
+  }
+  const breakdown = breakdownFromJobRow(jobRow);
+  const destinationLabel = row['destination_label'] as string | null;
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    customerId: SupabaseGateway.asId(row['customer_id']),
+    categoryId: isCustom ? 'custom' : (categoryKey ?? 'custom'),
+    isCustomCategory: isCustom,
+    description: (row['description'] as string | null) ?? '',
+    mediaPaths,
+    pickup: placeRef(
+      row['pickup_label'] as string | null,
+      row['pickup_point'],
+      row['pickup_landmark_note'] as string | null,
+    ),
+    destination:
+      destinationLabel == null
+        ? undefined
+        : placeRef(
+            destinationLabel,
+            row['destination_point'],
+            row['destination_landmark_note'] as string | null,
+          ),
+    urgency: urgencyFromWire(row['urgency']),
+    status: jobStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    scheduledAt:
+      row['scheduled_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['scheduled_at']),
+    preferredPrice: moneyOrNull(row['preferred_price_minor'], currency),
+    itemFloat: moneyOrNull(row['item_float_minor'], currency),
+    declaredValue: moneyOrNull(row['declared_value_minor'], currency),
+    agreedPrice:
+      jobRow === null
+        ? undefined
+        : moneyOrNull(jobRow['agreed_amount_minor'], currency),
+    agreedBreakdown: breakdown,
+    providerId: (jobRow?.['provider_id'] as string | null) ?? undefined,
+    expiresAt:
+      row['expires_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+    // handoverPin deliberately stays undefined: the contract hands PINs out
+    // on demand via `reveal_job_pin` (job-progress slice), never on the row.
+  };
+}
+
+/** An `offers` row. Provider display fields (name/rating/trust) come from a
+ * `get_provider_card` row — the offers table deliberately does not denormalize
+ * them. [card] is a `get_provider_card` row or null (unknown provider). */
+export function offerFromRow(row: Row, card?: Row | null): Offer {
+  const currency = (row['currency'] as string | null) ?? 'NGN';
+  const ratingMilli = card?.['rating_avg_milli'];
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    requestId: SupabaseGateway.asId(row['request_id']),
+    providerId: SupabaseGateway.asId(row['provider_id']),
+    providerName: (card?.['display_name'] as string | null) ?? '',
+    // rating_avg_milli is an integer milli-rating (4250 → 4.25 stars).
+    providerRating:
+      (typeof ratingMilli === 'number' ? Math.trunc(ratingMilli) : 0) / 1000,
+    providerTrustLevel: trustLevelFromWire(card?.['trust_level']),
+    amount: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['amount_minor']),
+      currency,
+    },
+    status: offerStatusFromWire(row['status']),
+    round: intOr(row['round'], 1),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    message: (row['message'] as string | null) ?? undefined,
+    expiresAt:
+      row['expires_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+    // distanceMeters / etaMinutes / payoutEstimate are rank_offers display
+    // fields — deferred (HANDOFF M9.2 follow-up).
   };
 }

@@ -34,6 +34,8 @@ import { SupabaseAuthRepository } from './supabase/authRepository';
 import { SupabaseBootstrapRepository } from './supabase/bootstrapRepository';
 import { SupabaseCatalogRepository } from './supabase/catalogRepository';
 import { SupabaseGateway } from './supabase/gateway';
+import { SupabaseOfferRepository } from './supabase/offerRepository';
+import { SupabaseRequestRepository } from './supabase/requestRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
 
 export { AppError, ErrorCodes, isAppError } from '@/mocks/errors';
@@ -58,9 +60,15 @@ export const catalogRepository = supabaseGateway
   ? new SupabaseCatalogRepository(supabaseGateway)
   : mockCatalogRepository;
 
+// Wired (W9.4): requests + offers.
+export const requestRepository = supabaseGateway
+  ? new SupabaseRequestRepository(supabaseGateway)
+  : mockRequestRepository;
+export const offerRepository = supabaseGateway
+  ? new SupabaseOfferRepository(supabaseGateway)
+  : mockOfferRepository;
+
 // Mock-only until their wiring slices land.
-export const requestRepository = mockRequestRepository;
-export const offerRepository = mockOfferRepository;
 export const paymentRepository = mockPaymentRepository;
 export const trackingRepository = mockTrackingRepository;
 export const chatRepository = mockChatRepository;

@@ -289,6 +289,9 @@ export interface CreateRequestInput {
   pickup: PlaceRef;
   destination?: PlaceRef;
   isCustomCategory?: boolean;
+  /** The customer's own label for a custom category — sent separately
+   * (`p_custom_category_label`), never baked into the description. */
+  customCategoryLabel?: string;
   mediaPaths?: string[];
   urgency?: Urgency;
   scheduledAt?: Date;
