@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { disputeRepository } from '@/mocks/repositories';
+import { disputeRepository } from '@/lib/repositories';
 import type { Dispute } from '@/mocks/types';
 import { Modal } from '@/components/Modal';
 import { StatusChip } from '@/components/StatusChip';

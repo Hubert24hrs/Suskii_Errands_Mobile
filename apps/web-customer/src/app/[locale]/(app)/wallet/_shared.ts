@@ -2,7 +2,7 @@
 // only — safe to import from server or client components.
 
 import type { Dictionary } from '@/lib/i18n/en';
-import { isAppError } from '@/mocks/repositories';
+import { isAppError } from '@/lib/repositories';
 import type {
   WalletTransaction,
   WalletTransactionKind,

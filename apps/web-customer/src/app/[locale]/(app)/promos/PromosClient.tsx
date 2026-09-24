@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
-import { promoRepository } from '@/mocks/repositories';
+import { promoRepository } from '@/lib/repositories';
 import type { Promo } from '@/mocks/types';
 import { newIdempotencyKey } from '@/lib/idempotency';
 import { MoneyText } from '@/components/MoneyText';

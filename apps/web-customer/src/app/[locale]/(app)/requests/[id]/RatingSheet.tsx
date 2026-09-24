@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { ratingRepository } from '@/mocks/repositories';
+import { ratingRepository } from '@/lib/repositories';
 import type { Rating } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { errorText } from '../_shared';

@@ -9,7 +9,7 @@ import {
   catalogRepository,
   isAppError,
   offerRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { JobRequest, Offer } from '@/mocks/types';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { Modal } from '@/components/Modal';

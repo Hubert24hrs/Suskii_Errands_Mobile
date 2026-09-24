@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
-import { catalogRepository, requestRepository } from '@/mocks/repositories';
+import { catalogRepository, requestRepository } from '@/lib/repositories';
 import type { JobRequest } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';

@@ -5,6 +5,40 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-23 — Kimi Code — W9.1: web-customer Supabase foundation
+
+First web wiring slice (apps/web-customer). New `src/lib/supabase/`:
+`gateway.ts` (TS mirror of the Dart SupabaseGateway — RPC named args with
+nulls omitted, explicit column lists, selectSingle/selectList/countRows/
+upsertRows/updateRows, `watchRows` = immediate fetch + postgres-changes
+refetch returning the mock layer's Unsubscribe, asId/asMinorUnits/
+asTimestamp), `errors.ts` (mirror of supabase_error_mapping.dart — wire
+`ERR_*` recovered from the PostgREST message), `mappers.ts`
+(`profileRowColumns`, `appUserFromProfileRow`), `authRepository.ts`
+(GoTrue phone/email OTP + onAuthStateChange INITIAL_SESSION → AuthState;
+social stays ERR_FEATURE_UNAVAILABLE; `switchPersona` throws — mock-only
+demo hook) and `userRepository.ts` (profile read/watch, `set_active_mode`).
+
+**The seam**: screens now import from `src/lib/repositories.ts`, never from
+`@/mocks/repositories` directly. It exports `supabaseGateway` (null unless
+`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set) and
+the same 20 singleton names — auth + user switch to Supabase when the
+gateway exists, everything else re-exports the mocks. Mocks stay the
+default; all 23 import sites flipped.
+
+**Notes.** Browser-only `createClient` for now — all data access is
+client-side; `@supabase/ssr` cookie sync arrives when server components or
+route protection need the session. Web mocks have no test runner, so
+verification is `next build` (compiled, types checked, 29 routes prerendered
+— green). supabase-js returns untyped rows (no generated DB types), so row
+casts go through `unknown`.
+
+**Next web slices**: sign-in page + AppHeader wiring (authRepository is not
+yet called by any screen), bootstrap + catalog, then the same repo order as
+mobile M9.
+
+---
+
 ## 2026-09-23 — Kimi Code — M9.9: user profile + mode switch wired
 
 Tenth M9 slice, and the last wireable one. New: `SupabaseUserRepository` —

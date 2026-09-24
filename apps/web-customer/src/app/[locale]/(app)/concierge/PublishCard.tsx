@@ -11,7 +11,7 @@ import Link from 'next/link';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { isAppError, requestRepository } from '@/mocks/repositories';
+import { isAppError, requestRepository } from '@/lib/repositories';
 import type { ConciergeDraft } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StatusChip } from '@/components/StatusChip';

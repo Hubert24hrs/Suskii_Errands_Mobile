@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { ErrorCodes, isAppError, settingsRepository } from '@/mocks/repositories';
+import { ErrorCodes, isAppError, settingsRepository } from '@/lib/repositories';
 import type { NotificationPreferences } from '@/mocks/types';
 import { Modal } from '@/components/Modal';
 import { StateBlock } from '@/components/StateBlock';

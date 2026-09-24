@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { isAppError, supportRepository } from '@/mocks/repositories';
+import { isAppError, supportRepository } from '@/lib/repositories';
 import type { SupportMessage } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';

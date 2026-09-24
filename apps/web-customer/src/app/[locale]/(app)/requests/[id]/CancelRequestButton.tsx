@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { requestRepository } from '@/mocks/repositories';
+import { requestRepository } from '@/lib/repositories';
 import { Modal } from '@/components/Modal';
 import { errorText } from '../_shared';
 

@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { disputeRepository, isAppError } from '@/mocks/repositories';
+import { disputeRepository, isAppError } from '@/lib/repositories';
 import type { Dispute, DisputeStatus } from '@/mocks/types';
 import { Modal } from '@/components/Modal';
 import { MoneyText } from '@/components/MoneyText';

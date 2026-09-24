@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { isAppError, verificationRepository } from '@/mocks/repositories';
+import { isAppError, verificationRepository } from '@/lib/repositories';
 import type { LivenessSession, VerificationSession } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 

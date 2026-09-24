@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
-import { walletRepository } from '@/mocks/repositories';
+import { walletRepository } from '@/lib/repositories';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';

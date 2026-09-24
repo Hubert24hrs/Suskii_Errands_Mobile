@@ -11,7 +11,7 @@ import {
   isAppError,
   jobProgressRepository,
   requestRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { JobRequest, JobStatus } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';

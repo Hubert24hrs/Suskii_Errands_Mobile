@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
-import { referralRepository } from '@/mocks/repositories';
+import { referralRepository } from '@/lib/repositories';
 import { CopyButton } from '@/components/CopyButton';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';

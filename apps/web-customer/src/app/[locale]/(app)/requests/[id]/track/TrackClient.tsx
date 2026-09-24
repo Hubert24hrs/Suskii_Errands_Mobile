@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { requestRepository, safetyRepository, trackingRepository } from '@/mocks/repositories';
+import { requestRepository, safetyRepository, trackingRepository } from '@/lib/repositories';
 import type { GeoPoint, JobRequest, JobStatus, TripShare } from '@/mocks/types';
 import { CopyButton } from '@/components/CopyButton';
 import { StateBlock } from '@/components/StateBlock';

@@ -10,7 +10,7 @@ import {
   chatRepository,
   requestRepository,
   userRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { ChatMessage, JobRequest } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';

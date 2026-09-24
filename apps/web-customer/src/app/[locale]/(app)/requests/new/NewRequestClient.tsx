@@ -12,7 +12,7 @@ import {
   catalogRepository,
   isAppError,
   requestRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { CreateRequestInput, Urgency } from '@/mocks/types';
 import { MoneyField } from '@/components/MoneyField';
 import { MoneyText } from '@/components/MoneyText';

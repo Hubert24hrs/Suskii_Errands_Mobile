@@ -4,9 +4,12 @@ The web customer's mock repositories, mirroring the repository interfaces and
 entities defined in `packages/suskii_domain` and the Dart mock layer in
 `packages/suskii_data`. The client displays and requests — the server decides.
 All authoritative values (prices, fees, payouts, statuses, verification
-results) come from server-style objects even in mocks. This layer runs the
-app until M9, when it is replaced by real Supabase-backed implementations
-(`@supabase/ssr`) behind the same signatures.
+results) come from server-style objects even in mocks. This layer stays the
+**default** at runtime; from W9.1, screens import repositories from
+`@/lib/repositories` (the seam), which swaps individual surfaces to the
+Supabase-backed implementations in `src/lib/supabase/` when
+`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set, behind
+the same signatures. Wired so far: auth + user profile.
 
 ## Layout
 

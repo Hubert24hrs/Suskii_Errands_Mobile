@@ -7,7 +7,7 @@ import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
 import { serverClockOffsetMs } from '@/lib/serverClock';
-import { isAppError, paymentRepository, requestRepository } from '@/mocks/repositories';
+import { isAppError, paymentRepository, requestRepository } from '@/lib/repositories';
 import type {
   JobRequest,
   JobStatus,
