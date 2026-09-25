@@ -530,6 +530,7 @@ const en = {
     statuses: {
       open: 'Open',
       awaiting_user: 'Awaiting you',
+      awaiting_support: 'Awaiting support',
       resolved: 'Resolved',
       closed: 'Closed',
     },

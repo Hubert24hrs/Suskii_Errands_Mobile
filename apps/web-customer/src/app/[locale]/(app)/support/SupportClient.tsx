@@ -35,6 +35,8 @@ export function statusTone(status: SupportTicketStatus): ChipTone {
       return 'info';
     case 'awaiting_user':
       return 'warning';
+    case 'awaiting_support':
+      return 'info';
     case 'resolved':
       return 'success';
     case 'closed':

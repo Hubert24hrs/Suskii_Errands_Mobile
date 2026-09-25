@@ -119,6 +119,7 @@ export type DisputeStatus = 'open' | 'in_review' | 'resolved' | 'rejected' | 'wi
 export type SupportTicketStatus =
   | 'open'
   | 'awaiting_user'
+  | 'awaiting_support'
   | 'resolved'
   | 'closed';
 

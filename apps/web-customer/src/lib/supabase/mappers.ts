@@ -17,6 +17,7 @@ import type {
   JobRequest,
   JobStatus,
   Money,
+  NotificationPreferences,
   Offer,
   OfferStatus,
   Payment,
@@ -29,7 +30,11 @@ import type {
   ServiceCategory,
   SosAlert,
   SosStatus,
+  SupportMessage,
+  SupportTicket,
+  SupportTicketStatus,
   TrustLevel,
+  TrustedContact,
   Urgency,
   UserMode,
   VerificationStatus,
@@ -721,4 +726,140 @@ export function chatMessageFromRow(
  * their string form (message ids can in principle exceed 2^53). */
 export function messageIdAtMost(a: unknown, b: unknown): boolean {
   return BigInt(String(a)) <= BigInt(String(b));
+}
+
+// ---------------------------------------------------------------------------
+// Support + settings (W9.8)
+// ---------------------------------------------------------------------------
+
+export function supportTicketStatusFromWire(value: unknown): SupportTicketStatus {
+  switch (value) {
+    case 'waiting_on_user':
+      return 'awaiting_user';
+    case 'waiting_on_support':
+      return 'awaiting_support';
+    case 'resolved':
+      return 'resolved';
+    case 'closed':
+      return 'closed';
+    default:
+      return 'open';
+  }
+}
+
+/** A `support_tickets` row. The wire has no subject field — the category
+ * plays that role in the entity. Messages are assembled by the repository
+ * (batch-fetched from `ticket_messages` and grouped client-side). */
+export function supportTicketFromRow(
+  row: Row,
+  messages: SupportMessage[] = [],
+): SupportTicket {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    subject: (row['category'] as string | null) ?? '',
+    status: supportTicketStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    messages,
+  };
+}
+
+/** A `ticket_messages` row. `fromUser` is derived by comparing `author_id`
+ * with the signed-in user's auth id. The wire marks AI triage on the ticket
+ * (`ai_triage` jsonb), not per message, so `aiTriage` is always false
+ * here — see HANDOFF M9.7. */
+export function supportMessageFromRow(row: Row, myId: string): SupportMessage {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    body: (row['body'] as string | null) ?? '',
+    fromUser: row['author_id'] === myId,
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    aiTriage: false,
+  };
+}
+
+/** A `trusted_contacts` row. The phone number is stored encrypted
+ * (`phone_ciphertext` + blind index) and never returned in plaintext, so
+ * the entity's `phoneE164` cannot be populated — tracked as CR-20260923-06. */
+export function trustedContactFromRow(row: Row): TrustedContact {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    name: (row['name'] as string | null) ?? '',
+    phoneE164: '',
+  };
+}
+
+/** Postgres `time` column → minutes since midnight ('HH:MM:SS'). */
+export function quietMinutesFromWire(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const parts = value.split(':');
+  if (parts.length < 2) return undefined;
+  const hour = Number.parseInt(parts[0], 10);
+  const minute = Number.parseInt(parts[1], 10);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return undefined;
+  return hour * 60 + minute;
+}
+
+/** Minutes since midnight → Postgres `time` literal ('HH:MM:SS'). */
+export function quietMinutesToWire(minutes: number | undefined): string | null {
+  if (minutes === undefined) return null;
+  const hour = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const minute = (minutes % 60).toString().padStart(2, '0');
+  return `${hour}:${minute}:00`;
+}
+
+/** Composes the flat preferences entity from `notification_preferences`
+ * rows: push/sms/email read the (channel, 'transactional') rows, marketing
+ * reads the ('push', 'marketing') row. Missing rows default to enabled
+ * (matching the mock defaults); quiet hours come from any row that has
+ * them. */
+export function notificationPreferencesFromRows(
+  rows: Row[],
+): NotificationPreferences {
+  const enabledFor = (channel: string, category: string): boolean => {
+    for (const row of rows) {
+      if (row['channel'] === channel && row['category'] === category) {
+        return (row['enabled'] as boolean | null) ?? true;
+      }
+    }
+    return true;
+  };
+  let quietStart: number | undefined;
+  let quietEnd: number | undefined;
+  for (const row of rows) {
+    quietStart ??= quietMinutesFromWire(row['quiet_start']);
+    quietEnd ??= quietMinutesFromWire(row['quiet_end']);
+  }
+  return {
+    push: enabledFor('push', 'transactional'),
+    sms: enabledFor('sms', 'transactional'),
+    email: enabledFor('email', 'transactional'),
+    marketing: enabledFor('push', 'marketing'),
+    quietStartMinutes: quietStart,
+    quietEndMinutes: quietEnd,
+  };
+}
+
+/** Explodes the flat preferences entity into `notification_preferences`
+ * rows for upsert (PK: user_id, channel, category). The quiet window is
+ * applied to every row. */
+export function notificationPreferenceRows(
+  userId: string,
+  prefs: NotificationPreferences,
+): Row[] {
+  const quietStart = quietMinutesToWire(prefs.quietStartMinutes);
+  const quietEnd = quietMinutesToWire(prefs.quietEndMinutes);
+  const row = (channel: string, category: string, enabled: boolean): Row => ({
+    user_id: userId,
+    channel,
+    category,
+    enabled,
+    quiet_start: quietStart,
+    quiet_end: quietEnd,
+  });
+  return [
+    row('push', 'transactional', prefs.push),
+    row('sms', 'transactional', prefs.sms),
+    row('email', 'transactional', prefs.email),
+    row('push', 'marketing', prefs.marketing),
+  ];
 }

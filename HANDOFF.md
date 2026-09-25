@@ -5,6 +5,57 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-25 — Kimi Code — W9.8: web-customer support + settings wired
+
+Seventh web wiring slice, mirroring mobile M9.7. New in `src/lib/supabase/`:
+`supportRepository.ts` (`open_ticket` / `reply_to_ticket` RPCs for writes —
+the wire has no subject field, so the entity `subject` maps to the ticket
+**category**; reads are RLS-scoped `support_tickets` selects with
+`ticket_messages` batch-fetched per ticket set and grouped client-side to
+avoid an N+1; `watchTickets` via `watchRows`) and `settingsRepository.ts`
+(notification preferences composed from / exploded into
+`notification_preferences` rows — push/sms/email read the
+(channel, 'transactional') rows, marketing reads ('push', 'marketing'),
+quiet window applied to every row on upsert via the gateway's existing
+`upsertRows` — W9.1's port already had it, no gateway change needed).
+Mappers gained `supportTicketStatusFromWire`, `supportTicketFromRow`,
+`supportMessageFromRow` (`fromUser` from `author_id == currentAuthUserId`),
+`trustedContactFromRow`, `quietMinutes{From,To}Wire` (Postgres `time`
+↔ minutes since midnight) and `notificationPreferences{FromRows,Rows}`.
+Both repos switch on `supabaseGateway`; mocks stay the default. No screen
+changes beyond one switch case (below).
+
+**Interface alignment.**
+- Web `SupportTicketStatus` gained `awaiting_support` — wire
+  `waiting_on_support` had no web value (mobile added the equivalent in
+  M9.7). New en/pcm `support.statuses.awaiting_support` labels (matching
+  the mobile ARB copy); `statusTone` in the support list handles it (info).
+- AI triage is stored per ticket (`ai_triage` jsonb), not per message, so
+  `SupportMessage.aiTriage` is always false over Supabase (the mock marks
+  its canned triage reply) — same as mobile.
+- Quiet-hours `time` columns arrive as 'HH:MM:SS' strings; missing rows
+  default to enabled, matching the mock defaults.
+
+**Feature-unavailable surfaces (mirrored from mobile M9.7, never weakened).**
+Trusted-contact add needs client-side phone encryption the contract has no
+key story for — throws ERR_FEATURE_UNAVAILABLE and reads map `phoneE164` to
+'' (CR-20260923-06). Account deletion and data export have no RPCs — throw
+ERR_FEATURE_UNAVAILABLE (CR-20260923-07). `removeTrustedContact` works
+as-is via `remove_trusted_contact`. All three failures render through the
+screens' existing `errorText` path, which already has the
+ERR_FEATURE_UNAVAILABLE copy.
+
+Verify: `npm run build -w apps/web-customer` green, `npx tsc --noEmit`
+clean, route table identical (47 route-table lines — same set as W9.7; the
+slice adds no routes). No test runner for the web app.
+
+**Next web slice**: KYC / verification (mobile M9.8). User profile + mode
+switch (M9.9) largely landed already in W9.1's `userRepository` — after KYC
+the web wiring program should be audited end-to-end for anything remaining
+mock-only (known: concierge — services/ai, promos — CR-20260923-04).
+
+---
+
 ## 2026-09-25 — Kimi Code — W9.7: web-customer chat + tracking wired
 
 Sixth web wiring slice, mirroring mobile M9.6. New in `src/lib/supabase/`:

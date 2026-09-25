@@ -532,6 +532,7 @@ const pcm = {
     statuses: {
       open: 'Open',
       awaiting_user: 'E dey wait for you',
+      awaiting_support: 'Support still dey on am',
       resolved: 'Don resolve',
       closed: 'Don close',
     },

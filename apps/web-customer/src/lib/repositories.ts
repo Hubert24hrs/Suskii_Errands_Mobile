@@ -43,6 +43,8 @@ import { SupabaseRatingRepository } from './supabase/ratingRepository';
 import { SupabaseReferralRepository } from './supabase/referralRepository';
 import { SupabaseRequestRepository } from './supabase/requestRepository';
 import { SupabaseSafetyRepository } from './supabase/safetyRepository';
+import { SupabaseSettingsRepository } from './supabase/settingsRepository';
+import { SupabaseSupportRepository } from './supabase/supportRepository';
 import { SupabaseTrackingRepository } from './supabase/trackingRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
 import { SupabaseWalletRepository } from './supabase/walletRepository';
@@ -111,9 +113,15 @@ export const trackingRepository = supabaseGateway
   ? new SupabaseTrackingRepository(supabaseGateway)
   : mockTrackingRepository;
 
+// Wired (W9.8): support + settings.
+export const supportRepository = supabaseGateway
+  ? new SupabaseSupportRepository(supabaseGateway)
+  : mockSupportRepository;
+export const settingsRepository = supabaseGateway
+  ? new SupabaseSettingsRepository(supabaseGateway)
+  : mockSettingsRepository;
+
 // Mock-only until their wiring slices land.
 export const promoRepository = mockPromoRepository;
-export const supportRepository = mockSupportRepository;
-export const settingsRepository = mockSettingsRepository;
 export const conciergeRepository = mockConciergeRepository;
 export const verificationRepository = mockVerificationRepository;
