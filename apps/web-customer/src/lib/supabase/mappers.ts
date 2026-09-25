@@ -9,6 +9,8 @@ import type {
   AppUser,
   CountryPack,
   CountryStatus,
+  Dispute,
+  DisputeStatus,
   GeoPoint,
   JobRequest,
   JobStatus,
@@ -29,6 +31,9 @@ import type {
   Urgency,
   UserMode,
   VerificationStatus,
+  WalletTransaction,
+  WalletTransactionKind,
+  WalletTransactionStatus,
 } from '@/mocks/types';
 
 import { SupabaseGateway, type Row } from './gateway';
@@ -530,5 +535,124 @@ export function sosAlertFromRow(row: Row): SosAlert {
     createdAt: SupabaseGateway.asTimestamp(row['created_at']),
     location: geoPointFromWire(row['point']),
     trustedContactsNotified: intOr(row['trusted_contacts_notified'], 0),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Wallet, referrals, disputes (W9.6)
+// ---------------------------------------------------------------------------
+
+export function disputeStatusFromWire(value: unknown): DisputeStatus {
+  switch (value) {
+    case 'under_review':
+      return 'in_review';
+    case 'resolved':
+      return 'resolved';
+    case 'rejected':
+      return 'rejected';
+    case 'withdrawn':
+      return 'withdrawn';
+    default:
+      // Unknown values render as open (still active) rather than closing a
+      // dispute the user may still need to act on.
+      return 'open';
+  }
+}
+
+/** A `disputes` row with the `requests(currency)` embed (the table itself
+ * carries no currency, so the refund money needs the request's). Evidence
+ * paths come from `dispute_evidence`, loaded separately. */
+export function disputeFromRow(row: Row, evidencePaths: string[] = []): Dispute {
+  const request = row['requests'];
+  const currency =
+    request !== null && typeof request === 'object' && !Array.isArray(request)
+      ? ((request as Row)['currency'] as string | null) ?? 'NGN'
+      : 'NGN';
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    jobId: SupabaseGateway.asId(row['request_id']),
+    openedBy: SupabaseGateway.asId(row['opened_by']),
+    reasonKey: (row['reason_code'] as string | null) ?? '',
+    status: disputeStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    details: (row['description'] as string | null) ?? undefined,
+    evidencePaths: evidencePaths.length === 0 ? undefined : evidencePaths,
+    slaDeadline:
+      row['sla_due_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['sla_due_at']),
+    resolutionNoteKey: (row['resolution_key'] as string | null) ?? undefined,
+    refundAmount: moneyOrNull(row['refund_minor'], currency),
+  };
+}
+
+/** A `withdrawals` row rendered as a wallet transaction. PROVISIONAL until
+ * CR-20260923-03 lands a client-readable ledger: the private double-entry
+ * ledger is deliberately not exposed, so withdrawals are the only real
+ * wallet-history rows the contract offers today.
+ * Divergence from Dart: the web enum has a native `awaiting_approval` status
+ * (M8.6), so the wire value maps to it directly instead of folding to
+ * pending + a description key. */
+export function withdrawalTransactionFromRow(
+  row: Row,
+  kind: WalletTransactionKind,
+): WalletTransaction {
+  const status = (row['status'] as string | null) ?? 'requested';
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    kind,
+    status: ((): WalletTransactionStatus => {
+      switch (status) {
+        case 'paid':
+          return 'completed';
+        case 'failed':
+        case 'rejected':
+          return 'failed';
+        case 'awaiting_approval':
+          return 'awaiting_approval';
+        default:
+          return 'pending';
+      }
+    })(),
+    amount: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['amount_minor']),
+      currency: (row['currency'] as string | null) ?? 'NGN',
+    },
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    descriptionKey:
+      status === 'awaiting_approval'
+        ? 'txnWithdrawalAwaitingApproval'
+        : 'txnWithdrawal',
+  };
+}
+
+/** Aggregates `my_referral_summary` rows (currency, status, commissions,
+ * amount_minor) into the entity's totals: `available` is the withdrawable
+ * balance, `holding` is everything not yet withdrawable (pending/earned/
+ * holding), `earnedTotal` is the lifetime total excluding reversed
+ * commissions. Statuses the client doesn't know yet count toward holding
+ * rather than vanishing. */
+export function referralTotalsFromRows(
+  rows: Row[],
+  currency: string,
+): { earnedTotal: Money; holding: Money; available: Money } {
+  let available = 0;
+  let holding = 0;
+  for (const row of rows) {
+    const amount = SupabaseGateway.asMinorUnits(row['amount_minor']);
+    switch (row['status']) {
+      case 'available':
+        available += amount;
+        break;
+      case 'reversed':
+        break;
+      default:
+        holding += amount;
+    }
+  }
+  return {
+    earnedTotal: { amountMinor: available + holding, currency },
+    holding: { amountMinor: holding, currency },
+    available: { amountMinor: available, currency },
   };
 }

@@ -33,7 +33,9 @@ export function WalletClient({ dict }: { dict: Dictionary }) {
       walletRepository.getTransactions({ cursor: pageParam, limit: PAGE_SIZE }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
-      lastPage.length === PAGE_SIZE ? lastPage[lastPage.length - 1]?.id : undefined,
+      lastPage.length === PAGE_SIZE
+        ? lastPage[lastPage.length - 1]?.createdAt.toISOString()
+        : undefined,
   });
 
   const summary = summaryQuery.data;

@@ -47,6 +47,8 @@ function statusTone(status: DisputeStatus): ChipTone {
       return 'success';
     case 'rejected':
       return 'error';
+    case 'withdrawn':
+      return 'neutral';
   }
 }
 

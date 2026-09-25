@@ -114,7 +114,7 @@ export type PaymentMethod = 'card' | 'bank_transfer' | 'mobile_money' | 'ussd';
 
 export type SosStatus = 'active' | 'resolved';
 
-export type DisputeStatus = 'open' | 'in_review' | 'resolved' | 'rejected';
+export type DisputeStatus = 'open' | 'in_review' | 'resolved' | 'rejected' | 'withdrawn';
 
 export type SupportTicketStatus =
   | 'open'

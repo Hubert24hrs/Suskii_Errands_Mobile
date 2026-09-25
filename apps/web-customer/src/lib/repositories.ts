@@ -33,14 +33,17 @@ import {
 import { SupabaseAuthRepository } from './supabase/authRepository';
 import { SupabaseBootstrapRepository } from './supabase/bootstrapRepository';
 import { SupabaseCatalogRepository } from './supabase/catalogRepository';
+import { SupabaseDisputeRepository } from './supabase/disputeRepository';
 import { SupabaseGateway } from './supabase/gateway';
 import { SupabaseJobProgressRepository } from './supabase/jobProgressRepository';
 import { SupabaseOfferRepository } from './supabase/offerRepository';
 import { SupabasePaymentRepository } from './supabase/paymentRepository';
 import { SupabaseRatingRepository } from './supabase/ratingRepository';
+import { SupabaseReferralRepository } from './supabase/referralRepository';
 import { SupabaseRequestRepository } from './supabase/requestRepository';
 import { SupabaseSafetyRepository } from './supabase/safetyRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
+import { SupabaseWalletRepository } from './supabase/walletRepository';
 
 export { AppError, ErrorCodes, isAppError } from '@/mocks/errors';
 export type { ErrorCode } from '@/mocks/errors';
@@ -86,13 +89,22 @@ export const jobProgressRepository = supabaseGateway
   ? new SupabaseJobProgressRepository(supabaseGateway)
   : mockJobProgressRepository;
 
+// Wired (W9.6): wallet + referrals + disputes. Promos stay on the mock
+// (CR-20260923-04: no job-independent redemption on the wire).
+export const walletRepository = supabaseGateway
+  ? new SupabaseWalletRepository(supabaseGateway)
+  : mockWalletRepository;
+export const referralRepository = supabaseGateway
+  ? new SupabaseReferralRepository(supabaseGateway)
+  : mockReferralRepository;
+export const disputeRepository = supabaseGateway
+  ? new SupabaseDisputeRepository(supabaseGateway)
+  : mockDisputeRepository;
+
 // Mock-only until their wiring slices land.
 export const trackingRepository = mockTrackingRepository;
 export const chatRepository = mockChatRepository;
-export const walletRepository = mockWalletRepository;
-export const referralRepository = mockReferralRepository;
 export const promoRepository = mockPromoRepository;
-export const disputeRepository = mockDisputeRepository;
 export const supportRepository = mockSupportRepository;
 export const settingsRepository = mockSettingsRepository;
 export const conciergeRepository = mockConciergeRepository;

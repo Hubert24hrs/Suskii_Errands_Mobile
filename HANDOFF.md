@@ -5,6 +5,66 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-25 — Kimi Code — W9.6: web-customer wallet + referrals + disputes wired
+
+Fifth web wiring slice, mirroring mobile M9.4. New in `src/lib/supabase/`:
+`walletRepository.ts` (balance via `available_balance('provider_earnings')`,
+withdrawals via `request_withdrawal` with the default payout account; the
+shared helpers `myCurrencyCode` — bootstrap envelope — and
+`defaultPayoutAccountId` live here, as in the Dart file),
+`referralRepository.ts` (`my_referral_code` + `my_referral_summary` +
+`my_referrals` composed into ReferralSummary; withdrawals use the
+`referral_earnings` source) and `disputeRepository.ts` (`open_dispute` +
+per-path `submit_dispute_evidence` with derived idempotency keys, RLS-scoped
+`disputes` reads with the `requests(currency)` embed for refund money —
+the disputes table carries no currency — evidence paths from
+`dispute_evidence`, `watchDispute` via `watchRows` on the latest row).
+Mappers gained `disputeStatusFromWire` (wire `under_review` → `in_review`,
+unknown → open, never closed), `disputeFromRow`,
+`withdrawalTransactionFromRow` and `referralTotalsFromRows` (unknown
+statuses count toward holding; reversed excluded from totals). All three
+repos switch on `supabaseGateway` in `src/lib/repositories.ts`; mocks stay
+the default. **Promos stay on the mock** (CR-20260923-04), as on mobile.
+
+**Interface alignment.**
+- `DisputeStatus` gained `withdrawn` (the wire has it; mapping it to
+  `rejected` would mislabel a self-withdrawn dispute). New en/pcm key
+  `disputes.statuses.withdrawn`; the disputes list's `statusTone` switch
+  handles it (neutral).
+- New `ErrorCodes.payoutAccountNotFound` — raised client-side when a
+  withdrawal is attempted with no default payout account (the server raises
+  the same code for a bad id). New en/pcm `errors` entries; the withdrawal
+  sheet renders it via the existing `errorText` path.
+- **Wallet transaction cursor is now createdAt-based on both impls.** The
+  wallet screen is the one place that actually paginates (W9.4's history
+  cursor stayed latent — no screen passed one). The screen passed the last
+  row's *id*, which the Supabase impl cannot keyset on (withdrawal ids are
+  unordered uuids), so the web convention now matches the Dart/request one:
+  the cursor is the last row's `createdAt` ISO. `WalletClient` passes
+  `createdAt.toISOString()`; the mock filters on it. One-line screen change.
+
+**Deliberate divergence from Dart:** the wire `awaiting_approval`
+withdrawal status maps to the web enum's native `awaiting_approval` value
+(added in M8.6, rendered with the warning chip) instead of folding to
+`pending` + the `txnWithdrawalAwaitingApproval` description key — the Dart
+enum lacks the value, the web one has it. The description key is still set
+for parity.
+
+**Provisionals (mirrored from mobile M9.4, clearly marked, not "fixed").**
+- CR-20260923-03: no client-readable wallet transaction feed (private
+  ledger by design). `getTransactions` is PROVISIONAL — withdrawals-only —
+  and `WalletSummary.pending` reports zero until the CR lands.
+
+Verify: `npm run build -w apps/web-customer` green, `npx tsc --noEmit`
+clean, route table identical (47 route-table lines — same set as W9.5; the
+slice adds no routes). No test runner for the web app.
+
+**Next web slices**: chat + tracking (mobile M9.6), then support +
+settings (M9.7), KYC (M9.8). User profile + mode switch (M9.9) largely
+landed already in W9.1's `userRepository`.
+
+---
+
 ## 2026-09-25 — Kimi Code — W9.5: web-customer payments + job progress + ratings + safety wired
 
 Fourth web wiring slice, mirroring mobile M9.3. New in `src/lib/supabase/`:

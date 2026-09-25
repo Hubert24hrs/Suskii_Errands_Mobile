@@ -45,13 +45,15 @@ export class MockWalletRepository extends MockRepo {
   }): Promise<WalletTransaction[]> {
     await this.gate();
     const limit = options?.limit ?? 20;
-    const all = [...(this.db.walletTransactions[this.currentUser.id] ?? [])].sort(
+    const sorted = [...(this.db.walletTransactions[this.currentUser.id] ?? [])].sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
     );
-    const start = options?.cursor
-      ? all.findIndex((t) => t.id === options.cursor) + 1
-      : 0;
-    return all.slice(start, start + limit);
+    // Cursor is the last row's createdAt (ISO-8601) — an opaque page token,
+    // matching the Supabase impl's created_at keyset.
+    const all = options?.cursor
+      ? sorted.filter((t) => t.createdAt.getTime() < Date.parse(options.cursor!))
+      : sorted;
+    return all.slice(0, limit);
   }
 
   /** Withdrawals require KYC + name-matched payout account (server-enforced). */
