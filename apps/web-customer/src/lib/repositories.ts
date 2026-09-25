@@ -33,6 +33,7 @@ import {
 import { SupabaseAuthRepository } from './supabase/authRepository';
 import { SupabaseBootstrapRepository } from './supabase/bootstrapRepository';
 import { SupabaseCatalogRepository } from './supabase/catalogRepository';
+import { SupabaseChatRepository } from './supabase/chatRepository';
 import { SupabaseDisputeRepository } from './supabase/disputeRepository';
 import { SupabaseGateway } from './supabase/gateway';
 import { SupabaseJobProgressRepository } from './supabase/jobProgressRepository';
@@ -42,6 +43,7 @@ import { SupabaseRatingRepository } from './supabase/ratingRepository';
 import { SupabaseReferralRepository } from './supabase/referralRepository';
 import { SupabaseRequestRepository } from './supabase/requestRepository';
 import { SupabaseSafetyRepository } from './supabase/safetyRepository';
+import { SupabaseTrackingRepository } from './supabase/trackingRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
 import { SupabaseWalletRepository } from './supabase/walletRepository';
 
@@ -101,9 +103,15 @@ export const disputeRepository = supabaseGateway
   ? new SupabaseDisputeRepository(supabaseGateway)
   : mockDisputeRepository;
 
+// Wired (W9.7): chat + tracking.
+export const chatRepository = supabaseGateway
+  ? new SupabaseChatRepository(supabaseGateway)
+  : mockChatRepository;
+export const trackingRepository = supabaseGateway
+  ? new SupabaseTrackingRepository(supabaseGateway)
+  : mockTrackingRepository;
+
 // Mock-only until their wiring slices land.
-export const trackingRepository = mockTrackingRepository;
-export const chatRepository = mockChatRepository;
 export const promoRepository = mockPromoRepository;
 export const supportRepository = mockSupportRepository;
 export const settingsRepository = mockSettingsRepository;

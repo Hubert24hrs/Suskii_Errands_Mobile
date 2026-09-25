@@ -5,6 +5,54 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-25 — Kimi Code — W9.7: web-customer chat + tracking wired
+
+Sixth web wiring slice, mirroring mobile M9.6. New in `src/lib/supabase/`:
+`chatRepository.ts` (`send_message` — moderation and the chat-window rules
+stay server-side, ERR_CHAT_CLOSED surfaces as an error as on the mock; reads
+stream the `messages` table scoped via the `conversations` lookup, with the
+job id picked up from the `conversations(request_id)` embed, object or
+single-element array; bigint message ids stay opaque strings) and
+`trackingRepository.ts` (latest `location_samples` row for the job — the
+provider app samples GPS into the table, the customer side reads the
+RLS-scoped stream; no Broadcast channel needed; nothing emits until a usable
+sample exists). Mappers gained `chatMessageTypeFromWire` (unknown → text),
+`chatMessageTypeToWire` (identity — web enum values ARE the wire values),
+`chatMessageFromRow` and `messageIdAtMost` (bigint-safe `BigInt(String(...))`
+compare — read-pointer math never goes through a JS number). Both repos
+switch on `supabaseGateway` in `src/lib/repositories.ts`; mocks stay the
+default. No screen changes.
+
+**Interface alignment.**
+- **Read receipts derive from the OTHER participant's `message_reads`
+  pointer**, as on mobile: the wire has no per-message read timestamp, so a
+  message counts as read once the pointer has passed it and renders the
+  pointer's `read_at`. The pointer is re-read on every messages emission.
+- `markMessagesRead` is a **web-only interface method** (the Dart
+  ChatRepository has no counterpart) backed by the contract's
+  `mark_read(p_request_id, p_last_message_id)` — the impl resolves the
+  conversation, reads the latest message id, and advances the pointer.
+  `mark_read` takes no idempotency key (advancing to the same maximum is
+  naturally idempotent); the interface's key is unused, documented in the
+  method comment.
+- **Wire note:** server-authored `system` messages (e.g. missed-call cards)
+  carry a real user uuid as `sender_id`, never the literal `'system'` the
+  mock uses — both render by `type === 'system'`, so no change, but the
+  mock's senderId check is mock-only.
+- `sendMessage` passes `p_offer_id` (the web interface carries `offerId`
+  for offer_card messages and the contract takes it; the Dart repo omits
+  it — mobile never sends offer cards from chat).
+
+Verify: `npm run build -w apps/web-customer` green, `npx tsc --noEmit`
+clean, route table identical (47 route-table lines — same set as W9.6; the
+slice adds no routes). No test runner for the web app.
+
+**Next web slices**: support + settings (mobile M9.7), then KYC (M9.8).
+User profile + mode switch (M9.9) largely landed already in W9.1's
+`userRepository`.
+
+---
+
 ## 2026-09-25 — Kimi Code — W9.6: web-customer wallet + referrals + disputes wired
 
 Fifth web wiring slice, mirroring mobile M9.4. New in `src/lib/supabase/`:

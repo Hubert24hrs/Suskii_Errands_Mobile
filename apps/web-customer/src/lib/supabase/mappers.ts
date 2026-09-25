@@ -7,6 +7,8 @@
 import type {
   AppNotification,
   AppUser,
+  ChatMessage,
+  ChatMessageType,
   CountryPack,
   CountryStatus,
   Dispute,
@@ -655,4 +657,68 @@ export function referralTotalsFromRows(
     holding: { amountMinor: holding, currency },
     available: { amountMinor: available, currency },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Chat + tracking (W9.7)
+// ---------------------------------------------------------------------------
+
+export function chatMessageTypeFromWire(value: unknown): ChatMessageType {
+  switch (value) {
+    case 'image':
+    case 'voice_note':
+    case 'location':
+    case 'offer_card':
+    case 'system':
+      return value;
+    default:
+      return 'text';
+  }
+}
+
+/** Web enum values ARE the wire values — identity, kept for symmetry with
+ * the other toWire mappers. */
+export function chatMessageTypeToWire(type: ChatMessageType): string {
+  return type;
+}
+
+/** A `messages` row. The job id comes from the `conversations(request_id)`
+ * embed (messages key on conversation, not request); the embed is a
+ * many-to-one object, with the single-element array tolerated as elsewhere.
+ * `id` is a bigint — held as an opaque string, never a number. [readAt] is
+ * derived from the OTHER participant's `message_reads` pointer — the wire
+ * has no per-message read timestamp. */
+export function chatMessageFromRow(
+  row: Row,
+  options: { jobId?: string; readAt?: Date } = {},
+): ChatMessage {
+  const conversation = row['conversations'];
+  let embeddedJobId: string | null = null;
+  if (
+    conversation !== null &&
+    typeof conversation === 'object' &&
+    !Array.isArray(conversation)
+  ) {
+    embeddedJobId = ((conversation as Row)['request_id'] as string | null) ?? null;
+  } else if (Array.isArray(conversation) && conversation.length > 0) {
+    embeddedJobId = ((conversation[0] as Row)['request_id'] as string | null) ?? null;
+  }
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    jobId: embeddedJobId ?? options.jobId ?? '',
+    senderId: SupabaseGateway.asId(row['sender_id']),
+    type: chatMessageTypeFromWire(row['type']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    text: (row['body'] as string | null) ?? undefined,
+    mediaPath: (row['media_path'] as string | null) ?? undefined,
+    offerId: (row['offer_id'] as string | null) ?? undefined,
+    location: geoPointFromWire(row['location']),
+    readAt: options.readAt,
+  };
+}
+
+/** bigint comparison without number precision: both sides are parsed from
+ * their string form (message ids can in principle exceed 2^53). */
+export function messageIdAtMost(a: unknown, b: unknown): boolean {
+  return BigInt(String(a)) <= BigInt(String(b));
 }
