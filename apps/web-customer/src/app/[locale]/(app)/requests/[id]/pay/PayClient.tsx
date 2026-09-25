@@ -296,6 +296,25 @@ export function PayClient({
               />
             </p>
           ) : null}
+          {session?.checkoutUrl &&
+          (payment.method === 'card' || payment.method === 'mobile_money') ? (
+            <div className="mt-lg rounded-md bg-surface-muted p-lg text-left dark:bg-surface-dark-muted">
+              <p className="text-label-large text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.payment.checkoutLinkLabel}
+              </p>
+              <a
+                href={session.checkoutUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-xs block break-all text-body-medium text-brand-primary underline dark:text-brand-secondary"
+              >
+                {session.checkoutUrl}
+              </a>
+              <p className="mt-xs text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.payment.checkoutLinkHint}
+              </p>
+            </div>
+          ) : null}
           {payment.method === 'ussd' ? (
             <div className="mt-lg rounded-md bg-surface-muted p-lg dark:bg-surface-dark-muted">
               <p className="text-label-large text-ink-secondary dark:text-ink-dark-secondary">

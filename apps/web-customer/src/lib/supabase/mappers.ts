@@ -15,10 +15,16 @@ import type {
   Money,
   Offer,
   OfferStatus,
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
   PlaceRef,
   PriceBand,
   PriceBreakdown,
+  Rating,
   ServiceCategory,
+  SosAlert,
+  SosStatus,
   TrustLevel,
   Urgency,
   UserMode,
@@ -426,5 +432,103 @@ export function offerFromRow(row: Row, card?: Row | null): Offer {
         : SupabaseGateway.asTimestamp(row['expires_at']),
     // distanceMeters / etaMinutes / payoutEstimate are rank_offers display
     // fields — deferred (HANDOFF M9.2 follow-up).
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Payments, ratings, safety (W9.5)
+// ---------------------------------------------------------------------------
+
+export function paymentStatusFromWire(value: unknown): PaymentStatus {
+  switch (value) {
+    case 'pending':
+    case 'held':
+    case 'failed':
+    case 'refunded':
+    case 'partially_refunded':
+      return value;
+    default:
+      return 'unpaid';
+  }
+}
+
+export function paymentMethodFromWire(value: unknown): PaymentMethod {
+  switch (value) {
+    case 'bank_transfer':
+    case 'mobile_money':
+    case 'ussd':
+      return value;
+    default:
+      return 'card';
+  }
+}
+
+export function paymentMethodToWire(method: PaymentMethod): string {
+  return method;
+}
+
+/** A `payments` row. Column grants deliberately exclude `checkout_url` (it
+ * comes from `get_payment_checkout`), so the entity never carries it.
+ * `method` is nullable on the wire until start_payment fills it in; the safe
+ * default renders as card. */
+export function paymentFromRow(row: Row): Payment {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    jobId: SupabaseGateway.asId(row['request_id']),
+    amount: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['amount_minor']),
+      currency: (row['currency'] as string | null) ?? 'NGN',
+    },
+    method: paymentMethodFromWire(row['method']),
+    status: paymentStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    gatewayReference: (row['gateway_reference'] as string | null) ?? undefined,
+    paidAt:
+      row['confirmed_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['confirmed_at']),
+    expiresAt:
+      row['expires_at'] == null
+        ? undefined
+        : SupabaseGateway.asTimestamp(row['expires_at']),
+    failureReasonKey: (row['failed_reason_key'] as string | null) ?? undefined,
+  };
+}
+
+/** A `ratings` row (RLS scopes visibility to rater/ratee). `tags` are the
+ * localization keys the rater picked. */
+export function ratingFromRow(row: Row): Rating {
+  const tags = row['tags'];
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    jobId: SupabaseGateway.asId(row['request_id']),
+    raterId: SupabaseGateway.asId(row['rater_id']),
+    rateeId: SupabaseGateway.asId(row['ratee_id']),
+    stars: intOr(row['stars'], 0),
+    tagKeys: Array.isArray(tags) ? (tags as string[]) : [],
+    comment: (row['comment'] as string | null) ?? undefined,
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+  };
+}
+
+/** The wire `sos_status` enum is richer than the entity's (open, acknowledged,
+ * dispatched, resolved, false_alarm): the three in-flight values all render
+ * as "active" in the app; false_alarm reads as resolved. */
+export function sosStatusFromWire(value: unknown): SosStatus {
+  return value === 'resolved' || value === 'false_alarm' ? 'resolved' : 'active';
+}
+
+/** An `sos_incidents` row. `request_id` is nullable on the wire (SOS can be
+ * raised outside a job); the entity requires a job id, so a jobless alert
+ * carries an empty one — the SOS UI only exists inside a job today. */
+export function sosAlertFromRow(row: Row): SosAlert {
+  return {
+    id: SupabaseGateway.asId(row['id']),
+    jobId: (row['request_id'] as string | null) ?? '',
+    triggeredBy: SupabaseGateway.asId(row['raised_by']),
+    status: sosStatusFromWire(row['status']),
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    location: geoPointFromWire(row['point']),
+    trustedContactsNotified: intOr(row['trusted_contacts_notified'], 0),
   };
 }

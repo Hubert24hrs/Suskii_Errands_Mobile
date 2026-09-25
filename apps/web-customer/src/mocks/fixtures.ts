@@ -364,7 +364,6 @@ export class MockDatabase {
           { estimatedGatewayFee: { amountMinor: 4800, currency: 'NGN' } },
         ),
         providerId: 'provider-musa',
-        handoverPin: '4281',
       },
       // Disputed (disp-1 is in review against it).
       'req-3': {
@@ -476,7 +475,6 @@ export class MockDatabase {
           { estimatedGatewayFee: { amountMinor: 11250, currency: 'NGN' } },
         ),
         providerId: 'provider-ngozi',
-        handoverPin: '4281',
       },
       // Paid and held — chat window just opened.
       'req-8': {
@@ -496,10 +494,8 @@ export class MockDatabase {
           { estimatedGatewayFee: { amountMinor: 9000, currency: 'NGN' } },
         ),
         providerId: 'provider-musa',
-        handoverPin: '4281',
       },
     };
-
     this.offers = {
       'req-1': [
         {

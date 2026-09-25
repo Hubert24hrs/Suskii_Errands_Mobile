@@ -9,6 +9,7 @@ import type {
   ChatMessage,
   ChatMessageType,
   GeoPoint,
+  HandoverPinKind,
   JobRequest,
   JobStatus,
   Payment,
@@ -478,13 +479,24 @@ export class MockSafetyRepository extends MockRepo {
 }
 
 /**
- * Job-progress actions (mirrors JobProgressRepository). Customer scope: only
- * confirmCompletion — the provider-side verbs (requestStatusChange,
- * verifyHandoverPin) stay out of the customer app.
+ * Job-progress actions (mirrors JobProgressRepository). Customer scope:
+ * confirmCompletion and revealHandoverPin — the provider-side verbs
+ * (requestStatusChange, verifyHandoverPin, proofs) stay out of the customer
+ * app.
  */
 export class MockJobProgressRepository extends MockRepo {
   constructor(db: MockDatabase, behavior: MockBehavior) {
     super(db, behavior);
+  }
+
+  /**
+   * Reveal-on-demand handover PIN (the mock's known PIN is 4281, for both
+   * kinds). PINs are never carried on the job entity.
+   */
+  async revealHandoverPin(jobId: string, _kind: HandoverPinKind): Promise<string> {
+    await this.gate();
+    if (!this.db.requests[jobId]) throw new AppError(ErrorCodes.unknown);
+    return '4281';
   }
 
   /**

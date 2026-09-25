@@ -202,6 +202,8 @@ const pcm = {
       title: 'Handover PIN',
       body: 'Show this PIN to the provider for handover. No share am before that time.',
       revealCta: 'Show PIN',
+      pickupLabel: 'Pickup',
+      deliveryLabel: 'Delivery',
       rotateWarning: 'Once you show the PIN, e go change — the old one no go work again.',
     },
     rating: {
@@ -351,6 +353,9 @@ const pcm = {
     transferInstructionLabel: 'Transfer details',
     transferInstructionHint: 'Do the transfer for your bank app and quote the reference.',
     transferReferenceLabel: 'Reference',
+    checkoutLinkLabel: 'Complete payment',
+    checkoutLinkHint:
+      'Finish the payment for the secure checkout page — if e no open, copy this link put for your browser.',
     ttlLabel: 'Complete am within',
     payCta: 'Pay now',
     waiting: 'We dey wait for payment confirmation…',

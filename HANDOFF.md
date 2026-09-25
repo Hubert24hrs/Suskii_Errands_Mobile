@@ -5,6 +5,66 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-25 — Kimi Code — W9.5: web-customer payments + job progress + ratings + safety wired
+
+Fourth web wiring slice, mirroring mobile M9.3. New in `src/lib/supabase/`:
+`paymentRepository.ts` (`start_payment` creates the attempt — status flips
+arrive via the `payments` watch, the client never marks anything; the
+checkout page for card/mobile-money comes from `get_payment_checkout`
+because the `payments` column grants deliberately exclude `checkout_url`,
+which is never selected), `jobProgressRepository.ts` (customer scope only:
+`confirm_completion` with row re-select via the shared `loadJobRequestRow`
+from `requestRepository.ts`, and `reveal_job_pin` — the provider-side verbs
+`set_job_status`/`verify_pin`/`submit_proof` stay out of the customer app,
+as on the mock), `ratingRepository.ts` (`rate_job` + re-select; my-rating
+read is an RLS-scoped `ratings` select filtered to the caller as rater) and
+`safetyRepository.ts` (`raise_sos` + re-select, the `sos_incidents` watch
+emits the latest alert only while it folds to active, `create_trip_share`).
+Mappers gained `paymentFromRow`/`paymentStatusFromWire`/
+`paymentMethod{From,To}Wire`, `ratingFromRow`, `sosAlertFromRow`/
+`sosStatusFromWire` (wire open/acknowledged/dispatched → active,
+false_alarm → resolved — the entity stays 2-valued). All four repos switch
+on `supabaseGateway` in `src/lib/repositories.ts`; mocks stay the default.
+
+**handoverPin retired, as this slice owned.** `JobRequest.handoverPin` is
+gone from `src/mocks/types.ts`, the fixtures and the offer-accept paths that
+set it (the only remaining `handoverPin` matches are the i18n dictionary
+section key and a mapper comment). `HandoverPinCard` is now reveal-on-tap:
+it takes `jobId` + `hasDestination`, calls
+`jobProgressRepository.revealHandoverPin` (pickup, plus delivery when the
+job has a destination), never caches, and shows a wired error state via the
+shared `errorText`; the mock reveals its known `4281`. The card's display
+states (`agreed` … `completed_by_provider`) match mobile's `_contactStates`
+exactly; the old `milestone >= 2` gate is replaced by an explicit status
+set. New en/pcm keys: `requests.handoverPin.{pickupLabel,deliveryLabel}`.
+
+**Model alignment.**
+- `PaymentSession.checkoutUrl` added (mobile added it in M9.3); the pay
+  page renders it as a selectable link for card/mobile-money, new en/pcm
+  keys `payment.checkoutLinkLabel`/`checkoutLinkHint`.
+- Money stays integer minor units throughout (`asMinorUnits` on
+  `amount_minor`); no client-side price computation anywhere in the slice.
+
+**Provisionals (mirrored from mobile M9.3, not "fixed").**
+- CR-20260923-01: `create_trip_share` returns only a raw token — the token
+  rides in `TripShare.url` with the documented default 60-min TTL, clearly
+  marked, until the CR lands.
+- CR-20260923-02: `start_payment` returns no USSD code / transfer
+  reference, so on a wired build only checkout_url methods complete
+  end-to-end; the USSD/transfer panels render without instructions.
+
+Verify: `npm run build -w apps/web-customer` green, `npx tsc --noEmit`
+clean, route table identical (47 route-table lines — same set as W9.4; the
+slice adds no routes). No test runner for the web app.
+
+**Next web slices** (mobile dependency order — catalog/bootstrap →
+requests/offers → jobs → money — with provider-only slices skipped):
+wallet + referrals + disputes (mobile M9.4), then chat + tracking (M9.6),
+support + settings (M9.7), KYC (M9.8). User profile + mode switch (M9.9)
+largely landed already in W9.1's `userRepository`.
+
+---
+
 ## 2026-09-24 — Kimi Code — W9.4: web-customer requests + offers wired
 
 Third web wiring slice, mirroring mobile M9.2. New in `src/lib/supabase/`:

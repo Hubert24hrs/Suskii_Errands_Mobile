@@ -56,6 +56,18 @@ const IN_CONTACT: ReadonlySet<JobStatus> = new Set([
   'completed_by_provider',
 ]);
 
+/** States where the handover PINs exist (agreed onward, until confirmed). */
+const PIN_STATES: ReadonlySet<JobStatus> = new Set([
+  'agreed',
+  'payment_pending',
+  'paid_held',
+  'assigned',
+  'en_route',
+  'arrived',
+  'in_progress',
+  'completed_by_provider',
+]);
+
 const DISPUTABLE: ReadonlySet<JobStatus> = new Set([
   'paid_held',
   'assigned',
@@ -490,9 +502,13 @@ export function RequestDetailClient({
         </section>
       ) : null}
 
-      {job.handoverPin && milestone !== null && milestone >= 2 ? (
+      {PIN_STATES.has(job.status) ? (
         <div className="mt-xxl">
-          <HandoverPinCard pin={job.handoverPin} dict={dict} />
+          <HandoverPinCard
+            jobId={job.id}
+            hasDestination={job.destination !== undefined}
+            dict={dict}
+          />
         </div>
       ) : null}
 

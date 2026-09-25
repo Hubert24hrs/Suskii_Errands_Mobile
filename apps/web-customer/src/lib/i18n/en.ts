@@ -200,6 +200,8 @@ const en = {
       title: 'Handover PIN',
       body: 'Show this PIN to the provider at handover. Never share it before.',
       revealCta: 'Reveal PIN',
+      pickupLabel: 'Pickup',
+      deliveryLabel: 'Delivery',
       rotateWarning: 'Revealing the PIN rotates it — the old one stops working.',
     },
     rating: {
@@ -349,6 +351,9 @@ const en = {
     transferInstructionLabel: 'Transfer details',
     transferInstructionHint: 'Make the transfer from your bank app and quote the reference.',
     transferReferenceLabel: 'Reference',
+    checkoutLinkLabel: 'Complete payment',
+    checkoutLinkHint:
+      'Finish paying on the secure checkout page — if it did not open, copy this link into your browser.',
     ttlLabel: 'Complete within',
     payCta: 'Pay now',
     waiting: 'Waiting for payment confirmation…',

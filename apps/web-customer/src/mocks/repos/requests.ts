@@ -355,9 +355,6 @@ export class MockOfferRepository extends MockRepo {
         agreedPrice: accepted.amount,
         agreedBreakdown: simulateQuote(accepted.amount),
         providerId: accepted.providerId,
-        // Server-generated handover PIN, shown ONLY to the customer
-        // (the mock's known PIN is 4281).
-        handoverPin: '4281',
       };
       this.db.requests[requestId] = updated;
       this.db.jobEvents.emit(updated);
@@ -466,7 +463,6 @@ export class MockOfferRepository extends MockRepo {
           agreedPrice: accepted.amount,
           agreedBreakdown: simulateQuote(accepted.amount),
           providerId: accepted.providerId,
-          handoverPin: '4281',
         };
         this.db.requests[requestId] = updated;
         this.db.jobEvents.emit(updated);

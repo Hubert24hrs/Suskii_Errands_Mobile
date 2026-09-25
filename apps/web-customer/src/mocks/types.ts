@@ -276,12 +276,11 @@ export interface JobRequest {
   agreedBreakdown?: PriceBreakdown;
   providerId?: string;
   expiresAt?: Date;
-  /**
-   * Server-generated handover PIN, shown ONLY to the customer
-   * (spec: job_lifecycle.proof). Set when the job is agreed.
-   */
-  handoverPin?: string;
 }
+
+/** Which handover PIN — jobs with a destination have both. PINs are never
+ * stored on the entity; they come from `reveal_job_pin` on demand. */
+export type HandoverPinKind = 'pickup' | 'delivery';
 
 export interface CreateRequestInput {
   categoryId: string;
@@ -380,6 +379,9 @@ export interface Payment {
 
 export interface PaymentSession {
   payment: Payment;
+  /** Gateway checkout page for card/mobile-money (from get_payment_checkout —
+   * the payments table's column grants exclude it). */
+  checkoutUrl?: string;
   /** USSD code to dial (method = ussd). */
   ussdCode?: string;
   /** Reference to quote on a bank transfer (method = bank_transfer). */

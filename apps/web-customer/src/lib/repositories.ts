@@ -1,5 +1,5 @@
 // Repository seam for the web customer app. Every screen imports
-// repositories from here, never from '@/lib/repositories' directly.
+// repositories from here, never from '@/mocks/repositories' directly.
 //
 // The mock layer stays the default; a repository switches to its
 // Supabase-backed implementation when the env config is present
@@ -34,8 +34,12 @@ import { SupabaseAuthRepository } from './supabase/authRepository';
 import { SupabaseBootstrapRepository } from './supabase/bootstrapRepository';
 import { SupabaseCatalogRepository } from './supabase/catalogRepository';
 import { SupabaseGateway } from './supabase/gateway';
+import { SupabaseJobProgressRepository } from './supabase/jobProgressRepository';
 import { SupabaseOfferRepository } from './supabase/offerRepository';
+import { SupabasePaymentRepository } from './supabase/paymentRepository';
+import { SupabaseRatingRepository } from './supabase/ratingRepository';
 import { SupabaseRequestRepository } from './supabase/requestRepository';
+import { SupabaseSafetyRepository } from './supabase/safetyRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
 
 export { AppError, ErrorCodes, isAppError } from '@/mocks/errors';
@@ -68,13 +72,23 @@ export const offerRepository = supabaseGateway
   ? new SupabaseOfferRepository(supabaseGateway)
   : mockOfferRepository;
 
+// Wired (W9.5): payments + job progress + ratings + safety.
+export const paymentRepository = supabaseGateway
+  ? new SupabasePaymentRepository(supabaseGateway)
+  : mockPaymentRepository;
+export const ratingRepository = supabaseGateway
+  ? new SupabaseRatingRepository(supabaseGateway)
+  : mockRatingRepository;
+export const safetyRepository = supabaseGateway
+  ? new SupabaseSafetyRepository(supabaseGateway)
+  : mockSafetyRepository;
+export const jobProgressRepository = supabaseGateway
+  ? new SupabaseJobProgressRepository(supabaseGateway)
+  : mockJobProgressRepository;
+
 // Mock-only until their wiring slices land.
-export const paymentRepository = mockPaymentRepository;
 export const trackingRepository = mockTrackingRepository;
 export const chatRepository = mockChatRepository;
-export const ratingRepository = mockRatingRepository;
-export const safetyRepository = mockSafetyRepository;
-export const jobProgressRepository = mockJobProgressRepository;
 export const walletRepository = mockWalletRepository;
 export const referralRepository = mockReferralRepository;
 export const promoRepository = mockPromoRepository;
