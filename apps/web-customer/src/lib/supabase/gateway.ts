@@ -232,6 +232,14 @@ export class SupabaseGateway {
     throw mapSupabaseError(new Error('not a minor-units value'));
   }
 
+  /** Parses a decimal that may arrive as number or a `numeric` string
+   * (`rank_offers.score`, rating averages). Display only — never money. */
+  static asDecimal(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number.parseFloat(value);
+    throw mapSupabaseError(new Error('not a decimal value'));
+  }
+
   /** Parses an RFC 3339 / Postgres timestamp with time zone. */
   static asTimestamp(value: unknown): Date {
     return new Date(String(value));

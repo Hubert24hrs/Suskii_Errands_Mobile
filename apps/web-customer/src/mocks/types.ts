@@ -354,6 +354,37 @@ export interface PriceBreakdown {
   referralCommissionTotal?: Money;
 }
 
+/**
+ * One `rank_offers` row — the server-side comparison of the live offers on
+ * the caller's own request. It is NOT a price sort: half the weight is price
+ * relative to the other offers on the table, the rest is reputation. The
+ * repository's row order IS the ranking — never re-sort client-side.
+ */
+export interface RankedOffer {
+  offerId: string;
+  providerId: string;
+  displayName: string;
+  amount: Money;
+  /** Server ranking score (wire numeric parsed as decimal) — display only. */
+  score: number;
+  /** Star rating from `rating_avg_milli` (4730 → 4.73). */
+  ratingAvg: number;
+  /** Always rendered beside the average — a 5.0 from one job is not a 5.0
+   * from two hundred. Unrated providers score a neutral 0.6 server-side. */
+  ratingCount: number;
+  /** Completion rate from basis points (9850 → 0.985). */
+  completionRate: number;
+  factors: OfferRankFactors;
+}
+
+/** Why an offer ranked where it did — render these, a bare ranking with no
+ * explanation is the thing people distrust. */
+export interface OfferRankFactors {
+  cheapest: boolean;
+  newProvider: boolean;
+  offersCompared: number;
+}
+
 // ---------------------------------------------------------------------------
 // Payments
 // ---------------------------------------------------------------------------

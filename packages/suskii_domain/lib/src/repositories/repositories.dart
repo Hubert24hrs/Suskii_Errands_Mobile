@@ -144,6 +144,12 @@ abstract interface class RequestRepository {
 
 abstract interface class OfferRepository {
   Stream<List<Offer>> watchOffers(String requestId);
+
+  /// Server-ranked live offers for one of the caller's own requests
+  /// (`rank_offers`). Rows are in server score order — display as-is, never
+  /// re-sort. Throws AppError(ERR_REQUEST_NOT_FOUND) when the request does
+  /// not exist or belongs to someone else.
+  Future<List<RankedOffer>> getRankedOffers(String requestId);
   Future<Offer> acceptOffer(String offerId, {required String idempotencyKey});
   Future<Offer> declineOffer(String offerId, {required String idempotencyKey});
   Future<Offer> counterOffer({

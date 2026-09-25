@@ -10,7 +10,7 @@ import {
   isAppError,
   offerRepository,
 } from '@/lib/repositories';
-import type { JobRequest, Offer } from '@/mocks/types';
+import type { JobRequest, Offer, RankedOffer } from '@/mocks/types';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { Modal } from '@/components/Modal';
 import { MoneyField } from '@/components/MoneyField';
@@ -24,13 +24,24 @@ function offerStatusLabel(dict: Dictionary, status: Offer['status']): string {
   return table[status] ?? status;
 }
 
+/** Fills a `{count}` dict template, picking the singular form for 1. */
+function countLabel(one: string, many: string, count: number): string {
+  return (count === 1 ? one : many).replace('{count}', String(count));
+}
+
 function OfferCard({
   offer,
+  rank,
+  isTopMatch,
   dict,
   clockOffsetMs,
   maxRounds,
 }: {
   offer: Offer;
+  /** Server ranking row for this offer (undefined when the ranking has not
+   * loaded or failed — the card renders fine without it). */
+  rank?: RankedOffer;
+  isTopMatch: boolean;
   dict: Dictionary;
   clockOffsetMs: number;
   maxRounds: number;
@@ -100,7 +111,11 @@ function OfferCard({
             {offer.providerName}
           </p>
           <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
-            ★ {offer.providerRating} · {offer.providerTrustLevel}
+            ★ {rank ? rank.ratingAvg.toFixed(2) : offer.providerRating}
+            {rank
+              ? ` · ${countLabel(dict.offers.ratingCountLabelOne, dict.offers.ratingCountLabel, rank.ratingCount)}`
+              : ''}{' '}
+            · {offer.providerTrustLevel}
           </p>
         </div>
         <StatusChip
@@ -114,6 +129,27 @@ function OfferCard({
           }
         />
       </div>
+
+      {rank ? (
+        <div className="mt-md flex flex-wrap items-center gap-sm">
+          {isTopMatch ? (
+            <StatusChip label={dict.offers.topMatch} tone="success" />
+          ) : null}
+          {rank.factors.cheapest ? (
+            <StatusChip label={dict.offers.factorBestPrice} tone="info" />
+          ) : null}
+          {rank.factors.newProvider ? (
+            <StatusChip label={dict.offers.factorNewProvider} tone="info" />
+          ) : null}
+          <span className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+            {countLabel(
+              dict.offers.comparedAgainstOne,
+              dict.offers.comparedAgainst,
+              rank.factors.offersCompared,
+            )}
+          </span>
+        </div>
+      ) : null}
 
       <div className="mt-md flex flex-wrap items-baseline justify-between gap-md">
         <MoneyText
@@ -256,6 +292,53 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
     return unsubscribe;
   }, [job.id]);
 
+  // Re-rank whenever the offers on the table change (new arrival, counter,
+  // status flip). The RPC's row order IS the ranking — it is not a price
+  // sort, and it is never re-sorted client-side.
+  const offersVersion = useMemo(
+    () =>
+      (offers ?? [])
+        .map((o) => `${o.id}:${o.status}:${o.round}:${o.amount.amountMinor}`)
+        .join('|'),
+    [offers],
+  );
+  const rankedQuery = useQuery({
+    queryKey: ['offers', 'ranked', job.id, offersVersion],
+    queryFn: () => offerRepository.getRankedOffers(job.id),
+    enabled: (offers?.length ?? 0) > 0,
+  });
+  // Ranking is additive: while it loads or if it fails, the board falls
+  // back to the watched list order with no badges.
+  const ranked = rankedQuery.data;
+
+  const orderedOffers = useMemo(() => {
+    if (offers === undefined || ranked === undefined || ranked.length === 0) {
+      return offers;
+    }
+    const byId = new Map(offers.map((o) => [o.id, o]));
+    const rankedIds = new Set<string>();
+    const ordered: Offer[] = [];
+    for (const r of ranked) {
+      const offer = byId.get(r.offerId);
+      if (offer !== undefined && !rankedIds.has(offer.id)) {
+        rankedIds.add(offer.id);
+        ordered.push(offer);
+      }
+    }
+    // Offers the ranking does not cover (accepted/expired/declined) keep
+    // their existing list order after the ranked live ones.
+    for (const offer of offers) {
+      if (!rankedIds.has(offer.id)) ordered.push(offer);
+    }
+    return ordered;
+  }, [offers, ranked]);
+
+  const rankByOfferId = useMemo(
+    () => new Map((ranked ?? []).map((r) => [r.offerId, r])),
+    [ranked],
+  );
+  const topOfferId = ranked?.[0]?.offerId;
+
   const categoriesQuery = useQuery({
     queryKey: ['catalog', 'categories'],
     queryFn: () => catalogRepository.getCategories(),
@@ -268,10 +351,15 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
       <h2 className="text-title-large text-ink-primary dark:text-ink-dark-primary">
         {dict.offers.title}
       </h2>
+      {ranked !== undefined && ranked.length > 0 ? (
+        <p className="mt-sm text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+          {dict.offers.rankedNote}
+        </p>
+      ) : null}
       <div className="mt-lg">
-        {offers === undefined ? (
+        {orderedOffers === undefined ? (
           <StateBlock variant="loading" />
-        ) : offers.length === 0 ? (
+        ) : orderedOffers.length === 0 ? (
           <StateBlock
             variant="empty"
             emptyTitle={dict.offers.emptyTitle}
@@ -279,10 +367,12 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
           />
         ) : (
           <ul className="flex flex-col gap-lg">
-            {offers.map((offer) => (
+            {orderedOffers.map((offer) => (
               <OfferCard
                 key={offer.id}
                 offer={offer}
+                rank={rankByOfferId.get(offer.id)}
+                isTopMatch={offer.id === topOfferId}
                 dict={dict}
                 clockOffsetMs={clockOffsetMs}
                 maxRounds={maxRounds}

@@ -17,6 +17,7 @@ import {
   type JobStatus,
   type Money,
   type Offer,
+  type RankedOffer,
   type ServiceCategory,
   type TrustLevel,
   type UpdateRequestInput,
@@ -187,6 +188,22 @@ const COLLECTING: ReadonlySet<JobStatus> = new Set([
   'negotiating',
 ]);
 
+/**
+ * Deterministic stand-in reputation rows the real `rank_offers` would read
+ * (rating counts and completion rates are server-owned aggregates). Providers
+ * absent from this table are treated as unrated — the same neutral 0.6 the
+ * contract gives them.
+ */
+const PROVIDER_REPUTATION: Readonly<
+  Record<string, { ratingCount: number; completionRateBps: number }>
+> = {
+  'provider-ngozi': { ratingCount: 212, completionRateBps: 9850 },
+  'provider-kwame': { ratingCount: 47, completionRateBps: 9400 },
+  'provider-musa': { ratingCount: 89, completionRateBps: 9600 },
+  'provider-swift': { ratingCount: 340, completionRateBps: 9900 },
+  'provider-tunde': { ratingCount: 1, completionRateBps: 10000 },
+};
+
 export class MockOfferRepository extends MockRepo {
   constructor(db: MockDatabase, behavior: MockBehavior) {
     super(db, behavior);
@@ -301,6 +318,52 @@ export class MockOfferRepository extends MockRepo {
       }
       timers.clear();
     };
+  }
+
+  /**
+   * Stand-in for `rank_offers`: ranks the request's live offers (pending or
+   * countered) with the contract's shape — half the weight is price relative
+   * to the offers on the table, half reputation; unrated providers score a
+   * neutral 0.6 reputation, same as the server. The returned order IS the
+   * ranking. Deterministic for a given database state.
+   */
+  async getRankedOffers(requestId: string): Promise<RankedOffer[]> {
+    await this.gate();
+    const request = this.db.requests[requestId];
+    if (!request || request.customerId !== this.currentUser.id) {
+      throw new AppError(ErrorCodes.unknown);
+    }
+    const live = (this.db.offers[requestId] ?? []).filter(
+      (o) => o.status === 'pending' || o.status === 'countered',
+    );
+    if (live.length === 0) return [];
+    const minAmount = Math.min(...live.map((o) => o.amount.amountMinor));
+    const ranked: RankedOffer[] = live.map((offer) => {
+      const reputation = PROVIDER_REPUTATION[offer.providerId] ?? {
+        ratingCount: 0,
+        completionRateBps: 0,
+      };
+      const priceScore = minAmount / offer.amount.amountMinor;
+      const ratingScore =
+        reputation.ratingCount === 0 ? 0.6 : offer.providerRating / 5;
+      return {
+        offerId: offer.id,
+        providerId: offer.providerId,
+        displayName: offer.providerName,
+        amount: { ...offer.amount },
+        score: Math.round((0.5 * priceScore + 0.5 * ratingScore) * 1000) / 1000,
+        ratingAvg: offer.providerRating,
+        ratingCount: reputation.ratingCount,
+        completionRate: reputation.completionRateBps / 10000,
+        factors: {
+          cheapest: offer.amount.amountMinor === minAmount,
+          newProvider: offer.providerTrustLevel === 'new',
+          offersCompared: live.length,
+        },
+      };
+    });
+    ranked.sort((a, b) => b.score - a.score || a.offerId.localeCompare(b.offerId));
+    return ranked;
   }
 
   private find(offerId: string): { requestId: string; index: number; offer: Offer } {

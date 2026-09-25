@@ -367,6 +367,14 @@ final offersProvider = StreamProvider.family<List<Offer>, String>(
   (ref, requestId) => ref.watch(offerRepositoryProvider).watchOffers(requestId),
 );
 
+/// Server-ranked live offers for the board (`rank_offers`). Rows are in
+/// server score order — displayed as-is, never re-sorted client-side (it is
+/// not a price sort).
+final rankedOffersProvider = FutureProvider.family<List<RankedOffer>, String>(
+  (ref, requestId) =>
+      ref.watch(offerRepositoryProvider).getRankedOffers(requestId),
+);
+
 /// Advisory price band per category — a hint next to the preferred-price
 /// field, never used to set a price. Keyed by (category, urgency); a null
 /// band means the server has no basis at all — show no hint.

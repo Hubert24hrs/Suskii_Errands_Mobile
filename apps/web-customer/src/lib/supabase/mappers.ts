@@ -16,6 +16,8 @@ import type {
   GeoPoint,
   JobRequest,
   JobStatus,
+  KycStepKind,
+  KycStepStatus,
   Money,
   NotificationPreferences,
   Offer,
@@ -26,6 +28,7 @@ import type {
   PlaceRef,
   PriceBand,
   PriceBreakdown,
+  RankedOffer,
   Rating,
   ServiceCategory,
   SosAlert,
@@ -37,6 +40,7 @@ import type {
   TrustedContact,
   Urgency,
   UserMode,
+  VerificationSession,
   VerificationStatus,
   WalletTransaction,
   WalletTransactionKind,
@@ -442,8 +446,36 @@ export function offerFromRow(row: Row, card?: Row | null): Offer {
       row['expires_at'] == null
         ? undefined
         : SupabaseGateway.asTimestamp(row['expires_at']),
-    // distanceMeters / etaMinutes / payoutEstimate are rank_offers display
-    // fields — deferred (HANDOFF M9.2 follow-up).
+    // distanceMeters / etaMinutes / payoutEstimate stay undefined — W9.10
+    // confirmed rank_offers does not return them; nothing on the wire does.
+  };
+}
+
+// ---------------------------------------------------------------------------
+/** A `rank_offers` row. `score` arrives as a numeric string — parsed as a
+ * decimal for display only; the RPC's row order IS the ranking, so callers
+ * must not re-sort. The wire carries no distance/eta/payout fields. */
+export function rankedOfferFromRow(row: Row): RankedOffer {
+  const factors = ((row['factors'] as Row | null) ?? {}) as Row;
+  return {
+    offerId: SupabaseGateway.asId(row['offer_id']),
+    providerId: SupabaseGateway.asId(row['provider_id']),
+    displayName: (row['display_name'] as string | null) ?? '',
+    amount: {
+      amountMinor: SupabaseGateway.asMinorUnits(row['amount_minor']),
+      currency: (row['currency'] as string | null) ?? 'NGN',
+    },
+    score: SupabaseGateway.asDecimal(row['score']),
+    // rating_avg_milli is an integer milli-rating (4730 → 4.73 stars).
+    ratingAvg: intOr(row['rating_avg_milli'], 0) / 1000,
+    ratingCount: intOr(row['rating_count'], 0),
+    // completion_rate_bps is basis points (9850 → 0.985).
+    completionRate: intOr(row['completion_rate_bps'], 0) / 10000,
+    factors: {
+      cheapest: factors['cheapest'] === true,
+      newProvider: factors['new_provider'] === true,
+      offersCompared: intOr(factors['offers_compared'], 0),
+    },
   };
 }
 
@@ -862,4 +894,66 @@ export function notificationPreferenceRows(
     row('email', 'transactional', prefs.email),
     row('push', 'marketing', prefs.marketing),
   ];
+}
+
+// ---------------------------------------------------------------------------
+// KYC / verification (W9.9)
+// ---------------------------------------------------------------------------
+
+const KYC_STEP_KINDS: readonly KycStepKind[] = [
+  'customer_facial',
+  'government_id',
+  'provider_facial',
+  'id_document_capture',
+  'police_clearance',
+  'address',
+  'guarantor',
+  'payout_account',
+  'vehicle_documents',
+  'credentials',
+];
+
+/** Web enum values ARE the wire values — unknown values fold to the same
+ * safe default as the Dart mapper (`credentials`, a provider-only step the
+ * customer UI never acts on). */
+export function kycStepKindFromWire(value: unknown): KycStepKind {
+  return KYC_STEP_KINDS.includes(value as KycStepKind)
+    ? (value as KycStepKind)
+    : 'credentials';
+}
+
+export function kycStepStatusFromWire(value: unknown): KycStepStatus {
+  switch (value) {
+    case 'consent_pending':
+    case 'in_progress':
+    case 'in_review':
+    case 'verified':
+    case 'rejected':
+    case 'expired':
+      return value;
+    default:
+      // Unknown values degrade to not_started (a non-terminal state the
+      // screen renders as "needs consent") — never throw on a new enum value.
+      return 'not_started';
+  }
+}
+
+/** One `get_my_kyc_profile` row as a verification session. The wire carries
+ * no session id (the step kind wire value stands in) and no `updated_at`
+ * (`expires_at` stands in, epoch when absent) — the same stand-ins as the
+ * Dart impl. `attempt_count`/`required` have no entity fields. */
+export function verificationSessionFromProfileRow(row: Row): VerificationSession {
+  const expiresAt =
+    row['expires_at'] == null
+      ? undefined
+      : SupabaseGateway.asTimestamp(row['expires_at']);
+  return {
+    id: SupabaseGateway.asId(row['kind']),
+    kind: kycStepKindFromWire(row['kind']),
+    status: kycStepStatusFromWire(row['status']),
+    updatedAt: expiresAt ?? new Date(0),
+    rejectionReasonKey:
+      (row['rejection_reason_key'] as string | null) ?? undefined,
+    expiresAt,
+  };
 }

@@ -5,6 +5,120 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-25 — Kimi Code — W9.10 + M9.10: offers ranking (`rank_offers`) on web + mobile
+
+Closes the item deferred in both M9.2 and W9.4: the customer offers board now
+ranks via `rank_offers` instead of raw stream order. Same model on both
+platforms: a `RankedOffer` value (offerId, providerId, displayName, Money
+amount, score, ratingAvg from `rating_avg_milli`, ratingCount, completionRate
+from `completion_rate_bps`, factors {cheapest, newProvider, offersCompared})
+and a `getRankedOffers(requestId)` repository method. The Supabase impls call
+`rank_offers` and **never re-sort** — the RPC's row order IS the ranking, and
+it is not a price sort (half the weight is price relative to the offers on
+the table, the rest reputation). `score` arrives numeric-as-string and is
+parsed as decimal for display only; money stays integer minor units. The wire
+carries no distance/eta/payout, so `Offer.distanceMeters`/`etaMinutes`/
+`payoutEstimate` stay undefined — not fabricated.
+
+**Mock impls** compute a deterministic server-style stand-in (same weighting,
+unrated provider scores a neutral 0.6, ties break for the veteran then the
+cheaper offer) and throw `ERR_REQUEST_NOT_FOUND` for somebody else's request,
+matching the wire. Frontend-first holds: the board ranks fully on mocks.
+
+**Screens.** Both boards render server order first, then any offers the
+ranking does not cover (terminal states) in stream order; the ranking itself
+is never re-sorted. Factor badges say *why* one is on top ("Best price",
+"New provider", compared-against-N) and rating always renders with its count.
+A ranking failure degrades to the plain offers list with an error note — the
+offers themselves still render. New en/pcm keys on both platforms (mobile
+ARB + regen; web en.ts/pcm.ts).
+
+**Verify.** Mobile: `flutter analyze` clean, suskii_data suite green (199
+tests, incl. new rank_offers mapper tests — score-as-string, milli rating,
+factors present/absent — and mock ranking tests). Web: `tsc --noEmit` clean,
+`next build` green, route table unchanged (no new routes).
+
+Note: this slice was interrupted mid-flight by a tooling outage and finished
+manually; the two analyzer errors left behind (`valueOrNull` → Riverpod 3
+`.value`, an `Offer?` pattern binding) were fixed and everything above was
+re-verified after the fix.
+
+---
+
+## 2026-09-25 — Kimi Code — W9.9: web-customer KYC / verification wired + mock-only audit
+
+Eighth web wiring slice, mirroring mobile M9.8. New in `src/lib/supabase/`:
+`verificationRepository.ts` (customer facial only — web-customer has no
+provider KYC surface, so `supabase_provider_kyc_repository.dart` was not
+ported): biometric consent via `record_consent`, session start via
+`start_verification_session` (idempotency key first arg per the contract),
+state from the `customer_facial` row of `get_my_kyc_profile`.
+`watchCustomerVerification` polls every 15 s via setInterval/clearInterval
+returning the mock layer's Unsubscribe shape — KYC step state is RPC-only
+with no realtime topic (the Dart impl's Stream.periodic poll); a failed poll
+keeps the timer and the next tick retries. Mappers gained
+`kycStepKindFromWire` (unknown → `credentials`, the Dart default), `kycStepStatusFromWire` (unknown → `not_started`, never throws) and
+`verificationSessionFromProfileRow` — web enum values ARE the wire values,
+so folding is identity + safe defaults. The repo switches on
+`supabaseGateway` in `src/lib/repositories.ts`; mocks stay the default. No
+screen changes.
+
+**Interface alignment.**
+- VerificationSession id/updatedAt stand in from the step kind/expires_at
+  (the wire has neither) — same stand-ins as mobile; `attempt_count` /
+  `required` have no entity fields.
+- `startLivenessSession` / `captureLiveness` exist only on the web interface
+  (in Dart they are the separate IdentityVerificationAdapter, which stays
+  mock over Supabase too). They remain on-device stand-ins here — the
+  outcome never reaches the server because the only submission path is
+  `submitIdLookup`, which is feature-unavailable, so no client-decided
+  verdict is ever submitted (CR-20260923-09).
+- Web `getCustomerVerification` returns `undefined` (not null) when no
+  `customer_facial` row exists, matching the mock's signature.
+
+**Feature-unavailable surfaces (mirrored from mobile M9.8, never weakened).**
+`submitIdLookup` throws ERR_FEATURE_UNAVAILABLE — `submit_identity_document`
+expects id-number ciphertext + blind index the client has no encryption
+story for (CR-20260923-08), and no RPC accepts the liveness result
+(CR-20260923-09); sending plaintext or a self-declared outcome would weaken
+the security model. The failure renders through VerifyClient's existing
+`errorText` path; the ERR_FEATURE_UNAVAILABLE copy already exists in en/pcm
+(no new keys).
+
+Verify: `npm run build -w apps/web-customer` green, `npx tsc --noEmit`
+clean, route table identical (47 route-table lines — same set as W9.8; the
+slice adds no routes). No test runner for the web app.
+
+**End-to-end mock-only audit** (post-KYC, per the W9.8 note). Every screen
+imports repositories from `src/lib/repositories.ts` — no direct
+`@/mocks/repositories` imports outside the seam. Still unconditionally
+mock-bound:
+- `conciergeRepository` — blocked on services/ai (no concierge RPCs in
+  contracts v1).
+- `promoRepository` — CR-20260923-04 (no job-independent redemption on the
+  wire).
+
+Wired but provisional / partially feature-unavailable (all tracked):
+- Trip-share link: `create_trip_share` returns the raw token only — URL base
+  + TTL assumed from the documented default until CR-20260923-01 lands.
+- USSD / bank-transfer payment instructions: not in the contract — those
+  session fields stay undefined until CR-20260923-02.
+- Wallet transaction feed: withdrawals are the only real history rows the
+  contract exposes — PROVISIONAL until CR-20260923-03 lands a
+  client-readable ledger.
+- Trusted-contact add throws ERR_FEATURE_UNAVAILABLE and reads map
+  `phoneE164` to '' — CR-20260923-06 (client-encryption story).
+- Account deletion / data export throw ERR_FEATURE_UNAVAILABLE —
+  CR-20260923-07 (no RPCs).
+- KYC ID lookup throws ERR_FEATURE_UNAVAILABLE; liveness stays an on-device
+  stand-in — CR-20260923-08/09/10.
+
+**Web wiring program status**: with this slice every web-customer repository
+that contracts v1 can support is wired; the two remaining mocks are blocked
+on backend/AI work, not frontend.
+
+---
+
 ## 2026-09-25 — Kimi Code — W9.8: web-customer support + settings wired
 
 Seventh web wiring slice, mirroring mobile M9.7. New in `src/lib/supabase/`:

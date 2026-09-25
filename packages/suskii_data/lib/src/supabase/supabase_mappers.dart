@@ -355,6 +355,36 @@ Offer offerFromRow(Map<String, dynamic> row, {Map<String, dynamic>? card}) {
   );
 }
 
+/// A `rank_offers` row (M9.10). `score` is numeric-as-string on the wire —
+/// parsed once via [SupabaseGateway.asDecimal]; money stays integer minor
+/// units. A missing or wrongly-shaped `factors` object degrades to neutral
+/// defaults rather than failing the row.
+RankedOffer rankedOfferFromRow(Map<String, dynamic> row) {
+  final currency = row['currency'] as String? ?? 'NGN';
+  final factorsWire = row['factors'];
+  final factors = factorsWire is Map
+      ? Map<String, dynamic>.from(factorsWire)
+      : const <String, dynamic>{};
+  return RankedOffer(
+    offerId: SupabaseGateway.asId(row['offer_id']),
+    providerId: SupabaseGateway.asId(row['provider_id']),
+    displayName: row['display_name'] as String? ?? '',
+    amount: Money(SupabaseGateway.asMinorUnits(row['amount_minor']), currency),
+    score: SupabaseGateway.asDecimal(row['score']),
+    // rating_avg_milli is an integer milli-rating (4250 → 4.25 stars).
+    ratingAvg: ((row['rating_avg_milli'] as num?)?.toInt() ?? 0) / 1000,
+    ratingCount: (row['rating_count'] as num?)?.toInt() ?? 0,
+    // completion_rate_bps is basis points (9500 → 0.95).
+    completionRate:
+        ((row['completion_rate_bps'] as num?)?.toInt() ?? 0) / 10000,
+    factors: RankedOfferFactors(
+      cheapest: factors['cheapest'] == true,
+      newProvider: factors['new_provider'] == true,
+      offersCompared: (factors['offers_compared'] as num?)?.toInt() ?? 1,
+    ),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // M9.3: payments, job progress (PINs/proofs), ratings, safety.
 // ---------------------------------------------------------------------------

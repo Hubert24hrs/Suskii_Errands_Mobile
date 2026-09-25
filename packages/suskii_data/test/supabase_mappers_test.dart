@@ -136,6 +136,7 @@ void main() {
   });
 
   requestMapperTests();
+  offerRankingMapperTests();
   paymentProgressMapperTests();
   walletDisputeMapperTests();
   providerFeedMapperTests();
@@ -311,6 +312,98 @@ void requestMapperTests() {
     test('unknown offer status degrades to expired (terminal)', () {
       final offer = offerFromRow(offerRow()..['status'] = 'some_future_status');
       expect(offer.status, OfferStatus.expired);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// M9.10: rank_offers rows (contracts v1: score numeric-as-string, milli
+// rating, bps completion rate, factors jsonb).
+// ---------------------------------------------------------------------------
+
+void offerRankingMapperTests() {
+  group('rankedOfferFromRow', () {
+    Map<String, dynamic> rankRow() => <String, dynamic>{
+      'offer_id': 'offer-uuid-1',
+      'provider_id': 'prov-uuid-1',
+      'display_name': 'Musa K.',
+      'amount_minor': '350000',
+      'currency': 'NGN',
+      'score': '0.732051',
+      'rating_avg_milli': 4730,
+      'rating_count': 212,
+      'completion_rate_bps': 9500,
+      'factors': <String, dynamic>{
+        'cheapest': true,
+        'new_provider': false,
+        'offers_compared': 3,
+      },
+    };
+
+    test('maps the row; score is numeric-as-string, rating is milli, '
+        'completion is bps', () {
+      final ranked = rankedOfferFromRow(rankRow());
+      expect(ranked.offerId, 'offer-uuid-1');
+      expect(ranked.providerId, 'prov-uuid-1');
+      expect(ranked.displayName, 'Musa K.');
+      expect(ranked.amount, const Money(350000, 'NGN'));
+      expect(ranked.score, 0.732051);
+      expect(ranked.ratingAvg, 4.73);
+      expect(ranked.ratingCount, 212);
+      expect(ranked.completionRate, 0.95);
+      expect(ranked.factors.cheapest, isTrue);
+      expect(ranked.factors.newProvider, isFalse);
+      expect(ranked.factors.offersCompared, 3);
+    });
+
+    test('minor units also map when they arrive as an int', () {
+      final ranked = rankedOfferFromRow(rankRow()..['amount_minor'] = 350000);
+      expect(ranked.amount, const Money(350000, 'NGN'));
+    });
+
+    test('score maps when it arrives as a num', () {
+      final ranked = rankedOfferFromRow(rankRow()..['score'] = 0.5);
+      expect(ranked.score, 0.5);
+    });
+
+    test('missing factors object degrades to neutral defaults', () {
+      final ranked = rankedOfferFromRow(rankRow()..['factors'] = null);
+      expect(ranked.factors.cheapest, isFalse);
+      expect(ranked.factors.newProvider, isFalse);
+      expect(ranked.factors.offersCompared, 1);
+    });
+
+    test(
+      'wrongly-shaped factors degrade too, and unknown keys are ignored',
+      () {
+        final ranked = rankedOfferFromRow(
+          rankRow()..['factors'] = 'not-an-object',
+        );
+        expect(ranked.factors.cheapest, isFalse);
+        expect(ranked.factors.offersCompared, 1);
+        final withExtra = rankedOfferFromRow(
+          rankRow()
+            ..['factors'] = <String, dynamic>{
+              'cheapest': true,
+              'some_future_factor': 'x',
+            },
+        );
+        expect(withExtra.factors.cheapest, isTrue);
+        expect(withExtra.factors.newProvider, isFalse);
+        expect(withExtra.factors.offersCompared, 1);
+      },
+    );
+
+    test('missing rating/completion columns degrade to zero, not a throw', () {
+      final ranked = rankedOfferFromRow(
+        rankRow()
+          ..['rating_avg_milli'] = null
+          ..['rating_count'] = null
+          ..['completion_rate_bps'] = null,
+      );
+      expect(ranked.ratingAvg, 0);
+      expect(ranked.ratingCount, 0);
+      expect(ranked.completionRate, 0);
     });
   });
 }

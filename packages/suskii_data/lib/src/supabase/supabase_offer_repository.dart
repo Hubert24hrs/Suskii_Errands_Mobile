@@ -46,6 +46,17 @@ class SupabaseOfferRepository implements OfferRepository {
   }
 
   @override
+  Future<List<RankedOffer>> getRankedOffers(String requestId) async {
+    // rank_offers returns rows in server score order — kept as-is; the board
+    // never re-sorts (it is not a price sort).
+    final rows = await _gateway.rpc('rank_offers', <String, Object?>{
+      'p_request_id': requestId,
+    });
+    final list = List<Map<String, dynamic>>.from(rows as List<dynamic>);
+    return List<RankedOffer>.unmodifiable(list.map(rankedOfferFromRow));
+  }
+
+  @override
   Future<Offer> acceptOffer(String offerId, {required String idempotencyKey}) =>
       _mutate('accept_offer', offerId, <String, Object?>{
         'p_idempotency_key': idempotencyKey,

@@ -126,6 +126,88 @@ void main() {
     );
   });
 
+  group('ranked offers (M9.10)', () {
+    test(
+      'live offers come back in server score order; expired are excluded',
+      () async {
+        final repo = MockOfferRepository(db, behavior);
+        final ranked = await repo.getRankedOffers('req-1');
+        // Live: offer-1a (₦6500, Musa 4.7) and offer-1b (₦5800, Swift 4.5);
+        // offer-1c is expired. The cheaper offer outranks here.
+        expect(ranked.map((RankedOffer r) => r.offerId), <String>[
+          'offer-1b',
+          'offer-1a',
+        ]);
+        expect(ranked.first.factors.cheapest, isTrue);
+        expect(ranked.first.factors.newProvider, isFalse);
+        expect(ranked.first.factors.offersCompared, 2);
+        expect(ranked.first.score, greaterThan(ranked.last.score));
+      },
+    );
+
+    test(
+      'rating count and completion rate come from the provider profile',
+      () async {
+        final repo = MockOfferRepository(db, behavior);
+        final ranked = await repo.getRankedOffers('req-1');
+        final swift = ranked.firstWhere(
+          (RankedOffer r) => r.providerId == 'provider-swift',
+        );
+        expect(swift.ratingAvg, 4.5);
+        expect(swift.ratingCount, 1820);
+        expect(swift.completionRate, closeTo(0.97, 1e-9));
+      },
+    );
+
+    test(
+      'an unrated provider scores a neutral 0.6 reputation and flags new',
+      () async {
+        db.offers['req-1']!.add(
+          Offer(
+            id: 'offer-newcomer',
+            requestId: 'req-1',
+            providerId: 'provider-unknown',
+            providerName: 'New Face',
+            providerRating: 0,
+            providerTrustLevel: TrustLevel.new_,
+            amount: const Money(600000, 'NGN'),
+            status: OfferStatus.pending,
+            round: 1,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        );
+        final repo = MockOfferRepository(db, behavior);
+        final ranked = await repo.getRankedOffers('req-1');
+        final newcomer = ranked.firstWhere(
+          (RankedOffer r) => r.offerId == 'offer-newcomer',
+        );
+        expect(newcomer.factors.newProvider, isTrue);
+        expect(newcomer.ratingCount, 0);
+        // 0.5 × (580000/600000) + 0.5 × 0.6.
+        expect(newcomer.score, closeTo(0.5 * 580000 / 600000 + 0.3, 1e-9));
+        // Neutral 0.6 ranks below both rated providers here.
+        expect(ranked.last.offerId, 'offer-newcomer');
+      },
+    );
+
+    test("somebody else's request answers ERR_REQUEST_NOT_FOUND", () async {
+      behavior.currentUserId = 'user-chidi';
+      final repo = MockOfferRepository(db, behavior);
+      expect(
+        () => repo.getRankedOffers('req-1'),
+        throwsA(expectCode(ErrorCodes.requestNotFound)),
+      );
+    });
+
+    test('an unknown request answers ERR_REQUEST_NOT_FOUND', () async {
+      final repo = MockOfferRepository(db, behavior);
+      expect(
+        () => repo.getRankedOffers('req-does-not-exist'),
+        throwsA(expectCode(ErrorCodes.requestNotFound)),
+      );
+    });
+  });
+
   group('handover PIN (review M3.9)', () {
     test('correct PIN verifies; wrong PIN spends an attempt', () async {
       final repo = MockJobProgressRepository(db, behavior);

@@ -19,6 +19,7 @@ abstract final class ErrorCodes {
   static const String selfieCheckRequired = 'ERR_SELFIE_CHECK_REQUIRED';
 
   // Marketplace
+  static const String requestNotFound = 'ERR_REQUEST_NOT_FOUND';
   static const String offerExpired = 'ERR_OFFER_EXPIRED';
   static const String offerRoundsExhausted = 'ERR_OFFER_ROUNDS_EXHAUSTED';
   static const String selfDealingBlocked = 'ERR_SELF_DEALING_BLOCKED';

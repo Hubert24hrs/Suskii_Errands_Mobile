@@ -15,6 +15,7 @@ String localizedError(AppLocalizations l10n, Object error) {
     ErrorCodes.providerBusyAsCustomer => l10n.errProviderBusyAsCustomer,
     ErrorCodes.kycExpired => l10n.errKycExpired,
     ErrorCodes.selfieCheckRequired => l10n.errSelfieCheckRequired,
+    ErrorCodes.requestNotFound => l10n.errRequestNotFound,
     ErrorCodes.offerExpired => l10n.errOfferExpired,
     ErrorCodes.offerRoundsExhausted => l10n.errOfferRoundsExhausted,
     ErrorCodes.selfDealingBlocked => l10n.errSelfDealingBlocked,

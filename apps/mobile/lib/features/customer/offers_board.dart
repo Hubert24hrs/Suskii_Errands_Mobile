@@ -137,6 +137,7 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final offers = ref.watch(offersProvider(widget.requestId));
+    final ranked = ref.watch(rankedOffersProvider(widget.requestId));
     final clock = ref.watch(serverClockProvider);
     return offers.when(
       loading: () => const Column(
@@ -155,10 +156,59 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
             title: l10n.offersEmpty,
           );
         }
+        final rankedList = ranked.value ?? const <RankedOffer>[];
+        final rankedById = <String, RankedOffer>{
+          for (final RankedOffer r in rankedList) r.offerId: r,
+        };
+        final offersById = <String, Offer>{for (final Offer o in data) o.id: o};
+        // Server score order first (ranked live offers), then anything the
+        // ranking does not cover (terminal offers) in stream order. The
+        // ranking itself is never re-sorted — it is not a price sort.
+        final ordered = <Offer>[
+          for (final RankedOffer r in rankedList)
+            if (offersById[r.offerId] case final Offer o) o,
+          for (final Offer o in data)
+            if (!rankedById.containsKey(o.id)) o,
+        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            for (final Offer offer in data) ...<Widget>[
+            if (ranked.hasError)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: SSpacing.md,
+                  right: SSpacing.md,
+                  bottom: SSpacing.sm,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        localizedError(l10n, ranked.error!),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => ref.invalidate(
+                        rankedOffersProvider(widget.requestId),
+                      ),
+                      child: Text(l10n.actionRetry),
+                    ),
+                  ],
+                ),
+              )
+            else if (rankedList.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: SSpacing.md,
+                  bottom: SSpacing.sm,
+                ),
+                child: Text(
+                  l10n.offersRankedHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            for (final Offer offer in ordered) ...<Widget>[
               SOfferCard(
                 offer: offer,
                 acceptLabel: l10n.offersAccept,
@@ -174,6 +224,48 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                     : null,
                 onDecline: _actionable(offer) ? () => _decline(offer) : null,
               ),
+              if (rankedById[offer.id] case final RankedOffer ranking?)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: SSpacing.md,
+                    right: SSpacing.md,
+                    bottom: SSpacing.xs,
+                  ),
+                  child: Wrap(
+                    spacing: SSpacing.sm,
+                    runSpacing: SSpacing.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: <Widget>[
+                      if (ranking.factors.cheapest)
+                        Chip(
+                          label: Text(l10n.offersFactorBestPrice),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      if (ranking.factors.newProvider)
+                        Chip(
+                          label: Text(l10n.offersFactorNewProvider),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      Text(
+                        l10n.offersRatingWithCount(
+                          ranking.ratingAvg.toStringAsFixed(1),
+                          ranking.ratingCount,
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      Text(
+                        l10n.offersCompletionRate(
+                          (ranking.completionRate * 100).round(),
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      Text(
+                        l10n.offersCompared(ranking.factors.offersCompared),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.only(
                   left: SSpacing.md,

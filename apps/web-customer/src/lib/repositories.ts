@@ -47,6 +47,7 @@ import { SupabaseSettingsRepository } from './supabase/settingsRepository';
 import { SupabaseSupportRepository } from './supabase/supportRepository';
 import { SupabaseTrackingRepository } from './supabase/trackingRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
+import { SupabaseVerificationRepository } from './supabase/verificationRepository';
 import { SupabaseWalletRepository } from './supabase/walletRepository';
 
 export { AppError, ErrorCodes, isAppError } from '@/mocks/errors';
@@ -121,7 +122,11 @@ export const settingsRepository = supabaseGateway
   ? new SupabaseSettingsRepository(supabaseGateway)
   : mockSettingsRepository;
 
+// Wired (W9.9): customer facial verification.
+export const verificationRepository = supabaseGateway
+  ? new SupabaseVerificationRepository(supabaseGateway)
+  : mockVerificationRepository;
+
 // Mock-only until their wiring slices land.
 export const promoRepository = mockPromoRepository;
 export const conciergeRepository = mockConciergeRepository;
-export const verificationRepository = mockVerificationRepository;

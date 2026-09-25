@@ -6,11 +6,11 @@
 // packages/suskii_data/lib/src/supabase/supabase_offer_repository.dart.
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
-import type { Money, Offer } from '@/mocks/types';
+import type { Money, Offer, RankedOffer } from '@/mocks/types';
 import type { Unsubscribe } from '@/mocks/repos/base';
 
 import { SupabaseGateway, type Row } from './gateway';
-import { offerFromRow } from './mappers';
+import { offerFromRow, rankedOfferFromRow } from './mappers';
 
 const offerColumns =
   'id, thread_id, request_id, provider_id, author_side, amount_minor, ' +
@@ -63,6 +63,20 @@ export class SupabaseOfferRepository {
     }
     offers.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     return offers;
+  }
+
+  /**
+   * The server-side comparison of the live offers on the caller's own
+   * request (`rank_offers`). The RPC's row order IS the ranking — callers
+   * must not re-sort. ERR_REQUEST_NOT_FOUND means the request is not the
+   * caller's own. The wire carries no distance/eta/payout fields, so the
+   * Offer entity's optional display fields stay undefined.
+   */
+  async getRankedOffers(requestId: string): Promise<RankedOffer[]> {
+    const rows = (await this.gateway.rpc('rank_offers', {
+      p_request_id: requestId,
+    })) as Row[];
+    return rows.map(rankedOfferFromRow);
   }
 
   async acceptOffer(offerId: string, idempotencyKey: string): Promise<Offer> {

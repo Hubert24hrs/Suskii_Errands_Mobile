@@ -547,6 +547,69 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
   }
 
   @override
+  Future<List<RankedOffer>> getRankedOffers(String requestId) async {
+    await gate();
+    final request = db.requests[requestId];
+    // Same answer the wire gives for somebody else's request: their offers
+    // are not admitted to exist.
+    if (request == null || request.customerId != currentUser.id) {
+      throw const AppError(ErrorCodes.requestNotFound);
+    }
+    final live = (db.offers[requestId] ?? const <Offer>[])
+        .where(
+          (Offer o) =>
+              o.status == OfferStatus.pending ||
+              o.status == OfferStatus.countered,
+        )
+        .toList();
+    if (live.isEmpty) return const <RankedOffer>[];
+    final minMinor = live
+        .map((Offer o) => o.amount.minorUnits)
+        .reduce((int a, int b) => a < b ? a : b);
+    // Server-style deterministic stand-in: half the weight is the price
+    // relative to the offers on the table, the rest reputation; an unrated
+    // provider scores a neutral 0.6 rather than zero.
+    final ranked = <RankedOffer>[
+      for (final o in live)
+        () {
+          final profile = db.providers[o.providerId];
+          final ratingAvg = profile?.rating ?? o.providerRating;
+          // The fixtures carry no separate rating count — the provider's
+          // completed-jobs count stands in for it.
+          final ratingCount = profile?.completedJobs ?? 0;
+          final isNew = ratingCount == 0;
+          final priceScore = minMinor / o.amount.minorUnits;
+          final reputation = isNew ? 0.6 : ratingAvg / 5;
+          return RankedOffer(
+            offerId: o.id,
+            providerId: o.providerId,
+            displayName: o.providerName,
+            amount: o.amount,
+            score: 0.5 * priceScore + 0.5 * reputation,
+            ratingAvg: ratingAvg,
+            ratingCount: ratingCount,
+            completionRate: profile == null ? 0 : 1 - profile.cancellationRate,
+            factors: RankedOfferFactors(
+              cheapest: o.amount.minorUnits == minMinor,
+              newProvider: isNew,
+              offersCompared: live.length,
+            ),
+          );
+        }(),
+    ];
+    // Server order: score desc; ties broken for the veteran, then the
+    // cheaper offer, so the order is fully deterministic.
+    ranked.sort((RankedOffer a, RankedOffer b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      final byRating = b.ratingAvg.compareTo(a.ratingAvg);
+      if (byRating != 0) return byRating;
+      return a.amount.minorUnits.compareTo(b.amount.minorUnits);
+    });
+    return List<RankedOffer>.unmodifiable(ranked);
+  }
+
+  @override
   Future<Offer> acceptOffer(
     String offerId, {
     required String idempotencyKey,
