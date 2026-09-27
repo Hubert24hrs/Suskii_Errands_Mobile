@@ -5,7 +5,8 @@ name: backend-db
 # On main it runs as the first stage of pipeline-main.yaml, which deploys only if it passes.
 on:
   pull_request:
-    paths: ['supabase/**', '.github/workflows/backend-db.yaml']
+    paths: ['supabase/**', '.github/workflows/backend-db.yaml',
+            'packages/suskii_data/lib/src/supabase/**', 'packages/suskii_data/test/integration/**']
   workflow_call:
 
 permissions:
@@ -65,6 +66,27 @@ jobs:
           export API_URL SECRET_KEY ANON_KEY PUBLISHABLE_KEY
           bash supabase/tests/e2e/sessions_e2e.sh
           bash supabase/tests/e2e/storage_e2e.sh
+
+      # The app's own Supabase repositories against the real stack: sign-in, request to offer
+      # to held payment, the job, proofs, ratings, a dispute, wallet, KYC upload and account
+      # deletion. It is what found the deferred-trigger permission failure (audit Y.28) that
+      # pgTAP cannot see, because a test transaction never commits.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+
+      - name: App repositories end to end (Dart)
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
+          export SUPABASE_URL="$API_URL" SUPABASE_ANON_KEY="$ANON_KEY" SUPABASE_SERVICE_KEY="$SERVICE_ROLE_KEY"
+          for dir in packages/suskii_domain packages/suskii_core packages/suskii_data; do
+            (cd "$dir" && dart pub get)
+          done
+          (cd packages/suskii_domain && dart run build_runner build)
+          cd packages/suskii_data && dart test --tags integration
 
       - name: Security and performance advisors
         run: supabase db advisors --local --type all --level warn --fail-on warn
