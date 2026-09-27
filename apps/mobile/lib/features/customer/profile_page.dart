@@ -18,8 +18,6 @@ import '../../app/router.dart';
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
-  static const String _appVersion = '0.1.0';
-
   String _verificationLabel(AppLocalizations l10n, VerificationStatus status) =>
       switch (status) {
         VerificationStatus.unverified => l10n.verificationUnverified,
@@ -46,6 +44,52 @@ class ProfilePage extends ConsumerWidget {
           localizedError(AppLocalizations.of(context), error),
           isError: true,
         );
+      }
+    }
+  }
+
+  Future<void> _editName(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController(text: current);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.profileNameTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 80,
+          textCapitalization: TextCapitalization.words,
+          autofillHints: const <String>[AutofillHints.name],
+          decoration: InputDecoration(labelText: l10n.profileNameLabel),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: Text(l10n.actionSave),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.trim().isEmpty || name.trim() == current) return;
+    try {
+      await ref.read(userRepositoryProvider).updateDisplayName(name);
+      ref
+        ..invalidate(authStateProvider)
+        ..invalidate(bootstrapProvider);
+    } on Object catch (error) {
+      if (context.mounted) {
+        showSToast(context, localizedError(l10n, error), isError: true);
       }
     }
   }
@@ -80,7 +124,8 @@ class ProfilePage extends ConsumerWidget {
         ref.watch(connectivityProvider) == ConnectivityStatus.offline;
     final locale = ref.watch(localeControllerProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
-    final flavor = ref.watch(appConfigProvider).flavor.name;
+    final config = ref.watch(appConfigProvider);
+    final version = ref.watch(appVersionProvider);
     final providerVerified =
         user?.providerVerification == VerificationStatus.verified;
 
@@ -97,10 +142,16 @@ class ProfilePage extends ConsumerWidget {
                   children: <Widget>[
                     CircleAvatar(
                       radius: 28,
-                      child: Text(
-                        user.displayName.substring(0, 1).toUpperCase(),
-                        style: theme.textTheme.titleLarge,
-                      ),
+                      child: user.displayName.trim().isEmpty
+                          ? const Icon(Icons.person_outline)
+                          : Text(
+                              user.displayName
+                                  .trim()
+                                  .characters
+                                  .first
+                                  .toUpperCase(),
+                              style: theme.textTheme.titleLarge,
+                            ),
                     ),
                     const SizedBox(width: SSpacing.lg),
                     Expanded(
@@ -108,7 +159,9 @@ class ProfilePage extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            user.displayName,
+                            user.displayName.trim().isEmpty
+                                ? l10n.profileAddName
+                                : user.displayName,
                             style: theme.textTheme.titleMedium,
                           ),
                           if (user.phoneE164 != null)
@@ -119,6 +172,13 @@ class ProfilePage extends ConsumerWidget {
                               ),
                             ),
                         ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.profileNameTitle,
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => unawaited(
+                        _editName(context, ref, user.displayName.trim()),
                       ),
                     ),
                   ],
@@ -321,20 +381,23 @@ class ProfilePage extends ConsumerWidget {
           ),
           const SizedBox(height: SSpacing.lg),
 
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.profileSimulateOffline),
-            value: offline,
-            onChanged: (_) => ref
-                .read(connectivityProvider.notifier)
-                .toggleSimulatedOffline(),
-          ),
+          // Demo control: only a build running on the mock layer has an
+          // offline mode to simulate (audit 2026-09-27 Y.8).
+          if (config.usesMockBackend)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.profileSimulateOffline),
+              value: offline,
+              onChanged: (_) => ref
+                  .read(connectivityProvider.notifier)
+                  .toggleSimulatedOffline(),
+            ),
           const Divider(),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.profileAppVersion),
             trailing: Text(
-              '$_appVersion ($flavor)',
+              config.isProd ? version : '$version · ${config.flavor.name}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

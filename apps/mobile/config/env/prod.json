@@ -2,5 +2,9 @@
   "APP_FLAVOR": "prod",
   "SUPABASE_URL": "",
   "SUPABASE_ANON_KEY": "",
-  "AI_SERVICE_URL": ""
+  "AI_SERVICE_URL": "",
+  "SENTRY_DSN": "",
+  "PRIVACY_POLICY_URL": "https://suskii-errands.example/en/legal/privacy",
+  "TERMS_URL": "https://suskii-errands.example/en/legal/terms",
+  "SUPPORT_EMAIL": "support@suskii-errands.example"
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:suskii_core/suskii_core.dart';
@@ -10,6 +11,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
+import '../../app/media_capture.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../customer/rating_sheet.dart';
@@ -60,7 +62,10 @@ class _ProviderJobExecutionPageState
   bool _busy = false;
   String? _transitionKey;
   String? _pinKey;
-  String? _proofKey;
+
+  /// A proof uploaded but not yet filed (see [_addProof]).
+  ({ProofKind kind, String path, String key, DateTime capturedAt})?
+  _pendingProof;
 
   /// The mock keeps verified PINs repo-internal, so a successful delivery-PIN
   /// verification is remembered here for the rest of this page session.
@@ -194,24 +199,51 @@ class _ProviderJobExecutionPageState
     });
   }
 
-  Future<void> _addProof(ProofKind kind) => _run(() async {
-    _proofKey = 'proof-${widget.jobId}-${kind.name}';
-    await ref
-        .read(jobProgressRepositoryProvider)
-        .submitProof(
-          jobId: widget.jobId,
+  /// Captures a photo, uploads it into `job-proofs/<request id>/…`, then
+  /// files it. Upload first, file second: the server refuses a path with
+  /// nothing behind it (audit 2026-09-27 Y.5). A filed-but-failed proof is
+  /// retried with the same path and key, never uploaded twice.
+  Future<void> _addProof(ProofKind kind) async {
+    var pending = _pendingProof;
+    if (pending == null || pending.kind != kind) {
+      final media = await captureImage(context);
+      if (media == null || !mounted) return;
+      await _run(() async {
+        final path = await ref
+            .read(mediaUploadRepositoryProvider)
+            .upload(
+              bucket: UploadBucket.jobProofs,
+              requestId: widget.jobId,
+              bytes: media.bytes,
+              contentType: media.contentType,
+            );
+        _pendingProof = (
           kind: kind,
-          // Placeholder object until M9 wires camera/upload — the server
-          // signs uploads only into the job's own prefix.
-          storagePath:
-              '${widget.jobId}/proof-${DateTime.now().millisecondsSinceEpoch}.jpg',
-          idempotencyKey: _proofKey!,
+          path: path,
+          key: newIdempotencyKey(),
           capturedAt: DateTime.now(),
         );
-    _proofKey = null;
-    _proofNudge = false;
-    ref.invalidate(jobProofsProvider(widget.jobId));
-  });
+      });
+      pending = _pendingProof;
+      if (pending == null || !mounted) return;
+    }
+    final proof = pending;
+    await _run(() async {
+      await ref
+          .read(jobProgressRepositoryProvider)
+          .submitProof(
+            jobId: widget.jobId,
+            kind: proof.kind,
+            storagePath: proof.path,
+            idempotencyKey: proof.key,
+            capturedAt: proof.capturedAt,
+          );
+      _pendingProof = null;
+      _proofNudge = false;
+      unawaited(HapticFeedback.lightImpact());
+      ref.invalidate(jobProofsProvider(widget.jobId));
+    });
+  }
 
   String _proofActionLabel(AppLocalizations l10n, ProofKind kind) =>
       switch (kind) {

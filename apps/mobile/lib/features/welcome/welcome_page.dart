@@ -42,9 +42,12 @@ class WelcomePage extends ConsumerStatefulWidget {
 }
 
 class _WelcomePageState extends ConsumerState<WelcomePage> {
-  String _selectedCountry = 'NG';
+  late String _selectedCountry = ref.read(selectedCountryProvider) ?? 'NG';
 
   void _continue() {
+    // The choice is the bootstrap hint and the sign-up metadata: the server
+    // creates the profile in this country (audit 2026-09-27 Y.14/Y.27).
+    ref.read(selectedCountryProvider.notifier).set(_selectedCountry);
     ref.read(welcomeSeenProvider.notifier).set(true);
     context.go(AppRoutes.onboarding);
   }

@@ -26,6 +26,12 @@ dependencies:
   suskii_l10n:
     path: ../../packages/suskii_l10n
   supabase_flutter: ^2.17.2
+  flutter_secure_storage: ^11.2.0
+  image_picker: ^1.2.3
+  url_launcher: ^6.3.2
+  package_info_plus: ^10.2.1
+  shared_preferences: ^2.5.5
+  sentry_flutter: ^9.30.1
 
 dev_dependencies:
   flutter_test:

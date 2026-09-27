@@ -9,6 +9,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
+import '../../app/media_capture.dart';
 import '../../app/providers.dart';
 
 const List<String> _idTypes = <String>[
@@ -18,11 +19,6 @@ const List<String> _idTypes = <String>[
   'driversLicence',
   'passport',
 ];
-
-/// Simulated upload: produces an opaque upload reference (signed-URL upload
-/// arrives with the real backend; clients never read KYC files back).
-String _newUploadRef() =>
-    'upload://mock/${DateTime.now().millisecondsSinceEpoch}';
 
 /// Per-step KYC form, shown in a modal sheet from the checklist. Builds the
 /// typed input for [kind] and submits via the KYC repository — the mock
@@ -61,11 +57,38 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
   String? _registrationRef;
   String? _insuranceRef;
   final List<String> _credentialRefs = <String>[];
+  bool _uploading = false;
   PayoutAccountResult? _payoutResult;
   bool _livenessBusy = false;
   String? _livenessFailureKey;
   bool _busy = false;
   Object? _error;
+
+  /// Captures a document photo and uploads it into `kyc-docs/<uid>/…`; the
+  /// returned path is what the step files. The bucket is write-only for
+  /// clients, so nothing here can read it back (audit 2026-09-27 Y.6).
+  Future<void> _capture(void Function(String path) assign) async {
+    final media = await captureImage(context);
+    if (media == null || !mounted) return;
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    try {
+      final path = await ref
+          .read(mediaUploadRepositoryProvider)
+          .upload(
+            bucket: UploadBucket.kycDocuments,
+            bytes: media.bytes,
+            contentType: media.contentType,
+          );
+      if (mounted) setState(() => assign(path));
+    } on Object catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -410,7 +433,9 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
         const SizedBox(height: SSpacing.lg),
         _CaptureTile(
           captured: _idUploadRef != null,
-          onCapture: () => setState(() => _idUploadRef = _newUploadRef()),
+          onCapture: _uploading
+              ? null
+              : () => _capture((path) => _idUploadRef = path),
         ),
       ],
     );
@@ -452,7 +477,9 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
         const SizedBox(height: SSpacing.lg),
         _CaptureTile(
           captured: _policeUploadRef != null,
-          onCapture: () => setState(() => _policeUploadRef = _newUploadRef()),
+          onCapture: _uploading
+              ? null
+              : () => _capture((path) => _policeUploadRef = path),
         ),
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
@@ -601,17 +628,23 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
         _CaptureTile(
           label: l10n.vehicleLicence,
           captured: _licenceRef != null,
-          onCapture: () => setState(() => _licenceRef = _newUploadRef()),
+          onCapture: _uploading
+              ? null
+              : () => _capture((path) => _licenceRef = path),
         ),
         _CaptureTile(
           label: l10n.vehicleRegistration,
           captured: _registrationRef != null,
-          onCapture: () => setState(() => _registrationRef = _newUploadRef()),
+          onCapture: _uploading
+              ? null
+              : () => _capture((path) => _registrationRef = path),
         ),
         _CaptureTile(
           label: l10n.vehicleInsurance,
           captured: _insuranceRef != null,
-          onCapture: () => setState(() => _insuranceRef = _newUploadRef()),
+          onCapture: _uploading
+              ? null
+              : () => _capture((path) => _insuranceRef = path),
         ),
       ],
     );
@@ -631,7 +664,7 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
           label: l10n.credentialsAddFile,
           variant: SButtonVariant.secondary,
           icon: Icons.attach_file,
-          onPressed: () => setState(() => _credentialRefs.add(_newUploadRef())),
+          onPressed: _uploading ? null : () => _capture(_credentialRefs.add),
         ),
         if (_credentialRefs.isNotEmpty) ...<Widget>[
           const SizedBox(height: SSpacing.sm),
@@ -642,6 +675,7 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
               leading: const Icon(Icons.description_outlined),
               title: Text(l10n.kycCaptured),
               trailing: IconButton(
+                tooltip: l10n.actionRemove,
                 icon: const Icon(Icons.close),
                 onPressed: () => setState(() => _credentialRefs.removeAt(i)),
               ),
@@ -663,7 +697,7 @@ class _CaptureTile extends StatelessWidget {
 
   final String? label;
   final bool captured;
-  final VoidCallback onCapture;
+  final VoidCallback? onCapture;
 
   @override
   Widget build(BuildContext context) {

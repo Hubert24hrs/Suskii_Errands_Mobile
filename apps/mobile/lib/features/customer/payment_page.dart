@@ -9,6 +9,7 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/external_links.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
@@ -47,7 +48,22 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           idempotencyKey: _payKey!,
         );
     if (mounted) setState(() => _session = session);
+    // Card and mobile money complete on the gateway's hosted page; open it
+    // straight away rather than making the customer find it (audit Y.7).
+    final url = session.checkoutUrl;
+    if (url != null) await _openCheckout(url);
   });
+
+  Future<void> _openCheckout(String url) async {
+    final opened = await openExternalUrl(url);
+    if (!opened && mounted) {
+      showSToast(
+        context,
+        AppLocalizations.of(context).payCheckoutOpenFailed,
+        isError: true,
+      );
+    }
+  }
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
@@ -143,7 +159,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
   ) {
     final theme = Theme.of(context);
     final clock = ref.watch(serverClockProvider);
-    final amount = request.agreedPrice;
+    // What the server charged (the float, its surcharge and a promo all move
+    // it off the agreed price); the agreed price only until a payment exists.
+    final amount = payment?.amount ?? request.agreedPrice;
     if (amount == null) {
       return SErrorState(
         title: l10n.stateErrorGeneric,
@@ -257,12 +275,13 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       l10n.payCheckoutInstruction,
                       style: theme.textTheme.bodySmall,
                     ),
-                    const SizedBox(height: SSpacing.xs),
-                    SelectableText(
-                      _session!.checkoutUrl!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
+                    const SizedBox(height: SSpacing.sm),
+                    SButton(
+                      label: l10n.payOpenCheckout,
+                      icon: Icons.lock_outline,
+                      variant: SButtonVariant.secondary,
+                      onPressed: () =>
+                          unawaited(_openCheckout(_session!.checkoutUrl!)),
                     ),
                   ],
                 ],
