@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_domain/suskii_domain.dart';
@@ -988,11 +989,22 @@ class MockJobProgressRepository extends _MockRepo
     String jobId,
     JobStatus target, {
     required String idempotencyKey,
+    GeoPoint? location,
+    String? reasonCode,
   }) async {
     await gate();
     return idempotent('requestStatusChange:$jobId', idempotencyKey, () async {
       final request = db.requests[jobId];
       if (request == null) throw const AppError(ErrorCodes.unknown);
+      // Mirrors set_job_status: arrival needs a position inside the pickup
+      // geofence (150 m, the server's default) or a manual reason.
+      if (target == JobStatus.arrived && reasonCode == null) {
+        final pickup = request.pickup.point;
+        final near =
+            location != null &&
+            (pickup == null || _metersBetween(pickup, location) <= 150);
+        if (!near) throw const AppError(ErrorCodes.notAtPickup);
+      }
       final allowedTargets = _allowed[request.status] ?? const <JobStatus>{};
       if (!allowedTargets.contains(target)) {
         throw const AppError(ErrorCodes.permissionDenied);
@@ -3410,3 +3422,17 @@ String mediaExtensionFor(String contentType) => switch (contentType) {
   'application/pdf' => 'pdf',
   _ => 'jpg',
 };
+
+/// Great-circle distance, for the mock's arrival geofence.
+double _metersBetween(GeoPoint a, GeoPoint b) {
+  const earthRadius = 6371000.0;
+  double rad(double deg) => deg * math.pi / 180;
+  final dLat = rad(b.latitude - a.latitude);
+  final dLng = rad(b.longitude - a.longitude);
+  final h =
+      math.pow(math.sin(dLat / 2), 2) +
+      math.cos(rad(a.latitude)) *
+          math.cos(rad(b.latitude)) *
+          math.pow(math.sin(dLng / 2), 2);
+  return 2 * earthRadius * math.asin(math.sqrt(h));
+}

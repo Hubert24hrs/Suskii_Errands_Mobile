@@ -786,5 +786,8 @@
   "trustLevelVerified": "Verified",
   "trustLevelTrusted": "Trusted",
   "trustLevelElite": "Elite",
-  "homeAskConcierge": "Ask the concierge"
+  "homeAskConcierge": "Ask the concierge",
+  "jobArrivalManualTitle": "Mark arrived without a location match?",
+  "jobArrivalManualBody": "We couldn't confirm you're at the pickup point. If you are, you can still mark arrived — the customer is told, and this is recorded in case of a dispute.",
+  "jobArrivalManualConfirm": "I'm here — mark arrived"
 }

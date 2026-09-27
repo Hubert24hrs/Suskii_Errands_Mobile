@@ -9,6 +9,7 @@ import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
+import '../../app/device_location.dart';
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
 import '../../app/media_capture.dart';
@@ -117,6 +118,54 @@ class _ProviderJobExecutionPageState
         );
     _transitionKey = null;
   });
+
+  /// Arrival is checked against the pickup geofence on the server. The
+  /// device's position goes with the request; when there is none, or the
+  /// server finds it outside the fence, the provider may still confirm, and
+  /// the reason code travels with the transition for the dispute file.
+  Future<void> _markArrived() => _run(() async {
+    final reading = await ref.read(deviceLocationProvider).current();
+    var reason = reading.missingReason;
+    if (reason != null && !await _confirmManualArrival()) return;
+    final repo = ref.read(jobProgressRepositoryProvider);
+    _transitionKey ??= newIdempotencyKey();
+    try {
+      await repo.requestStatusChange(
+        widget.jobId,
+        JobStatus.arrived,
+        idempotencyKey: _transitionKey!,
+        location: reading.point,
+        reasonCode: reason,
+      );
+    } on AppError catch (error) {
+      if (error.code != ErrorCodes.notAtPickup || reason != null) rethrow;
+      if (!await _confirmManualArrival()) return;
+      reason = 'outside_geofence';
+      // The refusal rolled back the server's idempotency claim, so the same
+      // key is still unspent and still means this one arrival.
+      await repo.requestStatusChange(
+        widget.jobId,
+        JobStatus.arrived,
+        idempotencyKey: _transitionKey!,
+        location: reading.point,
+        reasonCode: reason,
+      );
+    }
+    _transitionKey = null;
+  });
+
+  Future<bool> _confirmManualArrival() async {
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showSConfirmDialog(
+      context: context,
+      title: l10n.jobArrivalManualTitle,
+      message: l10n.jobArrivalManualBody,
+      confirmLabel: l10n.jobArrivalManualConfirm,
+      cancelLabel: l10n.actionCancel,
+    );
+    return confirmed && mounted;
+  }
 
   /// PIN entry for pickup (arrived) and delivery (in_progress). A verified
   /// pickup PIN moves the job to IN_PROGRESS inside the verify call — that
@@ -373,7 +422,7 @@ class _ProviderJobExecutionPageState
             label: l10n.jobActionArrived,
             icon: Icons.place_outlined,
             loading: _busy,
-            onPressed: _busy ? null : () => _transition(JobStatus.arrived),
+            onPressed: _busy ? null : _markArrived,
           ),
         ],
         if (request.status == JobStatus.arrived)

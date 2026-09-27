@@ -236,10 +236,17 @@ abstract interface class JobProgressRepository {
   /// submitted via [submitProof], and when the job has a destination the
   /// delivery handover PIN must have been verified via [verifyHandoverPin].
   /// Violations throw AppError(ERR_PROOF_REQUIRED).
+  ///
+  /// ARRIVED is checked against the pickup geofence: pass the device
+  /// [location], or — when it cannot be had — a [reasonCode] for a manual
+  /// arrival, which the server records for any later dispute. With neither
+  /// the server refuses with ERR_NOT_AT_PICKUP.
   Future<JobRequest> requestStatusChange(
     String jobId,
     JobStatus target, {
     required String idempotencyKey,
+    GeoPoint? location,
+    String? reasonCode,
   });
 
   /// Customer confirms completion (may be auto-confirmed server-side too).

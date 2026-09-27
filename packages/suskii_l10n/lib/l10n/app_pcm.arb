@@ -786,5 +786,8 @@
   "trustLevelVerified": "Verified",
   "trustLevelTrusted": "Trusted",
   "trustLevelElite": "Elite",
-  "homeAskConcierge": "Ask the concierge"
+  "homeAskConcierge": "Ask the concierge",
+  "jobArrivalManualTitle": "Mark say you don reach without location match?",
+  "jobArrivalManualBody": "We no fit confirm say you dey the pickup point. If you dey there, you fit still mark say you don reach — we go tell the customer, and we go record am in case dispute happen.",
+  "jobArrivalManualConfirm": "I don reach — mark am"
 }

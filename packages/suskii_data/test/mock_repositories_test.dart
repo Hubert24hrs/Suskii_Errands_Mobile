@@ -200,11 +200,50 @@ void main() {
         ),
         throwsA(isA<AppError>()),
       );
-      // enRoute → arrived is legal.
+      // enRoute → arrived is legal, with a position or a manual reason.
       final updated = await repo.requestStatusChange(
         'req-2',
         JobStatus.arrived,
         idempotencyKey: newIdempotencyKey(),
+        reasonCode: 'location_denied',
+      );
+      expect(updated.status, JobStatus.arrived);
+    });
+
+    test('arrival outside the pickup geofence needs a reason', () async {
+      final repo = MockJobProgressRepository(db, behavior);
+      final pickup = db.requests['req-2']!.pickup.point!;
+      final notAtPickup = throwsA(
+        isA<AppError>().having((e) => e.code, 'code', ErrorCodes.notAtPickup),
+      );
+      expect(
+        () => repo.requestStatusChange(
+          'req-2',
+          JobStatus.arrived,
+          idempotencyKey: newIdempotencyKey(),
+        ),
+        notAtPickup,
+      );
+      expect(
+        () => repo.requestStatusChange(
+          'req-2',
+          JobStatus.arrived,
+          idempotencyKey: newIdempotencyKey(),
+          location: GeoPoint(
+            latitude: pickup.latitude + 0.01,
+            longitude: pickup.longitude,
+          ),
+        ),
+        notAtPickup,
+      );
+      final updated = await repo.requestStatusChange(
+        'req-2',
+        JobStatus.arrived,
+        idempotencyKey: newIdempotencyKey(),
+        location: GeoPoint(
+          latitude: pickup.latitude + 0.0005,
+          longitude: pickup.longitude,
+        ),
       );
       expect(updated.status, JobStatus.arrived);
     });
