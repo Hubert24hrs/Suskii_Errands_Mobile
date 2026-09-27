@@ -8,6 +8,32 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.2.0] - 2026-09-27
+
+The store-readiness audit (`docs/audit/AUDIT-2026-09-27.md`). Three functions, two tables, one
+error code, and one server check tightened. MINOR: every change is additive for a client that
+does not file proofs without uploading them, and the one that did was a bug (Y.5).
+
+### Added
+
+- **`request_account_deletion(p_idempotency_key text)` → `timestamptz`** — schedules erasure after
+  `remote_config.account_deletion_grace_days` (30) and revokes every session. Asking again returns
+  the same date. Closes **CR-20260923-07** (App Store 5.1.1(v), Play account-deletion policy).
+- **`cancel_account_deletion(p_idempotency_key text)` → `boolean`** — true when a scheduled
+  deletion was cancelled, false when there was none.
+- **`request_data_export(p_idempotency_key text)` → `text`** — an `EXP-XXXXXXXXXX` reference. While
+  a request is open, asking again returns the same reference.
+- Tables `account_deletion_requests` and `data_export_requests` (own rows readable; support
+  country-scoped) and enums `account_deletion_status`, `data_export_status`.
+- `get_bootstrap().user.deletion_scheduled_for` (`timestamptz | null`), so the app can offer to keep
+  the account on the first screen after signing back in.
+- **`ERR_UPLOAD_NOT_FOUND`** (P0001, retryable).
+
+### Changed
+
+- **`submit_proof` refuses a path with no object in `job-proofs`** (`ERR_UPLOAD_NOT_FOUND`). Upload
+  first, then file. Catalogue goes from 122 functions to 125.
+
 ## [1.1.0] - 2026-09-22
 
 The fourth audit pass (`docs/audit/AUDIT-2026-09-22d.md`). One new function, one **breaking**

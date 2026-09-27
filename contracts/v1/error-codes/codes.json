@@ -691,6 +691,17 @@
       "client_action": "Send the provider to the outstanding proof step."
     },
     {
+      "code": "ERR_UPLOAD_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "A storage path was filed as proof but nothing was uploaded to it. The app uploads to the bucket first and files the path second; the server refuses a path with no object behind it, so a proof requirement cannot be met by a string (audit 2026-09-27 Y.5).",
+      "client_action": "Upload the file again, then retry the same call with the same idempotency key."
+    },
+    {
       "code": "ERR_RATING_WINDOW_CLOSED",
       "status": "implemented",
       "category": "marketplace",

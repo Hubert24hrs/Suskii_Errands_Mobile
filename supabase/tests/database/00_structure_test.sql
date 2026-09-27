@@ -54,6 +54,9 @@ SELECT is(
        'public.get_bootstrap', 'public.set_active_mode', 'public.register_device',
        'public.record_consent', 'public.request_integrity_nonce',
        'public.list_sessions', 'public.revoke_session', 'public.revoke_other_sessions',
+       -- Account lifecycle (20260927120000): deletion with a grace period, and export.
+       'public.request_account_deletion', 'public.cancel_account_deletion',
+       'public.request_data_export',
        'public.create_request', 'public.publish_request', 'public.cancel_request',
        'public.create_offer', 'public.counter_offer', 'public.accept_offer',
        'public.decline_offer', 'public.withdraw_offer',

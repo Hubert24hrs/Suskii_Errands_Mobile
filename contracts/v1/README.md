@@ -1,6 +1,6 @@
 # contracts/v1 — binding
 
-Version **1.1.0** (2026-09-22). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
+Version **1.2.0** (2026-09-27). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
 
 This is the agreement between the backend and every frontend. [`../README.md`](../README.md) rule 1:
 **clients may call only what is listed here.** Not an endpoint, not a field, not an event more.

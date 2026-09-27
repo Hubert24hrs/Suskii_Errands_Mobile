@@ -4,7 +4,9 @@
 --
 -- What it reproduces, and why each matters for the tests:
 --   * roles anon / authenticated / service_role / supabase_auth_admin
---   * auth.users, auth.uid(), auth.role(), auth.jwt() reading request.jwt.claims
+--   * auth.users, auth.identities, auth.sessions, auth.uid(), auth.role(), auth.jwt() reading
+--     request.jwt.claims
+--   * realtime.messages, realtime.topic() and realtime.send()
 --   * the `extensions` schema
 --   * Supabase's permissive defaults: new objects in `public` are granted to anon and
 --     authenticated. Migrations must revoke them; tests would miss that without this.
@@ -26,10 +28,59 @@ CREATE TABLE IF NOT EXISTS auth.users (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   phone              text UNIQUE,
   email              text UNIQUE,
+  encrypted_password text,
   raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb,
   raw_app_meta_data  jsonb NOT NULL DEFAULT '{}'::jsonb,
+  banned_until       timestamptz,
+  deleted_at         timestamptz,
   created_at         timestamptz NOT NULL DEFAULT now()
 );
+
+-- GoTrue's linked sign-in methods and second factors (auth migrations 20221003041349,
+-- 20221208132122). Only the columns account erasure deletes by.
+CREATE TABLE IF NOT EXISTS auth.identities (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_id   text NOT NULL,
+  user_id       uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  identity_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  provider      text NOT NULL,
+  created_at    timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS auth.mfa_factors (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  factor_type text,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- Realtime, as the realtime service creates it: the broadcast table, the topic of the
+-- connection's channel, and `send`. Without them two pgTAP files could not run here.
+CREATE SCHEMA IF NOT EXISTS realtime;
+GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
+
+CREATE TABLE IF NOT EXISTS realtime.messages (
+  id          bigserial PRIMARY KEY,
+  topic       text NOT NULL,
+  extension   text NOT NULL DEFAULT 'broadcast',
+  payload     jsonb,
+  event       text,
+  private     boolean DEFAULT false,
+  inserted_at timestamp NOT NULL DEFAULT now()
+);
+ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT ON realtime.messages TO authenticated;
+
+CREATE OR REPLACE FUNCTION realtime.topic() RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT nullif(current_setting('realtime.topic', true), '')
+$$;
+
+CREATE OR REPLACE FUNCTION realtime.send(payload jsonb, event text, topic text, private boolean DEFAULT true)
+RETURNS void LANGUAGE sql AS $$
+  INSERT INTO realtime.messages (payload, event, topic, private, extension)
+  VALUES (payload, event, topic, private, 'broadcast');
+$$;
+GRANT EXECUTE ON FUNCTION realtime.topic() TO authenticated;
 
 -- Storage, as the storage service creates it (supabase/storage migrations 0001, 0003, 0008,
 -- 0013). Only what the policies touch, so the fallback can apply and test them.
@@ -49,6 +100,7 @@ CREATE TABLE IF NOT EXISTS storage.objects (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   bucket_id   text REFERENCES storage.buckets (id),
   name        text,
+  owner       uuid,
   owner_id    text,
   metadata    jsonb,
   path_tokens text[] GENERATED ALWAYS AS (string_to_array(name, '/')) STORED,
