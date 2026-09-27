@@ -65,10 +65,12 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
           ),
       minSupportedAppVersion:
           payload['min_supported_app_version'] as String? ?? '0.0.0',
-      unreadNotifications: await _gateway.countRows(
-        'notifications',
-        isNullColumn: 'read_at',
-      ),
+      // Signed out there is no inbox, and `anon` holds no grant on
+      // `notifications`: asking anyway failed a first run on a real backend
+      // (the mock never noticed).
+      unreadNotifications: _gateway.currentAuthUserId == null
+          ? 0
+          : await _gateway.countRows('notifications', isNullColumn: 'read_at'),
       serverTime: SupabaseGateway.asTimestamp(payload['server_time']),
       user: userMap == null ? null : appUserFromProfileRow(userMap),
       accountDeletionScheduledFor: userMap?['deletion_scheduled_for'] == null
