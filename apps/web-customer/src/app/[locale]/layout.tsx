@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { getDictionary, isLocale, locales } from '@/lib/i18n';
 import '../globals.css';
+import { bodyFont, displayFont } from '../fonts';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -38,8 +39,8 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   return (
-    <html lang={locale}>
-      <body className="bg-surface font-sans text-body-large text-ink-primary antialiased dark:bg-surface-dark dark:text-ink-dark-primary">
+    <html lang={locale} className={`${bodyFont.variable} ${displayFont.variable}`}>
+      <body className="bg-surface-background font-sans text-body-large text-ink-primary antialiased dark:bg-surface-dark-background dark:text-ink-dark-primary">
         {children}
       </body>
     </html>
