@@ -465,9 +465,11 @@ class _RatingSection extends ConsumerWidget {
                 children: <Widget>[
                   SRatingInput(value: existing.stars, size: 20),
                   const SizedBox(width: SSpacing.sm),
-                  Text(
-                    l10n.ratingDoneLabel(existing.stars),
-                    style: theme.textTheme.bodySmall,
+                  Flexible(
+                    child: Text(
+                      l10n.ratingDoneLabel(existing.stars),
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ),
                 ],
               ),

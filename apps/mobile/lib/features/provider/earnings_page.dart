@@ -22,22 +22,30 @@ class EarningsPage extends ConsumerWidget {
 
     Widget balanceTile(String label, Money amount) {
       return Expanded(
-        child: Column(
-          children: <Widget>[
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: SSpacing.xs),
+          child: Column(
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: SSpacing.xs),
-            Text(
-              amount.format(locale: locale),
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: SSpacing.xs),
+              // Three balances share a row: a long amount shrinks rather than
+              // breaking across lines mid-number.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  amount.format(locale: locale),
+                  style: theme.textTheme.titleLarge,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

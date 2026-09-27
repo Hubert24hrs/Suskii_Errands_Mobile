@@ -23,7 +23,7 @@ class ProviderJobsPage extends ConsumerWidget {
   /// nothing is actionable right now.
   static String? nextActionLabel(AppLocalizations l10n, JobStatus status) =>
       switch (status) {
-        JobStatus.paidHeld || JobStatus.assigned => l10n.jobActionStartJourney,
+        JobStatus.assigned => l10n.jobActionStartJourney,
         JobStatus.enRoute => l10n.jobActionArrived,
         JobStatus.arrived => l10n.jobActionVerifyPickupPin,
         JobStatus.inProgress => l10n.jobActionMarkComplete,

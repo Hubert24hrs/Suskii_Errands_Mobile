@@ -30,6 +30,7 @@ class PaymentPage extends ConsumerStatefulWidget {
 class _PaymentPageState extends ConsumerState<PaymentPage> {
   PaymentMethod _method = PaymentMethod.card;
   bool _busy = false;
+  bool _leaving = false;
 
   /// One key per pay intent (M3.14): a retried tap replays the same
   /// initialization instead of creating a second payment.
@@ -96,9 +97,14 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       AsyncValue<Payment?> next,
     ) {
       final p = next.value;
-      if (p != null && p.status == PaymentStatus.held) {
+      // Once: the payment stream re-emits HELD, and a second timer would pop
+      // the request screen underneath as well.
+      if (p != null && p.status == PaymentStatus.held && !_leaving) {
+        _leaving = true;
         Timer(const Duration(seconds: 2), () {
-          if (mounted) context.pop();
+          if (mounted) {
+            context.leave(AppRoutes.customerRequestDetailPath(widget.jobId));
+          }
         });
       }
     });

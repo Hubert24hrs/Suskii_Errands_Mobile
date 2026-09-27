@@ -399,8 +399,9 @@ class _ProviderJobExecutionPageState
             ),
           ),
         const SizedBox(height: SSpacing.lg),
-        if (request.status == JobStatus.paidHeld ||
-            request.status == JobStatus.assigned)
+        // Only from ASSIGNED (transition 12): a job still PAID_HELD is
+        // waiting on assignment, and the server would refuse the tap.
+        if (request.status == JobStatus.assigned)
           SButton(
             label: l10n.jobActionStartJourney,
             icon: Icons.route_outlined,
@@ -600,9 +601,11 @@ class _RatingSection extends ConsumerWidget {
                 children: <Widget>[
                   SRatingInput(value: existing.stars, size: 20),
                   const SizedBox(width: SSpacing.sm),
-                  Text(
-                    l10n.ratingDoneLabel(existing.stars),
-                    style: theme.textTheme.bodySmall,
+                  Flexible(
+                    child: Text(
+                      l10n.ratingDoneLabel(existing.stars),
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ),
                 ],
               ),

@@ -686,8 +686,8 @@ class _KycStepFormState extends ConsumerState<KycStepForm> {
   }
 }
 
-/// Simulated document capture row — no camera plugin in M2 (spike S-05
-/// picks the vendor SDK); produces an opaque upload ref.
+/// Document capture row: photographs or picks the document and uploads it
+/// to the write-only `kyc-docs` bucket; the step files the returned path.
 class _CaptureTile extends StatelessWidget {
   const _CaptureTile({
     required this.captured,

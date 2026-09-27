@@ -44,6 +44,12 @@ import '../features/welcome/welcome_page.dart';
 import 'providers.dart';
 import 'secure_screen.dart';
 
+/// Leaving a screen that closes itself. Routes are flat, so a screen opened
+/// by a deep link or a notification has nothing under it to pop back to.
+extension LeaveScreen on BuildContext {
+  void leave(String fallback) => canPop() ? pop() : go(fallback);
+}
+
 /// Route paths — centralized until typed routes (go_router_builder) land in M2.
 abstract final class AppRoutes {
   static const String splash = '/splash';
