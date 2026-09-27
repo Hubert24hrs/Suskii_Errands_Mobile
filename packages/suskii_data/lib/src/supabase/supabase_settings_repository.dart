@@ -82,15 +82,34 @@ class SupabaseSettingsRepository implements SettingsRepository {
     });
   }
 
+  /// Contracts 1.2.0 (CR-20260923-07): the server schedules erasure after
+  /// its grace period and revokes every session, this one included — the
+  /// caller signs out locally on success.
   @override
   Future<DateTime> requestAccountDeletion({
     required String idempotencyKey,
-  }) async =>
-      // No account-deletion RPC in contracts v1 (CR-20260923-07).
-      throw const AppError(ErrorCodes.featureUnavailable);
+  }) async {
+    final result = await _gateway.rpc(
+      'request_account_deletion',
+      <String, Object?>{'p_idempotency_key': idempotencyKey},
+    );
+    return SupabaseGateway.asTimestamp(result);
+  }
 
   @override
-  Future<String> requestDataExport({required String idempotencyKey}) async =>
-      // No data-export RPC in contracts v1 (CR-20260923-07).
-      throw const AppError(ErrorCodes.featureUnavailable);
+  Future<bool> cancelAccountDeletion({required String idempotencyKey}) async {
+    final result = await _gateway.rpc(
+      'cancel_account_deletion',
+      <String, Object?>{'p_idempotency_key': idempotencyKey},
+    );
+    return result == true;
+  }
+
+  @override
+  Future<String> requestDataExport({required String idempotencyKey}) async {
+    final result = await _gateway.rpc('request_data_export', <String, Object?>{
+      'p_idempotency_key': idempotencyKey,
+    });
+    return result as String;
+  }
 }

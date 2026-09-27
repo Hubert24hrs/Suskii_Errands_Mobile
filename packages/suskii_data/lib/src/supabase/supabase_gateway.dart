@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase/supabase.dart';
 import 'package:suskii_core/suskii_core.dart';
 
@@ -147,6 +149,27 @@ class SupabaseGateway {
           .eq(column, value)
           .select(columns);
       return List<Map<String, dynamic>>.from(result as List<dynamic>);
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  /// Uploads bytes to a private bucket. `upsert` is off: an object path is
+  /// written once, so a retried upload cannot overwrite evidence.
+  Future<void> uploadBinary(
+    String bucket,
+    String path,
+    List<int> bytes, {
+    required String contentType,
+  }) async {
+    try {
+      await _client.storage
+          .from(bucket)
+          .uploadBinary(
+            path,
+            Uint8List.fromList(bytes),
+            fileOptions: FileOptions(contentType: contentType),
+          );
     } on Object catch (error) {
       throw mapSupabaseError(error);
     }

@@ -14,16 +14,32 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
   final SupabaseGateway _gateway;
 
   @override
-  Future<AppBootstrap> getBootstrap() async {
-    final raw = await _gateway.rpc('get_bootstrap');
-    final payload = raw as Map<String, dynamic>;
+  Future<AppBootstrap> getBootstrap({String? countryCode}) async {
+    var payload = await _fetch(countryCode);
+    var packMap = payload['country_pack'] as Map<String, dynamic>?;
+    if (packMap == null) {
+      // A first run has no profile and may have no choice yet: the country
+      // picker needs a bootstrap to list the countries, so fall back to the
+      // first open one rather than failing before the user can choose
+      // (audit 2026-09-27 Y.26). Only a country list with nothing open is an
+      // error.
+      final countries = (payload['countries'] as List<dynamic>? ?? const [])
+          .cast<Map<String, dynamic>>();
+      final fallback = countries
+          .where((c) => c['status'] == 'live')
+          .followedBy(countries)
+          .map((c) => c['code'] as String?)
+          .whereType<String>()
+          .firstOrNull;
+      if (fallback == null || fallback == countryCode) {
+        throw const AppError(ErrorCodes.countryDisabled);
+      }
+      payload = await _fetch(fallback);
+      packMap = payload['country_pack'] as Map<String, dynamic>?;
+      if (packMap == null) throw const AppError(ErrorCodes.countryDisabled);
+    }
     final config =
         payload['remote_config'] as Map<String, dynamic>? ?? const {};
-    final packMap = payload['country_pack'] as Map<String, dynamic>?;
-    if (packMap == null) {
-      // No beta/live country for the caller's profile or hint.
-      throw const AppError(ErrorCodes.countryDisabled);
-    }
     final pack = packMap['code'] as String;
     final cities = await _gateway.selectList(
       'cities',
@@ -55,10 +71,20 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
       ),
       serverTime: SupabaseGateway.asTimestamp(payload['server_time']),
       user: userMap == null ? null : appUserFromProfileRow(userMap),
+      accountDeletionScheduledFor: userMap?['deletion_scheduled_for'] == null
+          ? null
+          : SupabaseGateway.asTimestamp(userMap!['deletion_scheduled_for']),
       // No server source yet without an N+1 over requests — tracked in
       // HANDOFF as an M9 follow-up (candidate change request: an
       // active_job_banner field in get_bootstrap), so the banner is absent.
     );
+  }
+
+  Future<Map<String, dynamic>> _fetch(String? countryCode) async {
+    final raw = await _gateway.rpc('get_bootstrap', <String, Object?>{
+      'p_country_code': countryCode?.toUpperCase(),
+    });
+    return raw as Map<String, dynamic>;
   }
 
   @override

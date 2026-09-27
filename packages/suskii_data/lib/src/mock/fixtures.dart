@@ -27,6 +27,12 @@ class MockDatabase {
   bool providerBusyRuleEnabled = false;
 
   late final Map<String, AppUser> users;
+
+  /// Scheduled account deletions by user id (grace period running).
+  final Map<String, DateTime> deletionScheduled = <String, DateTime>{};
+
+  /// Objects "uploaded" to the private buckets, by path.
+  final Map<String, int> uploadedObjects = <String, int>{};
   late final Map<String, ProviderProfile> providers;
   late final List<ServiceCategory> categories;
   late final Map<String, CountryPack> countryPacks;

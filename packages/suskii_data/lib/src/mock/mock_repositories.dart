@@ -83,11 +83,12 @@ class MockBootstrapRepository extends _MockRepo implements BootstrapRepository {
   MockBootstrapRepository(super.db, super.behavior);
 
   @override
-  Future<AppBootstrap> getBootstrap() async {
+  Future<AppBootstrap> getBootstrap({String? countryCode}) async {
     await gate();
     final user = db.users[behavior.currentUserId];
     final pack =
-        db.countryPacks[user?.countryCode ?? 'NG'] ?? db.countryPacks['NG']!;
+        db.countryPacks[user?.countryCode ?? countryCode ?? 'NG'] ??
+        db.countryPacks['NG']!;
     if (pack.status == CountryStatus.disabled) {
       throw const AppError(ErrorCodes.countryDisabled);
     }
@@ -111,6 +112,9 @@ class MockBootstrapRepository extends _MockRepo implements BootstrapRepository {
       voiceLanguages: kMockVoiceLanguages,
       minSupportedAppVersion: '0.1.0',
       serverTime: serverNow(),
+      accountDeletionScheduledFor: user == null
+          ? null
+          : db.deletionScheduled[user.id],
       unreadNotifications: db.notifications
           .where((AppNotification n) => !n.read)
           .length,
@@ -152,7 +156,11 @@ class MockAuthRepository extends _MockRepo implements AuthRepository {
   }
 
   @override
-  Future<void> requestPhoneOtp(String phoneE164) => gate();
+  Future<void> requestPhoneOtp(
+    String phoneE164, {
+    String? countryCode,
+    String? language,
+  }) => gate();
 
   @override
   Future<AppUser> verifyPhoneOtp(String phoneE164, String code) async {
@@ -167,7 +175,11 @@ class MockAuthRepository extends _MockRepo implements AuthRepository {
   }
 
   @override
-  Future<void> requestEmailOtp(String email) => gate();
+  Future<void> requestEmailOtp(
+    String email, {
+    String? countryCode,
+    String? language,
+  }) => gate();
 
   @override
   Future<AppUser> verifyEmailOtp(String email, String code) async {
@@ -238,6 +250,19 @@ class MockUserRepository extends _MockRepo implements UserRepository {
       _controller.add(updated);
       return mode;
     }, argsHash: '$mode');
+  }
+
+  @override
+  Future<AppUser> updateDisplayName(String displayName) async {
+    await gate();
+    final name = displayName.trim();
+    if (name.isEmpty || name.length > 80) {
+      throw const AppError(ErrorCodes.invalidArgument);
+    }
+    final updated = currentUser.copyWith(displayName: name);
+    db.users[updated.id] = updated;
+    _controller.add(updated);
+    return updated;
   }
 }
 
@@ -2936,12 +2961,23 @@ class MockSettingsRepository extends _MockRepo implements SettingsRepository {
     required String idempotencyKey,
   }) async {
     await gate();
-    // Store-readiness grace period: deletion is scheduled 30 days out;
-    // signing back in before then cancels it.
+    // Mirrors request_account_deletion: 30 days out, and asking twice
+    // returns the first date rather than scheduling a second deletion.
+    return idempotent('requestAccountDeletion', idempotencyKey, () async {
+      final userId = behavior.currentUserId;
+      return db.deletionScheduled[userId] ??= serverNow().add(
+        const Duration(days: 30),
+      );
+    });
+  }
+
+  @override
+  Future<bool> cancelAccountDeletion({required String idempotencyKey}) async {
+    await gate();
     return idempotent(
-      'requestAccountDeletion',
+      'cancelAccountDeletion',
       idempotencyKey,
-      () async => serverNow().add(const Duration(days: 30)),
+      () async => db.deletionScheduled.remove(behavior.currentUserId) != null,
     );
   }
 
@@ -3337,3 +3373,40 @@ class MockOrganizationRepository extends _MockRepo
     }, argsHash: workerId ?? '');
   }
 }
+
+/// Uploads into the mock "buckets": records the object and returns a path in
+/// the same shape as the Supabase implementation, so screens file exactly
+/// what they would file against a real project.
+class MockMediaUploadRepository extends _MockRepo
+    implements MediaUploadRepository {
+  MockMediaUploadRepository(super.db, super.behavior);
+
+  int _seq = 0;
+
+  @override
+  Future<String> upload({
+    required UploadBucket bucket,
+    required List<int> bytes,
+    required String contentType,
+    String? requestId,
+  }) async {
+    await gate();
+    if (bytes.isEmpty) throw const AppError(ErrorCodes.invalidArgument);
+    final folder = switch (bucket) {
+      UploadBucket.jobProofs || UploadBucket.receipts =>
+        requestId ?? (throw const AppError(ErrorCodes.invalidArgument)),
+      _ => behavior.currentUserId,
+    };
+    final path = '$folder/mock-${++_seq}.${mediaExtensionFor(contentType)}';
+    db.uploadedObjects[path] = bytes.length;
+    return path;
+  }
+}
+
+/// File extension for an upload's content type (the buckets allow these).
+String mediaExtensionFor(String contentType) => switch (contentType) {
+  'image/png' => 'png',
+  'image/webp' => 'webp',
+  'application/pdf' => 'pdf',
+  _ => 'jpg',
+};

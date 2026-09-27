@@ -81,15 +81,30 @@ class CreateRequestInput {
 }
 
 abstract interface class BootstrapRepository {
-  Future<AppBootstrap> getBootstrap();
+  /// [countryCode] is the country chosen before sign-in (ISO 3166-1
+  /// alpha-2). A signed-in profile's own country wins over it server-side;
+  /// without either, the first open country is used rather than failing.
+  Future<AppBootstrap> getBootstrap({String? countryCode});
   Stream<AppNotification> watchNotifications();
 }
 
 abstract interface class AuthRepository {
   Stream<AuthState> authStateChanges();
-  Future<void> requestPhoneOtp(String phoneE164);
+
+  /// [countryCode] and [language] travel as sign-up metadata: the server
+  /// creates the profile in that country (it cannot be changed from a
+  /// client afterwards), falling back to the phone's calling code.
+  Future<void> requestPhoneOtp(
+    String phoneE164, {
+    String? countryCode,
+    String? language,
+  });
   Future<AppUser> verifyPhoneOtp(String phoneE164, String code);
-  Future<void> requestEmailOtp(String email);
+  Future<void> requestEmailOtp(
+    String email, {
+    String? countryCode,
+    String? language,
+  });
   Future<AppUser> verifyEmailOtp(String email, String code);
 
   /// Social sign-in placeholders. Throw AppError(ERR_FEATURE_UNAVAILABLE)
@@ -109,6 +124,10 @@ abstract interface class UserRepository {
     UserMode mode, {
     required String idempotencyKey,
   });
+
+  /// Sets the caller's display name (trimmed, 1–80 characters — the
+  /// `profiles` column check). Returns the updated profile.
+  Future<AppUser> updateDisplayName(String displayName);
 }
 
 abstract interface class RequestRepository {
@@ -482,6 +501,10 @@ abstract interface class SettingsRepository {
 
   /// GDPR-style data export. Returns an opaque export reference.
   Future<String> requestDataExport({required String idempotencyKey});
+
+  /// Cancels a scheduled account deletion. True when one was cancelled,
+  /// false when nothing was scheduled.
+  Future<bool> cancelAccountDeletion({required String idempotencyKey});
 }
 
 /// ---------------------------------------------------------------------------
@@ -741,4 +764,39 @@ abstract interface class VoiceConciergeAdapter {
   Future<void> sendAudio(String sessionId, List<int> audioChunk);
 
   Future<void> endSession(String sessionId);
+}
+
+/// The private buckets the apps upload into. Each bucket's storage policy
+/// enforces its path: the first folder is the request id for job-scoped
+/// buckets and the uploader's own user id for the others.
+enum UploadBucket {
+  /// `job-proofs/<request id>/…` — the assigned provider only.
+  jobProofs,
+
+  /// `receipts/<request id>/…` — item-float receipts, assigned provider only.
+  receipts,
+
+  /// `kyc-docs/<user id>/…` — write-only for clients.
+  kycDocuments,
+
+  /// `request-media/<user id>/…` — photos attached to a request.
+  requestMedia,
+
+  /// `avatars/<user id>/…`.
+  avatars,
+}
+
+/// Uploads a file into a private bucket and returns the object path, which
+/// the caller then files with the RPC that records it (`submit_proof`,
+/// `submit_kyc_step`, …). Upload first, file second: the server refuses a
+/// path with nothing behind it (ERR_UPLOAD_NOT_FOUND).
+abstract interface class MediaUploadRepository {
+  /// [requestId] is required for [UploadBucket.jobProofs] and
+  /// [UploadBucket.receipts]. [contentType] must be one the bucket allows.
+  Future<String> upload({
+    required UploadBucket bucket,
+    required List<int> bytes,
+    required String contentType,
+    String? requestId,
+  });
 }

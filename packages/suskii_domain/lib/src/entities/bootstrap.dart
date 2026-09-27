@@ -69,6 +69,10 @@ abstract class AppBootstrap with _$AppBootstrap {
     required DateTime serverTime,
     AppUser? user,
     ActiveJobBanner? activeJobBanner,
+
+    /// When the signed-in account is scheduled for deletion (grace period
+    /// running), the date erasure happens; null otherwise.
+    DateTime? accountDeletionScheduledFor,
   }) = _AppBootstrap;
 
   factory AppBootstrap.fromJson(Map<String, dynamic> json) =>
