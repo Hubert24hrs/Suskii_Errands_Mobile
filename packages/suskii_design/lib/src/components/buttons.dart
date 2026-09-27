@@ -146,8 +146,11 @@ class SButton extends StatelessWidget {
                     horizontal: SSpacing.xl,
                     vertical: SSpacing.md,
                   ),
+                  // heightFactor 1: under loose constraints (a bottom bar,
+                  // a sheet) a bare Center grows to the full height.
                   child: Center(
                     widthFactor: expand ? null : 1,
+                    heightFactor: 1,
                     child: DefaultTextStyle.merge(
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: foreground,

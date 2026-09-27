@@ -24,6 +24,25 @@ class SRatingInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    if (onChanged == null) {
+      // Display only: no touch targets to pad out, and one label for the
+      // whole row rather than five disabled buttons.
+      return Semantics(
+        label: semanticLabel ?? '$value/5',
+        excludeSemantics: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (var star = 1; star <= 5; star++)
+              Icon(
+                star <= value ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: size,
+                color: star <= value ? context.sColors.warning : scheme.outline,
+              ),
+          ],
+        ),
+      );
+    }
     return Semantics(
       label: semanticLabel,
       child: Row(
