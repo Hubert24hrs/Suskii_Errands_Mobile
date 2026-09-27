@@ -1,0 +1,4 @@
+# Golden tests are tagged so the default run stays fast; CI runs them in
+# their own step (`flutter test --tags golden`).
+tags:
+  golden: {}
