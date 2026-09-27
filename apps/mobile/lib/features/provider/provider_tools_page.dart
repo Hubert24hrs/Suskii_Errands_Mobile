@@ -175,9 +175,15 @@ class _AvailabilityCardState extends ConsumerState<_AvailabilityCard> {
       );
     }
 
-    return Row(
+    // Wraps at large text sizes instead of overflowing (spec: 200% text).
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: SSpacing.xs,
       children: <Widget>[
-        SizedBox(width: 44, child: Text(weekdayLabel(l10n, day))),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 48),
+          child: Text(weekdayLabel(l10n, day)),
+        ),
         Switch(
           value: value != null,
           onChanged: (bool on) =>

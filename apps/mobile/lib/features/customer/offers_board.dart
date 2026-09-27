@@ -217,6 +217,7 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                 etaLabel: offer.etaMinutes == null
                     ? ''
                     : l10n.offersEta(offer.etaMinutes!),
+                trustLabel: trustLevelLabel(l10n, offer.providerTrustLevel),
                 clockOffset: clock.offset,
                 onAccept: _actionable(offer) ? () => _accept(offer) : null,
                 onCounter: _actionable(offer)
@@ -271,40 +272,28 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                   left: SSpacing.md,
                   bottom: SSpacing.sm,
                 ),
-                child: Row(
+                // Wraps rather than overflowing at large text sizes; the
+                // countdown lives on the card itself.
+                child: Wrap(
+                  spacing: SSpacing.sm,
+                  runSpacing: SSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: <Widget>[
                     Chip(
                       label: Text(offerStatusLabel(l10n, offer.status)),
                       visualDensity: VisualDensity.compact,
                     ),
-                    const SizedBox(width: SSpacing.sm),
                     Text(
                       l10n.offersRound(offer.round),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (offer.distanceMeters != null) ...<Widget>[
-                      const SizedBox(width: SSpacing.sm),
+                    if (offer.distanceMeters != null)
                       Text(
                         l10n.offersDistance(
                           (offer.distanceMeters! / 1000).toStringAsFixed(1),
                         ),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
-                    ],
-                    const Spacer(),
-                    if (_actionable(offer) &&
-                        offer.expiresAt != null) ...<Widget>[
-                      Text(
-                        '${l10n.offersExpiresIn} ',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      SCountdownTimer(
-                        // expiresAt is server time; the measured bootstrap
-                        // offset corrects for a wrong device clock.
-                        deadline: offer.expiresAt!,
-                        clockOffset: clock.offset,
-                      ),
-                    ],
                   ],
                 ),
               ),

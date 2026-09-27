@@ -37,6 +37,7 @@ import '../features/provider/provider_onboarding_page.dart';
 import '../features/provider/provider_shell.dart';
 import '../features/provider/provider_tools_page.dart';
 import '../features/splash/splash_page.dart';
+import '../features/startup/route_not_found_page.dart';
 import '../features/startup/startup_error_page.dart';
 import '../features/verification/customer_verification_page.dart';
 import '../features/welcome/welcome_page.dart';
@@ -151,19 +152,25 @@ final routerProvider = Provider<GoRouter>((ref) {
     // dependants keeps its ref.listen subscriptions paused, so authStateProvider was never
     // subscribed and redirect kept seeing signedOut: sign-in never left /auth (M3.15).
     refreshListenable: ref.watch(_routerRefreshProvider),
+    // A deep link to nothing lands on a branded, localized page with a way
+    // home, never on go_router's default error screen.
+    errorBuilder: (context, state) => const RouteNotFoundPage(),
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final boot = ref.read(bootstrapProvider);
 
       // 1. First bootstrap still loading → splash. A refetch (new user, new
       // country) keeps its previous value and does not flash the splash.
-      if (!boot.hasValue && boot.isLoading && loc != AppRoutes.splash) {
-        return AppRoutes.splash;
+      // Splash holds while loading: letting it fall through to the auth
+      // gate sent it to /auth, which sent it back here — a redirect loop
+      // that flashed go_router's error screen on every cold start.
+      if (!boot.hasValue && boot.isLoading) {
+        return loc == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
       // 2. Bootstrap failed (e.g. country disabled, offline) → startup error.
-      if (!boot.hasValue && boot.hasError && loc != AppRoutes.startupError) {
-        return AppRoutes.startupError;
+      if (!boot.hasValue && boot.hasError) {
+        return loc == AppRoutes.startupError ? null : AppRoutes.startupError;
       }
 
       // 3. Auth gate. Signed-out first run: welcome → onboarding → auth.
