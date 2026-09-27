@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:suskii_data/suskii_data.dart';
@@ -76,6 +77,7 @@ class TestApp {
     Size size = kPhoneSize,
     // 1x keeps the recorded goldens small; layout is identical at any ratio.
     double pixelRatio = 1,
+    List<Override> overrides = const <Override>[],
   }) async {
     await loadAppFonts();
     tester.view
@@ -106,6 +108,7 @@ class TestApp {
         mockBehaviorProvider.overrideWithValue(behavior),
         mockDatabaseProvider.overrideWithValue(database),
         appVersionProvider.overrideWithValue('1.0.0 (1)'),
+        ...overrides,
       ],
     );
     final app = TestApp._(container, behavior, database);
