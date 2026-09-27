@@ -31,24 +31,62 @@ class SStatusTimeline extends StatelessWidget {
           STimelineStepState.current => scheme.secondary,
           STimelineStepState.upcoming => scheme.outline,
         };
+        final next = isLast ? null : steps[index + 1].state;
         return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Column(
                 children: <Widget>[
-                  Icon(
-                    step.state == STimelineStepState.done
-                        ? Icons.check_circle
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: step.state == STimelineStepState.upcoming
+                          ? Colors.transparent
+                          : color.withValues(alpha: 0.16),
+                      border: Border.all(color: color, width: 2),
+                    ),
+                    child: step.state == STimelineStepState.done
+                        ? Icon(Icons.check_rounded, size: 14, color: color)
                         : step.state == STimelineStepState.current
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    size: 20,
-                    color: color,
+                        ? Center(
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
                   if (!isLast)
                     Expanded(
-                      child: VerticalDivider(color: scheme.outlineVariant),
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(
+                          vertical: SSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(1),
+                          gradient: next == STimelineStepState.upcoming
+                              ? null
+                              : LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    scheme.primary,
+                                    scheme.secondary,
+                                  ],
+                                ),
+                          color: next == STimelineStepState.upcoming
+                              ? scheme.outlineVariant
+                              : null,
+                        ),
+                      ),
                     ),
                 ],
               ),

@@ -780,5 +780,11 @@
   "errPstnUnavailable": "Phone calls aren't available right now. Use in-app calling instead.",
   "errTicketClosed": "This support ticket is closed.",
   "errOrgRoleRequired": "Only the business owner or a dispatcher can do that.",
-  "errWorkerNotEligible": "That team member can't take this job yet."
+  "errWorkerNotEligible": "That team member can't take this job yet.",
+
+  "trustLevelNew": "New",
+  "trustLevelVerified": "Verified",
+  "trustLevelTrusted": "Trusted",
+  "trustLevelElite": "Elite",
+  "homeAskConcierge": "Ask the concierge"
 }

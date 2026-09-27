@@ -30,63 +30,65 @@ class JobCard extends StatelessWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final price = job.agreedPrice ?? job.preferredPrice;
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: SRadius.borderMd,
-        child: Padding(
-          padding: const EdgeInsets.all(SSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      categoryLabel,
-                      style: theme.textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  SStatusChip(
-                    status: job.status,
-                    label: jobStatusLabel(l10n, job.status),
-                  ),
-                ],
-              ),
-              const SizedBox(height: SSpacing.sm),
-              Text(
-                job.description,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: SSpacing.sm),
-              Row(
-                children: <Widget>[
-                  Icon(
-                    Icons.place_outlined,
-                    size: 16,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: SSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      job.pickup.label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+    return SPressable(
+      enabled: onTap != null,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(SSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        categoryLabel,
+                        style: theme.textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  if (price != null)
-                    Text(
-                      price.format(locale: locale),
-                      style: theme.textTheme.titleMedium,
+                    SStatusChip(
+                      status: job.status,
+                      label: jobStatusLabel(l10n, job.status),
                     ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: SSpacing.sm),
+                Text(
+                  job.description,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: SSpacing.sm),
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.place_outlined,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: SSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        job.pickup.label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (price != null)
+                      Text(
+                        price.format(locale: locale),
+                        style: theme.textTheme.titleLarge,
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

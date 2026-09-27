@@ -140,19 +140,7 @@ class ProfilePage extends ConsumerWidget {
                 padding: const EdgeInsets.all(SSpacing.lg),
                 child: Row(
                   children: <Widget>[
-                    CircleAvatar(
-                      radius: 28,
-                      child: user.displayName.trim().isEmpty
-                          ? const Icon(Icons.person_outline)
-                          : Text(
-                              user.displayName
-                                  .trim()
-                                  .characters
-                                  .first
-                                  .toUpperCase(),
-                              style: theme.textTheme.titleLarge,
-                            ),
-                    ),
+                    SAvatar(name: user.displayName, size: 56),
                     const SizedBox(width: SSpacing.lg),
                     Expanded(
                       child: Column(

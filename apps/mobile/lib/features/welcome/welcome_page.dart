@@ -60,89 +60,107 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     final locale = ref.watch(localeControllerProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(SSpacing.xl),
-          children: <Widget>[
-            const SizedBox(height: SSpacing.xxl),
-            Icon(
-              Icons.local_shipping_outlined,
-              size: 64,
-              color: theme.colorScheme.primary,
+      body: SAuroraBackground(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: SSpacing.gutter,
+              vertical: SSpacing.xl,
             ),
-            const SizedBox(height: SSpacing.lg),
-            Text(
-              l10n.welcomeTitle,
-              style: theme.textTheme.headlineMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: SSpacing.sm),
-            Text(
-              l10n.welcomeBody,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            children: <Widget>[
+              const SizedBox(height: SSpacing.xl),
+              const Align(child: SBrandMark()),
+              const SizedBox(height: SSpacing.xl),
+              Text(
+                l10n.welcomeTitle,
+                style: theme.textTheme.displaySmall,
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: SSpacing.xxl),
-            Text(l10n.welcomeCountryLabel, style: theme.textTheme.titleMedium),
-            const SizedBox(height: SSpacing.sm),
-            packs.when(
-              loading: () => const Column(
-                children: <Widget>[SSkeletonListTile(), SSkeletonListTile()],
+              const SizedBox(height: SSpacing.md),
+              Text(
+                l10n.welcomeBody,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
               ),
-              error: (Object error, _) => SErrorState(
-                title: l10n.stateErrorGeneric,
-                message: localizedError(l10n, error),
-                retryLabel: l10n.actionRetry,
-                onRetry: () => ref.invalidate(_countryPacksProvider),
+              const SizedBox(height: SSpacing.xxl),
+              SSectionHeader(title: l10n.welcomeCountryLabel),
+              const SizedBox(height: SSpacing.sm),
+              packs.when(
+                loading: () => const Column(
+                  children: <Widget>[
+                    SSkeletonCard(height: 64),
+                    SSkeletonCard(height: 64),
+                  ],
+                ),
+                error: (Object error, _) => SErrorState(
+                  title: l10n.stateErrorGeneric,
+                  message: localizedError(l10n, error),
+                  retryLabel: l10n.actionRetry,
+                  onRetry: () => ref.invalidate(_countryPacksProvider),
+                ),
+                data: (List<CountryPack> data) => Column(
+                  children: <Widget>[
+                    for (final (int i, CountryPack pack) in data.indexed)
+                      SFadeSlideIn(
+                        index: i,
+                        child: _CountryTile(
+                          pack: pack,
+                          name: _countryName(l10n, pack.countryCode),
+                          statusLabel: switch (pack.status) {
+                            CountryStatus.live => null,
+                            CountryStatus.beta => l10n.countryStatusBeta,
+                            CountryStatus.disabled => l10n.countryStatusSoon,
+                          },
+                          selected: _selectedCountry == pack.countryCode,
+                          onTap: pack.status == CountryStatus.disabled
+                              ? null
+                              : () {
+                                  SHaptics.selection();
+                                  setState(
+                                    () => _selectedCountry = pack.countryCode,
+                                  );
+                                },
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              data: (List<CountryPack> data) => Column(
-                children: <Widget>[
-                  for (final CountryPack pack in data)
-                    _CountryTile(
-                      pack: pack,
-                      name: _countryName(l10n, pack.countryCode),
-                      statusLabel: switch (pack.status) {
-                        CountryStatus.live => null,
-                        CountryStatus.beta => l10n.countryStatusBeta,
-                        CountryStatus.disabled => l10n.countryStatusSoon,
-                      },
-                      selected: _selectedCountry == pack.countryCode,
-                      onTap: pack.status == CountryStatus.disabled
-                          ? null
-                          : () => setState(
-                              () => _selectedCountry = pack.countryCode,
-                            ),
-                    ),
+              const SizedBox(height: SSpacing.xl),
+              SSectionHeader(title: l10n.welcomeLanguageLabel),
+              const SizedBox(height: SSpacing.sm),
+              SegmentedButton<String>(
+                segments: <ButtonSegment<String>>[
+                  ButtonSegment<String>(
+                    value: 'en',
+                    label: Text(l10n.languageEnglish),
+                  ),
+                  ButtonSegment<String>(
+                    value: 'pcm',
+                    label: Text(l10n.languagePidgin),
+                  ),
                 ],
+                selected: <String>{
+                  locale?.languageCode ??
+                      Localizations.localeOf(context).languageCode,
+                },
+                onSelectionChanged: (Set<String> selection) {
+                  SHaptics.selection();
+                  ref
+                      .read(localeControllerProvider.notifier)
+                      .setLocale(Locale(selection.first));
+                },
               ),
-            ),
-            const SizedBox(height: SSpacing.xl),
-            Text(l10n.welcomeLanguageLabel, style: theme.textTheme.titleMedium),
-            const SizedBox(height: SSpacing.sm),
-            SegmentedButton<String>(
-              segments: <ButtonSegment<String>>[
-                ButtonSegment<String>(
-                  value: 'en',
-                  label: Text(l10n.languageEnglish),
-                ),
-                ButtonSegment<String>(
-                  value: 'pcm',
-                  label: Text(l10n.languagePidgin),
-                ),
-              ],
-              selected: <String>{
-                locale?.languageCode ??
-                    Localizations.localeOf(context).languageCode,
-              },
-              onSelectionChanged: (Set<String> selection) => ref
-                  .read(localeControllerProvider.notifier)
-                  .setLocale(Locale(selection.first)),
-            ),
-            const SizedBox(height: SSpacing.xxl),
-            SButton(label: l10n.actionContinue, onPressed: _continue),
-          ],
+              const SizedBox(height: SSpacing.xxl),
+              SButton(
+                key: const ValueKey<String>('welcome.continue'),
+                label: l10n.actionContinue,
+                icon: Icons.arrow_forward_rounded,
+                onPressed: _continue,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -167,24 +185,52 @@ class _CountryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final enabled = onTap != null;
-    return Card(
-      child: ListTile(
-        onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: SSpacing.xs),
+      child: SPressable(
         enabled: enabled,
-        leading: Icon(
-          selected ? Icons.radio_button_checked : Icons.radio_button_off,
-          color: selected ? theme.colorScheme.primary : null,
-        ),
-        title: Text(name),
-        trailing: statusLabel == null
-            ? null
-            : Text(
-                statusLabel!,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+        child: AnimatedContainer(
+          duration: SMotion.of(context, SMotion.fast),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primary.withValues(alpha: 0.12)
+                : context.sColors.surfaceRaised,
+            borderRadius: SRadius.borderLg,
+            border: Border.all(
+              color: selected ? scheme.primary : scheme.outlineVariant,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Semantics(
+            selected: selected,
+            button: true,
+            // The tile's own Material, so its ink shows above the fill.
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                onTap: onTap,
+                enabled: enabled,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: SRadius.borderLg,
                 ),
+                leading: Text(
+                  pack.countryCode,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: selected ? scheme.primary : scheme.onSurfaceVariant,
+                  ),
+                ),
+                title: Text(name, style: theme.textTheme.titleMedium),
+                trailing: selected
+                    ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+                    : statusLabel == null
+                    ? null
+                    : Text(statusLabel!, style: theme.textTheme.labelSmall),
               ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../tokens/colors.dart';
+import '../tokens/motion.dart';
 import '../tokens/spacing.dart';
+import 'motion.dart';
 
 /// 5-star rating input. Read-only when [onChanged] is null.
 class SRatingInput extends StatelessWidget {
@@ -33,11 +36,22 @@ class SRatingInput extends StatelessWidget {
             height: SSpacing.minTouchTarget,
             child: IconButton(
               padding: EdgeInsets.zero,
-              onPressed: onChanged == null ? null : () => onChanged!(star),
-              icon: Icon(
-                selected ? Icons.star_rounded : Icons.star_outline_rounded,
-                size: size,
-                color: selected ? scheme.secondary : scheme.outline,
+              tooltip: '$star/5',
+              onPressed: onChanged == null
+                  ? null
+                  : () {
+                      SHaptics.selection();
+                      onChanged!(star);
+                    },
+              icon: AnimatedScale(
+                scale: selected ? 1.12 : 1,
+                duration: SMotion.of(context, SMotion.fast),
+                curve: SMotion.spring,
+                child: Icon(
+                  selected ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: size,
+                  color: selected ? context.sColors.warning : scheme.outline,
+                ),
               ),
             ),
           );

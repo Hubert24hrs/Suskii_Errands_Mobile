@@ -54,144 +54,260 @@ class CustomerHomePage extends ConsumerWidget {
     final categories = ref.watch(categoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navHome)),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref
-            ..invalidate(activeJobsProvider)
-            ..invalidate(categoriesProvider);
-          await ref.read(activeJobsProvider.future);
-        },
-        child: ListView(
-          padding: const EdgeInsets.all(SSpacing.lg),
-          children: <Widget>[
-            Text(
-              l10n.homeGreeting(firstName),
-              style: theme.textTheme.headlineSmall,
-            ),
-            if (user != null &&
-                user.customerVerification !=
-                    VerificationStatus.verified) ...<Widget>[
-              const SizedBox(height: SSpacing.md),
-              Card(
-                child: ListTile(
-                  leading: Icon(
-                    Icons.badge_outlined,
-                    color: theme.colorScheme.primary,
-                  ),
-                  title: Text(l10n.verifyRequiredBanner),
-                  trailing: TextButton(
-                    onPressed: () => context.push(AppRoutes.verifyCustomer),
-                    child: Text(l10n.verifyRequiredAction),
-                  ),
-                ),
+      body: SAuroraBackground(
+        intensity: 0.55,
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref
+                ..invalidate(activeJobsProvider)
+                ..invalidate(categoriesProvider);
+              await ref.read(activeJobsProvider.future);
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                SSpacing.gutter,
+                SSpacing.lg,
+                SSpacing.gutter,
+                SSpacing.xxl,
               ),
-            ],
-            const SizedBox(height: SSpacing.xl),
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  Icons.auto_awesome,
-                  color: theme.colorScheme.primary,
-                ),
-                title: Text(l10n.conciergeTitle),
-                subtitle: Text(l10n.conciergeHint),
-                onTap: () => context.push(AppRoutes.customerConcierge),
-              ),
-            ),
-            const SizedBox(height: SSpacing.xl),
-            Text(l10n.homeActiveJobs, style: theme.textTheme.titleMedium),
-            const SizedBox(height: SSpacing.sm),
-            jobs.when(
-              loading: () => const Column(
-                children: <Widget>[SSkeletonListTile(), SSkeletonListTile()],
-              ),
-              error: (Object error, _) => SErrorState(
-                title: l10n.stateErrorGeneric,
-                message: localizedError(l10n, error),
-                retryLabel: l10n.actionRetry,
-                onRetry: () => ref.invalidate(activeJobsProvider),
-              ),
-              data: (List<JobRequest> data) {
-                if (data.isEmpty) {
-                  return SEmptyState(
-                    icon: Icons.inbox_outlined,
-                    title: l10n.homeNoActiveJobs,
-                  );
-                }
-                final cats = categories.value ?? const <ServiceCategory>[];
-                return Column(
+              children: <Widget>[
+                Row(
                   children: <Widget>[
-                    for (final JobRequest job in data)
-                      JobCard(
-                        job: job,
-                        categoryLabel: _categoryLabelFor(
-                          l10n,
-                          cats,
-                          job.categoryId,
-                        ),
-                        onTap: () => context.push(
-                          AppRoutes.customerRequestDetailPath(job.id),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: SSpacing.xl),
-            Text(l10n.homeQuickCategories, style: theme.textTheme.titleMedium),
-            const SizedBox(height: SSpacing.sm),
-            categories.when(
-              loading: () => const Column(
-                children: <Widget>[SSkeletonListTile(), SSkeletonListTile()],
-              ),
-              error: (Object error, _) => SErrorState(
-                title: l10n.stateErrorGeneric,
-                message: localizedError(l10n, error),
-                retryLabel: l10n.actionRetry,
-                onRetry: () => ref.invalidate(categoriesProvider),
-              ),
-              data: (List<ServiceCategory> data) => GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: SSpacing.sm,
-                crossAxisSpacing: SSpacing.sm,
-                childAspectRatio: 0.95,
-                children: <Widget>[
-                  for (final ServiceCategory category in data)
-                    Card(
-                      child: InkWell(
-                        onTap: () => context.push(
-                          '${AppRoutes.customerRequestsNew}'
-                          '?categoryId=${category.id}',
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(SSpacing.sm),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Icon(
-                                _categoryIcon(category.iconKey),
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(height: SSpacing.xs),
-                              Text(
-                                categoryLabel(l10n, category.labelKey),
-                                style: theme.textTheme.labelSmall,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                    const SBrandMark(size: 40, heroTag: null),
+                    const SizedBox(width: SSpacing.md),
+                    Expanded(
+                      child: Text(
+                        l10n.appName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: SSpacing.xl),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    l10n.homeGreeting(firstName),
+                    style: theme.textTheme.displaySmall,
+                  ),
+                ),
+                if (user != null &&
+                    user.customerVerification !=
+                        VerificationStatus.verified) ...<Widget>[
+                  const SizedBox(height: SSpacing.lg),
+                  SGlass(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SSpacing.lg,
+                      vertical: SSpacing.sm,
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.verified_user_outlined,
+                          color: context.sColors.warning,
+                        ),
+                        const SizedBox(width: SSpacing.md),
+                        Expanded(
+                          child: Text(
+                            l10n.verifyRequiredBanner,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              context.push(AppRoutes.verifyCustomer),
+                          child: Text(l10n.verifyRequiredAction),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
+                const SizedBox(height: SSpacing.xl),
+                SPressable(
+                  child: SGlass(
+                    padding: EdgeInsets.zero,
+                    child: InkWell(
+                      onTap: () => context.push(AppRoutes.customerConcierge),
+                      child: Padding(
+                        padding: const EdgeInsets.all(SSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const SIconOrb(
+                              icon: Icons.auto_awesome_rounded,
+                              size: 52,
+                            ),
+                            const SizedBox(height: SSpacing.lg),
+                            Text(
+                              l10n.conciergeTitle,
+                              style: theme.textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: SSpacing.xs),
+                            Text(
+                              l10n.conciergeHint,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: SSpacing.lg),
+                            SButton(
+                              label: l10n.homeAskConcierge,
+                              icon: Icons.auto_awesome_rounded,
+                              onPressed: () =>
+                                  context.push(AppRoutes.customerConcierge),
+                            ),
+                            const SizedBox(height: SSpacing.sm),
+                            SButton(
+                              key: const ValueKey<String>('home.newRequest'),
+                              label: l10n.createTitle,
+                              icon: Icons.add_rounded,
+                              variant: SButtonVariant.secondary,
+                              onPressed: () =>
+                                  context.push(AppRoutes.customerRequestsNew),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: SSpacing.xxl),
+                SSectionHeader(title: l10n.homeQuickCategories),
+                const SizedBox(height: SSpacing.md),
+                categories.when(
+                  loading: () => GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: SSpacing.md,
+                    crossAxisSpacing: SSpacing.md,
+                    children: List<Widget>.generate(
+                      6,
+                      (_) => const SSkeletonCard(height: 96),
+                    ),
+                  ),
+                  error: (Object error, _) => SErrorState(
+                    title: l10n.stateErrorGeneric,
+                    message: localizedError(l10n, error),
+                    retryLabel: l10n.actionRetry,
+                    onRetry: () => ref.invalidate(categoriesProvider),
+                  ),
+                  data: (List<ServiceCategory> data) => GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: SSpacing.md,
+                    crossAxisSpacing: SSpacing.md,
+                    childAspectRatio: 0.9,
+                    children: <Widget>[
+                      for (final (int i, ServiceCategory category)
+                          in data.indexed)
+                        SFadeSlideIn(
+                          index: i,
+                          child: _CategoryTile(
+                            icon: _categoryIcon(category.iconKey),
+                            label: categoryLabel(l10n, category.labelKey),
+                            onTap: () => context.push(
+                              '${AppRoutes.customerRequestsNew}'
+                              '?categoryId=${category.id}',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: SSpacing.xxl),
+                SSectionHeader(title: l10n.homeActiveJobs),
+                const SizedBox(height: SSpacing.sm),
+                jobs.when(
+                  loading: () => const Column(
+                    children: <Widget>[SSkeletonCard(), SSkeletonCard()],
+                  ),
+                  error: (Object error, _) => SErrorState(
+                    title: l10n.stateErrorGeneric,
+                    message: localizedError(l10n, error),
+                    retryLabel: l10n.actionRetry,
+                    onRetry: () => ref.invalidate(activeJobsProvider),
+                  ),
+                  data: (List<JobRequest> data) {
+                    if (data.isEmpty) {
+                      return SEmptyState(
+                        icon: Icons.inbox_outlined,
+                        title: l10n.homeNoActiveJobs,
+                      );
+                    }
+                    final cats = categories.value ?? const <ServiceCategory>[];
+                    return Column(
+                      children: <Widget>[
+                        for (final (int i, JobRequest job) in data.indexed)
+                          SFadeSlideIn(
+                            index: i,
+                            child: JobCard(
+                              job: job,
+                              categoryLabel: _categoryLabelFor(
+                                l10n,
+                                cats,
+                                job.categoryId,
+                              ),
+                              onTap: () => context.push(
+                                AppRoutes.customerRequestDetailPath(job.id),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A quick-category tile: gradient icon orb over a raised surface.
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SPressable(
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(SSpacing.sm),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                SIconOrb(icon: icon, size: 44),
+                const SizedBox(height: SSpacing.sm),
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

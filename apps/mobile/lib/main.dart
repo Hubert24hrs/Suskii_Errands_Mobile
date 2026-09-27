@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:suskii_core/suskii_core.dart';
+import 'package:suskii_design/suskii_design.dart';
 
 import 'app/app.dart';
 import 'app/crash_reporting.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   final config = AppConfig.fromEnvironment();
   final info = await PackageInfo.fromPlatform();
   final prefs = await SharedPreferences.getInstance();
+  registerDesignLicenses();
 
   await runWithCrashReporting(
     config,

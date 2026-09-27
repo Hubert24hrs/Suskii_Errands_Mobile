@@ -780,5 +780,11 @@
   "errPstnUnavailable": "Phone call no dey work now. Use in-app call instead.",
   "errTicketClosed": "This support ticket don close.",
   "errOrgRoleRequired": "Na only the business owner or dispatcher fit do that one.",
-  "errWorkerNotEligible": "That team member no fit take this job yet."
+  "errWorkerNotEligible": "That team member no fit take this job yet.",
+
+  "trustLevelNew": "New",
+  "trustLevelVerified": "Verified",
+  "trustLevelTrusted": "Trusted",
+  "trustLevelElite": "Elite",
+  "homeAskConcierge": "Ask the concierge"
 }

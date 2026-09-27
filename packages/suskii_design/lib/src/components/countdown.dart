@@ -77,13 +77,34 @@ class _SCountdownTimerState extends State<SCountdownTimer> {
         ? '$hours:${_remaining.inMinutes.remainder(60).toString().padLeft(2, '0')}:$seconds'
         : '$minutes:$seconds';
     final urgent = _remaining <= widget.urgentThreshold;
-    final base = widget.textStyle ?? Theme.of(context).textTheme.labelLarge;
-    return Text(
-      text,
-      semanticsLabel: text,
-      style: base?.copyWith(
-        color: urgent ? Theme.of(context).colorScheme.error : null,
-        fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    final scheme = Theme.of(context).colorScheme;
+    final base = widget.textStyle ?? Theme.of(context).textTheme.labelMedium;
+    final color = urgent ? scheme.error : scheme.onSurface;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: urgent ? scheme.errorContainer : scheme.surfaceContainerHigh,
+        borderRadius: const BorderRadius.all(Radius.circular(999)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            Icons.timer_outlined,
+            size: 14,
+            color: urgent ? scheme.onErrorContainer : color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            semanticsLabel: text,
+            style: base?.copyWith(
+              color: urgent ? scheme.onErrorContainer : color,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }

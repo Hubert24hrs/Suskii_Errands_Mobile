@@ -109,6 +109,10 @@ class _TrackingPageState extends ConsumerState<TrackingPage> {
                               destination: request.destination?.point,
                               provider: location.value,
                               color: Theme.of(context).colorScheme.primary,
+                              pickupColor: context.sColors.success,
+                              destinationColor: Theme.of(context)
+                                  .colorScheme
+                                  .error,
                             ),
                           ),
                     ),
@@ -171,8 +175,12 @@ class _TrackingPainter extends CustomPainter {
     required this.destination,
     required this.provider,
     required this.color,
+    required this.pickupColor,
+    required this.destinationColor,
   });
 
+  final Color pickupColor;
+  final Color destinationColor;
   final GeoPoint? pickup;
   final GeoPoint? destination;
   final GeoPoint? provider;
@@ -220,10 +228,14 @@ class _TrackingPainter extends CustomPainter {
     }
     final spotPaint = Paint()..color = color;
     if (pickup != null) {
-      canvas.drawCircle(project(pickup!), 6, Paint()..color = Colors.green);
+      canvas.drawCircle(project(pickup!), 6, Paint()..color = pickupColor);
     }
     if (destination != null) {
-      canvas.drawCircle(project(destination!), 6, Paint()..color = Colors.red);
+      canvas.drawCircle(
+        project(destination!),
+        6,
+        Paint()..color = destinationColor,
+      );
     }
     if (provider != null) {
       final center = project(provider!);

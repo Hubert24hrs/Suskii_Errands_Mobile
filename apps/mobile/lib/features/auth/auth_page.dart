@@ -194,163 +194,174 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final dial = _dialCodes[ref.watch(selectedCountryProvider) ?? 'NG'];
 
     return Scaffold(
-      body: SafeArea(
-        child: AutofillGroup(
-          child: ListView(
-            padding: const EdgeInsets.all(SSpacing.xl),
-            children: <Widget>[
-              const SizedBox(height: SSpacing.xxl),
-              Text(l10n.authTitle, style: theme.textTheme.headlineMedium),
-              const SizedBox(height: SSpacing.sm),
-              Text(
-                l10n.authSubtitle,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+      body: SAuroraBackground(
+        intensity: 0.7,
+        child: SafeArea(
+          child: AutofillGroup(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: SSpacing.gutter,
+                vertical: SSpacing.xl,
+              ),
+              children: <Widget>[
+                const SizedBox(height: SSpacing.lg),
+                const Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: SBrandMark(size: 56),
                 ),
-              ),
-              const SizedBox(height: SSpacing.xl),
-              SegmentedButton<_AuthMethod>(
-                segments: <ButtonSegment<_AuthMethod>>[
-                  ButtonSegment<_AuthMethod>(
-                    value: _AuthMethod.phone,
-                    label: Text(l10n.authMethodPhone),
-                    icon: const Icon(Icons.phone_outlined),
+                const SizedBox(height: SSpacing.xl),
+                Text(l10n.authTitle, style: theme.textTheme.displaySmall),
+                const SizedBox(height: SSpacing.sm),
+                Text(
+                  l10n.authSubtitle,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  ButtonSegment<_AuthMethod>(
-                    value: _AuthMethod.email,
-                    label: Text(l10n.authMethodEmail),
-                    icon: const Icon(Icons.mail_outline),
-                  ),
-                ],
-                selected: <_AuthMethod>{_method},
-                onSelectionChanged: _busy
-                    ? null
-                    : (Set<_AuthMethod> selection) =>
-                          _selectMethod(selection.first),
-              ),
-              const SizedBox(height: SSpacing.lg),
-              TextField(
-                key: const ValueKey<String>('auth.identity'),
-                controller: _method == _AuthMethod.phone
-                    ? _phoneController
-                    : _emailController,
-                enabled: !_codeSent,
-                keyboardType: _method == _AuthMethod.phone
-                    ? TextInputType.phone
-                    : TextInputType.emailAddress,
-                autofillHints: <String>[
-                  if (_method == _AuthMethod.phone)
-                    AutofillHints.telephoneNumber
-                  else
-                    AutofillHints.email,
-                ],
-                textInputAction: TextInputAction.done,
-                onChanged: (_) => setState(() {
-                  _error = null;
-                  _identityInvalid = false;
-                }),
-                onSubmitted: (_) => _busy ? null : _sendCode(),
-                decoration: InputDecoration(
-                  labelText: _method == _AuthMethod.phone
-                      ? l10n.authPhoneLabel
-                      : l10n.authEmailLabel,
-                  prefixText: _method == _AuthMethod.phone && dial != null
-                      ? '+$dial '
-                      : null,
-                  errorText: _identityInvalid
-                      ? (_method == _AuthMethod.phone
-                            ? l10n.authPhoneInvalid
-                            : l10n.authEmailInvalid)
-                      : null,
-                  suffixIcon: _codeSent
-                      ? IconButton(
-                          tooltip: l10n.authChangeIdentity,
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: _busy ? null : _changeIdentity,
-                        )
-                      : null,
                 ),
-              ),
-              if (_codeSent) ...<Widget>[
+                const SizedBox(height: SSpacing.xl),
+                SegmentedButton<_AuthMethod>(
+                  segments: <ButtonSegment<_AuthMethod>>[
+                    ButtonSegment<_AuthMethod>(
+                      value: _AuthMethod.phone,
+                      label: Text(l10n.authMethodPhone),
+                      icon: const Icon(Icons.phone_outlined),
+                    ),
+                    ButtonSegment<_AuthMethod>(
+                      value: _AuthMethod.email,
+                      label: Text(l10n.authMethodEmail),
+                      icon: const Icon(Icons.mail_outline),
+                    ),
+                  ],
+                  selected: <_AuthMethod>{_method},
+                  onSelectionChanged: _busy
+                      ? null
+                      : (Set<_AuthMethod> selection) =>
+                            _selectMethod(selection.first),
+                ),
                 const SizedBox(height: SSpacing.lg),
                 TextField(
-                  key: const ValueKey<String>('auth.code'),
-                  controller: _codeController,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const <String>[AutofillHints.oneTimeCode],
-                  maxLength: 6,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
+                  key: const ValueKey<String>('auth.identity'),
+                  controller: _method == _AuthMethod.phone
+                      ? _phoneController
+                      : _emailController,
+                  enabled: !_codeSent,
+                  keyboardType: _method == _AuthMethod.phone
+                      ? TextInputType.phone
+                      : TextInputType.emailAddress,
+                  autofillHints: <String>[
+                    if (_method == _AuthMethod.phone)
+                      AutofillHints.telephoneNumber
+                    else
+                      AutofillHints.email,
                   ],
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    letterSpacing: 8,
-                  ),
-                  onChanged: (String value) {
-                    setState(() => _error = null);
-                    if (value.length == 6 && !_busy) unawaited(_verify());
-                  },
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => setState(() {
+                    _error = null;
+                    _identityInvalid = false;
+                  }),
+                  onSubmitted: (_) => _busy ? null : _sendCode(),
                   decoration: InputDecoration(
-                    labelText: l10n.authOtpLabel,
-                    helperText: l10n.authCodeSentTo(_sentTo ?? ''),
-                    counterText: '',
+                    labelText: _method == _AuthMethod.phone
+                        ? l10n.authPhoneLabel
+                        : l10n.authEmailLabel,
+                    prefixText: _method == _AuthMethod.phone && dial != null
+                        ? '+$dial '
+                        : null,
+                    errorText: _identityInvalid
+                        ? (_method == _AuthMethod.phone
+                              ? l10n.authPhoneInvalid
+                              : l10n.authEmailInvalid)
+                        : null,
+                    suffixIcon: _codeSent
+                        ? IconButton(
+                            tooltip: l10n.authChangeIdentity,
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: _busy ? null : _changeIdentity,
+                          )
+                        : null,
                   ),
                 ),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton(
-                    onPressed: _busy || _cooldownLeft > 0 ? null : _sendCode,
+                if (_codeSent) ...<Widget>[
+                  const SizedBox(height: SSpacing.lg),
+                  TextField(
+                    key: const ValueKey<String>('auth.code'),
+                    controller: _codeController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const <String>[AutofillHints.oneTimeCode],
+                    maxLength: 6,
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      letterSpacing: 8,
+                    ),
+                    onChanged: (String value) {
+                      setState(() => _error = null);
+                      if (value.length == 6 && !_busy) unawaited(_verify());
+                    },
+                    decoration: InputDecoration(
+                      labelText: l10n.authOtpLabel,
+                      helperText: l10n.authCodeSentTo(_sentTo ?? ''),
+                      counterText: '',
+                    ),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: TextButton(
+                      onPressed: _busy || _cooldownLeft > 0 ? null : _sendCode,
+                      child: Text(
+                        _cooldownLeft > 0
+                            ? l10n.authResendIn(_cooldownLeft)
+                            : l10n.authResendCode,
+                      ),
+                    ),
+                  ),
+                  if (config.usesMockBackend)
+                    Text(
+                      l10n.authDemoHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+                if (error != null) ...<Widget>[
+                  const SizedBox(height: SSpacing.md),
+                  Semantics(
+                    liveRegion: true,
                     child: Text(
-                      _cooldownLeft > 0
-                          ? l10n.authResendIn(_cooldownLeft)
-                          : l10n.authResendCode,
+                      localizedError(l10n, error),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
                     ),
                   ),
+                ],
+                const SizedBox(height: SSpacing.xl),
+                if (!_codeSent)
+                  SButton(
+                    key: const ValueKey<String>('auth.send'),
+                    label: l10n.authSendCode,
+                    loading: _busy,
+                    onPressed: _busy ? null : _sendCode,
+                  )
+                else
+                  SButton(
+                    key: const ValueKey<String>('auth.verify'),
+                    label: l10n.authVerify,
+                    loading: _busy,
+                    onPressed: _codeController.text.length == 6 && !_busy
+                        ? _verify
+                        : null,
+                  ),
+                const SizedBox(height: SSpacing.xl),
+                _LegalNotice(
+                  privacyUrl: config.privacyPolicyUrl,
+                  termsUrl: config.termsUrl,
                 ),
-                if (config.usesMockBackend)
-                  Text(
-                    l10n.authDemoHint,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
               ],
-              if (error != null) ...<Widget>[
-                const SizedBox(height: SSpacing.md),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    localizedError(l10n, error),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: SSpacing.xl),
-              if (!_codeSent)
-                SButton(
-                  key: const ValueKey<String>('auth.send'),
-                  label: l10n.authSendCode,
-                  loading: _busy,
-                  onPressed: _busy ? null : _sendCode,
-                )
-              else
-                SButton(
-                  key: const ValueKey<String>('auth.verify'),
-                  label: l10n.authVerify,
-                  loading: _busy,
-                  onPressed: _codeController.text.length == 6 && !_busy
-                      ? _verify
-                      : null,
-                ),
-              const SizedBox(height: SSpacing.xl),
-              _LegalNotice(
-                privacyUrl: config.privacyPolicyUrl,
-                termsUrl: config.termsUrl,
-              ),
-            ],
+            ),
           ),
         ),
       ),

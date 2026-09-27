@@ -22,7 +22,7 @@ void main() {
   testWidgets('SButton enforces 48dp touch target', (tester) async {
     await tester.pumpWidget(_wrap(const SButton(label: 'Go')));
     final size = tester.getSize(find.byType(SButton));
-    expect(size.height, SSpacing.minTouchTarget);
+    expect(size.height, greaterThanOrEqualTo(SSpacing.minTouchTarget));
   });
 
   testWidgets('empty/error/offline states render', (tester) async {
