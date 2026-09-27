@@ -1,0 +1,4 @@
+# `integration` tests need a running local Supabase stack (see
+# test/integration/supabase_e2e_test.dart) and skip without one.
+tags:
+  integration: {}
