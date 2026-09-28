@@ -5,6 +5,99 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-28 — Claude Code — store readiness: audit, fixes, redesign, tests, store configuration
+
+The user set one goal — audit, fix, redesign, test end to end and make the app store-ready for
+Google Play and the App Store — and **explicitly authorised Claude Code to edit `apps/` and
+`packages/`** for it. This entry logs every change in your paths so you inherit the reasoning,
+not just the diff. Branch `claude/cool-franklin-jk5zkt`, on top of `main`; the push was
+refused by GitHub (the Claude GitHub App has no access to the repository), so until the user
+reconnects it the work exists only on that branch in the cloud session.
+
+Audit: [`docs/audit/AUDIT-2026-09-27.md`](docs/audit/AUDIT-2026-09-27.md) — 34 findings, two
+Critical (the release build had no INTERNET permission; every ledger posting failed at COMMIT),
+all fixed except Y.19 and Y.10 (below). Store runbook: [RB-15](docs/runbooks/RB-15-store-release.md).
+
+### What changed in your layer, and why
+
+**Store blockers (`863bcee`)** — sessions in Keychain/Keystore, not SharedPreferences (Y.2);
+every repository keyed to the signed-in user so a second person on the handset gets a fresh graph
+(Y.3); profile no longer crashes on an empty name, and the name is editable (Y.4); proofs and KYC
+documents are photographed and **uploaded** before they are filed (`MediaUploadRepository`,
+`media_capture.dart`; Y.5, Y.6); hosted checkout opens (Y.7); demo copy only on the mock backend
+(`AppConfig.usesMockBackend`), social placeholders and the MFA preview gone (Y.8); deletion
+signs out and signing back in offers to keep the account (`DeletionPendingPage`; Y.9); every
+error code has a message (Y.12); privacy/terms links (Y.13); welcome/country/language/theme
+persist (Y.14); Sentry behind a DSN, PII scrubbed (Y.15); `SecureScreen` (Y.16); OTP autofill,
+resend and E.164 (Y.17); portrait (Y.24).
+
+**Redesign (`beb706f`, `da1c8de`; ADR-0016)** — "Aurora": dark first, tokens v2, Sora + Manrope
+bundled, glass/gradient/motion/haptics as components, contrast tested in both themes. The web apps
+share the same tokens through `packages/design-tokens` (`tokens.css` generated, checked in CI).
+**No screen hard-codes a colour — keep it that way**; add a token instead.
+
+**Router (`1447a1b`)** — splash holds while bootstrap loads (it looped with `/auth` and flashed
+go_router's error page on every cold start); unknown routes land on `RouteNotFoundPage`.
+`context.leave(fallback)` (`350ee5d`): **use it in any screen that closes itself** — routes are
+flat, so a screen opened from a notification or a link has nothing to pop.
+
+**Bugs the journeys found** — `SButton` filled the whole screen in a bottom bar (a bare `Center`;
+fixed in the component, `3e884d5`); display-only `SRatingInput` is icons, not five disabled
+buttons; the call and payment screens popped twice, and the call and voice screens read `ref` in
+`dispose` (Riverpod 3 forbids it; hold what you need from `initState`) (`350ee5d`); "Start
+journey" is offered only from `assigned`; earnings amounts no longer wrap mid-number.
+
+**Arrival and live tracking** — `requestStatusChange` takes `location` and `reasonCode`:
+`set_job_status` refuses `arrived` without a position inside the geofence or a manual reason, and
+the app sent neither (Y.29, `d2cd84e`). `DeviceLocation` (`app/device_location.dart`) is the one
+place the app touches `geolocator`; override it in tests. `TrackingRepository` gained
+`publishProviderLocation`; the provider screen publishes while the job is en route, arrived or in
+progress, and the customer map (app **and web**) listens to the `provider.location` broadcast
+instead of `location_samples`, which participants can read only after the job (Y.31, `d156e8c`).
+Location is asked for at "Start journey" after an in-app explanation (`3bf9275`).
+
+**Web** — security headers in all three apps (`6e66068`); web-customer's deletion and export call
+the RPCs (`955a0b8`); web-customer tracking listens to the broadcast; the marketing site serves
+`/[locale]/delete-account` and the two `.well-known` App Links files.
+
+**Native projects (`fff0820`; ADR-0015, ADR-0017)** — one app id, `com.suskiierrands.app` (OD-26
+asks the client to confirm), environments from the define file: `config/env/*.json` gained
+`APP_NAME` and `APP_LINK_HOST`, Gradle decodes them, iOS gets them through
+`tool/write_ios_defines.sh`. Minimum permissions, R8, network security config, adaptive and themed
+icons (interim mark from `tool/brand/generate_icons.py`), splash, App Links on `/app/*` (the router
+strips the prefix), FLAG_SECURE channel, iOS usage strings, privacy manifest, entitlements, launch
+screen, app-switcher blur. `version: 1.0.0+1`.
+
+### How to work with it
+
+- **Build**: `flutter run --dart-define-from-file=config/env/dev.json` as before; no `--flavor`.
+- **Tests**: `flutter test` in `apps/mobile` runs 19 journeys (`test/flows`), the screen catalogue
+  (every route, both themes, 1× and 2× text — fails on overflow) and goldens. Re-record goldens
+  **deliberately** after a visual change: `flutter test --tags golden --update-goldens`, then look
+  at them — the full-screen pay button sat in a recorded golden for a day.
+- **Journeys on a device**: `flutter test integration_test -d <device>` runs the same bodies.
+- **Store screenshots**: `fastlane/screenshots/README.md`.
+- `frontend-ci` now runs `apps/mobile` (the "no tests" skip is gone) and `suskii_design`, checks
+  `tokens.css`, and a `web-smoke` job runs Playwright over every route of the three apps.
+
+### Contracts
+
+1.2.0 (account deletion, data export, `ERR_UPLOAD_NOT_FOUND`) and 1.3.0 (the client-originated
+`provider.location` event; `storage-worker`). Both MINOR — nothing you call changed shape.
+
+### Still open for you
+
+- **Y.19 — business console stays on mocks.** It cannot be wired yet: `invite_member` takes a user
+  id where the UI invites by phone, and `register_organization` / `register_vehicle` take
+  ciphertext and a blind index the client has no way to produce (CR-06's shape). That is backend
+  work first; don't send plaintext as "ciphertext".
+- **Push** — no FCM/APNs until the client's Firebase project exists (RB-15 action 27); the RPC to
+  register a device token (`register_device`) exists and nothing calls it yet.
+- **Background tracking** — foreground only until OD-27 is decided.
+- **Brand** — the icon and colours are placeholders until the client's artwork arrives.
+
+---
+
 ## 2026-09-25 — Kimi Code — W9.10 + M9.10: offers ranking (`rank_offers`) on web + mobile
 
 Closes the item deferred in both M9.2 and W9.4: the customer offers board now
