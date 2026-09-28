@@ -1,7 +1,7 @@
 name: suskii_mobile
 description: Suskii Errands mobile app — Customer + Provider modes.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.13.0

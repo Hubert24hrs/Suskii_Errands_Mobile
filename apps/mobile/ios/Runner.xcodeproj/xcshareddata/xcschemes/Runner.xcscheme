@@ -22,6 +22,23 @@
                </EnvironmentBuildable>
             </ActionContent>
          </ExecutionAction>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Environment from the define file"
+               scriptText = "# ADR-0015: bundle id suffix, display name and App Links host from --dart-define-from-file.&#10;/bin/bash &quot;${SRCROOT}/../tool/write_ios_defines.sh&quot;&#10;"
+               shellToInvoke = "/bin/bash">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
+                     BuildableName = "Runner.app"
+                     BlueprintName = "Runner"
+                     ReferencedContainer = "container:Runner.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
       </PreActions>
       <BuildActionEntries>
          <BuildActionEntry

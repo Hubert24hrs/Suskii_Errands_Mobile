@@ -162,6 +162,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     // home, never on go_router's default error screen.
     errorBuilder: (context, state) => const RouteNotFoundPage(),
     redirect: (context, state) {
+      // 0. App Links arrive as https://<host>/app/<route> (AndroidManifest,
+      // Runner.entitlements). The prefix is what keeps the website's own
+      // pages from being claimed by the app; the rest is a route here, and
+      // the gates below still apply to it.
+      final path = state.uri.path;
+      if (path == '/app' || path.startsWith('/app/')) {
+        final route = path.substring('/app'.length);
+        return Uri(
+          path: route.isEmpty || route == '/' ? AppRoutes.customerHome : route,
+          query: state.uri.query.isEmpty ? null : state.uri.query,
+        ).toString();
+      }
+
       final loc = state.matchedLocation;
       final boot = ref.read(bootstrapProvider);
 

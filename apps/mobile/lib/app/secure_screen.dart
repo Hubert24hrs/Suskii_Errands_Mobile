@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 
 /// Blocks screenshots and screen recording while mounted, on Android via
 /// FLAG_SECURE (`MainActivity`). iOS cannot block a screenshot; it covers
-/// the app-switcher snapshot instead (`SceneDelegate`), for every screen.
+/// the app-switcher snapshot instead (`AppDelegate`), for every screen.
 /// Wrap KYC, wallet, PIN and payout screens (audit 2026-09-27 Y.16; spec
 /// security.mobile).
 class SecureScreen extends StatefulWidget {

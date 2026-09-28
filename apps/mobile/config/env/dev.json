@@ -1,5 +1,7 @@
 {
   "APP_FLAVOR": "dev",
+  "APP_NAME": "Suskii Dev",
+  "APP_LINK_HOST": "dev.suskii-errands.example",
   "SUPABASE_URL": "",
   "SUPABASE_ANON_KEY": "",
   "AI_SERVICE_URL": "",

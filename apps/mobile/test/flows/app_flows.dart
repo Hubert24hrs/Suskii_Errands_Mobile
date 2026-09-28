@@ -25,6 +25,7 @@ final AppLocalizations l10n = lookupAppLocalizations(const Locale('en'));
 /// Every flow, by name.
 final Map<String, Flow> appFlows = <String, Flow>{
   'phone OTP sign-in lands on home': _signIn,
+  'an App Link opens the screen it names': _appLink,
   'first run: welcome, onboarding, sign-in': _firstRun,
   'identity verification: consent, liveness, ID lookup': _verifyIdentity,
   'provider KYC: photograph a document and upload it': _providerKycUpload,
@@ -127,6 +128,17 @@ Future<void> _switchToProvider(WidgetTester tester, TestApp app) async {
 
 Future<void> _signIn(WidgetTester tester) async {
   final app = await _signedInApp(tester);
+  await app.dispose(tester);
+}
+
+Future<void> _appLink(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _go(tester, app, '/app/customer/wallet');
+  expect(
+    app.container.read(routerProvider).state.uri.path,
+    AppRoutes.customerWallet,
+  );
+  expect(find.text(l10n.walletTitle), findsOneWidget);
   await app.dispose(tester);
 }
 

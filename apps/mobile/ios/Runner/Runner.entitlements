@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push (APNs), for job updates and, later, VoIP call pushes. The App ID needs the Push
+	     Notifications capability (RB-15); Xcode writes "production" into the exported build. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- App Links: https://<host>/app/... opens the app. Verified against
+	     https://<host>/.well-known/apple-app-site-association, served by the marketing site.
+	     APP_LINK_HOST comes from the define file (Flutter/DartDefines.xcconfig). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:$(APP_LINK_HOST)</string>
+	</array>
+	<!-- Sign in with Apple. Required by guideline 4.8 the day any third-party sign-in ships;
+	     configured now so that day is a Supabase setting and not a resubmission. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

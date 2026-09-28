@@ -1,5 +1,7 @@
 {
   "APP_FLAVOR": "staging",
+  "APP_NAME": "Suskii Staging",
+  "APP_LINK_HOST": "staging.suskii-errands.example",
   "SUPABASE_URL": "",
   "SUPABASE_ANON_KEY": "",
   "AI_SERVICE_URL": "",
