@@ -10,9 +10,9 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 The user set one goal — audit, fix, redesign, test end to end and make the app store-ready for
 Google Play and the App Store — and **explicitly authorised Claude Code to edit `apps/` and
 `packages/`** for it. This entry logs every change in your paths so you inherit the reasoning,
-not just the diff. Branch `claude/cool-franklin-jk5zkt`, on top of `main`; the push was
-refused by GitHub (the Claude GitHub App has no access to the repository), so until the user
-reconnects it the work exists only on that branch in the cloud session.
+not just the diff. Branch `claude/cool-franklin-jk5zkt`, **merged into `main` as `39bb7b3`**
+(PR #41, all 17 checks green, including the first Android and iOS compilations). Take it with
+`git reset --mixed origin/main` as CLAUDE.md describes.
 
 Audit: [`docs/audit/AUDIT-2026-09-27.md`](docs/audit/AUDIT-2026-09-27.md) — 34 findings, two
 Critical (the release build had no INTERNET permission; every ledger posting failed at COMMIT),
@@ -67,6 +67,16 @@ asks the client to confirm), environments from the define file: `config/env/*.js
 icons (interim mark from `tool/brand/generate_icons.py`), splash, App Links on `/app/*` (the router
 strips the prefix), FLAG_SECURE channel, iOS usage strings, privacy manifest, entitlements, launch
 screen, app-switcher blur. `version: 1.0.0+1`.
+
+**Merged-manifest fix (`04f3a4d`; audit Y.35)**: `android/app/src/main/AndroidManifest.xml` now
+has `xmlns:tools`, removes `FOREGROUND_SERVICE_LOCATION` and `FOREGROUND_SERVICE`, and declares
+`com.baseflow.geolocator.GeolocatorLocationService` only to strip its `foregroundServiceType`.
+`geolocator` adds both for tracking with the app closed, which the app never does (OD-27), and on
+the Play listing they would read as a foreground-service declaration. **Keep the `<service>`
+element**: the plugin binds it for the in-app position stream, and without it
+`getPositionStream` returns nothing. If OD-27 ever turns background tracking on, this block is
+what changes, together with RB-15's permissions table and the Data safety draft. `mobile-native`
+fails if any foreground-service permission or type reaches the Play bundle's merged manifest.
 
 ### How to work with it
 
