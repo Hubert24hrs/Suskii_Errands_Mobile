@@ -789,5 +789,8 @@
   "homeAskConcierge": "Ask the concierge",
   "jobArrivalManualTitle": "Mark arrived without a location match?",
   "jobArrivalManualBody": "We couldn't confirm you're at the pickup point. If you are, you can still mark arrived — the customer is told, and this is recorded in case of a dispute.",
-  "jobArrivalManualConfirm": "I'm here — mark arrived"
+  "jobArrivalManualConfirm": "I'm here — mark arrived",
+  "locationRationaleTitle": "Share your location on this job?",
+  "locationRationaleBody": "While you travel and work on this job, your customer can follow you on a map, and your arrival at the pickup point is checked. Location is used only while the job is open, never between jobs. You can say no and still do the job.",
+  "actionNotNow": "Not now"
 }

@@ -17,6 +17,10 @@ class LocationReading {
 /// customer's live map, ADR-0009). Neither throws nor blocks for long; the
 /// caller falls back to a manual path, or to no map.
 abstract interface class DeviceLocation {
+  /// True when asking would show the system prompt: never asked, or refused
+  /// once. The app explains why before it asks.
+  Future<bool> canAsk();
+
   Future<LocationReading> current();
 
   /// Positions while the app is in the foreground, one per [distanceFilter]
@@ -27,6 +31,15 @@ abstract interface class DeviceLocation {
 
 class GeolocatorDeviceLocation implements DeviceLocation {
   const GeolocatorDeviceLocation();
+
+  @override
+  Future<bool> canAsk() async {
+    try {
+      return await Geolocator.checkPermission() == LocationPermission.denied;
+    } on Object {
+      return false;
+    }
+  }
 
   @override
   Future<LocationReading> current() async {

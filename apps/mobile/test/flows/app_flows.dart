@@ -36,6 +36,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'track the provider on the way': _tracking,
   'chat and a masked call': _chatAndCall,
   'provider journey: start, manual arrival, pickup PIN': _providerArrival,
+  'location is explained before it is asked, and declining still travels':
+      _locationRationale,
   'rate a finished job': _rating,
   'open a dispute': _dispute,
   'wallet withdrawal': _withdraw,
@@ -328,7 +330,13 @@ Future<void> _chatAndCall(WidgetTester tester) async {
 /// No one-shot fix (so arrival is manual), but a moving position while the
 /// job is live, as a phone with a poor GPS lock at the gate would give.
 class _FakeLocation implements DeviceLocation {
-  const _FakeLocation();
+  const _FakeLocation({this.askable = false});
+
+  /// Whether the system prompt has yet to be shown.
+  final bool askable;
+
+  @override
+  Future<bool> canAsk() async => askable;
 
   @override
   Future<LocationReading> current() async =>
@@ -369,6 +377,28 @@ Future<void> _providerArrival(WidgetTester tester) async {
   await settle(tester);
   expect(app.database.requests['req-p1']!.status, JobStatus.arrived);
   await _reveal(tester, find.text(l10n.jobActionVerifyPickupPin));
+  await app.dispose(tester);
+}
+
+Future<void> _locationRationale(WidgetTester tester) async {
+  final app = await _signedInApp(
+    tester,
+    overrides: <Override>[
+      deviceLocationProvider.overrideWithValue(
+        const _FakeLocation(askable: true),
+      ),
+    ],
+  );
+  app.database.requests['req-p1'] = app.database.requests['req-p1']!.copyWith(
+    status: JobStatus.assigned,
+  );
+  await _switchToProvider(tester, app);
+  await _go(tester, app, AppRoutes.providerJobExecutionPath('req-p1'));
+  await _tapText(tester, l10n.jobActionStartJourney);
+  expect(find.text(l10n.locationRationaleTitle), findsOneWidget);
+  await tester.tap(find.text(l10n.actionNotNow));
+  await settle(tester);
+  expect(app.database.requests['req-p1']!.status, JobStatus.enRoute);
   await app.dispose(tester);
 }
 

@@ -57,13 +57,14 @@ misleading-claims policy).
 | SDK levels | min 24, target and compile **36** (Play requires 36 for new apps and updates since 31 Aug 2026 [V] developer.android.com/google/play/requirements/target-sdk) | min iOS 15.0; built with **Xcode 26** (required for uploads since 28 Apr 2026 [V] developer.apple.com/news/upcoming-requirements) |
 | Shrinking | R8 + resource shrinking; `proguard-rules.pro`; mapping file kept with the build | Dart `--obfuscate` with `--split-debug-info`; symbols kept with the build |
 | Devices | phones, portrait | iPhone only (`TARGETED_DEVICE_FAMILY = 1`), portrait |
+| Plugins | Gradle | Swift Package Manager (Flutter 3.47's default). There is no Podfile because no plugin needs CocoaPods; if one ever does, `flutter build ios` generates it — set `platform :ios, '15.0'` in it and commit it |
 
 ### Permissions, and why each is there
 
 | Permission / key | Platform | Why | When it is asked |
 |---|---|---|---|
 | `INTERNET` | Android | Everything. Its absence from the main manifest was audit Y.1 (Critical) | Not a runtime permission |
-| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` / `NSLocationWhenInUseUsageDescription` | both | The provider's position is checked against the 150 m pickup geofence when they mark arrival (`set_job_status`, transition 13). Fine, because coarse cannot resolve 150 m. Foreground only; there is no background location | At the tap on "Mark arrived", never at launch |
+| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` / `NSLocationWhenInUseUsageDescription` | both | While a provider is on a job: the customer's live map (broadcast on the job's channel, ADR-0009), the trip trail through the heartbeat, and the 150 m pickup geofence when they mark arrival (`set_job_status`, transition 13). Fine, because coarse cannot resolve 150 m. Foreground only; there is no background location (OD-27) | At "Start journey", after an in-app explanation the provider can decline and still travel; never at launch |
 | `NSCameraUsageDescription` | iOS | Photographing an ID document, a receipt or proof of a finished job | When the person chooses "Take a photo" |
 | `NSPhotoLibraryUsageDescription` | iOS | Choosing such a photo from the library | When the person chooses "Choose from library" |
 | — (no CAMERA, no READ_MEDIA_*) | Android | `image_picker` hands off to the system camera and the Android photo picker, which need no permission | — |

@@ -115,10 +115,21 @@ class _ProviderJobExecutionPageState
   }
 
   /// Asks for location at the moment it is needed (just-in-time
-  /// permissions): the journey is what the customer's live map follows. A
-  /// refusal does not stop the journey; it only means no map.
+  /// permissions), after saying why: the journey is what the customer's live
+  /// map follows. Declining does not stop the journey; it only means no map.
   Future<void> _startJourney() async {
-    await ref.read(deviceLocationProvider).current();
+    final location = ref.read(deviceLocationProvider);
+    if (await location.canAsk() && mounted) {
+      final l10n = AppLocalizations.of(context);
+      final share = await showSConfirmDialog(
+        context: context,
+        title: l10n.locationRationaleTitle,
+        message: l10n.locationRationaleBody,
+        confirmLabel: l10n.actionContinue,
+        cancelLabel: l10n.actionNotNow,
+      );
+      if (share) await location.current();
+    }
     if (mounted) await _transition(JobStatus.enRoute);
   }
 

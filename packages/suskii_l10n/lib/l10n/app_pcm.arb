@@ -789,5 +789,8 @@
   "homeAskConcierge": "Ask the concierge",
   "jobArrivalManualTitle": "Mark say you don reach without location match?",
   "jobArrivalManualBody": "We no fit confirm say you dey the pickup point. If you dey there, you fit still mark say you don reach — we go tell the customer, and we go record am in case dispute happen.",
-  "jobArrivalManualConfirm": "I don reach — mark am"
+  "jobArrivalManualConfirm": "I don reach — mark am",
+  "locationRationaleTitle": "You wan share your location for this job?",
+  "locationRationaleBody": "As you dey travel and dey do this job, your customer fit follow you for map, and we go check say you don reach the pickup point. We dey use location only when the job dey open, no be between jobs. You fit talk no and still do the job.",
+  "actionNotNow": "No be now"
 }
