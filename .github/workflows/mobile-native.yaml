@@ -56,9 +56,14 @@ jobs:
           test -n "$manifest" || { echo "merged release manifest not found"; exit 1; }
           echo "== $manifest"
           grep -o 'uses-permission[^>]*android:name="[^"]*"' "$manifest" | sed 's/.*android:name=//' | sort -u
-          denied='CAMERA|RECORD_AUDIO|READ_MEDIA_[A-Z_]*|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_PHONE_STATE|READ_SMS|RECEIVE_SMS|SYSTEM_ALERT_WINDOW|QUERY_ALL_PACKAGES|REQUEST_INSTALL_PACKAGES|MANAGE_EXTERNAL_STORAGE'
+          denied='FOREGROUND_SERVICE[A-Z_]*|CAMERA|RECORD_AUDIO|READ_MEDIA_[A-Z_]*|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_PHONE_STATE|READ_SMS|RECEIVE_SMS|SYSTEM_ALERT_WINDOW|QUERY_ALL_PACKAGES|REQUEST_INSTALL_PACKAGES|MANAGE_EXTERNAL_STORAGE'
           if grep -Eo "uses-permission[^>]*android:name=\"android.permission.($denied)\"" "$manifest"; then
             echo "A sensitive permission reached the merged manifest; declare it on purpose (RB-15) or remove the plugin that added it."
+            exit 1
+          fi
+          # A service with a type is a foreground-service declaration on the Play listing (OD-27).
+          if grep -n 'foregroundServiceType' "$manifest"; then
+            echo "A foreground service type reached the merged manifest; strip it with tools:remove as geolocator's is."
             exit 1
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

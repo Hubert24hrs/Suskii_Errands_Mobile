@@ -70,8 +70,13 @@ misleading-claims policy).
 | — (no CAMERA, no READ_MEDIA_*) | Android | `image_picker` hands off to the system camera and the Android photo picker, which need no permission | — |
 
 Not declared, on purpose: microphone (calls and the voice concierge have no audio yet), notifications
-(no push yet), background location, contacts, phone state. `mobile-native.yaml` fails if a plugin
-adds a sensitive permission to the merged manifest.
+(no push yet), background location, contacts, phone state, foreground services. `mobile-native.yaml`
+fails if a plugin adds a sensitive permission or a foreground service type to the merged manifest.
+The first compiled build caught one: `geolocator` adds `FOREGROUND_SERVICE_LOCATION` and a
+`location`-typed service for tracking with the app closed. The app never starts that service, so the
+manifest strips the permission and the type (`tools:node="remove"`, `tools:remove`), which keeps a
+foreground-service declaration off the Play listing; the service itself stays because the plugin binds
+it to deliver the in-app position stream. OD-27 is where that changes.
 
 ### Other store-facing settings
 

@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Only what the app uses (audit 2026-09-27 Y.1, Y.10; RB-15 lists each with its reason).
          Camera and photos need no permission: image_picker hands off to the system camera and
@@ -9,6 +10,13 @@
          the tap (lib/app/device_location.dart). Foreground only; never in the background. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- geolocator declares a location foreground service for tracking with the app closed. The
+         app never starts it (no foregroundNotificationConfig; OD-27 keeps tracking in the
+         foreground), and declaring it would put a foreground-service declaration on the Play
+         listing. The service element itself stays: the plugin binds it to deliver the
+         foreground position stream. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -60,6 +68,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            tools:remove="android:foregroundServiceType" />
     </application>
     <!-- Package visibility (Android 11+): the text-processing query is the Flutter template's;
          the rest let url_launcher open the legal pages and the support mail. -->
