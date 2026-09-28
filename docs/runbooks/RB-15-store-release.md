@@ -13,10 +13,13 @@ index in order.
 **What is verified and what is not.** Everything in this runbook that runs on Linux has been run:
 Fastlane parses and every option name matches 2.240.1, the workflows pass `actionlint` and
 `shellcheck`, the define-file scripts are tested, the App Links files and the account-deletion
-page are served and smoke-tested. **The Android and iOS builds themselves have not been compiled
-from this change**: the environment it was written in cannot reach Google's Maven repository and
-has no macOS. `mobile-native.yaml` (Android release bundle) and `mobile-ios.yaml` (iOS release,
-unsigned) are the first place they compile; read their first run before trusting anything below.
+page are served and smoke-tested. The environment this was written in cannot reach Google's Maven
+repository and has no macOS, so the Android and iOS builds were first compiled by CI:
+`mobile-native.yaml` (prod release bundle, dev release APK, merged-manifest permission check) and
+`mobile-ios.yaml` (iOS release, unsigned) **both passed on 2026-09-28** (PR #41). The first Android
+run found a foreground-service declaration from `geolocator` (audit Y.35), now stripped. What is
+still unverified is everything after compiling: signing, upload and review, which need the store
+accounts.
 
 ## 1. Client actions — nothing ships until these are done
 
