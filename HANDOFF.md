@@ -5,6 +5,34 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-28 — Claude Code — saved places and the access note (backend; contracts 1.4.0)
+
+Backend only; nothing in `apps/` or `packages/` changed. Migration `20260928120100_saved_places`,
+41 pgTAP assertions in `49_saved_places_test.sql`, contracts **1.4.0** (see `contracts/CHANGELOG.md`).
+
+### What you can wire now
+
+- **Saved places screen**: `saved_places` is a normal table for the signed-in user — select, insert
+  (`label`, `point`, `landmark_note`; leave `user_id` to default), update those three, delete.
+  Show `has_access_note`; never expect the note back. Cap from `remote_config.saved_places_max`
+  (client-visible) → `ERR_SAVED_PLACE_LIMIT`.
+- **Request form**: after `create_request`, call `set_request_access_note(request_id,
+  p_saved_place_id := …)` when the customer picked a saved place, or with fresh ciphertext. The
+  customer can change it until the job leaves `in_progress`; after that it is
+  `ERR_ACCESS_NOTE_WINDOW_CLOSED`. `request_has_access_note` drives the "access note added" chip.
+- **Provider job screen**: a "Show access note" control **only** while the job is `en_route`,
+  `arrived` or `in_progress`. `reveal_access_note(request_id)` returns the ciphertext or `NULL`
+  (no note). Do not cache it past the job: every call is audited, and the server deletes it at the end.
+
+### What you cannot do yet
+
+The note is ciphertext (ADR-0007) and **no client may hold the key**. Encrypting on the way in and
+decrypting on reveal needs an Edge Function with the KMS key, which needs GCP billing (client
+action 1). Build the screens against the mock backend; the real round trip lands with that
+function. Until then, do not invent a client-side scheme to fill the gap.
+
+---
+
 ## 2026-09-28 — Claude Code — store readiness: audit, fixes, redesign, tests, store configuration
 
 The user set one goal — audit, fix, redesign, test end to end and make the app store-ready for

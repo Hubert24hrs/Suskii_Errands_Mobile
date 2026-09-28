@@ -4,7 +4,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(16);
+SELECT plan(17);
 
 -- Internal schemas are unreachable for client roles.
 SELECT is(
@@ -76,6 +76,8 @@ SELECT is(
        'private.is_org_member', 'private.org_role',
        'public.mark_notifications_read',
        'public.add_trusted_contact', 'public.remove_trusted_contact',
+       'public.set_saved_place_access_note', 'public.set_request_access_note',
+       'public.request_has_access_note', 'public.reveal_access_note',
        'public.raise_sos', 'public.update_sos_incident',
        'public.create_trip_share', 'public.revoke_trip_share',
        'public.get_shared_trip',
@@ -156,7 +158,8 @@ SELECT is(
         unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) priv
    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
      AND has_table_privilege('authenticated', c.oid, priv)
-     AND c.relname::text || ':' || priv NOT IN ('notification_preferences:INSERT')),
+     AND c.relname::text || ':' || priv NOT IN ('notification_preferences:INSERT',
+                                                   'saved_places:DELETE')),
   '{}'::text[], 'authenticated has table-level writes only where allowlisted');
 
 -- Client-writable columns match the RLS matrix exactly.
@@ -191,6 +194,13 @@ SELECT set_eq(
                                'UPDATE')$$,
   ARRAY['legal_name'],
   'organizations: the owner renames it and nothing else — never its verification status');
+SELECT set_eq(
+  $$SELECT attname::text FROM pg_attribute
+    WHERE attrelid = 'public.saved_places'::regclass AND attnum > 0 AND NOT attisdropped
+      AND has_column_privilege('authenticated', 'public.saved_places'::regclass, attnum,
+                               'UPDATE')$$,
+  ARRAY['label', 'point', 'landmark_note'],
+  'saved_places: the access note is written through a function and never by update');
 
 SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute

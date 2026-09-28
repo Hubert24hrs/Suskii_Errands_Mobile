@@ -1,6 +1,6 @@
 # contracts/v1 — binding
 
-Version **1.3.0** (2026-09-28). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
+Version **1.4.0** (2026-09-28). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
 
 This is the agreement between the backend and every frontend. [`../README.md`](../README.md) rule 1:
 **clients may call only what is listed here.** Not an endpoint, not a field, not an event more.
@@ -112,4 +112,3 @@ exist yet, and each is blocked on a credential rather than on work:
 | Masked-number contract | No telephony provider is contracted. `request_pstn_fallback` returns NULL and records the demand |
 | Gateway checkout payload | Merchant accounts (client action 4). Shapes come from the S-12 sandbox, and are not guessed here |
 | `classify_request` embeddings | ADR-0006 must pick a model before a vector dimension can be fixed |
-| `saved_places`, `reveal_access_note` | Specified in the RLS matrix §4, not built. See `docs/audit/AUDIT-2026-09-22c.md` |

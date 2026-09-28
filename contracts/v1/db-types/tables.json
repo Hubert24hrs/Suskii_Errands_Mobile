@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
-  "count": 66,
+  "count": 67,
   "tables": [
     {
       "name": "public.account_deletion_requests",
@@ -5858,6 +5858,124 @@
         }
       },
       "defined_in": "20260918120000_marketplace_requests.sql"
+    },
+    {
+      "name": "public.saved_places",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "label",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "point",
+          "type": {
+            "type": "object",
+            "sql_type": "extensions.geography"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "landmark_note",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "access_note_ciphertext",
+          "type": {
+            "type": "string",
+            "format": "byte"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "has_access_note",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "DELETE": {
+          "authenticated": [
+            "*"
+          ]
+        },
+        "INSERT": {
+          "authenticated": [
+            "label",
+            "landmark_note",
+            "point",
+            "user_id"
+          ]
+        },
+        "SELECT": {
+          "authenticated": [
+            "created_at",
+            "has_access_note",
+            "id",
+            "label",
+            "landmark_note",
+            "point",
+            "updated_at",
+            "user_id"
+          ]
+        },
+        "UPDATE": {
+          "authenticated": [
+            "label",
+            "landmark_note",
+            "point"
+          ]
+        }
+      },
+      "defined_in": "20260928120100_saved_places.sql"
     },
     {
       "name": "public.service_categories",

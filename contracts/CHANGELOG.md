@@ -8,6 +8,44 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.4.0] - 2026-09-28
+
+Saved places and the access note, which the RLS matrix (§2) has specified since Phase 1 and
+nothing had built (`AUDIT-2026-09-22c.md`). MINOR: one table, four functions and three error
+codes, all new.
+
+### Added
+
+- **`saved_places`** — the customer's address book. Own rows only for every verb, super admin
+  included. Clients select every column but the ciphertext, insert `label`, `point` and
+  `landmark_note` (`user_id` defaults to the caller), update those three, and delete. The
+  generated `has_access_note` says whether a note is saved without revealing it. Capped at
+  `remote_config.saved_places_max` (20, client-visible) → `ERR_SAVED_PLACE_LIMIT`.
+- **`set_saved_place_access_note(p_saved_place_id uuid, p_ciphertext bytea)` → `boolean`** — sets,
+  replaces or (NULL) clears the note on one of the caller's places. Returns whether one is now set.
+- **`set_request_access_note(p_request_id uuid, p_ciphertext bytea = NULL, p_saved_place_id uuid = NULL)` → `boolean`**
+  — the customer attaches a note to their own request: fresh ciphertext, **or** a copy of a saved
+  place's note (both at once is `ERR_INVALID_ARGUMENT`; neither clears it). Allowed until the job
+  leaves `in_progress`, so a changed gate code can still reach a provider on the way. The copy is
+  taken at that moment: editing the saved place afterwards does not change the job.
+- **`request_has_access_note(p_request_id uuid)` → `boolean`** — the customer's own check.
+- **`reveal_access_note(p_request_id uuid)` → `bytea`** — the assigned provider (or worker) reads
+  the note **only while the job is `en_route`, `arrived` or `in_progress`**; `NULL` means the
+  customer left none. Every reveal is audited. Anybody else gets `ERR_JOB_NOT_FOUND`, the same as
+  a job that does not exist.
+- Error codes `ERR_SAVED_PLACE_LIMIT`, `ERR_SAVED_PLACE_NOT_FOUND`, `ERR_ACCESS_NOTE_WINDOW_CLOSED`.
+
+### Clarified
+
+- The note is ciphertext produced outside the database (ADR-0007); nothing in SQL decrypts it.
+  The Edge Function that turns it into text needs the KMS key that needs GCP billing (client
+  action 1) — the same seam as payout accounts. Until it exists, a client has no way to produce
+  or read the ciphertext, so the screens can be built but not used for real.
+- The ERD and data-flow row 8 put the request's note on `requests.access_note_ciphertext`. It is
+  in `private.request_access_notes` instead, because `requests` is SELECT-granted to the assigned
+  provider as a whole (V.1), which would have made the note readable outside the window. It is
+  deleted when the job leaves `in_progress`, whichever way it leaves.
+
 ## [1.3.0] - 2026-09-28
 
 ### Added
