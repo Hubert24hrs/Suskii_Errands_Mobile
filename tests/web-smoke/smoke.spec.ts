@@ -35,6 +35,8 @@ const routes: Record<keyof typeof apps, string[]> = {
     '/en/cities/lagos',
     '/en/legal/terms',
     '/en/legal/privacy',
+    '/en/delete-account',
+    '/pcm/delete-account',
   ],
   admin: [
     '/sign-in',
@@ -119,3 +121,23 @@ for (const [app, { port }] of Object.entries(apps)) {
     }
   });
 }
+
+test.describe('marketing app-link files', () => {
+  const base = `http://127.0.0.1:${apps.marketing.port}`;
+
+  // Unconfigured (no fingerprints, no Team ID) they must still be well-formed: Android reads
+  // an empty list as "no association", and iOS treats a 404 the same way.
+  test('assetlinks.json is JSON at the well-known path', async ({ request }) => {
+    const response = await request.get(`${base}/.well-known/assetlinks.json`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toContain('application/json');
+    expect(Array.isArray(await response.json())).toBe(true);
+  });
+
+  test('apple-app-site-association answers without a redirect', async ({ request }) => {
+    const response = await request.get(`${base}/.well-known/apple-app-site-association`, {
+      maxRedirects: 0,
+    });
+    expect([200, 404]).toContain(response.status());
+  });
+});
