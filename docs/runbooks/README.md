@@ -6,7 +6,7 @@ Write for someone under pressure at 3 a.m.: numbered steps, exact commands, exac
 
 ## Planned runbooks
 
-Owned by Claude Code, written in the phase shown. **All fourteen are now written** (2026-09-22).
+Owned by Claude Code, written in the phase shown. **All fourteen are now written** (2026-09-22), and RB-15 (store release) joined them on 2026-09-28.
 
 **Written is not rehearsed.** Every one of these still has `Last rehearsed: not yet`, and a restore
 procedure nobody has run is a document rather than a capability. Rehearsal needs deployed
@@ -36,6 +36,7 @@ not exist yet and mark those steps inline: **RB-05** (`[VENDOR]`, no identity ve
 | [RB-12](RB-12-realtime-saturation.md) | Realtime or quota saturation | 3 | Connection and message limits, Enterprise quota. **Written**; thresholds are the vendor's, our own load is unmeasured until S-11 runs |
 | [RB-13](RB-13-kill-switch-and-forced-update.md) | Forced update and kill switch | 2 | Disabling a feature or forcing a client upgrade. **Written** |
 | [RB-14](RB-14-backend-deploy-and-rollback.md) | Backend deploy failed or release rollback | 2 | Red deploy run, unhealthy release, failed migration; one-time environment setup checklist. **Written** |
+| [RB-15](RB-15-store-release.md) | Mobile store release, and a broken release in the field | 10 | Signing, building and uploading to Play and the App Store; halting a rollout. **Written 2026-09-28**; cannot be rehearsed until the store accounts exist (client action 9), and the native builds have not yet compiled in CI |
 
 ## Template
 

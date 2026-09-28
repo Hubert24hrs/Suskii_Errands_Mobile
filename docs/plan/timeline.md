@@ -153,6 +153,7 @@ Ordered by the week it must be **started** to hold the base case.
 | 14 | **Book an external penetration test** | Phase 10 | W24 | test at W33 | Vendor scheduling ~6 weeks [A] |
 | 15 | **Recruit field testers** in Lagos across MTN, Airtel, Glo, 9mobile | Field test | W28 | W32 | [A] |
 | 16 | **Store listing assets, privacy policy, terms per country** approved by counsel | Store submission | W26 | W34 | [A] |
+| 17–28 | **Store release actions** (added 2026-09-28): confirm the app id (OD-26), the domain for App Links, brand artwork, Play app + upload key + service account, Apple App ID capabilities + App Store Connect API key, a review sign-in number, the store questionnaires, a Firebase project for push. Details and what to hand over: [RB-15 §1](../runbooks/RB-15-store-release.md) | First TestFlight / Play internal upload | W1 (with action 9) | Before M8.5's TestFlight | Account verification can take weeks [A] |
 
 ## 6. Decision for the user: start the backend foundation before M8.5?
 

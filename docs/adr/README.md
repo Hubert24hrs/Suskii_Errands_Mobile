@@ -36,5 +36,8 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0012](0012-ai-tools-act-as-user.md) | The AI service and voice agent act with the end user's JWT, never the service role | Accepted | Phase 1 C4 / threat model | — |
 | [0013](0013-backend-foundation-before-contracts-v1.md) | Build the backend foundation before contracts v1; pre-contract migrations editable until a shared environment applies them | Accepted | Timeline §6, user approval | S-02 confirms platform assumptions |
 | [0014](0014-marketplace-core-before-contracts-v1.md) | Build the marketplace core before contracts v1, on ADR-0013's terms | Accepted | Phase 2 complete, Phase 3 on the critical path | — |
+| [0015](0015-environments-from-the-define-file.md) | One define file per environment drives the app on both platforms | Accepted | Store-readiness goal (2026-09-27) | First `mobile-native` / `mobile-ios` runs |
+| [0016](0016-aurora-design-system.md) | "Aurora": a dark-first design system driven by one token set | Accepted | Store-readiness goal (redesign) | — |
+| [0017](0017-store-identity-and-release-signing.md) | Store identity, signing and the release pipeline | Accepted | Store-readiness goal | Client confirms the app id (OD-26) |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).
