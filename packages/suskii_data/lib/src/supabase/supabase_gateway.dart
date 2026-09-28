@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase/supabase.dart';
@@ -190,6 +191,70 @@ class SupabaseGateway {
         rows.map((r) => Map<String, dynamic>.from(r)),
       ),
     );
+  }
+
+  /// Channels this client has joined to send on, by topic.
+  final Map<String, RealtimeChannel> _sendChannels =
+      <String, RealtimeChannel>{};
+
+  /// The payloads of [event] on the private Realtime [topic] (ADR-0009):
+  /// authorised by the `realtime.messages` policies, carried without a
+  /// database row. Leaving the stream leaves the channel.
+  Stream<Map<String, dynamic>> broadcasts(String topic, String event) {
+    RealtimeChannel? channel;
+    late final StreamController<Map<String, dynamic>> controller;
+    controller = StreamController<Map<String, dynamic>>(
+      onListen: () {
+        channel = _client
+            .channel(topic, opts: const RealtimeChannelConfig(private: true))
+            .onBroadcast(
+              event: event,
+              callback: (message) {
+                // The callback receives the whole broadcast frame; what the
+                // sender put in `payload` is one level down.
+                final inner = message['payload'];
+                controller.add(
+                  inner is Map
+                      ? Map<String, dynamic>.from(inner)
+                      : Map<String, dynamic>.from(message),
+                );
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final joined = channel;
+        if (joined != null) await _client.removeChannel(joined);
+      },
+    );
+    return controller.stream;
+  }
+
+  /// Sends [payload] as [event] on the private Realtime [topic]. A broadcast
+  /// is a courtesy, not a record (the tables are the truth), so the channel
+  /// is joined once and kept for the next send.
+  Future<void> broadcast(
+    String topic,
+    String event,
+    Map<String, dynamic> payload,
+  ) async {
+    final channel = _sendChannels.putIfAbsent(
+      topic,
+      () => _client
+          .channel(topic, opts: const RealtimeChannelConfig(private: true))
+          .subscribe(),
+    );
+    try {
+      await channel.sendBroadcastMessage(event: event, payload: payload);
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  /// Leaves a topic joined by [broadcast].
+  Future<void> leaveTopic(String topic) async {
+    final channel = _sendChannels.remove(topic);
+    if (channel != null) await _client.removeChannel(channel);
   }
 
   /// Opaque id string — safe for 64-bit ids that exceed 2^53.

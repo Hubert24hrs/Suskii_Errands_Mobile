@@ -224,6 +224,29 @@ void main() {
           JobStatus.enRoute,
           idempotencyKey: newIdempotencyKey(),
         );
+
+        // On the way, the position feeds the trip trail through the heartbeat
+        // (ADR-0009). This stack runs without the Realtime service, so the
+        // broadcast half fails and must not take the heartbeat with it.
+        try {
+          await SupabaseTrackingRepository(provider).publishProviderLocation(
+            requestId,
+            const LiveFix(
+              point: GeoPoint(latitude: 6.5080, longitude: 3.3700),
+              accuracyMetres: 9,
+            ),
+          );
+        } on AppError {
+          // The broadcast; the heartbeat has already run.
+        }
+        final trail = await provider.selectList(
+          'location_samples',
+          'request_id, is_mock',
+          column: 'request_id',
+          value: requestId,
+        );
+        expect(trail, hasLength(1));
+        expect(trail.single['is_mock'], isFalse);
         // Outside the geofence with no reason is refused; at the pickup it is
         // not (the app sends the device's position, audit Y.29).
         await expectLater(

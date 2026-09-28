@@ -12,11 +12,17 @@ class LocationReading {
   final String? missingReason;
 }
 
-/// One-shot device position for a check the server makes (the arrival
-/// geofence). Never throws and never blocks for long: the caller falls back
-/// to a manual path with a reason code.
+/// The device's position: one reading for a check the server makes (the
+/// arrival geofence), or a stream while a provider is on a job (the
+/// customer's live map, ADR-0009). Neither throws nor blocks for long; the
+/// caller falls back to a manual path, or to no map.
 abstract interface class DeviceLocation {
   Future<LocationReading> current();
+
+  /// Positions while the app is in the foreground, one per [distanceFilter]
+  /// metres moved. Empty (not an error) when location is off or refused:
+  /// the job goes on without a live map rather than failing.
+  Stream<LiveFix> watch({int distanceFilter = 20});
 }
 
 class GeolocatorDeviceLocation implements DeviceLocation {
@@ -53,6 +59,31 @@ class GeolocatorDeviceLocation implements DeviceLocation {
       );
     } on Object {
       return const LocationReading.missing('location_unavailable');
+    }
+  }
+
+  @override
+  Stream<LiveFix> watch({int distanceFilter = 20}) async* {
+    // Never asks: the permission was asked for at "Start journey".
+    final permission = await Geolocator.checkPermission();
+    if (permission != LocationPermission.whileInUse &&
+        permission != LocationPermission.always) {
+      return;
+    }
+    final positions = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(distanceFilter: distanceFilter),
+    ).handleError((Object _) {}, test: (_) => true);
+    await for (final position in positions) {
+      yield LiveFix(
+        point: GeoPoint(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        ),
+        headingDegrees: position.heading >= 0 ? position.heading : null,
+        speedMetresPerSecond: position.speed >= 0 ? position.speed : null,
+        accuracyMetres: position.accuracy,
+        isMock: position.isMocked,
+      );
     }
   }
 }

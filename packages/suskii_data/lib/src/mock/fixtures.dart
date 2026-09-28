@@ -60,6 +60,10 @@ class MockDatabase {
   /// Disputes by job id (at most one per job).
   late final Map<String, Dispute> disputes;
 
+  /// Positions a provider published per job (MockTrackingRepository), newest
+  /// last, so tests can see what a real device would have broadcast.
+  final Map<String, List<LiveFix>> liveFixes = <String, List<LiveFix>>{};
+
   /// Support tickets by id.
   late final Map<String, SupportTicket> tickets;
 

@@ -8,6 +8,22 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.3.0] - 2026-09-28
+
+### Added
+
+- **`realtime-events/client-events.json`** — the first client-originated event: `provider.location`
+  on `job:{id}`, the live position ADR-0009 has always specified and nothing had defined. The
+  provider app sends it while a job is en route, arrived or in progress; the customer's map reads
+  it. Authored, because `generate_v1.py` sees only `private.broadcast` calls. MINOR: nothing
+  existing changes, and a client that ignores the event loses only the live map.
+
+### Clarified
+
+- Live tracking reads the broadcast, not `location_samples`: the RLS matrix gives participants the
+  trail only after the job ends, so a client reading the table during a job saw nothing (audit
+  2026-09-27 Y.31). The heartbeat (`heartbeat`, unchanged) is what writes the trail.
+
 ## [1.2.0] - 2026-09-27
 
 The store-readiness audit (`docs/audit/AUDIT-2026-09-27.md`). Three functions, two tables, one

@@ -1217,6 +1217,12 @@ class MockTrackingRepository extends _MockRepo implements TrackingRepository {
       );
     });
   }
+
+  @override
+  Future<void> publishProviderLocation(String jobId, LiveFix fix) async {
+    await gate();
+    (db.liveFixes[jobId] ??= <LiveFix>[]).add(fix);
+  }
 }
 
 class MockChatRepository extends _MockRepo implements ChatRepository {

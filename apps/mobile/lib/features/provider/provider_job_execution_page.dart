@@ -54,6 +54,13 @@ class _ProviderJobExecutionPageState
     JobStatus.completedByProvider,
   };
 
+  /// States in which the customer's map follows the provider (ADR-0009).
+  static const Set<JobStatus> _liveStates = <JobStatus>{
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+  };
+
   static const Set<JobStatus> _rateableStates = <JobStatus>{
     JobStatus.confirmed,
     JobStatus.settled,
@@ -105,6 +112,14 @@ class _ProviderJobExecutionPageState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Asks for location at the moment it is needed (just-in-time
+  /// permissions): the journey is what the customer's live map follows. A
+  /// refusal does not stop the journey; it only means no map.
+  Future<void> _startJourney() async {
+    await ref.read(deviceLocationProvider).current();
+    if (mounted) await _transition(JobStatus.enRoute);
   }
 
   Future<void> _transition(JobStatus target) => _run(() async {
@@ -321,7 +336,11 @@ class _ProviderJobExecutionPageState
             retryLabel: l10n.actionRetry,
             onRetry: () => ref.invalidate(requestDetailProvider(widget.jobId)),
           ),
-          data: (JobRequest request) => _buildDetail(l10n, request),
+          data: (JobRequest request) => _LivePositionPublisher(
+            jobId: widget.jobId,
+            active: _liveStates.contains(request.status),
+            child: _buildDetail(l10n, request),
+          ),
         ),
       ),
     );
@@ -406,7 +425,7 @@ class _ProviderJobExecutionPageState
             label: l10n.jobActionStartJourney,
             icon: Icons.route_outlined,
             loading: _busy,
-            onPressed: _busy ? null : () => _transition(JobStatus.enRoute),
+            onPressed: _busy ? null : _startJourney,
           ),
         if (request.status == JobStatus.enRoute) ...<Widget>[
           Card(
@@ -612,4 +631,94 @@ class _RatingSection extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Publishes the provider's position while the job is live (ADR-0009): only
+/// while this screen is open with the app in the foreground, and never
+/// between jobs. Tracking in the background needs a foreground service on
+/// Android and the location background mode on iOS, each a store declaration
+/// of its own (RB-15 §6), so it waits for that decision.
+class _LivePositionPublisher extends ConsumerStatefulWidget {
+  const _LivePositionPublisher({
+    required this.jobId,
+    required this.active,
+    required this.child,
+  });
+
+  final String jobId;
+  final bool active;
+  final Widget child;
+
+  @override
+  ConsumerState<_LivePositionPublisher> createState() =>
+      _LivePositionPublisherState();
+}
+
+class _LivePositionPublisherState
+    extends ConsumerState<_LivePositionPublisher> {
+  /// The en-route ping cadence ADR-0009 sets; the server gates the heartbeat
+  /// on movement as well.
+  static const Duration _minInterval = Duration(seconds: 5);
+
+  late final TrackingRepository _tracking;
+  late final DeviceLocation _location;
+  late final AppLogger _logger;
+  StreamSubscription<LiveFix>? _positions;
+  DateTime? _lastSent;
+
+  @override
+  void initState() {
+    super.initState();
+    _tracking = ref.read(trackingRepositoryProvider);
+    _location = ref.read(deviceLocationProvider);
+    _logger = ref.read(loggerProvider);
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_LivePositionPublisher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active || oldWidget.jobId != widget.jobId) {
+      _stop();
+      _sync();
+    }
+  }
+
+  void _sync() {
+    if (widget.active && _positions == null) {
+      _positions = _location.watch().listen(_publish);
+    }
+  }
+
+  void _stop() {
+    unawaited(_positions?.cancel());
+    _positions = null;
+  }
+
+  void _publish(LiveFix fix) {
+    final now = DateTime.now();
+    final last = _lastSent;
+    if (last != null && now.difference(last) < _minInterval) return;
+    _lastSent = now;
+    unawaited(
+      _tracking
+          .publishProviderLocation(widget.jobId, fix)
+          .catchError(
+            (Object error) => _logger.log(
+              LogLevel.warning,
+              'live position not published',
+              error: error,
+            ),
+          ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

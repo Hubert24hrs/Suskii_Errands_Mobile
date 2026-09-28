@@ -306,9 +306,15 @@ abstract interface class JobProgressRepository {
 }
 
 abstract interface class TrackingRepository {
-  /// Live provider location for an active job (Realtime Broadcast on the
-  /// backend; sampled mock ticks for now).
+  /// Live provider location for an active job: the job's private Realtime
+  /// Broadcast channel (ADR-0009), one point per ping, no database read.
   Stream<GeoPoint> watchProviderLocation(String jobId);
+
+  /// The provider's side: [fix] goes to the job's channel for the customer's
+  /// map, and a movement-gated heartbeat keeps the matching position and the
+  /// trip trail current. Not a transition and not money, so no idempotency
+  /// key; the server drops a heartbeat that has not moved.
+  Future<void> publishProviderLocation(String jobId, LiveFix fix);
 }
 
 abstract interface class ChatRepository {

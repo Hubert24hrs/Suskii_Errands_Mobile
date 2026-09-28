@@ -325,19 +325,29 @@ Future<void> _chatAndCall(WidgetTester tester) async {
   await app.dispose(tester);
 }
 
-class _NoFix implements DeviceLocation {
-  const _NoFix();
+/// No one-shot fix (so arrival is manual), but a moving position while the
+/// job is live, as a phone with a poor GPS lock at the gate would give.
+class _FakeLocation implements DeviceLocation {
+  const _FakeLocation();
 
   @override
   Future<LocationReading> current() async =>
       const LocationReading.missing('location_denied');
+
+  @override
+  Stream<LiveFix> watch({int distanceFilter = 20}) => Stream<LiveFix>.value(
+    const LiveFix(
+      point: GeoPoint(latitude: 6.4285, longitude: 3.4225),
+      accuracyMetres: 12,
+    ),
+  );
 }
 
 Future<void> _providerArrival(WidgetTester tester) async {
   final app = await _signedInApp(
     tester,
     overrides: <Override>[
-      deviceLocationProvider.overrideWithValue(const _NoFix()),
+      deviceLocationProvider.overrideWithValue(const _FakeLocation()),
     ],
   );
   // Payment assigns a solo provider on the server (transition 11), so the
@@ -349,6 +359,8 @@ Future<void> _providerArrival(WidgetTester tester) async {
   await _go(tester, app, AppRoutes.providerJobExecutionPath('req-p1'));
   await _tapText(tester, l10n.jobActionStartJourney);
   expect(app.database.requests['req-p1']!.status, JobStatus.enRoute);
+  // On the way, the position goes to the customer's map (ADR-0009).
+  expect(app.database.liveFixes['req-p1'], isNotEmpty);
 
   await _tapText(tester, l10n.jobActionArrived);
   // No position: the provider is asked before a manual arrival is recorded.

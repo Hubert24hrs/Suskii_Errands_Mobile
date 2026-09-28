@@ -1,6 +1,6 @@
 # contracts/v1 — binding
 
-Version **1.2.0** (2026-09-27). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
+Version **1.3.0** (2026-09-28). Owner: Claude Code. Supersedes [`../v1-preview/`](../v1-preview/README.md).
 
 This is the agreement between the backend and every frontend. [`../README.md`](../README.md) rule 1:
 **clients may call only what is listed here.** Not an endpoint, not a field, not an event more.
@@ -15,6 +15,7 @@ This is the agreement between the backend and every frontend. [`../README.md`](.
 | [`enums.json`](enums.json) | All **45** Postgres enums and their snake_case wire values, in order | Generated |
 | [`storage/buckets.json`](storage/buckets.json) | **6** buckets, size limits, allowed MIME types, and the policies that enforce the path convention | Generated |
 | [`realtime-events/channels.json`](realtime-events/channels.json) | **5** topics and the events on each | Generated from the `private.broadcast` calls |
+| [`realtime-events/client-events.json`](realtime-events/client-events.json) | Events clients send: `provider.location` on `job:{id}` | Authored (ADR-0009) |
 | [`state-machines/job.json`](state-machines/job.json), [`offer.json`](state-machines/offer.json) | States, all 31 job transitions with actor, guard and effects, and the timeouts | **Authored**, cross-checked: a literal from/to pair in SQL that is missing here fails CI |
 | [`error-codes/codes.json`](error-codes/codes.json) | **109** codes — 94 implemented, 9 planned, 6 app-side — with SQLSTATE, HTTP status, retryability and what the app should do | Authored, cross-checked against every `ERR_` the backend raises |
 | [`error-codes/auth-mapping.json`](error-codes/auth-mapping.json) | Supabase Auth's own codes mapped to app codes | Authored |

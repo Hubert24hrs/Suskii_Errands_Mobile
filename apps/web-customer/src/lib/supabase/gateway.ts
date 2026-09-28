@@ -220,6 +220,30 @@ export class SupabaseGateway {
     };
   }
 
+  /**
+   * Calls onMessage with the payload of every `event` broadcast on the private
+   * Realtime `topic` (ADR-0009). Authorised by the realtime.messages policies;
+   * nothing is read from a table.
+   */
+  watchBroadcast(
+    topic: string,
+    event: string,
+    onMessage: (payload: Record<string, unknown>) => void,
+  ): Unsubscribe {
+    const channel = this.client
+      .channel(topic, { config: { private: true } })
+      .on('broadcast', { event }, (message: { payload?: unknown }) => {
+        const payload = message.payload;
+        if (payload !== null && typeof payload === 'object') {
+          onMessage(payload as Record<string, unknown>);
+        }
+      })
+      .subscribe();
+    return () => {
+      void this.client.removeChannel(channel);
+    };
+  }
+
   /** Opaque id string — safe for 64-bit ids that exceed 2^53. */
   static asId(value: unknown): string {
     return String(value);
