@@ -242,3 +242,11 @@ String weekdayLabel(AppLocalizations l10n, int dayOfWeek) =>
       6 => l10n.toolsDaySat,
       _ => l10n.toolsDaySun,
     };
+
+String trustLevelLabel(AppLocalizations l10n, TrustLevel level) =>
+    switch (level) {
+      TrustLevel.new_ => l10n.trustLevelNew,
+      TrustLevel.verified => l10n.trustLevelVerified,
+      TrustLevel.trusted => l10n.trustLevelTrusted,
+      TrustLevel.elite => l10n.trustLevelElite,
+    };

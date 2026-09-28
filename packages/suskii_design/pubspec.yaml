@@ -21,3 +21,13 @@ dev_dependencies:
     sdk: flutter
 
 flutter:
+  fonts:
+    - family: Sora
+      fonts:
+        - asset: assets/fonts/Sora-Variable.ttf
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+  assets:
+    - assets/fonts/OFL-Sora.txt
+    - assets/fonts/OFL-Manrope.txt

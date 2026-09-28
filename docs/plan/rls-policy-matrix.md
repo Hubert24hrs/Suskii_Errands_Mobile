@@ -83,6 +83,8 @@ Clients get country configuration through `get_bootstrap()`, which returns the *
 | `trusted_contacts` | — | R:own, I:own (max 5 by trigger), **U:own(`name`)**, delete own | — | — | — | — | — | — |
 | `saved_places` | — | R:own, I:own, **U:own(`label`, `point`, `landmark_note`)**, delete own; access note via F only | access note via `reveal_access_note(request_id)` for the assigned provider **during an active job only** | — | — | — | — | — |
 | `notification_preferences` | — | R:own, I:own, **U:own(`enabled`, `quiet_start`, `quiet_end`)** | — | R:scope | — | — | — | R |
+| `account_deletion_requests` | — | R:own, F (`request_account_deletion`, `cancel_account_deletion`) | — | R:scope | — | — | — | R |
+| `data_export_requests` | — | R:own, F (`request_data_export`) | — | R:scope | — | — | — | R |
 | `admin_users` | — | — | — | — | — | — | — | R + F (four-eyes) |
 
 `profiles.customer_verification`, `provider_verification`, `trust_level` and `active_mode` have **no client grant**. `active_mode` changes through `set_active_mode()`. Super admin deliberately has no read on `trusted_contacts` and `saved_places`: nobody operates on them, so nobody sees them.

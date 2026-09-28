@@ -105,24 +105,36 @@ class _ChipBase extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: SSpacing.sm,
-        vertical: SSpacing.xs,
+        horizontal: SSpacing.md,
+        vertical: SSpacing.xs + 1,
       ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: SRadius.borderSm,
+        borderRadius: SRadius.borderPill,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          if (icon != null) ...<Widget>[
-            Icon(icon, size: 14, color: foreground),
-            const SizedBox(width: SSpacing.xs),
-          ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: foreground),
+          if (icon != null)
+            Icon(icon, size: 14, color: foreground)
+          else
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: foreground,
+                shape: BoxShape.circle,
+              ),
+            ),
+          const SizedBox(width: SSpacing.xs + 2),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: foreground),
+            ),
           ),
         ],
       ),

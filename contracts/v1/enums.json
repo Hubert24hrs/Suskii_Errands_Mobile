@@ -1,6 +1,11 @@
 {
   "$comment": "Generated from supabase/migrations. Wire values are snake_case, in declaration order.",
   "enums": {
+    "account_deletion_status": [
+      "scheduled",
+      "cancelled",
+      "completed"
+    ],
     "admin_role": [
       "super_admin",
       "verification_officer",
@@ -40,6 +45,13 @@
       "disabled",
       "beta",
       "live"
+    ],
+    "data_export_status": [
+      "requested",
+      "processing",
+      "ready",
+      "failed",
+      "expired"
     ],
     "device_platform": [
       "android",

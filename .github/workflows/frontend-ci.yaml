@@ -3,11 +3,11 @@ name: frontend-ci
 on:
   push:
     branches: [main]
-    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml',
-            'package.json', 'package-lock.json']
+    paths: ['apps/**', 'packages/**', 'tests/web-smoke/**', '.github/workflows/frontend-ci.yaml',
+            'analysis_options.yaml', 'package.json', 'package-lock.json']
   pull_request:
-    paths: ['apps/**', 'packages/**', '.github/workflows/frontend-ci.yaml', 'analysis_options.yaml',
-            'package.json', 'package-lock.json']
+    paths: ['apps/**', 'packages/**', 'tests/web-smoke/**', '.github/workflows/frontend-ci.yaml',
+            'analysis_options.yaml', 'package.json', 'package-lock.json']
 
 jobs:
   dart:
@@ -33,21 +33,33 @@ jobs:
       - name: build_runner codegen
         run: cd packages/suskii_domain && dart run build_runner build
       - name: Format check
-        run: dart format --set-exit-if-changed packages apps/mobile/lib apps/mobile/test
+        run: dart format --set-exit-if-changed packages apps/mobile/lib apps/mobile/test apps/mobile/integration_test
       - name: Analyze
         run: flutter analyze packages apps/mobile
+      # `integration`-tagged tests need a running Supabase stack; backend-db.yaml runs them.
       - name: Tests
         run: |
           set -e
-          for dir in packages/suskii_domain packages/suskii_core packages/suskii_data apps/mobile; do
-            # apps/mobile has no tests yet; `flutter test` fails on a missing test directory.
-            if [ -d "$dir/test" ]; then
-              echo "== $dir =="
-              (cd "$dir" && flutter test)
-            else
-              echo "== $dir == no test directory, skipped"
-            fi
+          for dir in packages/suskii_domain packages/suskii_core packages/suskii_data packages/suskii_design; do
+            echo "== $dir =="
+            (cd "$dir" && flutter test --exclude-tags integration)
           done
+      # Seventeen end-to-end journeys through the real screens on the mock backend
+      # (test/flows), plus every route rendered in both themes at 1x and 2x text, which
+      # fails on any overflow or exception.
+      - name: App journeys and screen catalog
+        run: cd apps/mobile && flutter test --exclude-tags golden
+      # Separate so a pixel difference reads as one, not as a broken journey. The comparator
+      # tolerates 0.5% for anti-aliasing; anything more is a visual change to review.
+      - name: Goldens
+        run: cd apps/mobile && flutter test --tags golden
+      - name: Upload golden failures
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: golden-failures
+          path: apps/mobile/test/**/failures/
+          if-no-files-found: ignore
 
       # The Dart VM has 64-bit integers; dart2js does not, and its bitwise operators are 32-bit.
       # M3.19 (idempotency keys threw RangeError on the web) passed every VM test, so the
@@ -84,7 +96,42 @@ jobs:
       # The repository root is an npm workspace over all three apps, so install once there.
       - name: Install
         run: npm ci
+      # tokens.css is generated from tokens.json; a hand edit to either side drifts silently.
+      - name: Design tokens are current
+        run: node packages/design-tokens/build-css.mjs --check
       # Addressed by workspace path, not package name: the names are scoped (@suskii/...) and
       # the path is what the matrix carries.
       - name: Build ${{ matrix.app }}
         run: npm run build -w apps/${{ matrix.app }}
+
+  # Every route of the three apps, on their production builds, on a desktop and a phone
+  # viewport: HTTP status, no console error (a CSP violation or a hydration error surfaces
+  # there), the security headers, and the token background in both colour schemes.
+  web-smoke:
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build the three apps
+        run: |
+          set -e
+          for app in web-customer web-marketing web-admin; do
+            npm run build -w apps/$app
+          done
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Smoke
+        run: npx playwright test -c tests/web-smoke
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces
+          path: tests/web-smoke/test-results/
+          if-no-files-found: ignore

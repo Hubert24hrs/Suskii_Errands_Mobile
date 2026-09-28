@@ -1,9 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_data/suskii_data.dart';
 import 'package:suskii_domain/suskii_domain.dart';
+
+import 'preferences.dart';
+
+export 'preferences.dart';
 
 /// ---------------------------------------------------------------------------
 /// Dependency injection. Screens depend ONLY on the repository interfaces from
@@ -17,6 +20,10 @@ final appConfigProvider = Provider<AppConfig>(
 );
 
 final loggerProvider = Provider<AppLogger>((ref) => const ConsoleAppLogger());
+
+/// "1.2.0 (42)", from the platform (pubspec version + build number). The
+/// default is for tests; `main()` overrides it.
+final appVersionProvider = Provider<String>((ref) => '0.0.0 (0)');
 
 /// The Supabase gateway, or null when the flavor has no project credentials
 /// (the default until a project is provisioned) — the app then runs on mocks.
@@ -53,6 +60,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseUserRepository(gateway);
   return MockUserRepository(
@@ -62,6 +70,7 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 });
 
 final requestRepositoryProvider = Provider<RequestRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseRequestRepository(gateway);
   return MockRequestRepository(
@@ -71,6 +80,7 @@ final requestRepositoryProvider = Provider<RequestRepository>((ref) {
 });
 
 final offerRepositoryProvider = Provider<OfferRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseOfferRepository(gateway);
   return MockOfferRepository(
@@ -80,6 +90,7 @@ final offerRepositoryProvider = Provider<OfferRepository>((ref) {
 });
 
 final providerRepositoryProvider = Provider<ProviderRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseProviderRepository(gateway);
   return MockProviderRepository(
@@ -89,6 +100,7 @@ final providerRepositoryProvider = Provider<ProviderRepository>((ref) {
 });
 
 final jobProgressRepositoryProvider = Provider<JobProgressRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseJobProgressRepository(gateway);
   return MockJobProgressRepository(
@@ -98,6 +110,7 @@ final jobProgressRepositoryProvider = Provider<JobProgressRepository>((ref) {
 });
 
 final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseTrackingRepository(gateway);
   return MockTrackingRepository(
@@ -107,6 +120,7 @@ final trackingRepositoryProvider = Provider<TrackingRepository>((ref) {
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseChatRepository(gateway);
   return MockChatRepository(
@@ -116,6 +130,7 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 });
 
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseWalletRepository(gateway);
   return MockWalletRepository(
@@ -125,6 +140,7 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
 });
 
 final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseReferralRepository(gateway);
   return MockReferralRepository(
@@ -133,14 +149,16 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
   );
 });
 
-final conciergeRepositoryProvider = Provider<ConciergeRepository>(
-  (ref) => MockConciergeRepository(
+final conciergeRepositoryProvider = Provider<ConciergeRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return MockConciergeRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabasePaymentRepository(gateway);
   return MockPaymentRepository(
@@ -150,6 +168,7 @@ final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
 });
 
 final ratingRepositoryProvider = Provider<RatingRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseRatingRepository(gateway);
   return MockRatingRepository(
@@ -159,6 +178,7 @@ final ratingRepositoryProvider = Provider<RatingRepository>((ref) {
 });
 
 final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseSafetyRepository(gateway);
   return MockSafetyRepository(
@@ -167,15 +187,28 @@ final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {
   );
 });
 
-/// Masked calls (LiveKit plugs in behind this interface at M9).
-final callAdapterProvider = Provider<CallAdapter>(
-  (ref) => MockCallAdapter(
+/// Uploads into the private buckets (proofs, receipts, KYC documents).
+final mediaUploadRepositoryProvider = Provider<MediaUploadRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseMediaUploadRepository(gateway);
+  return MockMediaUploadRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
+
+/// Masked calls (LiveKit plugs in behind this interface at M9).
+final callAdapterProvider = Provider<CallAdapter>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return MockCallAdapter(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  );
+});
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseCatalogRepository(gateway);
   return MockCatalogRepository(
@@ -185,14 +218,16 @@ final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
 });
 
 final identityVerificationAdapterProvider =
-    Provider<IdentityVerificationAdapter>(
-      (ref) => MockIdentityVerificationAdapter(
+    Provider<IdentityVerificationAdapter>((ref) {
+      ref.watch(sessionUserIdProvider);
+      return MockIdentityVerificationAdapter(
         ref.watch(mockDatabaseProvider),
         ref.watch(mockBehaviorProvider),
-      ),
-    );
+      );
+    });
 
 final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseVerificationRepository(gateway);
   return MockVerificationRepository(
@@ -202,6 +237,7 @@ final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
 });
 
 final providerKycRepositoryProvider = Provider<ProviderKycRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseProviderKycRepository(gateway);
   return MockProviderKycRepository(
@@ -218,9 +254,29 @@ final authStateProvider = StreamProvider<AuthState>(
   (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
 );
 
-final bootstrapProvider = FutureProvider<AppBootstrap>(
-  (ref) => ref.watch(bootstrapRepositoryProvider).getBootstrap(),
+/// The signed-in user's id, or null when signed out. Every data repository
+/// watches it, so a change of user rebuilds the whole data graph and the next
+/// person on the handset never sees the last one's cached wallet, jobs or
+/// tickets (audit 2026-09-27 Y.3).
+final sessionUserIdProvider = Provider<String?>(
+  (ref) => ref.watch(
+    authStateProvider.select((AsyncValue<AuthState> auth) {
+      final state = auth.value;
+      if (state == null || state.status != AuthStatus.signedIn) return null;
+      // Signed in before the profile row is readable: still a session.
+      return state.user?.id ?? '';
+    }),
+  ),
 );
+
+/// Refetched when the user changes (a signed-in profile's country wins over
+/// the hint server-side) and when the country chosen before sign-in changes.
+final bootstrapProvider = FutureProvider<AppBootstrap>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return ref
+      .watch(bootstrapRepositoryProvider)
+      .getBootstrap(countryCode: ref.watch(selectedCountryProvider));
+});
 
 /// Customer/Provider mode. Default Customer; Provider requires verification
 /// (enforced server-side later, enforced by the repository contract now).
@@ -228,7 +284,13 @@ class ModeController extends Notifier<UserMode> {
   bool _seeded = false;
 
   @override
-  UserMode build() => UserMode.customer;
+  UserMode build() {
+    // A new user starts in customer mode and is seeded from their own
+    // bootstrap, never from the previous user's (audit Y.3).
+    ref.watch(sessionUserIdProvider);
+    _seeded = false;
+    return UserMode.customer;
+  }
 
   void seed(UserMode mode) {
     if (_seeded) return;
@@ -268,28 +330,6 @@ final connectivityProvider =
     NotifierProvider<ConnectivityController, ConnectivityStatus>(
       ConnectivityController.new,
     );
-
-/// null = follow system / country default.
-class LocaleController extends Notifier<Locale?> {
-  @override
-  Locale? build() => null;
-
-  void setLocale(Locale? locale) => state = locale;
-}
-
-final localeControllerProvider = NotifierProvider<LocaleController, Locale?>(
-  LocaleController.new,
-);
-
-class ThemeModeController extends Notifier<ThemeMode> {
-  @override
-  ThemeMode build() => ThemeMode.system;
-
-  void setThemeMode(ThemeMode mode) => state = mode;
-}
-
-final themeModeControllerProvider =
-    NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
 
 /// ---------------------------------------------------------------------------
 /// Screen-level data providers (M1 home/shell surfaces)
@@ -339,12 +379,13 @@ final walletTransactionsProvider = FutureProvider<List<WalletTransaction>>(
   (ref) => ref.watch(walletRepositoryProvider).getTransactions(),
 );
 
-final voiceConciergeAdapterProvider = Provider<VoiceConciergeAdapter>(
-  (ref) => MockVoiceConciergeAdapter(
+final voiceConciergeAdapterProvider = Provider<VoiceConciergeAdapter>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return MockVoiceConciergeAdapter(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 /// Server-time clock, synced from bootstrap `serverTime`. Every countdown
 /// (offer TTL, request expiry) renders against this, never raw device time.
@@ -418,6 +459,7 @@ final myRatingProvider = FutureProvider.family<Rating?, String>(
 /// ---------------------------------------------------------------------------
 
 final disputeRepositoryProvider = Provider<DisputeRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseDisputeRepository(gateway);
   return MockDisputeRepository(
@@ -427,6 +469,7 @@ final disputeRepositoryProvider = Provider<DisputeRepository>((ref) {
 });
 
 final supportRepositoryProvider = Provider<SupportRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseSupportRepository(gateway);
   return MockSupportRepository(
@@ -435,14 +478,16 @@ final supportRepositoryProvider = Provider<SupportRepository>((ref) {
   );
 });
 
-final promoRepositoryProvider = Provider<PromoRepository>(
-  (ref) => MockPromoRepository(
+final promoRepositoryProvider = Provider<PromoRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return MockPromoRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
   final gateway = ref.watch(supabaseGatewayProvider);
   if (gateway != null) return SupabaseSettingsRepository(gateway);
   return MockSettingsRepository(
@@ -483,19 +528,23 @@ final trustedContactsProvider = FutureProvider<List<TrustedContact>>(
 /// M6: provider tools + business console
 /// ---------------------------------------------------------------------------
 
-final providerToolsRepositoryProvider = Provider<ProviderToolsRepository>(
-  (ref) => MockProviderToolsRepository(
+final providerToolsRepositoryProvider = Provider<ProviderToolsRepository>((
+  ref,
+) {
+  ref.watch(sessionUserIdProvider);
+  return MockProviderToolsRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
-final organizationRepositoryProvider = Provider<OrganizationRepository>(
-  (ref) => MockOrganizationRepository(
+final organizationRepositoryProvider = Provider<OrganizationRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
+  return MockOrganizationRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
-  ),
-);
+  );
+});
 
 final availabilityProvider = FutureProvider<List<AvailabilitySlot>>(
   (ref) => ref.watch(providerToolsRepositoryProvider).getAvailability(),

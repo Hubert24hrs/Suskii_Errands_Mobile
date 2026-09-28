@@ -42,7 +42,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r border-outline bg-surface-raised dark:border-outline-dark dark:bg-surface-dark-raised">
         <div className="flex h-16 items-center gap-sm border-b border-outline px-lg dark:border-outline-dark">
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-brand-primary font-bold text-brand-on-primary">
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
             S
           </span>
           <span className="text-title-large text-ink-primary dark:text-ink-dark-primary">

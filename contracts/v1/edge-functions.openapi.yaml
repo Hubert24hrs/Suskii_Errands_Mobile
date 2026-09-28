@@ -184,6 +184,23 @@ paths:
         '200': { description: Batch processed. }
         '401': { $ref: '#/components/responses/Error' }
 
+  /storage-worker:
+    post:
+      tags: [worker]
+      operationId: storageWorker
+      security:
+        - workerKey: []
+      summary: Remove the storage folders account erasure queued.
+      description: >
+        Drains the `storage` outbox aggregate. Storage refuses direct deletes from
+        storage.objects, so `private.erase_account` queues the user's `avatars` folder and this
+        worker removes it through the Storage API (audit 2026-09-27 Y.30). It acts only on an
+        allowlisted bucket and only on a prefix that is exactly the event's own user folder; an
+        unknown event fails without retry rather than being completed unread.
+      responses:
+        '200': { description: Batch processed. }
+        '401': { $ref: '#/components/responses/Error' }
+
   /health:
     get:
       tags: [platform]

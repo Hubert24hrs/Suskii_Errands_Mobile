@@ -28,7 +28,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
           href={`/${locale}`}
           className="flex items-center gap-sm text-title-large text-ink-primary dark:text-ink-dark-primary"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-brand-primary font-bold text-brand-on-primary">
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
             S
           </span>
           {dict.header.appName}

@@ -1,0 +1,7 @@
+// Per-environment build settings (ADR-0015). Defaults are dev; the values for the build in
+// hand are written to DartDefines.xcconfig from the --dart-define-from-file file, by the
+// Runner scheme's pre-action locally and by tool/write_ios_defines.sh in the release workflow.
+APP_DISPLAY_NAME = Suskii Dev
+APP_ID_SUFFIX = .dev
+APP_LINK_HOST = dev.suskii-errands.example
+#include? "DartDefines.xcconfig"

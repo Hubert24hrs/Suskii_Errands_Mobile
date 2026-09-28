@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../tokens/colors.dart';
+import '../tokens/elevation.dart';
+import '../tokens/motion.dart';
 import '../tokens/radius.dart';
 import '../tokens/spacing.dart';
+import 'motion.dart';
 
 enum SButtonVariant { primary, secondary, ghost, danger }
 
-/// The one button. Min 48dp touch target, built-in loading state.
+/// The one button. Primary is the brand gradient with a soft glow; the rest
+/// are tonal. Min 48dp touch target, built-in loading state, a press scale
+/// and a light haptic on tap.
 class SButton extends StatelessWidget {
   const SButton({
     required this.label,
@@ -26,86 +32,135 @@ class SButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final palette = context.sColors;
     final disabled = onPressed == null || loading;
 
-    final (bg, fg, border) = switch (variant) {
+    final (
+      Color fg,
+      Color? bg,
+      Gradient? gradient,
+      BorderSide border,
+    ) = switch (variant) {
       SButtonVariant.primary => (
-        scheme.primary,
-        scheme.onPrimary,
-        Colors.transparent,
+        palette.onGradient,
+        null,
+        LinearGradient(colors: palette.gradient),
+        BorderSide.none,
       ),
       SButtonVariant.secondary => (
-        scheme.secondaryContainer,
-        scheme.onSecondaryContainer,
-        Colors.transparent,
+        scheme.onSurface,
+        scheme.surfaceContainerHighest,
+        null,
+        BorderSide(color: scheme.outlineVariant),
       ),
       SButtonVariant.ghost => (
-        Colors.transparent,
         scheme.primary,
-        scheme.outline,
+        Colors.transparent,
+        null,
+        BorderSide(color: scheme.outline),
       ),
       SButtonVariant.danger => (
-        scheme.error,
         scheme.onError,
-        Colors.transparent,
+        scheme.error,
+        null,
+        BorderSide.none,
       ),
     };
 
-    final child = loading
-        ? SizedBox(
-            height: 22,
-            width: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
-          )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(icon, size: 20),
-                const SizedBox(width: SSpacing.sm),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
+    final foreground = disabled ? scheme.onSurfaceVariant : fg;
+    final decoration = BoxDecoration(
+      color: disabled ? scheme.surfaceContainerHigh : bg,
+      gradient: disabled ? null : gradient,
+      borderRadius: SRadius.borderMd,
+      border: border == BorderSide.none
+          ? null
+          : Border.fromBorderSide(
+              disabled ? BorderSide(color: scheme.outlineVariant) : border,
+            ),
+      boxShadow: !disabled && gradient != null
+          ? SElevation.glow(palette.glow)
+          : null,
+    );
+
+    final content = AnimatedSwitcher(
+      duration: SMotion.of(context, SMotion.fast),
+      child: loading
+          ? SizedBox(
+              key: const ValueKey<String>('loading'),
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: foreground,
               ),
-            ],
-          );
+            )
+          : Row(
+              key: const ValueKey<String>('label'),
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                if (icon != null) ...<Widget>[
+                  Icon(icon, size: 20),
+                  const SizedBox(width: SSpacing.sm),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+    );
 
     return Semantics(
       button: true,
       enabled: !disabled,
       label: label,
-      child: SizedBox(
-        width: expand ? double.infinity : null,
-        height: SSpacing.minTouchTarget,
-        child: Material(
-          color: disabled ? scheme.surfaceContainerHighest : bg,
-          borderRadius: SRadius.borderMd,
-          child: InkWell(
-            onTap: disabled ? null : onPressed,
-            borderRadius: SRadius.borderMd,
-            child: Container(
-              decoration: BoxDecoration(
+      excludeSemantics: true,
+      child: SPressable(
+        enabled: !disabled,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: SSpacing.minTouchTarget + 4,
+            minWidth: expand ? double.infinity : SSpacing.minTouchTarget,
+          ),
+          child: AnimatedContainer(
+            duration: SMotion.of(context, SMotion.fast),
+            decoration: decoration,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: disabled
+                    ? null
+                    : () {
+                        SHaptics.light();
+                        onPressed!();
+                      },
                 borderRadius: SRadius.borderMd,
-                border: Border.all(
-                  color: disabled ? scheme.surfaceContainerHighest : border,
-                ),
-              ),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: SSpacing.lg),
-              child: DefaultTextStyle.merge(
-                style: Theme.of(context).textTheme.labelLarge
-                    ?.copyWith(color: disabled ? scheme.onSurfaceVariant : fg),
-                child: IconTheme.merge(
-                  data: IconThemeData(
-                    color: disabled ? scheme.onSurfaceVariant : fg,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: SSpacing.xl,
+                    vertical: SSpacing.md,
                   ),
-                  child: child,
+                  // heightFactor 1: under loose constraints (a bottom bar,
+                  // a sheet) a bare Center grows to the full height.
+                  child: Center(
+                    widthFactor: expand ? null : 1,
+                    heightFactor: 1,
+                    child: DefaultTextStyle.merge(
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: foreground,
+                      ),
+                      child: IconTheme.merge(
+                        data: IconThemeData(color: foreground),
+                        child: content,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

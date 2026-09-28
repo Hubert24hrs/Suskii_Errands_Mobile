@@ -11,7 +11,8 @@
 // server-side encrypt helper, so addTrustedContact is unavailable until
 // CR-20260923-06 lands; reads map with an empty `phoneE164`.
 //
-// Account deletion / data export have no RPCs yet (CR-20260923-07).
+// Account deletion and data export: request_account_deletion and
+// request_data_export (CR-20260923-07, contracts 1.2.0).
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
 import type {
@@ -84,13 +85,25 @@ export class SupabaseSettingsRepository {
     });
   }
 
-  async requestAccountDeletion(_idempotencyKey: string): Promise<Date> {
-    // No account-deletion RPC in contracts v1 (CR-20260923-07).
-    throw new AppError(ErrorCodes.featureUnavailable);
+  /**
+   * Schedules the account for erasure and returns the date. The server revokes
+   * every session with the request, this one included; signing back in before
+   * the date offers to keep the account.
+   */
+  async requestAccountDeletion(idempotencyKey: string): Promise<Date> {
+    const result = await this.gateway.rpc('request_account_deletion', {
+      p_idempotency_key: idempotencyKey,
+    });
+    if (typeof result !== 'string') throw new AppError(ErrorCodes.unknown);
+    return new Date(result);
   }
 
-  async requestDataExport(_idempotencyKey: string): Promise<string> {
-    // No data-export RPC in contracts v1 (CR-20260923-07).
-    throw new AppError(ErrorCodes.featureUnavailable);
+  /** Queues an export of the caller's data and returns its reference. */
+  async requestDataExport(idempotencyKey: string): Promise<string> {
+    const result = await this.gateway.rpc('request_data_export', {
+      p_idempotency_key: idempotencyKey,
+    });
+    if (typeof result !== 'string') throw new AppError(ErrorCodes.unknown);
+    return result;
   }
 }

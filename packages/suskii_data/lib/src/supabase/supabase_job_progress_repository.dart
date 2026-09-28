@@ -24,10 +24,15 @@ class SupabaseJobProgressRepository implements JobProgressRepository {
     String jobId,
     JobStatus target, {
     required String idempotencyKey,
+    GeoPoint? location,
+    String? reasonCode,
   }) => _reloadAfter('set_job_status', <String, Object?>{
     'p_idempotency_key': idempotencyKey,
     'p_request_id': jobId,
     'p_target': jobStatusToWire(target),
+    'p_reason_code': reasonCode,
+    'p_lat': location?.latitude,
+    'p_lng': location?.longitude,
   }, jobId);
 
   @override

@@ -25,6 +25,7 @@ const pcm = {
     legalTitle: 'Legal',
     privacy: 'Privacy policy',
     terms: 'Terms of service',
+    deleteAccount: 'Delete your account',
     cities: 'Cities',
     rights: 'Suskii Errands. All rights reserved.',
   },
@@ -286,6 +287,32 @@ const pcm = {
     },
     ibadan: { name: 'Ibadan', tagline: 'Errands across the whole city of brown roofs.' },
     kano: { name: 'Kano', tagline: 'Commerce dey move faster with Suskii.' },
+  },
+  deleteAccount: {
+    title: 'Delete your Suskii account',
+    subtitle:
+      'You fit delete your account any time, from the app or from the web. We no go charge you and you no need give reason.',
+    steps: [
+      {
+        title: 'For the app',
+        body: 'Open Profile, then Settings, come tap Delete account. Confirm am, and we go sign you out for every device.',
+      },
+      {
+        title: 'For the web',
+        body: 'Sign in to Suskii for web with the same phone number or email, open Settings, come choose Delete account.',
+      },
+      {
+        title: 'You change your mind?',
+        body: 'Sign in again before the delete date come choose Keep my account. Nothing go lost.',
+      },
+    ],
+    whatHappensTitle: 'Wetin we go delete, and wetin we go keep',
+    whatHappens: [
+      'After 30 days, we go erase your name, phone number, email address, trusted contacts and favourites, and nobody fit sign in to the account again.',
+      'Records of jobs wey you do — payments, refunds, payouts, messages and proofs — go stay with those jobs as long as law and dispute rules require, without your contact details.',
+      'Any job wey never finish, dispute wey still open, or money wey remain for your wallet, you must settle am first; the app go tell you if one dey block am.',
+    ],
+    contact: 'You no get your phone number or email again? Contact support and we go confirm say na you.',
   },
   notFound: {
     title: 'Page no dey',

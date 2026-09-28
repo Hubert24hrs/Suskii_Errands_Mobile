@@ -83,6 +83,14 @@ export function SiteFooter({ locale, dict }: { locale: Locale; dict: Dictionary 
                 {dict.footer.terms}
               </Link>
             </li>
+            <li>
+              <Link
+                href={`${base}/delete-account`}
+                className="text-body-medium text-ink-secondary hover:text-ink-primary dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary"
+              >
+                {dict.footer.deleteAccount}
+              </Link>
+            </li>
           </ul>
           <p className="mt-lg text-label-large text-ink-primary dark:text-ink-dark-primary">
             {dict.footer.cities}

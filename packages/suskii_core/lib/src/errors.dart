@@ -34,6 +34,9 @@ abstract final class ErrorCodes {
   /// (category proof requirements unmet, or the delivery PIN not yet
   /// verified for a job with a destination).
   static const String proofRequired = 'ERR_PROOF_REQUIRED';
+  static const String uploadNotFound = 'ERR_UPLOAD_NOT_FOUND';
+  static const String notAtPickup = 'ERR_NOT_AT_PICKUP';
+  static const String invalidArgument = 'ERR_INVALID_ARGUMENT';
 
   /// Handover-PIN attempt limit reached. Terminal for that PIN: stop asking
   /// and route to support (verify_pin returns wrong-PIN results WITHOUT

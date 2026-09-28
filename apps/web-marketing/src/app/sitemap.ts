@@ -16,6 +16,7 @@ const staticRoutes = [
   '/contact',
   '/legal/privacy',
   '/legal/terms',
+  '/delete-account',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

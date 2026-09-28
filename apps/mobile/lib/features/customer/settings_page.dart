@@ -8,6 +8,7 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
+import '../../app/external_links.dart';
 import '../../app/idempotency_keys.dart';
 import '../../app/providers.dart';
 
@@ -181,10 +182,15 @@ class SettingsPage extends ConsumerWidget {
         showSToast(
           context,
           l10n.settingsDeleteScheduled(
-            MaterialLocalizations.of(context).formatShortDate(when),
+            MaterialLocalizations.of(context).formatShortDate(when.toLocal()),
           ),
         );
       }
+      // The server has already revoked every session, this one included:
+      // sign out locally so the app does not sit on a dead token. Signing
+      // back in before the date offers to keep the account.
+      ref.read(idempotencyKeysProvider).clear();
+      await ref.read(authRepositoryProvider).signOut();
     } on Object catch (error) {
       if (context.mounted) {
         showSToast(context, localizedError(l10n, error), isError: true);
@@ -295,8 +301,11 @@ class SettingsPage extends ConsumerWidget {
                     ListTile(
                       leading: const Icon(Icons.person_outline),
                       title: Text(contact.name),
-                      subtitle: Text(contact.phoneE164),
+                      subtitle: contact.phoneE164.isEmpty
+                          ? null
+                          : Text(contact.phoneE164),
                       trailing: IconButton(
+                        tooltip: l10n.actionRemove,
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () async {
                           final keys = ref.read(idempotencyKeysProvider);
@@ -346,6 +355,26 @@ class SettingsPage extends ConsumerWidget {
           Card(
             child: Column(
               children: <Widget>[
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: Text(l10n.legalPrivacy),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => unawaited(
+                    openExternalUrl(
+                      ref.read(appConfigProvider).privacyPolicyUrl,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(l10n.legalTerms),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => unawaited(
+                    openExternalUrl(ref.read(appConfigProvider).termsUrl),
+                  ),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.download_outlined),
                   title: Text(l10n.settingsDataExport),

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
+import '../features/account/deletion_pending_page.dart';
 import '../features/auth/auth_page.dart';
-import '../features/auth/mfa_prompt_page.dart';
 import '../features/customer/call_page.dart';
 import '../features/customer/chat_page.dart';
 import '../features/customer/concierge_page.dart';
@@ -37,10 +37,18 @@ import '../features/provider/provider_onboarding_page.dart';
 import '../features/provider/provider_shell.dart';
 import '../features/provider/provider_tools_page.dart';
 import '../features/splash/splash_page.dart';
+import '../features/startup/route_not_found_page.dart';
 import '../features/startup/startup_error_page.dart';
 import '../features/verification/customer_verification_page.dart';
 import '../features/welcome/welcome_page.dart';
 import 'providers.dart';
+import 'secure_screen.dart';
+
+/// Leaving a screen that closes itself. Routes are flat, so a screen opened
+/// by a deep link or a notification has nothing under it to pop back to.
+extension LeaveScreen on BuildContext {
+  void leave(String fallback) => canPop() ? pop() : go(fallback);
+}
 
 /// Route paths — centralized until typed routes (go_router_builder) land in M2.
 abstract final class AppRoutes {
@@ -49,7 +57,9 @@ abstract final class AppRoutes {
   static const String welcome = '/welcome';
   static const String onboarding = '/onboarding';
   static const String auth = '/auth';
-  static const String authMfa = '/auth/mfa';
+
+  /// Shown after signing back in to an account scheduled for deletion.
+  static const String deletionPending = '/account/deletion-pending';
 
   static const String verifyCustomer = '/verify/customer';
 
@@ -119,13 +129,11 @@ class BoolFlag extends Notifier<bool> {
   void set(bool value) => state = value;
 }
 
-/// First-run flag (M2: in-memory only — no persistence layer yet). Until it
-/// is set, signed-out users see welcome → onboarding → auth.
-final welcomeSeenProvider = NotifierProvider<BoolFlag, bool>(BoolFlag.new);
-
-/// M2 placeholder: the post-sign-in MFA prompt shows once per session until
-/// acknowledged. Reset on sign-out.
-final mfaAcknowledgedProvider = NotifierProvider<BoolFlag, bool>(BoolFlag.new);
+/// The user chose to let a scheduled deletion proceed for this session, so
+/// the deletion-pending screen is not shown again until the next sign-in.
+final deletionPromptDismissedProvider = NotifierProvider<BoolFlag, bool>(
+  BoolFlag.new,
+);
 
 /// Triggers redirect re-evaluation when session, bootstrap or mode change.
 final _routerRefreshProvider = Provider<ValueNotifier<int>>((ref) {
@@ -135,7 +143,7 @@ final _routerRefreshProvider = Provider<ValueNotifier<int>>((ref) {
     ..listen(modeControllerProvider, (_, _) => notifier.value++)
     ..listen(bootstrapProvider, (_, _) => notifier.value++)
     ..listen(welcomeSeenProvider, (_, _) => notifier.value++)
-    ..listen(mfaAcknowledgedProvider, (_, _) => notifier.value++);
+    ..listen(deletionPromptDismissedProvider, (_, _) => notifier.value++);
   ref.onDispose(notifier.dispose);
   return notifier;
 });
@@ -150,23 +158,44 @@ final routerProvider = Provider<GoRouter>((ref) {
     // dependants keeps its ref.listen subscriptions paused, so authStateProvider was never
     // subscribed and redirect kept seeing signedOut: sign-in never left /auth (M3.15).
     refreshListenable: ref.watch(_routerRefreshProvider),
+    // A deep link to nothing lands on a branded, localized page with a way
+    // home, never on go_router's default error screen.
+    errorBuilder: (context, state) => const RouteNotFoundPage(),
     redirect: (context, state) {
+      // 0. App Links arrive as https://<host>/app/<route> (AndroidManifest,
+      // Runner.entitlements). The prefix is what keeps the website's own
+      // pages from being claimed by the app; the rest is a route here, and
+      // the gates below still apply to it.
+      final path = state.uri.path;
+      if (path == '/app' || path.startsWith('/app/')) {
+        final route = path.substring('/app'.length);
+        return Uri(
+          path: route.isEmpty || route == '/' ? AppRoutes.customerHome : route,
+          query: state.uri.query.isEmpty ? null : state.uri.query,
+        ).toString();
+      }
+
       final loc = state.matchedLocation;
       final boot = ref.read(bootstrapProvider);
 
-      // 1. Bootstrap still loading → splash.
-      if (boot.isLoading && loc != AppRoutes.splash) return AppRoutes.splash;
+      // 1. First bootstrap still loading → splash. A refetch (new user, new
+      // country) keeps its previous value and does not flash the splash.
+      // Splash holds while loading: letting it fall through to the auth
+      // gate sent it to /auth, which sent it back here — a redirect loop
+      // that flashed go_router's error screen on every cold start.
+      if (!boot.hasValue && boot.isLoading) {
+        return loc == AppRoutes.splash ? null : AppRoutes.splash;
+      }
 
       // 2. Bootstrap failed (e.g. country disabled, offline) → startup error.
-      if (boot.hasError && loc != AppRoutes.startupError) {
-        return AppRoutes.startupError;
+      if (!boot.hasValue && boot.hasError) {
+        return loc == AppRoutes.startupError ? null : AppRoutes.startupError;
       }
 
       // 3. Auth gate. Signed-out first run: welcome → onboarding → auth.
       final auth = ref.read(authStateProvider).value;
       final signedIn = auth?.status == AuthStatus.signedIn;
       if (!signedIn) {
-        ref.read(mfaAcknowledgedProvider.notifier).set(false);
         final welcomeSeen = ref.read(welcomeSeenProvider);
         if (!welcomeSeen) {
           return loc == AppRoutes.welcome ? null : AppRoutes.welcome;
@@ -176,16 +205,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isPublicRoute ? null : AppRoutes.auth;
       }
 
-      // 4. MFA prompt placeholder (M2): shown once after sign-in until
-      // acknowledged; the page itself just acknowledges and returns here.
-      if (!ref.read(mfaAcknowledgedProvider) && loc != AppRoutes.authMfa) {
-        return AppRoutes.authMfa;
+      // 4. An account scheduled for deletion: offer to keep it before
+      // anything else, once per session.
+      final deletionDue =
+          boot.value?.accountDeletionScheduledFor != null &&
+          !ref.read(deletionPromptDismissedProvider);
+      if (deletionDue) {
+        return loc == AppRoutes.deletionPending
+            ? null
+            : AppRoutes.deletionPending;
       }
       final isPublicRoute =
           loc == AppRoutes.auth ||
           loc == AppRoutes.onboarding ||
           loc == AppRoutes.welcome;
-      if (isPublicRoute || loc == AppRoutes.splash) {
+      if (isPublicRoute ||
+          loc == AppRoutes.splash ||
+          loc == AppRoutes.deletionPending ||
+          loc == AppRoutes.startupError) {
         return ref.read(modeControllerProvider) == UserMode.provider
             ? AppRoutes.providerFeed
             : AppRoutes.customerHome;
@@ -230,12 +267,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthPage(),
       ),
       GoRoute(
-        path: AppRoutes.authMfa,
-        builder: (context, state) => const MfaPromptPage(),
+        path: AppRoutes.deletionPending,
+        builder: (context, state) => const DeletionPendingPage(),
       ),
       GoRoute(
         path: AppRoutes.verifyCustomer,
-        builder: (context, state) => const CustomerVerificationPage(),
+        builder: (context, state) =>
+            const SecureScreen(child: CustomerVerificationPage()),
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,
@@ -243,7 +281,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.providerKyc,
-        builder: (context, state) => const ProviderKycPage(),
+        builder: (context, state) =>
+            const SecureScreen(child: ProviderKycPage()),
       ),
       // M3: create-request, concierge and request detail. Declared before the
       // shells so `/customer/requests/new` wins over `/customer/requests/:id`.
@@ -304,7 +343,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // M5 routes — declared before the shells like the M3/M4 routes.
       GoRoute(
         path: AppRoutes.customerWallet,
-        builder: (context, state) => const WalletPage(),
+        builder: (context, state) => const SecureScreen(child: WalletPage()),
       ),
       GoRoute(
         path: AppRoutes.customerReferrals,
@@ -334,7 +373,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // M6 routes — provider tools + business console.
       GoRoute(
         path: AppRoutes.providerTools,
-        builder: (context, state) => const ProviderToolsPage(),
+        builder: (context, state) =>
+            const SecureScreen(child: ProviderToolsPage()),
       ),
       GoRoute(
         path: AppRoutes.providerOrg,
@@ -418,7 +458,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: <RouteBase>[
               GoRoute(
                 path: AppRoutes.providerEarnings,
-                builder: (context, state) => const EarningsPage(),
+                builder: (context, state) =>
+                    const SecureScreen(child: EarningsPage()),
               ),
             ],
           ),

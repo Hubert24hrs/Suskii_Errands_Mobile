@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:suskii_core/suskii_core.dart';
@@ -8,8 +9,10 @@ import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
+import '../../app/device_location.dart';
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
+import '../../app/media_capture.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../customer/rating_sheet.dart';
@@ -51,6 +54,13 @@ class _ProviderJobExecutionPageState
     JobStatus.completedByProvider,
   };
 
+  /// States in which the customer's map follows the provider (ADR-0009).
+  static const Set<JobStatus> _liveStates = <JobStatus>{
+    JobStatus.enRoute,
+    JobStatus.arrived,
+    JobStatus.inProgress,
+  };
+
   static const Set<JobStatus> _rateableStates = <JobStatus>{
     JobStatus.confirmed,
     JobStatus.settled,
@@ -60,7 +70,10 @@ class _ProviderJobExecutionPageState
   bool _busy = false;
   String? _transitionKey;
   String? _pinKey;
-  String? _proofKey;
+
+  /// A proof uploaded but not yet filed (see [_addProof]).
+  ({ProofKind kind, String path, String key, DateTime capturedAt})?
+  _pendingProof;
 
   /// The mock keeps verified PINs repo-internal, so a successful delivery-PIN
   /// verification is remembered here for the rest of this page session.
@@ -101,6 +114,25 @@ class _ProviderJobExecutionPageState
     }
   }
 
+  /// Asks for location at the moment it is needed (just-in-time
+  /// permissions), after saying why: the journey is what the customer's live
+  /// map follows. Declining does not stop the journey; it only means no map.
+  Future<void> _startJourney() async {
+    final location = ref.read(deviceLocationProvider);
+    if (await location.canAsk() && mounted) {
+      final l10n = AppLocalizations.of(context);
+      final share = await showSConfirmDialog(
+        context: context,
+        title: l10n.locationRationaleTitle,
+        message: l10n.locationRationaleBody,
+        confirmLabel: l10n.actionContinue,
+        cancelLabel: l10n.actionNotNow,
+      );
+      if (share) await location.current();
+    }
+    if (mounted) await _transition(JobStatus.enRoute);
+  }
+
   Future<void> _transition(JobStatus target) => _run(() async {
     _transitionKey ??= newIdempotencyKey();
     await ref
@@ -112,6 +144,54 @@ class _ProviderJobExecutionPageState
         );
     _transitionKey = null;
   });
+
+  /// Arrival is checked against the pickup geofence on the server. The
+  /// device's position goes with the request; when there is none, or the
+  /// server finds it outside the fence, the provider may still confirm, and
+  /// the reason code travels with the transition for the dispute file.
+  Future<void> _markArrived() => _run(() async {
+    final reading = await ref.read(deviceLocationProvider).current();
+    var reason = reading.missingReason;
+    if (reason != null && !await _confirmManualArrival()) return;
+    final repo = ref.read(jobProgressRepositoryProvider);
+    _transitionKey ??= newIdempotencyKey();
+    try {
+      await repo.requestStatusChange(
+        widget.jobId,
+        JobStatus.arrived,
+        idempotencyKey: _transitionKey!,
+        location: reading.point,
+        reasonCode: reason,
+      );
+    } on AppError catch (error) {
+      if (error.code != ErrorCodes.notAtPickup || reason != null) rethrow;
+      if (!await _confirmManualArrival()) return;
+      reason = 'outside_geofence';
+      // The refusal rolled back the server's idempotency claim, so the same
+      // key is still unspent and still means this one arrival.
+      await repo.requestStatusChange(
+        widget.jobId,
+        JobStatus.arrived,
+        idempotencyKey: _transitionKey!,
+        location: reading.point,
+        reasonCode: reason,
+      );
+    }
+    _transitionKey = null;
+  });
+
+  Future<bool> _confirmManualArrival() async {
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showSConfirmDialog(
+      context: context,
+      title: l10n.jobArrivalManualTitle,
+      message: l10n.jobArrivalManualBody,
+      confirmLabel: l10n.jobArrivalManualConfirm,
+      cancelLabel: l10n.actionCancel,
+    );
+    return confirmed && mounted;
+  }
 
   /// PIN entry for pickup (arrived) and delivery (in_progress). A verified
   /// pickup PIN moves the job to IN_PROGRESS inside the verify call — that
@@ -194,24 +274,51 @@ class _ProviderJobExecutionPageState
     });
   }
 
-  Future<void> _addProof(ProofKind kind) => _run(() async {
-    _proofKey = 'proof-${widget.jobId}-${kind.name}';
-    await ref
-        .read(jobProgressRepositoryProvider)
-        .submitProof(
-          jobId: widget.jobId,
+  /// Captures a photo, uploads it into `job-proofs/<request id>/…`, then
+  /// files it. Upload first, file second: the server refuses a path with
+  /// nothing behind it (audit 2026-09-27 Y.5). A filed-but-failed proof is
+  /// retried with the same path and key, never uploaded twice.
+  Future<void> _addProof(ProofKind kind) async {
+    var pending = _pendingProof;
+    if (pending == null || pending.kind != kind) {
+      final media = await captureImage(context);
+      if (media == null || !mounted) return;
+      await _run(() async {
+        final path = await ref
+            .read(mediaUploadRepositoryProvider)
+            .upload(
+              bucket: UploadBucket.jobProofs,
+              requestId: widget.jobId,
+              bytes: media.bytes,
+              contentType: media.contentType,
+            );
+        _pendingProof = (
           kind: kind,
-          // Placeholder object until M9 wires camera/upload — the server
-          // signs uploads only into the job's own prefix.
-          storagePath:
-              '${widget.jobId}/proof-${DateTime.now().millisecondsSinceEpoch}.jpg',
-          idempotencyKey: _proofKey!,
+          path: path,
+          key: newIdempotencyKey(),
           capturedAt: DateTime.now(),
         );
-    _proofKey = null;
-    _proofNudge = false;
-    ref.invalidate(jobProofsProvider(widget.jobId));
-  });
+      });
+      pending = _pendingProof;
+      if (pending == null || !mounted) return;
+    }
+    final proof = pending;
+    await _run(() async {
+      await ref
+          .read(jobProgressRepositoryProvider)
+          .submitProof(
+            jobId: widget.jobId,
+            kind: proof.kind,
+            storagePath: proof.path,
+            idempotencyKey: proof.key,
+            capturedAt: proof.capturedAt,
+          );
+      _pendingProof = null;
+      _proofNudge = false;
+      unawaited(HapticFeedback.lightImpact());
+      ref.invalidate(jobProofsProvider(widget.jobId));
+    });
+  }
 
   String _proofActionLabel(AppLocalizations l10n, ProofKind kind) =>
       switch (kind) {
@@ -240,7 +347,11 @@ class _ProviderJobExecutionPageState
             retryLabel: l10n.actionRetry,
             onRetry: () => ref.invalidate(requestDetailProvider(widget.jobId)),
           ),
-          data: (JobRequest request) => _buildDetail(l10n, request),
+          data: (JobRequest request) => _LivePositionPublisher(
+            jobId: widget.jobId,
+            active: _liveStates.contains(request.status),
+            child: _buildDetail(l10n, request),
+          ),
         ),
       ),
     );
@@ -318,13 +429,14 @@ class _ProviderJobExecutionPageState
             ),
           ),
         const SizedBox(height: SSpacing.lg),
-        if (request.status == JobStatus.paidHeld ||
-            request.status == JobStatus.assigned)
+        // Only from ASSIGNED (transition 12): a job still PAID_HELD is
+        // waiting on assignment, and the server would refuse the tap.
+        if (request.status == JobStatus.assigned)
           SButton(
             label: l10n.jobActionStartJourney,
             icon: Icons.route_outlined,
             loading: _busy,
-            onPressed: _busy ? null : () => _transition(JobStatus.enRoute),
+            onPressed: _busy ? null : _startJourney,
           ),
         if (request.status == JobStatus.enRoute) ...<Widget>[
           Card(
@@ -341,7 +453,7 @@ class _ProviderJobExecutionPageState
             label: l10n.jobActionArrived,
             icon: Icons.place_outlined,
             loading: _busy,
-            onPressed: _busy ? null : () => _transition(JobStatus.arrived),
+            onPressed: _busy ? null : _markArrived,
           ),
         ],
         if (request.status == JobStatus.arrived)
@@ -519,13 +631,105 @@ class _RatingSection extends ConsumerWidget {
                 children: <Widget>[
                   SRatingInput(value: existing.stars, size: 20),
                   const SizedBox(width: SSpacing.sm),
-                  Text(
-                    l10n.ratingDoneLabel(existing.stars),
-                    style: theme.textTheme.bodySmall,
+                  Flexible(
+                    child: Text(
+                      l10n.ratingDoneLabel(existing.stars),
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ),
                 ],
               ),
       ),
     );
   }
+}
+
+/// Publishes the provider's position while the job is live (ADR-0009): only
+/// while this screen is open with the app in the foreground, and never
+/// between jobs. Tracking in the background needs a foreground service on
+/// Android and the location background mode on iOS, each a store declaration
+/// of its own (RB-15 §6), so it waits for that decision.
+class _LivePositionPublisher extends ConsumerStatefulWidget {
+  const _LivePositionPublisher({
+    required this.jobId,
+    required this.active,
+    required this.child,
+  });
+
+  final String jobId;
+  final bool active;
+  final Widget child;
+
+  @override
+  ConsumerState<_LivePositionPublisher> createState() =>
+      _LivePositionPublisherState();
+}
+
+class _LivePositionPublisherState
+    extends ConsumerState<_LivePositionPublisher> {
+  /// The en-route ping cadence ADR-0009 sets; the server gates the heartbeat
+  /// on movement as well.
+  static const Duration _minInterval = Duration(seconds: 5);
+
+  late final TrackingRepository _tracking;
+  late final DeviceLocation _location;
+  late final AppLogger _logger;
+  StreamSubscription<LiveFix>? _positions;
+  DateTime? _lastSent;
+
+  @override
+  void initState() {
+    super.initState();
+    _tracking = ref.read(trackingRepositoryProvider);
+    _location = ref.read(deviceLocationProvider);
+    _logger = ref.read(loggerProvider);
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_LivePositionPublisher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active || oldWidget.jobId != widget.jobId) {
+      _stop();
+      _sync();
+    }
+  }
+
+  void _sync() {
+    if (widget.active && _positions == null) {
+      _positions = _location.watch().listen(_publish);
+    }
+  }
+
+  void _stop() {
+    unawaited(_positions?.cancel());
+    _positions = null;
+  }
+
+  void _publish(LiveFix fix) {
+    final now = DateTime.now();
+    final last = _lastSent;
+    if (last != null && now.difference(last) < _minInterval) return;
+    _lastSent = now;
+    unawaited(
+      _tracking
+          .publishProviderLocation(widget.jobId, fix)
+          .catchError(
+            (Object error) => _logger.log(
+              LogLevel.warning,
+              'live position not published',
+              error: error,
+            ),
+          ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

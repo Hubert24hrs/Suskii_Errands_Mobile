@@ -23,6 +23,7 @@ const en = {
     legalTitle: 'Legal',
     privacy: 'Privacy policy',
     terms: 'Terms of service',
+    deleteAccount: 'Delete your account',
     cities: 'Cities',
     rights: 'Suskii Errands. All rights reserved.',
   },
@@ -289,6 +290,32 @@ const en = {
     title: 'Page not found',
     body: 'The page you are looking for does not exist or has moved.',
     cta: 'Back to home',
+  },
+  deleteAccount: {
+    title: 'Delete your Suskii account',
+    subtitle:
+      'You can delete your account at any time, from the app or from the web. Nothing is charged and no reason is needed.',
+    steps: [
+      {
+        title: 'In the app',
+        body: 'Open Profile, then Settings, and tap Delete account. Confirm, and you are signed out on every device.',
+      },
+      {
+        title: 'On the web',
+        body: 'Sign in to Suskii on the web with the same phone number or email, open Settings, and choose Delete account.',
+      },
+      {
+        title: 'Changed your mind?',
+        body: 'Sign in again before the deletion date and choose Keep my account. Nothing is lost.',
+      },
+    ],
+    whatHappensTitle: 'What is deleted, and what is kept',
+    whatHappens: [
+      'After a 30-day grace period your name, phone number, email address, trusted contacts and favourites are erased, and the account can no longer be signed in to.',
+      'Records of jobs you took part in — payments, refunds, payouts, messages and proofs — stay with those jobs for as long as the law and dispute rules require, without your contact details.',
+      'Open jobs, open disputes or money left in your wallet must be settled first; the app tells you if one is in the way.',
+    ],
+    contact: 'No longer have access to your phone number or email? Contact support and we will verify it is you.',
   },
 };
 

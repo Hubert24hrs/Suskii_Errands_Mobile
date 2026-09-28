@@ -82,7 +82,7 @@ export function SignInClient() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-lg py-xxxl">
       <div className="flex items-center gap-sm">
-        <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-brand-primary font-bold text-brand-on-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
           S
         </span>
         <span className="text-title-large text-ink-primary dark:text-ink-dark-primary">

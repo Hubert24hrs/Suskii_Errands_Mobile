@@ -53,6 +53,30 @@ class SupabaseUserRepository implements UserRepository {
   }
 
   @override
+  Future<AppUser> updateDisplayName(String displayName) async {
+    final authUser = _gateway.auth.currentUser;
+    if (authUser == null) throw const AppError(ErrorCodes.unauthenticated);
+    final name = displayName.trim();
+    if (name.isEmpty || name.length > 80) {
+      throw const AppError(ErrorCodes.invalidArgument);
+    }
+    // `display_name` is one of the four columns the UPDATE grant covers.
+    final rows = await _gateway.updateRows(
+      'profiles',
+      <String, Object?>{'display_name': name},
+      column: 'user_id',
+      value: authUser.id,
+      columns: profileRowColumns,
+    );
+    if (rows.isEmpty) throw const AppError(ErrorCodes.unauthenticated);
+    return appUserFromProfileRow(
+      rows.first,
+      phoneE164: authUser.phone,
+      email: authUser.email,
+    );
+  }
+
+  @override
   Future<UserMode> setActiveMode(
     UserMode mode, {
     required String idempotencyKey,

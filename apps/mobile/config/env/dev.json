@@ -1,6 +1,12 @@
 {
   "APP_FLAVOR": "dev",
+  "APP_NAME": "Suskii Dev",
+  "APP_LINK_HOST": "dev.suskii-errands.example",
   "SUPABASE_URL": "",
   "SUPABASE_ANON_KEY": "",
-  "AI_SERVICE_URL": ""
+  "AI_SERVICE_URL": "",
+  "SENTRY_DSN": "",
+  "PRIVACY_POLICY_URL": "https://dev.suskii-errands.example/en/legal/privacy",
+  "TERMS_URL": "https://dev.suskii-errands.example/en/legal/terms",
+  "SUPPORT_EMAIL": "support@dev.suskii-errands.example"
 }

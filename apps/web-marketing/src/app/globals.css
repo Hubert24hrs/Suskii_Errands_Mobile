@@ -1,9 +1,26 @@
+@import "../../../../packages/design-tokens/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  html {
-    @apply scroll-smooth;
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+}
+
+/* Form fields need a 3:1 boundary to be findable (WCAG 1.4.11); cards and
+   dividers keep the hairline. Scoped to fields, so no page changes. */
+@layer utilities {
+  :is(input:not([type='checkbox']):not([type='radio']), select, textarea).border-outline {
+    border-color: theme('colors.outline.strong');
+  }
+  @media (prefers-color-scheme: dark) {
+    :is(input:not([type='checkbox']):not([type='radio']), select, textarea).dark\:border-outline-dark {
+      border-color: theme('colors.outline.strong-dark');
+    }
   }
 }

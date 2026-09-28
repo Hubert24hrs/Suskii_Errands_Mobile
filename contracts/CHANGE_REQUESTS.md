@@ -77,7 +77,7 @@ No requests yet — official contracts do not exist (frontend-first phase).
 - Problem / missing capability: store-readiness requires in-app account deletion with a grace period (signing back in cancels), and the data-export screen needs an opaque export reference. Both currently throw ERR_FEATURE_UNAVAILABLE.
 - Proposed change: `request_account_deletion(p_idempotency_key) → timestamptz` (scheduled deletion date; sign-in before it cancels) and `request_data_export(p_idempotency_key) → text` (export reference / ticket id).
 - Backwards compatible? yes (new functions).
-- Status: OPEN
+- Status: SHIPPED in contracts 1.2.0 (2026-09-27, migration `20260927120000_account_lifecycle.sql`). Deletion revokes every session, so "signing back in cancels" is explicit: bootstrap carries `user.deletion_scheduled_for` and the app offers `cancel_account_deletion`. Data export records the request and emits `account.export_requested`; `private.collect_personal_data(uuid)` builds the document for the fulfilment path (service role only).
 
 ## CR-20260923-08 — KYC PII: plaintext variants that encrypt server-side
 - Requested by: Kimi Code

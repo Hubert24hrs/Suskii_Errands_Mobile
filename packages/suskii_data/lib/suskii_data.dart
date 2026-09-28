@@ -15,6 +15,7 @@ export 'src/supabase/supabase_error_mapping.dart';
 export 'src/supabase/supabase_gateway.dart';
 export 'src/supabase/supabase_job_progress_repository.dart';
 export 'src/supabase/supabase_mappers.dart';
+export 'src/supabase/supabase_media_upload_repository.dart';
 export 'src/supabase/supabase_offer_repository.dart';
 export 'src/supabase/supabase_payment_repository.dart';
 export 'src/supabase/supabase_provider_kyc_repository.dart';

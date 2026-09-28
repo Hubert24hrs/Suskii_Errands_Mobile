@@ -28,3 +28,22 @@ final class GeoPoint {
   @override
   String toString() => 'GeoPoint($latitude, $longitude)';
 }
+
+/// One position from the provider's device while on a job, as the job's
+/// tracking channel and the heartbeat carry it (ADR-0009). [isMock] is the
+/// platform's own mock-location flag; the server records it on the trail.
+final class LiveFix {
+  const LiveFix({
+    required this.point,
+    this.headingDegrees,
+    this.speedMetresPerSecond,
+    this.accuracyMetres,
+    this.isMock = false,
+  });
+
+  final GeoPoint point;
+  final double? headingDegrees;
+  final double? speedMetresPerSecond;
+  final double? accuracyMetres;
+  final bool isMock;
+}

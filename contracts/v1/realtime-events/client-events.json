@@ -1,0 +1,25 @@
+{
+  "$comment": "Authored, not generated: events that clients send on a topic, which private.broadcast() in the migrations cannot show. The realtime.messages INSERT policy lets any participant who may join a topic send on it (private.may_join_topic); a broadcast is a courtesy and never a record (ADR-0009). Receivers validate every payload and treat a malformed one as absent.",
+  "topics": {
+    "job:{id}": {
+      "provider.location": {
+        "sender": "the provider or worker on the job, while it is en_route, arrived or in_progress",
+        "cadence": "about every 5 s while moving (the app's distance filter is 20 m); nothing when stationary",
+        "payload": {
+          "type": "object",
+          "required": ["lat", "lng", "is_mock", "at"],
+          "properties": {
+            "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+            "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+            "heading": { "type": "number", "minimum": 0, "exclusiveMaximum": 360, "description": "degrees; omitted when unknown" },
+            "accuracy_m": { "type": "number", "minimum": 0, "description": "omitted when unknown" },
+            "is_mock": { "type": "boolean", "description": "the platform's mock-location flag, as reported by the device" },
+            "at": { "type": "string", "format": "date-time", "description": "device time of the fix, UTC" }
+          },
+          "additionalProperties": false
+        },
+        "persisted": "No. The same position reaches the database only through the movement-gated heartbeat RPC, which writes provider_live_location and, on a job, location_samples."
+      }
+    }
+  }
+}

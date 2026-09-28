@@ -21,8 +21,10 @@ SELECT ok(
    FROM public.profiles WHERE user_id = '11111111-1111-4111-8111-111111111111'),
   'a profile is created on sign-up from validated metadata');
 
+-- The metadata's country is not trusted; the number's calling code decides instead
+-- (20260927120100_signup_country), and the unsupported language falls back to the default.
 SELECT ok(
-  (SELECT country_code IS NULL AND language = 'en'
+  (SELECT country_code = 'NG' AND language = 'en'
    FROM public.profiles WHERE user_id = '22222222-2222-4222-8222-222222222222'),
   'unknown country and unsupported language in metadata are not trusted');
 

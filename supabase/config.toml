@@ -467,6 +467,14 @@ verify_jwt = false
 import_map = "./functions/notifications-worker/deno.json"
 entrypoint = "./functions/notifications-worker/index.ts"
 
+[functions.storage-worker]
+enabled = true
+# Invoked on a schedule, like the other workers, with the same named secret API key inside the
+# function (withSupabase auth "secret:worker"). Removes what account erasure cannot from SQL.
+verify_jwt = false
+import_map = "./functions/storage-worker/deno.json"
+entrypoint = "./functions/storage-worker/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false

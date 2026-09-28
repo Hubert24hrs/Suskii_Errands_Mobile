@@ -12,11 +12,15 @@
     "build:web-marketing": "npm run build -w apps/web-marketing",
     "dev:web-admin": "npm run dev -w apps/web-admin",
     "dev:web-customer": "npm run dev -w apps/web-customer",
-    "dev:web-marketing": "npm run dev -w apps/web-marketing"
+    "dev:web-marketing": "npm run dev -w apps/web-marketing",
+    "test:web-smoke": "playwright test -c tests/web-smoke"
   },
   "overrides": {
     "next": {
       "postcss": "^8.5.28"
     }
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
   }
 }

@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/providers.dart';
+import '../../app/router.dart';
 
 /// Voice concierge session UI. Availability is per-language from bootstrap
 /// (A.7/OD-17); the adapter is the vendor seam — no real audio until the
@@ -29,10 +29,19 @@ class _VoiceConciergePageState extends ConsumerState<VoiceConciergePage> {
   final List<String> _transcript = <String>[];
   StreamSubscription<VoiceEvent>? _events;
 
+  /// Held from initState: `ref` is unusable in dispose, which is where an
+  /// abandoned session still has to be ended.
+  late final VoiceConciergeAdapter _adapter;
+
   @override
   void initState() {
     super.initState();
+    _adapter = ref.read(voiceConciergeAdapterProvider);
     unawaited(_start());
+  }
+
+  void _close() {
+    if (mounted) context.leave(AppRoutes.customerConcierge);
   }
 
   Future<void> _start() async {
@@ -41,24 +50,19 @@ class _VoiceConciergePageState extends ConsumerState<VoiceConciergePage> {
       _state = null;
     });
     try {
-      final session = await ref
-          .read(voiceConciergeAdapterProvider)
-          .startSession(
-            widget.conversationId,
-            language: Localizations.localeOf(context).languageCode,
-          );
+      final session = await _adapter.startSession(
+        widget.conversationId,
+        language: Localizations.localeOf(context).languageCode,
+      );
       if (!mounted) return;
       _session = session;
-      _events = ref
-          .read(voiceConciergeAdapterProvider)
-          .events(session.sessionId)
-          .listen((VoiceEvent event) {
-            if (!mounted) return;
-            setState(() {
-              if (event.state != null) _state = event.state;
-              if (event.text != null) _transcript.add(event.text!);
-            });
-          });
+      _events = _adapter.events(session.sessionId).listen((VoiceEvent event) {
+        if (!mounted) return;
+        setState(() {
+          if (event.state != null) _state = event.state;
+          if (event.text != null) _transcript.add(event.text!);
+        });
+      });
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);
     }
@@ -68,11 +72,9 @@ class _VoiceConciergePageState extends ConsumerState<VoiceConciergePage> {
     final session = _session;
     await _events?.cancel();
     if (session != null) {
-      await ref
-          .read(voiceConciergeAdapterProvider)
-          .endSession(session.sessionId);
+      await _adapter.endSession(session.sessionId);
     }
-    if (mounted) context.pop();
+    _close();
   }
 
   @override
@@ -80,9 +82,7 @@ class _VoiceConciergePageState extends ConsumerState<VoiceConciergePage> {
     unawaited(_events?.cancel());
     final session = _session;
     if (session != null) {
-      unawaited(
-        ref.read(voiceConciergeAdapterProvider).endSession(session.sessionId),
-      );
+      unawaited(_adapter.endSession(session.sessionId));
     }
     super.dispose();
   }
@@ -135,7 +135,7 @@ class _VoiceConciergePageState extends ConsumerState<VoiceConciergePage> {
                     const Spacer(),
                     SButton(label: l10n.voiceEnd, onPressed: _end),
                     TextButton(
-                      onPressed: () => context.pop(),
+                      onPressed: _close,
                       child: Text(l10n.voiceFallback),
                     ),
                   ],

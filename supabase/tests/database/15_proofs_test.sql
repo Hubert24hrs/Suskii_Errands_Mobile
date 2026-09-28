@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(25);
+SELECT plan(26);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('d1111111-1111-4111-8111-111111111111', '2348000000081'),   -- customer
@@ -51,6 +51,10 @@ RESET ROLE;
 SELECT is(private.mark_paid_held((SELECT id FROM pf WHERE name = 'r')),
   'assigned'::public.job_status, 'the job is paid and assigned');
 INSERT INTO pfp VALUES ('pickup', private.issue_pin((SELECT id FROM pf WHERE name = 'r'), 'pickup'));
+-- What the app uploads before it files a proof. `missing.jpg` is never uploaded.
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('job-proofs', (SELECT id FROM pf WHERE name = 'r') || '/basket.jpg'),
+  ('job-proofs', (SELECT id FROM pf WHERE name = 'r') || '/receipt.pdf');
 
 -- ---------------------------------------------------------------------------
 -- Proofs can only be submitted while the work is happening.
@@ -82,6 +86,13 @@ SELECT throws_ok(
   format($$SELECT public.set_job_status('key-pf-complete-p-000001', %L, 'completed_by_provider')$$,
     (SELECT id FROM pf WHERE name = 'r')),
   'P0001', 'ERR_PROOF_REQUIRED', 'shopping is not done until there is a photo and a receipt');
+
+-- A path is evidence only when something was uploaded to it (audit 2026-09-27 Y.5).
+SELECT throws_ok(
+  format($$SELECT public.submit_proof('key-pf-proof-ghost-000001', %L, 'photo', %L)$$,
+    (SELECT id FROM pf WHERE name = 'r'),
+    (SELECT id FROM pf WHERE name = 'r') || '/missing.jpg'),
+  'P0001', 'ERR_UPLOAD_NOT_FOUND', 'a proof naming a file that was never uploaded is refused');
 
 INSERT INTO pf VALUES ('proof1', public.submit_proof(
   'key-pf-proof-photo-000001', (SELECT id FROM pf WHERE name = 'r'), 'photo',

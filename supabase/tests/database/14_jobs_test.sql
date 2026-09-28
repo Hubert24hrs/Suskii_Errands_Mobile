@@ -173,6 +173,9 @@ SET LOCAL ROLE authenticated;
 INSERT INTO pins VALUES ('delivery',
   public.reveal_job_pin((SELECT id FROM jids WHERE name = 'r'), 'delivery'));
 RESET ROLE;
+-- The photo exists before it is filed as proof (audit 2026-09-27 Y.5).
+INSERT INTO storage.objects (bucket_id, name)
+VALUES ('job-proofs', (SELECT id FROM jids WHERE name = 'r') || '/handover.jpg');
 
 SELECT set_config('request.jwt.claims',
   '{"sub": "c2222222-2222-4222-8222-222222222222", "role": "authenticated", "aal": "aal1"}', true);
@@ -301,6 +304,12 @@ SELECT public.set_job_status('key-j-arrive-p-000000003', (SELECT id FROM jids WH
   'arrived', NULL, 6.4460, 3.4751);
 SELECT public.verify_pin('key-j-pin-right-0000000003', (SELECT id FROM jids WHERE name = 'r3'),
   (SELECT pin FROM pins WHERE name = 'pickup3'));
+RESET ROLE;
+INSERT INTO storage.objects (bucket_id, name)
+VALUES ('job-proofs', (SELECT id FROM jids WHERE name = 'r3') || '/done.jpg');
+SELECT set_config('request.jwt.claims',
+  '{"sub": "c2222222-2222-4222-8222-222222222222", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
 SELECT public.submit_proof('key-j-proof-p-000000000002', (SELECT id FROM jids WHERE name = 'r3'),
   'photo', (SELECT id FROM jids WHERE name = 'r3') || '/done.jpg');
 SELECT is(public.set_job_status('key-j-complete-p-0000003',

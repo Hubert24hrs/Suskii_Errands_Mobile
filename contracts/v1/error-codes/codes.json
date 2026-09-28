@@ -691,6 +691,17 @@
       "client_action": "Send the provider to the outstanding proof step."
     },
     {
+      "code": "ERR_UPLOAD_NOT_FOUND",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "A storage path was filed as proof but nothing was uploaded to it. The app uploads to the bucket first and files the path second; the server refuses a path with no object behind it, so a proof requirement cannot be met by a string (audit 2026-09-27 Y.5).",
+      "client_action": "Upload the file again, then retry the same call with the same idempotency key."
+    },
+    {
       "code": "ERR_RATING_WINDOW_CLOSED",
       "status": "implemented",
       "category": "marketplace",
@@ -1206,6 +1217,28 @@
       "retryable": true,
       "description": "Every channel a notification was decided for failed to send, so the outbox event is retried. One channel succeeding is enough to complete it - retrying then would re-send the one that worked.",
       "client_action": "Internal: recorded on the outbox event. The inbox row exists either way, so the app is not missing anything."
+    },
+    {
+      "code": "ERR_UNKNOWN_EVENT",
+      "status": "implemented",
+      "category": "server",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": false,
+      "description": "An outbox event of a type its aggregate's worker does not handle. Failed, not completed, so it stays visible: an event nobody handles is how a refund once went missing (audit T.2).",
+      "client_action": "Ops: find the emitter and give the event a reader."
+    },
+    {
+      "code": "ERR_STORAGE_UNAVAILABLE",
+      "status": "implemented",
+      "category": "account",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": true,
+      "description": "The Storage API refused or failed a list or remove during account erasure (storage-worker). Retried; the folder is not erased until it succeeds (audit 2026-09-27 Y.30).",
+      "client_action": "Ops, if retries exhaust: RB-12 and the storage-worker logs."
     }
   ]
 }

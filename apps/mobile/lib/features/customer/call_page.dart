@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
@@ -10,6 +9,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/providers.dart';
+import '../../app/router.dart';
 
 /// Masked in-app call (M4). The session token is minted server-side and the
 /// adapter is vendor-neutral (LiveKit at M9); this page only renders call
@@ -34,10 +34,25 @@ class _CallPageState extends ConsumerState<CallPage> {
   /// One key per call intent (M3.14).
   String? _callKey;
 
+  /// Held from initState: `ref` is unusable in dispose, which is where an
+  /// abandoned call still has to be hung up.
+  late final CallAdapter _adapter;
+
+  /// The call ends from three places (the end button, the remote side, an
+  /// error's close), and only the first may leave the screen.
+  bool _closed = false;
+
   @override
   void initState() {
     super.initState();
+    _adapter = ref.read(callAdapterProvider);
     unawaited(_start());
+  }
+
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    context.leave(AppRoutes.customerRequestDetailPath(widget.jobId));
   }
 
   Future<void> _start() async {
@@ -47,19 +62,16 @@ class _CallPageState extends ConsumerState<CallPage> {
     });
     try {
       _callKey ??= newIdempotencyKey();
-      final session = await ref
-          .read(callAdapterProvider)
-          .startCall(widget.jobId, idempotencyKey: _callKey!);
+      final session = await _adapter.startCall(
+        widget.jobId,
+        idempotencyKey: _callKey!,
+      );
       if (!mounted) return;
       _session = session;
-      _events = ref.read(callAdapterProvider).events(session.sessionId).listen((
-        CallEvent event,
-      ) {
+      _events = _adapter.events(session.sessionId).listen((CallEvent event) {
         if (!mounted) return;
         setState(() => _state = event.state);
-        if (event.state == CallState.ended) {
-          context.pop();
-        }
+        if (event.state == CallState.ended) _close();
       });
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);
@@ -70,20 +82,14 @@ class _CallPageState extends ConsumerState<CallPage> {
     final session = _session;
     if (session == null) return;
     final next = !_muted;
-    await ref
-        .read(callAdapterProvider)
-        .setMuted(session.sessionId, muted: next);
+    await _adapter.setMuted(session.sessionId, muted: next);
     if (mounted) setState(() => _muted = next);
   }
 
   Future<void> _end() async {
     final session = _session;
-    if (session == null) {
-      if (mounted) context.pop();
-      return;
-    }
-    await ref.read(callAdapterProvider).endCall(session.sessionId);
-    if (mounted) context.pop();
+    if (session != null) await _adapter.endCall(session.sessionId);
+    _close();
   }
 
   @override
@@ -91,7 +97,7 @@ class _CallPageState extends ConsumerState<CallPage> {
     unawaited(_events?.cancel());
     final session = _session;
     if (session != null && _state != CallState.ended) {
-      unawaited(ref.read(callAdapterProvider).endCall(session.sessionId));
+      unawaited(_adapter.endCall(session.sessionId));
     }
     super.dispose();
   }
@@ -108,7 +114,7 @@ class _CallPageState extends ConsumerState<CallPage> {
               ? _ErrorBody(
                   message: localizedError(l10n, _error!),
                   closeLabel: l10n.actionCancel,
-                  onClose: () => context.pop(),
+                  onClose: _close,
                   onRetry: _start,
                   retryLabel: l10n.actionRetry,
                 )

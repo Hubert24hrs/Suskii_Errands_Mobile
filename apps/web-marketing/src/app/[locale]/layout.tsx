@@ -5,6 +5,7 @@ import { getDictionary, isLocale, locales, type Locale } from '@/lib/i18n';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import '../globals.css';
+import { bodyFont, displayFont } from '../fonts';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -42,8 +43,8 @@ export default async function LocaleLayout({
   const dict = await getDictionary(locale as Locale);
 
   return (
-    <html lang={locale}>
-      <body className="bg-surface font-sans text-body-large text-ink-primary antialiased dark:bg-surface-dark dark:text-ink-dark-primary">
+    <html lang={locale} className={`${bodyFont.variable} ${displayFont.variable}`}>
+      <body className="bg-surface-background font-sans text-body-large text-ink-primary antialiased dark:bg-surface-dark-background dark:text-ink-dark-primary">
         <SiteHeader locale={locale as Locale} dict={dict} />
         <main>{children}</main>
         <SiteFooter locale={locale as Locale} dict={dict} />

@@ -32,3 +32,6 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# Written per build from the define file (tool/write_ios_defines.sh)
+Flutter/DartDefines.xcconfig

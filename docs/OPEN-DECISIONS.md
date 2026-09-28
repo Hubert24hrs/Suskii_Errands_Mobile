@@ -41,6 +41,24 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-24 | Restricted items and prohibited services — counsel sign-off | The union of the five country packs' `restricted.*` lists, as `prohibited_items` rows: a `block` action only where the term cannot mean anything else (firearms, explosives, named narcotics, human remains, ivory, trade in identity documents, sex work, exam impersonation, forgery, armed security), a `hold` for everything ambiguous. Every pack tags `restricted: assumption`, so **every rule is `[A]`** and none has been read by a lawyer. The terms themselves are ops-editable data, not code | Open | Counsel | Before the first live country | `docs/research/country-packs/*.yaml` `restricted.*` (`_status`: assumption); [ai-design.md](plan/ai-design.md) §6 and §8 |
 | OD-25 | What follows a confirmed fraud flag | Nothing automatic. The risk engine raises flags and a reviewer confirms or clears them; suspension, payout holds and account closure stay separate, explicit, audited decisions. The alternative — automatic suspension above a score — is faster and costs somebody their week's income for a coincidence of device fingerprints. Thresholds are in `remote_config` (`risk_*`) and are ours to tune; the enforcement policy is the client's | Proposed | Client | Phase 5 (money makes the consequences real) | Spec, "Rule-based risk engine"; [threat-model.md](plan/threat-model.md) rows 37, 38, 159; [erd.md](plan/erd.md) §7 |
 
+## Raised by the store-readiness work (OD-26 … OD-28, 2026-09-28)
+
+| ID | Topic | Proposed default | Status | Owner | Needed by | Evidence |
+|---|---|---|---|---|---|---|
+| OD-26 | The application id on both stores | `com.suskiierrands.app`, with `.dev` / `.staging` suffixes for the other environments. It cannot be changed after the first upload to either store, and the two ids the template left (`com.suskiierrands.suskii_mobile`, `com.suskiierrands.suskiiMobile`) differ and the first is not a valid iOS bundle id | Proposed | Client | Before the first store upload (RB-15 action 17) | [ADR-0017](adr/0017-store-identity-and-release-signing.md) |
+| OD-27 | Tracking the provider while the app is in the background | Foreground only: the provider's position is published while the job screen is open, and not when the phone is locked or another app is in front. Background tracking needs an Android foreground service of type `location` and the iOS location background mode, each with its own store declaration and review (Play precise-location declaration enforced 27 Jan 2027), and changes what the privacy policy says. The customer's map goes still when the provider leaves the app | Proposed | Client | Before launch | [ADR-0009](adr/0009-location-transport.md); REPORT §10 [V]; RB-15 §6 |
+| OD-28 | Minimum age, store audience and age rating | Adults only (18+) for both customers and providers; Play target audience 18+, not designed for children; answer Apple's age-rating questions accordingly (user-generated content and chat with strangers, moderated). Counsel confirms per country with the terms (OD-24) | Proposed | Client + counsel | Store submission | RB-15 action 26 |
+
+### Store release — client actions
+
+Everything the stores need from the client is listed, with what to hand over, in
+[RB-15 §1](runbooks/RB-15-store-release.md#1-client-actions--nothing-ships-until-these-are-done):
+the Play Console and Apple Developer accounts (action 9), the app id (OD-26), the domain (I-2), brand
+artwork, the Android upload key and Play service account, the App ID capabilities and an App Store
+Connect API key, the privacy policy and terms, a review sign-in number, the store questionnaires,
+and a Firebase project for push. None has started. **Signing material is never committed and never
+sent to anyone**: it goes straight into the GitHub environment's secrets.
+
 ## Resolved
 
 _None yet._

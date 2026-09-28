@@ -27,6 +27,12 @@ class MockDatabase {
   bool providerBusyRuleEnabled = false;
 
   late final Map<String, AppUser> users;
+
+  /// Scheduled account deletions by user id (grace period running).
+  final Map<String, DateTime> deletionScheduled = <String, DateTime>{};
+
+  /// Objects "uploaded" to the private buckets, by path.
+  final Map<String, int> uploadedObjects = <String, int>{};
   late final Map<String, ProviderProfile> providers;
   late final List<ServiceCategory> categories;
   late final Map<String, CountryPack> countryPacks;
@@ -53,6 +59,10 @@ class MockDatabase {
 
   /// Disputes by job id (at most one per job).
   late final Map<String, Dispute> disputes;
+
+  /// Positions a provider published per job (MockTrackingRepository), newest
+  /// last, so tests can see what a real device would have broadcast.
+  final Map<String, List<LiveFix>> liveFixes = <String, List<LiveFix>>{};
 
   /// Support tickets by id.
   late final Map<String, SupportTicket> tickets;

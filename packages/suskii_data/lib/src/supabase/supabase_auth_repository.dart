@@ -14,6 +14,18 @@ const String profileRowColumns =
     'active_mode, customer_verification, provider_verification, '
     'trust_level, created_at';
 
+/// User metadata sent with an OTP request. GoTrue applies it only when the
+/// request creates the user, and `private.handle_new_user` validates it
+/// against the open countries, so it is a preference, not a claim.
+Map<String, dynamic>? signUpMetadata({String? countryCode, String? language}) {
+  final data = <String, dynamic>{
+    if (countryCode != null && countryCode.isNotEmpty)
+      'country_code': countryCode.toUpperCase(),
+    if (language != null && language.isNotEmpty) 'language': language,
+  };
+  return data.isEmpty ? null : data;
+}
+
 /// AuthRepository over Supabase Auth (GoTrue) + the `profiles` row (own row
 /// only — RLS). Phone/email OTP are GoTrue's; social providers stay
 /// unavailable until vendor accounts exist (see the interface contract).
@@ -42,9 +54,16 @@ class SupabaseAuthRepository implements AuthRepository {
       });
 
   @override
-  Future<void> requestPhoneOtp(String phoneE164) async {
+  Future<void> requestPhoneOtp(
+    String phoneE164, {
+    String? countryCode,
+    String? language,
+  }) async {
     try {
-      await _gateway.auth.signInWithOtp(phone: phoneE164);
+      await _gateway.auth.signInWithOtp(
+        phone: phoneE164,
+        data: signUpMetadata(countryCode: countryCode, language: language),
+      );
     } on Object catch (error) {
       throw mapSupabaseError(error);
     }
@@ -65,9 +84,16 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> requestEmailOtp(String email) async {
+  Future<void> requestEmailOtp(
+    String email, {
+    String? countryCode,
+    String? language,
+  }) async {
     try {
-      await _gateway.auth.signInWithOtp(email: email);
+      await _gateway.auth.signInWithOtp(
+        email: email,
+        data: signUpMetadata(countryCode: countryCode, language: language),
+      );
     } on Object catch (error) {
       throw mapSupabaseError(error);
     }

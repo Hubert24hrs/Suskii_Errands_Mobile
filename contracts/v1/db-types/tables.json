@@ -1,7 +1,96 @@
 {
   "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
-  "count": 64,
+  "count": 66,
   "tables": [
+    {
+      "name": "public.account_deletion_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "cancelled",
+              "completed"
+            ],
+            "enum_name": "account_deletion_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "requested_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "scheduled_for",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "cancelled_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "completed_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "blocked_reason",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260927120000_account_lifecycle.sql"
+    },
     {
       "name": "public.admin_users",
       "columns": [
@@ -861,6 +950,96 @@
         }
       },
       "defined_in": "20260916120200_money_primitives.sql"
+    },
+    {
+      "name": "public.data_export_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "reference",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "processing",
+              "ready",
+              "failed",
+              "expired"
+            ],
+            "enum_name": "data_export_status"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "requested_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "ready_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "failure_reason",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20260927120000_account_lifecycle.sql"
     },
     {
       "name": "public.dispute_evidence",

@@ -1,0 +1,5 @@
+# Identifiers only. Credentials never live here: the release workflow passes them in the
+# environment from repository secrets (RB-15).
+package_name("com.suskiierrands.app")
+app_identifier("com.suskiierrands.app")
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
