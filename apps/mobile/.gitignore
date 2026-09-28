@@ -46,3 +46,17 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Release tooling (fastlane, RB-15)
+/vendor/bundle/
+/.bundle/
+/fastlane/report.xml
+/fastlane/README.md
+/fastlane/Preview.html
+/fastlane/test_output/
+/fastlane/screenshots/*/
+# Never commit signing material (android/.gitignore also covers key.properties and keystores)
+*.p8
+*.p12
+*.mobileprovision
+*.cer

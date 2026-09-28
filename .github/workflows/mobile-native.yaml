@@ -1,0 +1,70 @@
+name: mobile-native
+
+# The Android store build, compiled on every change that could break it (RB-15). frontend-ci
+# runs the Dart suites; this proves the release bundle (R8 and resource shrinking included)
+# still compiles. Nothing is signed or uploaded: pull requests never see the upload key, so the
+# bundle is debug-signed. mobile-ios.yaml is the iOS half; mobile-release.yaml signs.
+on:
+  pull_request:
+    paths: ['apps/mobile/**', 'packages/**', '.github/workflows/mobile-native.yaml']
+  push:
+    branches: [main]
+    paths: ['apps/mobile/**', 'packages/**', '.github/workflows/mobile-native.yaml']
+  schedule:
+    # Weekly, so an SDK or plugin release that breaks the native build is noticed before a
+    # release depends on it.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-native-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+      - name: Resolve packages and generate code
+        run: apps/mobile/tool/bootstrap.sh
+      - name: Release App Bundle (prod defines)
+        working-directory: apps/mobile
+        run: flutter build appbundle --release --dart-define-from-file=config/env/prod.json
+      - name: Release APK (dev defines, for installing on a test device)
+        working-directory: apps/mobile
+        run: flutter build apk --release --dart-define-from-file=config/env/dev.json
+      # Minimum permissions (audit Y.10): a plugin upgrade that quietly adds a sensitive
+      # permission to the merged manifest fails here instead of in Play review.
+      - name: Merged manifest asks for nothing sensitive
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+          manifest="$(find build/app/intermediates -path '*release*' -name AndroidManifest.xml -path '*merged_manifest*' | head -1)"
+          test -n "$manifest" || { echo "merged release manifest not found"; exit 1; }
+          echo "== $manifest"
+          grep -o 'uses-permission[^>]*android:name="[^"]*"' "$manifest" | sed 's/.*android:name=//' | sort -u
+          denied='CAMERA|RECORD_AUDIO|READ_MEDIA_[A-Z_]*|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_PHONE_STATE|READ_SMS|RECEIVE_SMS|SYSTEM_ALERT_WINDOW|QUERY_ALL_PACKAGES|REQUEST_INSTALL_PACKAGES|MANAGE_EXTERNAL_STORAGE'
+          if grep -Eo "uses-permission[^>]*android:name=\"android.permission.($denied)\"" "$manifest"; then
+            echo "A sensitive permission reached the merged manifest; declare it on purpose (RB-15) or remove the plugin that added it."
+            exit 1
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-unsigned-builds
+          path: |
+            apps/mobile/build/app/outputs/bundle/release/app-release.aab
+            apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7

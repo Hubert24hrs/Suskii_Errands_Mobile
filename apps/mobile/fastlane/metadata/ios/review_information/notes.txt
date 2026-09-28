@@ -1,0 +1,7 @@
+Sign-in is by one-time code sent to a phone number or email address. For review, use the test number below: the code is fixed and no SMS is sent (Supabase Auth test OTP, configured per RB-15).
+
+The account opens as a customer. To see the provider side, open Profile and tap "Switch to Provider mode".
+
+Payments open the payment provider's hosted checkout in the browser; no card details are entered in the app. Funds are held and released to the provider after the customer confirms the job.
+
+Account deletion: Profile > Settings > Delete account.

@@ -1,0 +1,62 @@
+name: mobile-ios
+
+# The iOS release build, compiled without signing (RB-15). macOS minutes cost ten times Linux
+# ones, so this runs when the iOS project, the plugins (pubspec) or this workflow change, and
+# weekly: a Dart-only change cannot break the native build without the analyzer seeing it
+# first. mobile-release.yaml does the signed archive.
+on:
+  pull_request:
+    paths: ['apps/mobile/ios/**', 'apps/mobile/pubspec.yaml', 'apps/mobile/pubspec.lock',
+            'apps/mobile/tool/**', '.github/workflows/mobile-ios.yaml']
+  push:
+    branches: [main]
+    paths: ['apps/mobile/ios/**', 'apps/mobile/pubspec.yaml', 'apps/mobile/pubspec.lock',
+            'apps/mobile/tool/**', '.github/workflows/mobile-ios.yaml']
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # App Store uploads must be built with Xcode 26 or later (since 28 Apr 2026) [V]
+      # developer.apple.com/news/upcoming-requirements. VERIFY-IN-RESEARCH: which runner image
+      # carries it; this fails loudly rather than building with an older Xcode.
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          xcode="$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort | tail -1)"
+          test -n "$xcode" || { echo "No Xcode 26 on this runner image"; find /Applications -maxdepth 1 -name 'Xcode*.app'; exit 1; }
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+      - name: Resolve packages and generate code
+        run: apps/mobile/tool/bootstrap.sh
+      - name: Release build, unsigned (prod defines)
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+          tool/write_ios_defines.sh config/env/prod.json
+          flutter build ios --release --no-codesign --dart-define-from-file=config/env/prod.json
+      - name: Bundle carries the privacy manifest and the prod identity
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+          app=build/ios/iphoneos/Runner.app
+          test -f "$app/PrivacyInfo.xcprivacy"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist" | grep -x 'com.suskiierrands.app'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app/Info.plist" | grep -x 'Suskii Errands'

@@ -1,0 +1,5 @@
+# Fastlane for store releases (fastlane/Fastfile, RB-15). `bundle install` once, then
+# `bundle exec fastlane <platform> <lane>` from apps/mobile.
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.240"
