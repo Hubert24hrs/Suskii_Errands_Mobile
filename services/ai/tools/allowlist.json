@@ -73,11 +73,13 @@
     "propose_config_change",
     "review_config_change",
     "analytics_report",
-    "job_trail"
+    "job_trail",
+    "reveal_access_note"
   ],
   "deny_rationale": {
     "raise_sos": "An emergency must never depend on a model understanding somebody. The concierge shows the SOS card and the country's emergency numbers; the person presses the button (ai-design 4.2).",
     "job_trail": "A route is the most sensitive thing the platform holds. It has a reason test of its own and no reason involves a chat assistant.",
-    "analytics_report": "The admin assistant has eight predefined functions. A generic view reader would be the ninth door the design exists to avoid."
+    "analytics_report": "The admin assistant has eight predefined functions. A generic view reader would be the ninth door the design exists to avoid.",
+    "reveal_access_note": "A gate code is handed to one person at one moment and audited per read. A model relaying it would be a second reader nobody can audit."
   }
 }

@@ -812,6 +812,39 @@
       "client_action": "Ask them to remove one before adding another; show the list."
     },
     {
+      "code": "ERR_SAVED_PLACE_LIMIT",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The user already has the maximum number of saved places (`saved_places_max`, twenty by default, client-visible).",
+      "client_action": "Ask them to remove a place before adding another; show the list."
+    },
+    {
+      "code": "ERR_SAVED_PLACE_NOT_FOUND",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No saved place with that id, or it belongs to somebody else. The same code covers both, so an id cannot be probed.",
+      "client_action": "Refresh the saved places list."
+    },
+    {
+      "code": "ERR_ACCESS_NOTE_WINDOW_CLOSED",
+      "status": "implemented",
+      "category": "marketplace",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The access note is outside its window. The assigned provider reads it only while the job is `en_route`, `arrived` or `in_progress`; the customer can attach or change it only until the job leaves `in_progress`. After that it has been deleted.",
+      "client_action": "Provider: show the reveal control only while en route, arrived or in progress. Customer: hide the access-note field once the job is completed, cancelled or disputed."
+    },
+    {
       "code": "ERR_SOS_NOT_FOUND",
       "status": "implemented",
       "category": "safety",
