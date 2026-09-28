@@ -364,7 +364,7 @@ export interface DisputeCase {
   openedAt: Date;
   assignedToAdminId?: string;
   evidence: DisputeEvidenceRef[];
-  /** Held amount in escrow — input to the resolution quote. */
+  /** Amount held (never "escrow", ADR-0002) — input to the resolution quote. */
   heldAmount: Money;
   resolution?: {
     action: DisputeResolutionAction;
