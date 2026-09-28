@@ -20,7 +20,7 @@ This is the agreement between the backend and every frontend. [`../README.md`](.
 | [`error-codes/codes.json`](error-codes/codes.json) | **109** codes — 94 implemented, 9 planned, 6 app-side — with SQLSTATE, HTTP status, retryability and what the app should do | Authored, cross-checked against every `ERR_` the backend raises |
 | [`error-codes/auth-mapping.json`](error-codes/auth-mapping.json) | Supabase Auth's own codes mapped to app codes | Authored |
 | [`money.schema.json`](money.schema.json) | `{ "amount_minor": integer, "currency": "NGN" }` | JSON Schema |
-| [`edge-functions.openapi.yaml`](edge-functions.openapi.yaml) | The six Edge Functions. **Exactly one is callable by an app** | Authored |
+| [`edge-functions.openapi.yaml`](edge-functions.openapi.yaml) | The seven Edge Functions. **Exactly one is callable by an app** | Authored |
 | [`fixtures/`](fixtures/) | Realistic data for the awkward screens: an expired offer, a failed payment, a disputed job, a suspended provider | Authored |
 
 Regenerate: `python contracts/tools/generate_v1.py . --write`. CI runs it without `--write` and

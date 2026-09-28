@@ -18,6 +18,10 @@ Nothing pending.
   it. Authored, because `generate_v1.py` sees only `private.broadcast` calls. MINOR: nothing
   existing changes, and a client that ignores the event loses only the live map.
 
+- **`storage-worker`** Edge Function (worker key only; no app calls it): removes the `avatars`
+  folder of an erased account through the Storage API. `private.erase_account` now queues it on a
+  new `storage` outbox aggregate (audit Y.30).
+
 ### Clarified
 
 - Live tracking reads the broadcast, not `location_samples`: the RLS matrix gives participants the

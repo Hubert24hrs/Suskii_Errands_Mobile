@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(30);
+SELECT plan(32);
 
 INSERT INTO auth.users (id, phone, email) VALUES
   ('e1111111-1111-4111-8111-111111111111', '2348000000461', 'leaving@example.test'),
@@ -128,6 +128,16 @@ SELECT ok((SELECT banned_until = 'infinity'::timestamptz AND deleted_at IS NOT N
 SELECT is((SELECT count(*)::int FROM public.trusted_contacts
            WHERE user_id = 'e1111111-1111-4111-8111-111111111111'), 0,
   'the people they trusted are no longer on file');
+-- Storage refuses direct deletes, so the photo is queued for storage-worker (Y.30), on an
+-- aggregate notifications-worker does not claim.
+SELECT is((SELECT count(*)::int FROM private.outbox
+           WHERE aggregate = 'storage' AND aggregate_id = 'e1111111-1111-4111-8111-111111111111'
+             AND event_type = 'storage.erase_prefix'
+             AND payload = '{"bucket": "avatars", "prefix": "e1111111-1111-4111-8111-111111111111/"}'::jsonb),
+  1, 'their profile photo folder is queued for removal through the Storage API');
+SELECT is((SELECT count(*)::int FROM private.outbox
+           WHERE aggregate = 'user' AND event_type = 'storage.erase_prefix'),
+  0, 'and not on the aggregate notifications-worker drains');
 SELECT is((SELECT count(*)::int FROM public.requests
            WHERE customer_id = 'e1111111-1111-4111-8111-111111111111'), 1,
   'the marketplace record the law requires is kept, without the name');

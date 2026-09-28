@@ -5,7 +5,8 @@
     "./health",
     "./payments-webhook",
     "./payments-worker",
-    "./notifications-worker"
+    "./notifications-worker",
+    "./storage-worker"
   ],
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
