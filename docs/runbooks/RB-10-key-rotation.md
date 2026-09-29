@@ -21,7 +21,7 @@ Where every secret lives, who uses it, and how often to rotate it **routinely**.
 | Play Integrity service account key (`google-play-integrity-service-account`) | Secret Manager | `device-integrity` | 90 days | **D** |
 | Sentry DSNs | Secret Manager | Functions, AI service | On exposure only | **B** |
 | Gateway, KYC, SMS, LiveKit, telephony keys | Secret Manager (added when those integrations are built) | Functions, workers | Per vendor; 180 days default | Written with each integration (Phases 4–6) |
-| Envelope-encryption key-encryption keys (ADR-0007) | Secret Manager | Encrypt/decrypt functions (not built yet) | Yearly | **E** — written with Phase 4 |
+| Field-encryption KEK `suskii_field_kek_v<n>` (ADR-0007, ADR-0018) | Supabase Vault; escrowed copy in Secret Manager | `private.seal` / `private.open` | Yearly | **E** — [RB-16](RB-16-field-encryption-keys.md) |
 | GitHub → GCP deploy auth | None: Workload Identity Federation | CI | Nothing to rotate | Revoke by changing the WIF provider condition in Terraform |
 
 ## Symptoms (unplanned rotation)
@@ -79,9 +79,9 @@ Both sides accept several secrets separated by `|`: the Supabase CLI validates e
 3. Deploy functions (RB-14). Verify on a test device: `device-integrity` returns `pass`, not `play_integrity_not_configured` or `token_decode_failed`.
 4. Delete the old key in IAM; disable the old secret version.
 
-### E — Envelope-encryption keys (placeholder)
+### E — Field-encryption keys
 
-ADR-0007 rotates by **re-wrapping data keys**, not re-encrypting every row. The exact procedure is written with the encryption functions in Phase 4 and rehearsed before any encrypted column holds real data.
+Written in full in [RB-16](RB-16-field-encryption-keys.md), with the functions it drives (ADR-0018, 2026-09-29). Rotation re-wraps data keys and touches no row, as ADR-0007 requires: `select private.rotate_field_kek();`, then escrow the new version, verify, and only then remove the old Vault entry. The escrow step matters more than the rotation: a KEK that exists only in Vault is lost with its project.
 
 ## Diagnosis
 

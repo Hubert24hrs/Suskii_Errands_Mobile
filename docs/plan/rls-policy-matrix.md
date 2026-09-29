@@ -81,7 +81,7 @@ Clients get country configuration through `get_bootstrap()`, which returns the *
 | `blocks` | — | R:own, I:own, delete own | — | R:scope | — | — | — | R |
 | `favorites` | — | R:own, I:own, delete own | — | — | — | — | — | R |
 | `trusted_contacts` | — | R:own, I:own (max 5 by trigger), **U:own(`name`)**, delete own | — | — | — | — | — | — |
-| `saved_places` | — | R:own, I:own, **U:own(`label`, `point`, `landmark_note`)**, delete own; access note via F only | access note via `reveal_access_note(request_id)` for the assigned provider **during an active job only** | — | — | — | — | — |
+| `saved_places` | — | R:own, I:own via F (`add_saved_place`), **U:own(`label`, `point`, `landmark_note`)**, delete own via F (`remove_saved_place`); access note via F only (`set_saved_place_access_note`, `get_saved_place_access_note`), sealed at rest (ADR-0018) | access note via `reveal_access_note(request_id)` for the assigned provider **during an active job only** (`en_route`, `arrived`, `in_progress`; each read is a `job_events` row the customer sees). The customer sets a request's note with `set_request_access_note()`; it is deleted when the job leaves that window | — | — | — | — | — |
 | `notification_preferences` | — | R:own, I:own, **U:own(`enabled`, `quiet_start`, `quiet_end`)** | — | R:scope | — | — | — | R |
 | `account_deletion_requests` | — | R:own, F (`request_account_deletion`, `cancel_account_deletion`) | — | R:scope | — | — | — | R |
 | `data_export_requests` | — | R:own, F (`request_data_export`) | — | R:scope | — | — | — | R |

@@ -73,11 +73,19 @@
     "propose_config_change",
     "review_config_change",
     "analytics_report",
-    "job_trail"
+    "job_trail",
+    "reveal_access_note",
+    "get_saved_place_access_note",
+    "set_request_access_note",
+    "set_saved_place_access_note"
   ],
   "deny_rationale": {
     "raise_sos": "An emergency must never depend on a model understanding somebody. The concierge shows the SOS card and the country's emergency numbers; the person presses the button (ai-design 4.2).",
     "job_trail": "A route is the most sensitive thing the platform holds. It has a reason test of its own and no reason involves a chat assistant.",
-    "analytics_report": "The admin assistant has eight predefined functions. A generic view reader would be the ninth door the design exists to avoid."
+    "analytics_report": "The admin assistant has eight predefined functions. A generic view reader would be the ninth door the design exists to avoid.",
+    "reveal_access_note": "An access note is a gate code or where the key is. It leaves the database for two people: the customer who wrote it and the provider working the job, and only while they are working it (ADR-0018). A model is neither, and a transcript that contains it is a copy nobody can delete.",
+    "get_saved_place_access_note": "Same as reveal_access_note: the customer reads their own note on the screen, not through a model.",
+    "set_request_access_note": "Writing one means the customer dictated a gate code to a model. The request form takes it directly.",
+    "set_saved_place_access_note": "Same as set_request_access_note."
   }
 }

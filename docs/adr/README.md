@@ -39,5 +39,6 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0015](0015-environments-from-the-define-file.md) | One define file per environment drives the app on both platforms | Accepted | Store-readiness goal (2026-09-27) | First `mobile-native` / `mobile-ios` runs |
 | [0016](0016-aurora-design-system.md) | "Aurora": a dark-first design system driven by one token set | Accepted | Store-readiness goal (redesign) | — |
 | [0017](0017-store-identity-and-release-signing.md) | Store identity, signing and the release pipeline | Accepted | Store-readiness goal | Client confirms the app id (OD-26) |
+| [0018](0018-field-encryption-in-the-database.md) | Field-level encryption inside the database: a Vault-held KEK and wrapped data keys (makes ADR-0007 concrete) | Accepted | Access notes; CR-06/CR-08; audit Y.19 | KMS once GCP billing exists (action 1) |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).

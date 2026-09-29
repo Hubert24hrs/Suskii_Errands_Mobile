@@ -8,6 +8,8 @@
 --     request.jwt.claims
 --   * realtime.messages, realtime.topic() and realtime.send()
 --   * the `extensions` schema
+--   * Vault's create_secret and decrypted_secrets, for the field-encryption KEK (ADR-0018). The
+--     shim stores secrets in the clear, which is acceptable only because it never holds real data
 --   * Supabase's permissive defaults: new objects in `public` are granted to anon and
 --     authenticated. Migrations must revoke them; tests would miss that without this.
 
@@ -168,3 +170,27 @@ GRANT EXECUTE ON FUNCTION auth.uid(), auth.role(), auth.jwt() TO anon, authentic
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+
+-- Vault, as supabase_vault 0.3 presents it to a migration: create_secret and the decrypted view.
+-- The real extension encrypts under a root key outside the database; this stores plain text.
+CREATE SCHEMA IF NOT EXISTS vault;
+CREATE TABLE IF NOT EXISTS vault.secrets (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text UNIQUE,
+  description text NOT NULL DEFAULT '',
+  secret      text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE OR REPLACE VIEW vault.decrypted_secrets AS
+  SELECT id, name, description, secret, secret AS decrypted_secret, created_at, updated_at
+  FROM vault.secrets;
+CREATE OR REPLACE FUNCTION vault.create_secret(
+  new_secret text, new_name text DEFAULT NULL, new_description text DEFAULT '',
+  new_key_id uuid DEFAULT NULL)
+RETURNS uuid LANGUAGE sql AS $$
+  INSERT INTO vault.secrets (name, description, secret)
+  VALUES (new_name, coalesce(new_description, ''), new_secret)
+  RETURNING id
+$$;
+REVOKE ALL ON SCHEMA vault FROM PUBLIC;

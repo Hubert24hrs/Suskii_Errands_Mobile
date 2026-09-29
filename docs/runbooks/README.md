@@ -37,6 +37,7 @@ not exist yet and mark those steps inline: **RB-05** (`[VENDOR]`, no identity ve
 | [RB-13](RB-13-kill-switch-and-forced-update.md) | Forced update and kill switch | 2 | Disabling a feature or forcing a client upgrade. **Written** |
 | [RB-14](RB-14-backend-deploy-and-rollback.md) | Backend deploy failed or release rollback | 2 | Red deploy run, unhealthy release, failed migration; one-time environment setup checklist. **Written** |
 | [RB-15](RB-15-store-release.md) | Mobile store release, and a broken release in the field | 10 | Signing, building and uploading to Play and the App Store; halting a rollout. **Written 2026-09-28**; cannot be rehearsed until the store accounts exist (client action 9). The native release builds compile in CI (`mobile-native`, `mobile-ios`, since 2026-09-28) |
+| [RB-16](RB-16-field-encryption-keys.md) | Field-encryption keys: escrow, rotation, a missing key, a failed integrity check | 2 | Vault KEK and wrapped data keys (ADR-0018). **Written 2026-09-29**; escrow needs GCP Secret Manager (action 1), and the whole procedure must be rehearsed on staging before any real access note exists |
 
 ## Template
 

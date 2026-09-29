@@ -5,6 +5,42 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-09-29 — Claude Code — saved places, access notes, and field encryption that exists
+
+Backend only; nothing in `apps/` or `packages/` changed. Contracts **1.4.0** (MINOR,
+`contracts/CHANGELOG.md`).
+
+**What you can wire now** (all `authenticated`; details in the changelog and `rpc-catalog`):
+
+- **Saved places**: read `public.saved_places` directly (own rows only; `has_access_note` tells you
+  whether a note exists). Rename or move a place with a plain UPDATE of `label`, `point` or
+  `landmark_note`. Create with `add_saved_place` (idempotency key, held per intent as usual) and
+  delete with `remove_saved_place`. The note goes through `set_saved_place_access_note` and
+  `get_saved_place_access_note`. `label` has the same 2–200 bounds as `pickup_label`, so a place
+  fills the request form's pickup or destination as is. Maximum 20
+  (`remote_config.saved_places_max`, client-visible) → `ERR_SAVED_PLACE_LIMIT`.
+- **Request form**: `set_request_access_note(request_id, note)`, or
+  `set_request_access_note(request_id, p_saved_place_id := id)` to use a saved place's note
+  without fetching it. It works from draft until the work is done, including while the provider
+  travels, because gate codes change.
+- **Provider job screen**: `reveal_access_note(request_id)`. It returns text only while the job is
+  `en_route`, `arrived` or `in_progress`. Before that it raises `ERR_ILLEGAL_TRANSITION`, so fetch
+  it after "Start journey", not on assignment. `NULL` means no note. **Do not cache it past the
+  job**: the server deletes it when the job leaves that window, and the app should drop it on the
+  same status change. Each read is a `job_events` row (`reason_code = 'access_note_revealed'`),
+  which the customer's timeline can show as "the provider viewed your access note".
+- The customer reads their own request's note back with the same `reveal_access_note`.
+
+**What this unblocks for CR-20260923-06 and -08 (not done yet).** ADR-0018 is the "client
+encryption story" those CRs asked for. The answer is that there isn't one: the server seals.
+`private.seal` / `private.open` now exist, and the plaintext variants of `add_trusted_contact`,
+`submit_identity_document`, `submit_police_clearance` and `register_organization` /
+`register_vehicle` (audit Y.19) are next on my list. `add_payout_account` follows the payouts
+decision in ADR-0018 (the worker must hold the number at transfer time). **Until they land, keep
+those flows on `ERR_FEATURE_UNAVAILABLE`**: sending plaintext as "ciphertext" is still wrong.
+
+---
+
 ## 2026-09-28 — Claude Code — store readiness: audit, fixes, redesign, tests, store configuration
 
 The user set one goal — audit, fix, redesign, test end to end and make the app store-ready for

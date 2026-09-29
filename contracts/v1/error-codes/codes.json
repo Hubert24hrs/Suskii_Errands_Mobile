@@ -1239,6 +1239,50 @@
       "retryable": true,
       "description": "The Storage API refused or failed a list or remove during account erasure (storage-worker). Retried; the folder is not erased until it succeeds (audit 2026-09-27 Y.30).",
       "client_action": "Ops, if retries exhaust: RB-12 and the storage-worker logs."
+    },
+    {
+      "code": "ERR_SAVED_PLACE_LIMIT",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The user already has the maximum number of saved places (`saved_places_max`, twenty by default).",
+      "client_action": "Ask them to remove one before saving another; show the list."
+    },
+    {
+      "code": "ERR_SAVED_PLACE_NOT_FOUND",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No saved place with that id belongs to the caller.",
+      "client_action": "Reload the saved places list."
+    },
+    {
+      "code": "ERR_ENCRYPTION_KEY_UNAVAILABLE",
+      "status": "implemented",
+      "category": "integrity",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A field-encryption key is missing: the Vault KEK entry named in `private.field_keks`, or the data key for the record class (ADR-0018). An operations fault, never a user one (RB-16).",
+      "client_action": "Never expected. Show the generic error; the operation did not happen."
+    },
+    {
+      "code": "ERR_CIPHERTEXT_INVALID",
+      "status": "implemented",
+      "category": "integrity",
+      "surface": "internal",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A sealed field failed its integrity check: altered, truncated, or moved to a row it was not sealed for (ADR-0018). Only these functions write ciphertext, so this is a security incident, not a bug to retry.",
+      "client_action": "Never expected; treat as a security incident (RB-16)."
     }
   ]
 }
