@@ -79,3 +79,39 @@ jobs:
             apps/mobile/build/app/outputs/bundle/release/app-release.aab
             apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
+
+  # A fixed download link for testing on a phone, published at the owner's request (2026-09-30):
+  # the dev APK from the latest main build, as the `dev-latest` pre-release. The repository is
+  # public, so the link needs no GitHub login, and it never changes, so a QR code of it keeps
+  # working (RB-15). Demo data only, because dev.json has no backend, and debug-signed: for a test
+  # device, never for Play. Pull requests never publish, and the build job keeps its read-only token.
+  publish-dev-apk:
+    needs: android
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-dev-apk
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-unsigned-builds
+          path: out
+      - name: Replace the dev-latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          apk="$(find out -name app-release.apk | head -1)"
+          test -n "$apk" || { echo "the dev APK is not in the artifact"; exit 1; }
+          cp "$apk" suskii-dev.apk
+          # Delete and recreate so the tag moves to this commit. The download URL is by tag name,
+          # so it stays the same: /releases/download/dev-latest/suskii-dev.apk
+          gh release delete dev-latest --cleanup-tag --yes || true
+          gh release create dev-latest suskii-dev.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Suskii Dev (latest main build)" \
+            --notes "Built from ${GITHUB_SHA::7} by run ${GITHUB_RUN_ID}. Demo data, no backend: sign in with any phone number and any 6-digit code. Debug-signed, so Android asks to allow the install; not the Play build. Replaced on every build of main."
