@@ -151,6 +151,15 @@ account → sign in again → keep the account · an `https://<host>/app/custome
 the wallet · the app-switcher shows the blur on iOS; a screenshot of the wallet is blocked on
 Android.
 
+**Before a store build exists**, the demo app installs from a fixed link that `mobile-native`
+republishes after every build of `main`:
+`https://github.com/Hubert24hrs/Suskii_Errands_Mobile/releases/download/dev-latest/suskii-dev.apk`.
+It is the `dev-latest` pre-release, published at the owner's request (2026-09-30). Because the
+repository is public, anyone with the link can install it. That is acceptable only because the
+dev build carries no backend address and no key. It runs on demo data, and any 6-digit code
+signs in. It is debug-signed, so Android asks to allow the install. If `dev.json` ever gains a
+backend, decide again whether this link should stay public.
+
 ## 6. Not built yet, and what each needs
 
 | Item | Needs | Then |
