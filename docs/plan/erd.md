@@ -83,7 +83,7 @@ The request is the aggregate root for the whole lifecycle: `requests.status` is 
 | `blocks` | `(blocker_id, blocked_id) PK`, `created_at` | Checked in matching, offers and chat. Blocked pairs are never matched again (spec) |
 | `favorites` | `(customer_id, provider_id) PK` | |
 | `trusted_contacts` | `id uuid PK`, `user_id`, `name`, `phone_ciphertext`, `phone_blind_index` | At most 5 per user, enforced by trigger |
-| `saved_places` | `id uuid PK`, `user_id`, `label`, `point geography(Point)`, `landmark_note`, `access_note_ciphertext` | Access notes are revealed only to the assigned provider during an active job, through a function — never by select |
+| `saved_places` | `id uuid PK`, `user_id`, `label`, `point geography(Point)`, `landmark_note`, `access_note_ciphertext`, `has_access_note` (generated) | Access notes are revealed only to the assigned provider during an active job, through a function — never by select. `label` has `requests.pickup_label`'s bounds so a place fills a request directly. At most `saved_places_max` (20) per user, by trigger. Built 2026-09-29 (`…20260929120100`); the note is sealed per ADR-0018 |
 | `notification_preferences` | `(user_id, channel, category) PK`, `enabled`, `quiet_start`, `quiet_end` | |
 
 ## 3. Providers, businesses and fleets — `public`
@@ -233,7 +233,7 @@ All monthly range partitions on the time column, managed by `pg_partman` and sch
 | `organizations.registration_number` | yes | duplicate business registration |
 | `vehicles.plate` | yes | duplicate vehicle across accounts |
 | `trusted_contacts.phone` | yes | — |
-| `requests.access_note`, `saved_places.access_note` | no | revealed to the assigned provider only |
+| `requests.access_note`, `saved_places.access_note` | no | revealed to the assigned provider only. A request's note lives in `private.request_access_notes`, not on `requests`, because `requests` is granted to its readers whole (2026-09-29) |
 
 ## Notes from implementation
 

@@ -8,6 +8,42 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.4.0] - 2026-09-29
+
+Saved places and access notes (RLS matrix §2; audit 2026-09-22c), on field-level encryption that
+finally exists inside the database (ADR-0018). MINOR: one table and six functions, all new.
+
+### Added
+
+- **`public.saved_places`** (read own; update `label`, `point`, `landmark_note`). `label` has
+  `requests.pickup_label`'s bounds (2–200), so a saved place fills a request's pickup or
+  destination directly. `has_access_note` says whether a note exists; the ciphertext itself is
+  granted to nobody. At most `remote_config.saved_places_max` (20, client-visible) per user.
+- **`add_saved_place(p_idempotency_key, p_label, p_lat, p_lng, p_landmark_note?, p_access_note?)`
+  → `uuid`**. The note is not part of the idempotency fingerprint, so a retry that differs only in
+  the note replays the first result.
+- **`set_saved_place_access_note(p_place_id, p_access_note)` → `boolean`** (blank clears),
+  **`get_saved_place_access_note(p_place_id)` → `text`** (owner only),
+  **`remove_saved_place(p_place_id)` → `boolean`**.
+- **`set_request_access_note(p_request_id, p_access_note?, p_saved_place_id?)` → `boolean`**. The
+  customer sets the note as text or copies it from one of their saved places (not both), from
+  draft until the work is done. It can change while the provider travels.
+- **`reveal_access_note(p_request_id)` → `text`**. It returns the note to the customer at any time,
+  and to the assigned provider or dispatched worker **only while the job is `en_route`, `arrived`
+  or `in_progress`** (`ERR_ILLEGAL_TRANSITION` before that). Everyone else gets
+  `ERR_REQUEST_NOT_FOUND`. `NULL` means there is no note. Each provider read writes a `job_events`
+  row with `reason_code = 'access_note_revealed'`, which the customer can see.
+- Error codes `ERR_SAVED_PLACE_LIMIT` and `ERR_SAVED_PLACE_NOT_FOUND` (client), plus
+  `ERR_ENCRYPTION_KEY_UNAVAILABLE` and `ERR_CIPHERTEXT_INVALID` (internal; RB-16).
+
+### Behaviour worth knowing
+
+- A request's note is **deleted** when the job leaves the working window: completion by the
+  provider, cancellation, expiry or dispute. A provider screen that caches it must drop it on the
+  same transition.
+- The data export (`private.collect_personal_data`) now carries saved places, notes included.
+  Erasure deletes them.
+
 ## [1.3.0] - 2026-09-28
 
 ### Added

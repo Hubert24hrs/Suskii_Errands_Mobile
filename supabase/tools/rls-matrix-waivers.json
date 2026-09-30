@@ -37,16 +37,6 @@
       "action": "Replace the matrix row with a pointer to the payments columns."
     },
     {
-      "id": "fn:reveal_access_note",
-      "reason": "Not built, and blocks nothing today: it belongs to `saved_places`, which is not built either. Recorded in AUDIT-2026-09-22c as an open item for before the first live country.",
-      "action": "Build with saved_places. Tracked."
-    },
-    {
-      "id": "table:saved_places",
-      "reason": "Not built. Saved addresses with an access note revealed to the assigned provider during an active job only. A product feature, not a policy gap; it has no backend because it has no screen yet.",
-      "action": "Build before the first live country (AUDIT-2026-09-22c)."
-    },
-    {
       "id": "table:availability_schedules",
       "reason": "Not built. Kimi's provider tools page has an availability editor on mock data, so this is a real gap between the app and the backend -- but it is a missing feature rather than a broken control, and it is filed for Kimi in HANDOFF.md so the two halves land together.",
       "action": "Build alongside Kimi's M9 wiring of the provider tools page."

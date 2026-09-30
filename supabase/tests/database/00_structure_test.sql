@@ -76,6 +76,11 @@ SELECT is(
        'private.is_org_member', 'private.org_role',
        'public.mark_notifications_read',
        'public.add_trusted_contact', 'public.remove_trusted_contact',
+       -- Saved places and access notes (20260929120100; matrix §2 `saved_places`: I:own,
+       -- delete own, "access note via F only", and `reveal_access_note` for the provider).
+       'public.add_saved_place', 'public.set_saved_place_access_note',
+       'public.get_saved_place_access_note', 'public.remove_saved_place',
+       'public.set_request_access_note', 'public.reveal_access_note',
        'public.raise_sos', 'public.update_sos_incident',
        'public.create_trip_share', 'public.revoke_trip_share',
        'public.get_shared_trip',

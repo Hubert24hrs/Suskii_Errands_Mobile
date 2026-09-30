@@ -21,7 +21,7 @@ Date 2026-09-15 · Maintained by Claude Code; review at every phase checkpoint.
 | Band | Count | IDs |
 |---|---|---|
 | 🔴 Critical | 7 | R-01 – R-07 |
-| 🟠 High | 17 | R-08 – R-10, R-13 – R-24, R-31, R-32 |
+| 🟠 High | 18 | R-08 – R-10, R-13 – R-24, R-31 – R-33 |
 | 🟡 Medium | 8 | R-11, R-12, R-25 – R-30 |
 
 R-11 and R-12 were downgraded on 2026-09-16 after spikes S-06 and S-10 measured them; see the spike results for the residual risk that keeps them above Low.
@@ -62,3 +62,4 @@ R-11 and R-12 were downgraded on 2026-09-16 after spikes S-06 and S-10 measured 
 | R-30 | Kimi's mock-first UI embeds client-side business logic that must move server-side, delaying integration | Delivery | 3 | 2 | 🟡 6 | CC + KC | Phase 1 review of `contracts/draft/`; UI change list in HANDOFF.md; audit checklist | Draft contains price calculations | — |
 | R-31 | **SMS pumping / toll fraud**: bots trigger OTP SMS to premium or international numbers and the platform pays per message | Fraud / cost | 3 | 3 | 🟠 9 | CC | Turnstile before OTP; per-number, IP and device limits; restrict phone numbers to live/beta country prefixes; hourly OTP-spend alert; vendor fraud protection | OTP spend per hour above baseline | Threat model §4 |
 | R-32 | **Payout redirection after account takeover** (SIM swap, then payout-account change) | Security / money | 2 | 5 | 🟠 10 | CC + KC | Cooling-off after phone change; face re-verification and biometric/PIN for payout-account changes; name match to verified identity; delay before first payout to a new account | Payout-account change shortly after phone change | Threat model §1, §8 |
+| R-33 | **Field-encryption KEK lost with its project**: the KEK lives only in Supabase Vault, so a restore into another project, or a deleted project, leaves every sealed field unreadable (ADR-0018) | Operations / data | 2 | 4 | 🟠 8 | CC | Escrow each environment's KEK in GCP Secret Manager before real data (RB-16 §1); pre-create the Vault secret from the escrowed value in new environments; rehearse a cross-project restore on staging (RB-09 + RB-16) | `suskii_field_kek_v<n>` has no Secret Manager counterpart; a rotation not followed by escrow | ADR-0018, RB-16 |
