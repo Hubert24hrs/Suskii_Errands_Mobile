@@ -5,6 +5,37 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-12 — Claude Code — web lockfile: the scanner on `main` was red
+
+At the owner's request ("fix the scanner"). **This touches your npm workspace.** It is a one-off
+like W.7, not standing licence. Since 5 Oct, `osv-scanner` failed the weekly `security` run on
+`main`: six advisories published against `package-lock.json` after the last merge.
+
+- **Fixed by regenerating the lockfile:** next 15.5.26 → **15.5.27** (two advisories), sharp
+  0.35.4 → 0.35.5, source-map-js 1.2.1 → 1.2.2. Everything else that moved is a patch or minor
+  within your ranges: Supabase JS 2.117.3, TanStack Query 5.104.2, postcss 8.5.29.
+- **No `package.json` changed.** The W.7 override `"next": {"postcss": "^8.5.28"}` stays, because
+  15.5.27 still pins postcss 8.4.31 exactly.
+- **Why a full regeneration:** `npm update` and `npm audit fix` cannot move next past that
+  override. `npm ls` reports next as `overridden`, and installing next by name in each workspace
+  brings postcss 8.4.31 back. A fresh resolution honours the override, so postcss is 8.5.29 at all
+  ten places in the tree.
+- **Two accepted, not fixed, in `osv-scanner.toml` at the root. Both expire 2027-01-12.**
+  - braces (GHSA-vfj7-8cjw-p6xm): no fixed release exists.
+  - postcss-selector-parser 6 (GHSA-rj75-hqrm-r3gf): fixed only in 7.x, which Tailwind 3.4 cannot
+    take.
+  - Both are devDependencies reached only through Tailwind 3.4, and they read our own globs and
+    CSS at build time. `npm audit` still lists them (7 entries, all on that one Tailwind path).
+  - The real fix is **Tailwind 4**, which is your call. When you migrate, delete both entries. If
+    nothing changes, CI goes red on the expiry date.
+- **Checked:**
+  - All three apps build on Next.js 15.5.27.
+  - Web smoke: 116/116.
+  - `osv-scanner` 2.6.0, offline database: `main`'s lockfile reproduces exactly the six CI
+    findings (exit 1); the new one reports no issues (exit 0).
+
+---
+
 ## 2026-10-12 — Claude Code — OD-04 float top-up
 
 Backend only. Contracts **1.5.0** (MINOR). The client answered OD-04 today: a receipt above the
