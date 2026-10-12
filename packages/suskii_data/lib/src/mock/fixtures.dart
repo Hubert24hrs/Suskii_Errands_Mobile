@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
 import 'server_sim.dart';
@@ -123,7 +124,7 @@ class MockDatabase {
       StreamController<SupportTicket>.broadcast();
 
   void _seed() {
-    final now = DateTime.now();
+    final now = clock.now();
 
     payments = <String, Payment>{};
     paymentByJob = <String, String>{};

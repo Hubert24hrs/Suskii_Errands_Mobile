@@ -5,6 +5,67 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-12 — Claude Code — web lockfile: the scanner on `main` was red
+
+At the owner's request ("fix the scanner"). **This touches your npm workspace.** It is a one-off
+like W.7, not standing licence. Since 5 Oct, `osv-scanner` failed the weekly `security` run on
+`main`: six advisories published against `package-lock.json` after the last merge.
+
+- **Fixed by regenerating the lockfile:** next 15.5.26 → **15.5.27** (two advisories), sharp
+  0.35.4 → 0.35.5, source-map-js 1.2.1 → 1.2.2. Everything else that moved is a patch or minor
+  within your ranges: Supabase JS 2.117.3, TanStack Query 5.104.2, postcss 8.5.29.
+- **No `package.json` changed.** The W.7 override `"next": {"postcss": "^8.5.28"}` stays, because
+  15.5.27 still pins postcss 8.4.31 exactly.
+- **Why a full regeneration:** `npm update` and `npm audit fix` cannot move next past that
+  override. `npm ls` reports next as `overridden`, and installing next by name in each workspace
+  brings postcss 8.4.31 back. A fresh resolution honours the override, so postcss is 8.5.29 at all
+  ten places in the tree.
+- **Two accepted, not fixed, in `osv-scanner.toml` at the root. Both expire 2027-01-12.**
+  - braces (GHSA-vfj7-8cjw-p6xm): no fixed release exists.
+  - postcss-selector-parser 6 (GHSA-rj75-hqrm-r3gf): fixed only in 7.x, which Tailwind 3.4 cannot
+    take.
+  - Both are devDependencies reached only through Tailwind 3.4, and they read our own globs and
+    CSS at build time. `npm audit` still lists them (7 entries, all on that one Tailwind path).
+  - The real fix is **Tailwind 4**, which is your call. When you migrate, delete both entries. If
+    nothing changes, CI goes red on the expiry date.
+- **Checked:**
+  - All three apps build on Next.js 15.5.27.
+  - Web smoke: 116/116.
+  - `osv-scanner` 2.6.0, offline database: `main`'s lockfile reproduces exactly the six CI
+    findings (exit 1); the new one reports no issues (exit 0).
+
+### Also in this PR: the catalog goldens stopped depending on the date
+
+The lockfile change set off `frontend-ci`, and `dart` failed on four catalog goldens:
+`customer_wallet` and `provider_earnings`, light and dark, each 0.65% over a 0.5% tolerance.
+The owner chose to fix it here, so this is a second edit to your code, also not standing licence.
+
+- **Cause:** both screens print transaction dates (`formatShortDate`), and the mock fixtures
+  date everything relative to `DateTime.now()`. The goldens were recorded on 27 Sep and show
+  "Sep 25, 2026". While it was still September the drift stayed under tolerance; in October it
+  doesn't. **Any frontend PR from now on would have failed the same way.**
+- **Fix:** every clock read that feeds what is rendered now goes through `package:clock`, which
+  returns `DateTime.now()` outside tests, so the app behaves the same.
+  - Mock fixtures and mock repositories. The three ID generators keep the real clock, because a
+    fixed clock would make IDs collide.
+  - `ServerClock`, `SCountdownTimer`, the promo `expired` check and the vehicle-document
+    `daysLeft`.
+  - The two `catalog goldens` tests run under `withClock(Clock.fixed(2026-09-27 12:00 UTC))`.
+    That is the recording date, so **the stored goldens are unchanged**.
+  - `clock: ^1.1.2` is now a direct dependency of `suskii_core`, `suskii_data`, `suskii_design`
+    and `apps/mobile`. It was already locked as a transitive one, so the version doesn't move.
+- **Your rule from now on:** a new clock read in anything the screens render should use
+  `clock.now()`, or the goldens start drifting again.
+- **Checked:**
+  - With the clock set to today, the same four goldens fail; at the recording date all six
+    pass.
+  - Format and analyze are clean.
+  - Package tests: domain 23, core 13, data 200, design 53.
+  - App journeys 27, goldens 6.
+  - `dart test -p chrome` for core and domain passes.
+
+---
+
 ## 2026-10-12 — Claude Code — OD-04 float top-up
 
 Backend only. Contracts **1.5.0** (MINOR). The client answered OD-04 today: a receipt above the

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suskii_core/suskii_core.dart';
@@ -144,7 +145,7 @@ class _PromosPageState extends ConsumerState<PromosPage> {
                         promo: promo,
                         title: _titleFor(l10n, promo),
                         body: _bodyFor(l10n, promo),
-                        expired: promo.expiresAt.isBefore(DateTime.now()),
+                        expired: promo.expiresAt.isBefore(clock.now()),
                         locale: locale,
                       ),
                   ],

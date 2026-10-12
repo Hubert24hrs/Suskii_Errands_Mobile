@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
@@ -57,7 +58,7 @@ abstract class _MockRepo {
   /// The simulated server clock: device time plus a configurable skew.
   /// TTLs (offers, requests, sessions) are always computed and evaluated
   /// against this, never raw device time.
-  DateTime serverNow() => DateTime.now().toUtc().add(behavior.serverClockSkew);
+  DateTime serverNow() => clock.now().toUtc().add(behavior.serverClockSkew);
 
   /// Per-category offer TTL (behavior override wins, else the category's
   /// `offerTtlSeconds`). Shared by the offer repo and the provider repo's
@@ -827,7 +828,7 @@ class MockProviderRepository extends _MockRepo implements ProviderRepository {
             ),
             urgency: Urgency.standard,
             status: JobStatus.published,
-            createdAt: DateTime.now(),
+            createdAt: clock.now(),
             preferredPrice: Money(300000, currency),
           );
           db.requests[id] = request;
@@ -1264,7 +1265,7 @@ class MockChatRepository extends _MockRepo implements ChatRepository {
         text: text,
         mediaPath: mediaPath,
         location: location,
-        createdAt: DateTime.now(),
+        createdAt: clock.now(),
       );
       db.chats.putIfAbsent(jobId, () => <ChatMessage>[]).add(message);
       final controller = _controllers[jobId];
@@ -1746,7 +1747,7 @@ class MockWalletRepository extends _MockRepo implements WalletRepository {
         descriptionKey: needsApproval
             ? 'txnWithdrawalAwaitingApproval'
             : 'txnWithdrawal',
-        createdAt: DateTime.now(),
+        createdAt: clock.now(),
       );
       db.walletTransactions
           .putIfAbsent(currentUser.id, () => <WalletTransaction>[])
@@ -1794,7 +1795,7 @@ class MockReferralRepository extends _MockRepo implements ReferralRepository {
         status: WalletTransactionStatus.pending,
         amount: amount,
         descriptionKey: 'txnReferralWithdrawal',
-        createdAt: DateTime.now(),
+        createdAt: clock.now(),
       );
     }, argsHash: '${amount.minorUnits} ${amount.currencyCode}');
   }
@@ -2198,7 +2199,7 @@ class MockIdentityVerificationAdapter extends _MockRepo
     await gate();
     return LivenessSession(
       sessionId: _mockId('liveness'),
-      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      expiresAt: clock.now().add(const Duration(minutes: 10)),
     );
   }
 
@@ -2246,7 +2247,7 @@ class MockVerificationRepository extends _MockRepo
   }) async {
     await gate();
     return idempotent('giveBiometricConsent', idempotencyKey, () async {
-      final now = DateTime.now();
+      final now = clock.now();
       final session = VerificationSession(
         id: 'vs-${behavior.currentUserId}',
         kind: KycStepKind.customerFacial,
@@ -2273,7 +2274,7 @@ class MockVerificationRepository extends _MockRepo
       if (session.status == KycStepStatus.verified) return session;
       final updated = session.copyWith(
         status: KycStepStatus.inProgress,
-        updatedAt: DateTime.now(),
+        updatedAt: clock.now(),
       );
       db.verificationSessions[behavior.currentUserId] = updated;
       _controller.add(updated);
@@ -2298,7 +2299,7 @@ class MockVerificationRepository extends _MockRepo
       }
       final inReview = session.copyWith(
         status: KycStepStatus.inReview,
-        updatedAt: DateTime.now(),
+        updatedAt: clock.now(),
       );
       db.verificationSessions[behavior.currentUserId] = inReview;
       _controller.add(inReview);
@@ -2306,7 +2307,7 @@ class MockVerificationRepository extends _MockRepo
       _reviewTimer = Timer(behavior.kycReviewDelay, () {
         final verified = inReview.copyWith(
           status: KycStepStatus.verified,
-          updatedAt: DateTime.now(),
+          updatedAt: clock.now(),
         );
         db.verificationSessions[behavior.currentUserId] = verified;
         final user = db.users[behavior.currentUserId];
@@ -2447,7 +2448,7 @@ class MockProviderKycRepository extends _MockRepo
           step.status == KycStepStatus.verified) {
         throw const AppError(ErrorCodes.kycStepInvalid);
       }
-      final now = DateTime.now();
+      final now = clock.now();
       // "Server-side" document validation: an expired police clearance
       // certificate is rejected with a localizable reason key.
       if (kind == KycStepKind.policeClearance &&
@@ -2475,7 +2476,7 @@ class MockProviderKycRepository extends _MockRepo
         if (i < 0 || current.steps[i].status != KycStepStatus.inReview) return;
         final verified = current.steps[i].copyWith(
           status: KycStepStatus.verified,
-          reviewedAt: DateTime.now(),
+          reviewedAt: clock.now(),
         );
         _replaceStep(current, i, verified);
       });
@@ -2535,7 +2536,7 @@ class MockProviderKycRepository extends _MockRepo
       }
       final updated = profile.copyWith(
         overallStatus: KycStepStatus.inReview,
-        submittedForReviewAt: DateTime.now(),
+        submittedForReviewAt: clock.now(),
       );
       _store(updated);
       final user = currentUser;

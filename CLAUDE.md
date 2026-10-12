@@ -116,7 +116,8 @@ Web apps (npm workspace at the repository root, in CI since 2026-09-22):
 ```bash
 npm ci                                  # once, at the root; it is a workspace over all three
 npm run build -w apps/web-customer      # or web-marketing, web-admin
-npm audit                               # 0 vulnerabilities as of 2026-09-22
+npm audit                               # 2026-10-12: only braces + postcss-selector-parser, dev-only via Tailwind 3.4
+                                        # accepted in osv-scanner.toml until 2027-01-12; Tailwind 4 removes both
 ```
 
 Addressed by workspace **path**, not package name: the names are scoped (`@suskii/…`) because `web-admin` unscoped collides with a package flagged malicious on the public registry (MAL-2025-38963).

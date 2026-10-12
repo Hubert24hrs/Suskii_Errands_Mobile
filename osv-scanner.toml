@@ -1,0 +1,21 @@
+# osv-scanner reads this file for lockfiles in this directory only: package-lock.json (the npm
+# workspace over the three web apps). Every entry names one advisory, says why it cannot be fixed
+# today, and expires, so CI goes red again on the date and somebody looks.
+
+# braces 3.0.3: no patched version is published. It reaches the tree only through Tailwind CSS 3.4
+# (tailwindcss -> chokidar / micromatch / fast-glob -> braces), a devDependency, and it expands our
+# own `content` globs at build time. Nothing it parses comes from a user, and it ships to neither
+# the browser nor the Next.js server. Drop this once braces publishes a fix or the apps move to
+# Tailwind 4.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-12
+reason = "Build-time only, via tailwindcss 3.4; no fixed braces release exists; input is our own content globs"
+
+# postcss-selector-parser 6.1.4: fixed only in 7.1.6, a major that Tailwind CSS 3.4 (^6.1.2,
+# also via postcss-nested) does not accept. It parses our own stylesheets at build time and is
+# never shipped. Drop this with the move to Tailwind 4.
+[[IgnoredVulns]]
+id = "GHSA-rj75-hqrm-r3gf"
+ignoreUntil = 2027-01-12
+reason = "Build-time only, via tailwindcss 3.4, which cannot take the 7.x fix; input is our own CSS"

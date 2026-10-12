@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:suskii_domain/suskii_domain.dart';
@@ -14,6 +15,10 @@ import '../support/harness.dart';
 /// Goldens for each route are recorded under `goldens/catalog/` with the
 /// `golden` tag, so the default run stays fast and the recording is a
 /// deliberate `flutter test --tags golden --update-goldens`.
+///
+/// The goldens run at [recordedAt]: the mock data is dated relative to the
+/// clock and the wallet and earnings screens print those dates, so on the
+/// wall clock the goldens drift a little every day.
 const List<String> customerRoutes = <String>[
   AppRoutes.customerHome,
   AppRoutes.customerRequests,
@@ -47,6 +52,8 @@ const List<String> providerRoutes = <String>[
   AppRoutes.providerTools,
   AppRoutes.providerOrg,
 ];
+
+final Clock recordedAt = Clock.fixed(DateTime.utc(2026, 9, 27, 12));
 
 String _slug(String route) =>
     route.replaceAll(RegExp('^/'), '').replaceAll(RegExp('[^a-z0-9]+'), '_');
@@ -114,35 +121,39 @@ void main() {
   }
 
   for (final ThemeMode mode in <ThemeMode>[ThemeMode.dark, ThemeMode.light]) {
-    testWidgets('catalog goldens: customer (${mode.name})', tags: 'golden', (
-      tester,
-    ) async {
-      final app = await _signedIn(tester, mode: mode);
-      for (final route in customerRoutes) {
-        await _visit(tester, app, route);
-        await expectLater(
-          find.byType(SuskiiApp),
-          matchesGoldenFile(
-            '../goldens/catalog/${mode.name}/${_slug(route)}.png',
-          ),
-        );
-      }
-      await app.dispose(tester);
-    });
-    testWidgets('catalog goldens: provider (${mode.name})', tags: 'golden', (
-      tester,
-    ) async {
-      final app = await _signedIn(tester, mode: mode, provider: true);
-      for (final route in providerRoutes) {
-        await _visit(tester, app, route);
-        await expectLater(
-          find.byType(SuskiiApp),
-          matchesGoldenFile(
-            '../goldens/catalog/${mode.name}/${_slug(route)}.png',
-          ),
-        );
-      }
-      await app.dispose(tester);
-    });
+    testWidgets(
+      'catalog goldens: customer (${mode.name})',
+      tags: 'golden',
+      (tester) => withClock(recordedAt, () async {
+        final app = await _signedIn(tester, mode: mode);
+        for (final route in customerRoutes) {
+          await _visit(tester, app, route);
+          await expectLater(
+            find.byType(SuskiiApp),
+            matchesGoldenFile(
+              '../goldens/catalog/${mode.name}/${_slug(route)}.png',
+            ),
+          );
+        }
+        await app.dispose(tester);
+      }),
+    );
+    testWidgets(
+      'catalog goldens: provider (${mode.name})',
+      tags: 'golden',
+      (tester) => withClock(recordedAt, () async {
+        final app = await _signedIn(tester, mode: mode, provider: true);
+        for (final route in providerRoutes) {
+          await _visit(tester, app, route);
+          await expectLater(
+            find.byType(SuskiiApp),
+            matchesGoldenFile(
+              '../goldens/catalog/${mode.name}/${_slug(route)}.png',
+            ),
+          );
+        }
+        await app.dispose(tester);
+      }),
+    );
   }
 }

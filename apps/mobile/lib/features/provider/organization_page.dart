@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suskii_design/suskii_design.dart';
@@ -574,7 +575,7 @@ class _OrgBody extends ConsumerWidget {
     AppLocalizations l10n,
   ) {
     final expiry = vehicle.documentExpiry;
-    final daysLeft = expiry?.difference(DateTime.now()).inDays;
+    final daysLeft = expiry?.difference(clock.now()).inDays;
     final expiringSoon = daysLeft != null && daysLeft <= 30;
     return Card(
       child: Padding(
