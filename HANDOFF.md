@@ -34,6 +34,36 @@ like W.7, not standing licence. Since 5 Oct, `osv-scanner` failed the weekly `se
   - `osv-scanner` 2.6.0, offline database: `main`'s lockfile reproduces exactly the six CI
     findings (exit 1); the new one reports no issues (exit 0).
 
+### Also in this PR: the catalog goldens stopped depending on the date
+
+The lockfile change set off `frontend-ci`, and `dart` failed on four catalog goldens:
+`customer_wallet` and `provider_earnings`, light and dark, each 0.65% over a 0.5% tolerance.
+The owner chose to fix it here, so this is a second edit to your code, also not standing licence.
+
+- **Cause:** both screens print transaction dates (`formatShortDate`), and the mock fixtures
+  date everything relative to `DateTime.now()`. The goldens were recorded on 27 Sep and show
+  "Sep 25, 2026". While it was still September the drift stayed under tolerance; in October it
+  doesn't. **Any frontend PR from now on would have failed the same way.**
+- **Fix:** every clock read that feeds what is rendered now goes through `package:clock`, which
+  returns `DateTime.now()` outside tests, so the app behaves the same.
+  - Mock fixtures and mock repositories. The three ID generators keep the real clock, because a
+    fixed clock would make IDs collide.
+  - `ServerClock`, `SCountdownTimer`, the promo `expired` check and the vehicle-document
+    `daysLeft`.
+  - The two `catalog goldens` tests run under `withClock(Clock.fixed(2026-09-27 12:00 UTC))`.
+    That is the recording date, so **the stored goldens are unchanged**.
+  - `clock: ^1.1.2` is now a direct dependency of `suskii_core`, `suskii_data`, `suskii_design`
+    and `apps/mobile`. It was already locked as a transitive one, so the version doesn't move.
+- **Your rule from now on:** a new clock read in anything the screens render should use
+  `clock.now()`, or the goldens start drifting again.
+- **Checked:**
+  - With the clock set to today, the same four goldens fail; at the recording date all six
+    pass.
+  - Format and analyze are clean.
+  - Package tests: domain 23, core 13, data 200, design 53.
+  - App journeys 27, goldens 6.
+  - `dart test -p chrome` for core and domain passes.
+
 ---
 
 ## 2026-10-12 — Claude Code — OD-04 float top-up

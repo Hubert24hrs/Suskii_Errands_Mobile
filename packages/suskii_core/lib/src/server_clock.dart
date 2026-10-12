@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 /// Server-clock offset captured at bootstrap (`AppBootstrap.serverTime`).
 /// Every countdown in the UI — offer TTL, payment TTL, auto-confirm — renders
 /// against server time with this measured offset, so a device with a wrong
@@ -19,7 +21,7 @@ class ServerClock {
   /// Capture the offset from a bootstrap `serverTime` (UTC).
   void sync(DateTime serverTime) {
     _serverAtSync = serverTime;
-    _deviceAtSync = DateTime.now();
+    _deviceAtSync = clock.now();
     _sinceSync
       ..stop()
       ..reset()
@@ -30,7 +32,7 @@ class ServerClock {
   /// [Stopwatch] — immune to device-clock jumps after [sync]. Falls back to
   /// the device clock when [sync] was never called.
   DateTime now() {
-    if (!isSynced) return DateTime.now();
+    if (!isSynced) return clock.now();
     return _serverAtSync!.add(_sinceSync.elapsed);
   }
 

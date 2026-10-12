@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 
 /// Countdown to a deadline (offer TTL, payment TTL). Renders `mm:ss`;
@@ -44,7 +45,7 @@ class _SCountdownTimerState extends State<SCountdownTimer> {
   }
 
   void _tick() {
-    final now = DateTime.now().add(widget.clockOffset ?? Duration.zero);
+    final now = clock.now().add(widget.clockOffset ?? Duration.zero);
     final remaining = widget.deadline.difference(now);
     if (!mounted) return;
     setState(
