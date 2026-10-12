@@ -160,6 +160,45 @@ Customer is charged job 20.00 + float 30.00 + 0.90 fee surcharge = 50.90. Gatewa
 | `provider_earnings` | −16.92 |  |
 | **Sum** | **0.00** | zero-sum ✓ |
 
+#### 3d. Receipt above the float: the top-up (OD-04, answered 2026-10-12)
+
+The receipt is 35.00 against the 30.00 float. Nothing is charged until the customer approves the
+5.00 top-up in the app. Approving creates a separate payment of kind `float_top_up`: 5.00 plus
+the same 3% surcharge as the float, so 5.15. Here the gateway's fee on it is 0.15, all of it
+covered by the surcharge. One top-up per job, at most 100% of the float
+(`float_top_up_max_bps`). Built in `…20261012120000_float_top_ups`; tested by
+`51_float_top_ups_test`.
+
+Top-up payment confirmed:
+
+| Account | Amount (USD) | Why |
+|---|---:|---|
+| `gateway_pending` | +5.00 |  |
+| `item_float` | −5.00 | goods money, non-commissionable, like the float it extends |
+| **Sum** | **0.00** | zero-sum ✓ (any fee beyond the surcharge would go to `gateway_fees`, as in 3a) |
+
+Receipt approved (3b, with the top-up included):
+
+| Account | Amount (USD) | Why |
+|---|---:|---|
+| `item_float` | +35.00 | the job payment's 30.00 and the top-up's 5.00 |
+| `provider_earnings` | −35.00 | reimburses exactly what was spent; nothing unused |
+| **Sum** | **0.00** | zero-sum ✓ |
+
+**Declined, unanswered within `float_top_up_response_hours` (24), or approved and never paid:**
+no top-up money exists, so the receipt is taken at the whole float and 3b runs with 30.00 spent and
+nothing unused. The 5.00 beyond it is the provider's to dispute.
+
+**The job is cancelled after the top-up was paid** (and before the float is released): the top-up
+is refunded in full, beside `cancel_job`'s refund of the float itself. The surcharge stays with the
+fee it paid for.
+
+| Account | Amount (USD) | Why |
+|---|---:|---|
+| `item_float` | +5.00 |  |
+| `refunds_payable` | −5.00 | the top-up, owed back to the customer |
+| **Sum** | **0.00** | zero-sum ✓ |
+
 #### 4a. Payment confirmed with a promo
 
 | Account | Amount (USD) | Why |
@@ -295,7 +334,7 @@ Exact event names and verify-response field names are `VERIFY-IN-RESEARCH` again
 | ID | Question | Default used above |
 |---|---|---|
 | OD-01 | Who funds referral commission | Platform (`platform_referral_expense`) |
-| OD-04 | Item float and its gateway fee | Separate non-commissionable line; customer pays a fee surcharge on the float |
+| OD-04 | Item float and its gateway fee | Separate non-commissionable line; customer pays a fee surcharge on the float. A receipt above the float is never charged automatically: the customer approves a top-up (3d). **Answered 2026-10-12** |
 | OD-08 | Gateway fee on refunds | Platform absorbs for fault-free cancellations (5b); deducted from the refund for late customer cancellations (5a) |
 | OD-10 | Who pays payout transfer fees | Provider for earnings (1d); platform for small referral payouts (9) |
 | **OD-19** *(new)* | **Who receives a cancellation fee** | Provider, net of commission, when the cancellation happens after they committed or travelled (5a); the spec says fees depend on state and time but not who receives them |

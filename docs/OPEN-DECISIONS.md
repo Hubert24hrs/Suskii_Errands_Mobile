@@ -62,16 +62,16 @@ sent to anyone**: it goes straight into the GitHub environment's secrets.
 ## Resolved
 
 Answered by the client in session on 2026-10-12, each by choosing between the built default and
-its alternatives. Every one chose the default, so **no code or configuration changed**: these
-rows record that the default is now the decision, not an assumption. Two defaults are only half
-built, and their follow-on work is named in the last column.
+its alternatives. Every one chose the default, so no configuration changed: these rows record
+that the default is now the decision, not an assumption. One default was only half built and was
+finished the same day (OD-04's top-up); OD-13's still waits on the identity vendor.
 
 | ID | Answer | Date | Implemented by |
 |---|---|---|---|
 | OD-01 | The platform funds the referral commission from its 12.5%; provider earnings are untouched | 2026-10-12 | Money-flows 1c `platform_referral_expense`; `…20260922120100_referrals`; `35_referrals_test` |
 | OD-02 | Lifetime of the referred account, with no cap until an admin sets one per country or campaign | 2026-10-12 | `referral.duration_months` and `referral.max_earned_minor` (both 0 = no cap), `…20260922120100_referrals` |
 | OD-03 | Both referrers earn 2.5% of net, at most 5% per job, platform-funded | 2026-10-12 | `referral.max_referrers_per_job` = 2, `…20260922120100_referrals` |
-| OD-04 | A receipt above the float is never charged automatically; the provider asks for a top-up the customer approves in the app, otherwise the difference goes to a dispute | 2026-10-12 | **Half built.** `submit_float_receipt` refuses spend above the float (`…20260921121300_item_float`), so nothing is auto-charged. **Not built:** the top-up request and the customer's in-app approval. Until then the only route is a dispute |
+| OD-04 | A receipt above the float is never charged automatically; the provider asks for a top-up the customer approves in the app, otherwise the difference goes to a dispute | 2026-10-12 | `…20261012120000_float_top_ups` (built the same day): `request_float_top_up` and `respond_float_top_up`, one per job, at most the float again, its own payment; declined, unanswered or unpaid reimburses the whole float and leaves the rest to a dispute. Money-flows 3d; `51_float_top_ups_test` |
 | OD-05 | No insurer at launch: the customer declares value and claims run through disputes | 2026-10-12 | `requests.declared_value_minor`; disputes, `…20260921121400_disputes` |
 | OD-06 | 12.5% commission in every country | 2026-10-12 | Country config, snapshotted per job in `jobs.commission_rate_bps` (`…20260921121000_payments`); NG pack `verified` |
 | OD-07 | Nigeria only on launch day; the others follow as their packs are verified and counsel signs off | 2026-10-12 | ADR-0001 (now Accepted); `private.country_pack_gaps` enforces the go-live rule |

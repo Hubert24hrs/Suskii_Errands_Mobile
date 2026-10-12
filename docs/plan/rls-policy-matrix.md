@@ -145,6 +145,7 @@ The competitive invariant: **a provider never reads another provider's offer amo
 | `payouts` | R:own (beneficiary) | — | R:scope | R + F (`approve_payout`, four-eyes above threshold) | — | R |
 | `withdrawals` | R:own, F (`request_withdrawal` — KYC, name match, min balance, biometric/PIN confirm on device, integrity token) | — | R:scope | R + F (approve) | — | R |
 | `tips` | R:own, F (`add_tip`) | R:part | R:scope | R | R:scope | R |
+| `float_top_ups` | F (`request_float_top_up` by the provider, `respond_float_top_up` by the customer; OD-04, one per job) | R:part | R:scope | R:scope | R:scope | R |
 | `promo_codes` | via F (`validate_promo`) | — | R | R | — | R + F (four-eyes) |
 | `promo_redemptions` | R:own | — | R:scope | R | — | R |
 | `webhook_events` | — | — | — | R | — | R |
