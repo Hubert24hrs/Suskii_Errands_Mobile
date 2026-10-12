@@ -22,7 +22,7 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 
 | ADR | Title | Status | Decision ref | Unblocked by |
 |---|---|---|---|---|
-| [0001](0001-wave-1-countries.md) | Wave-1 countries: NG live, KE/GH/ZA/UG beta | Proposed | D-01 | Client (OD-14) |
+| [0001](0001-wave-1-countries.md) | Wave-1 countries: NG live, KE/GH/ZA/UG beta | Accepted (2026-10-12, OD-07) | D-01 | — |
 | [0002](0002-funds-hold-model.md) | Hold funds in our ledger, release via gateway transfers | Proposed | D-02 | Counsel (OD-12), spike S-12 |
 | [0003](0003-gateway-fee-bearer.md) | Merchant bears gateway fees; allocate to the provider in the ledger | Accepted | D-03 | — |
 | [0004](0004-flutterwave-v3.md) | Build on Flutterwave v3, not the v4 beta | Accepted | D-04 | — |

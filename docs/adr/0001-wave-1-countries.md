@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Accepted (2026-10-12: the client chose Nigeria alone for launch day, OD-07; the beta status of the other four stands as OD-14's proposed default) |
 | Date | 2026-09-16 |
 | Deciders | Claude Code (recommendation), client (OD-14) |
 | Unblocked by | Client decision OD-14; per-country go-live checklist |

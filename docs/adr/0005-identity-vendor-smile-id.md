@@ -5,7 +5,7 @@
 | Status | Proposed |
 | Date | 2026-09-16 |
 | Deciders | Claude Code (recommendation), client (contract) |
-| Unblocked by | Spike S-05 (SDK version on 2 GB devices), signed vendor contract, OD-13 |
+| Unblocked by | Spike S-05 (SDK version on 2 GB devices), signed vendor contract, OD-13 (answered 2026-10-12: on-device liveness daily, vendor check weekly and on risk triggers) |
 
 ## Context
 
