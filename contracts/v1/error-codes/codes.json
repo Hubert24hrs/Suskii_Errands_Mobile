@@ -1283,6 +1283,39 @@
       "retryable": false,
       "description": "A sealed field failed its integrity check: altered, truncated, or moved to a row it was not sealed for (ADR-0018). Only these functions write ciphertext, so this is a security incident, not a bug to retry.",
       "client_action": "Never expected; treat as a security incident (RB-16)."
+    },
+    {
+      "code": "ERR_FLOAT_TOP_UP_EXISTS",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "This job already has a float top-up. One per job, by design: a declined request cannot be repeated (OD-04).",
+      "client_action": "Show the existing top-up and its status. If it was declined or expired, offer the dispute path for the difference."
+    },
+    {
+      "code": "ERR_FLOAT_TOP_UP_TOO_LARGE",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The receipt is further above the prepaid float than a top-up may cover (`float_top_up_max_bps`, 100% of the float by default).",
+      "client_action": "Tell the provider this gap cannot be a top-up: file the receipt for the float and open a dispute for the rest."
+    },
+    {
+      "code": "ERR_FLOAT_TOP_UP_NOT_FOUND",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No float top-up with that id belongs to one of the caller's requests.",
+      "client_action": "Reload the job; the top-up may have been settled or withdrawn."
     }
   ]
 }

@@ -5,6 +5,36 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-12 — Claude Code — OD-04 float top-up
+
+Backend only. Contracts **1.5.0** (MINOR). The client answered OD-04 today: a receipt above the
+prepaid float is never charged automatically; the provider asks for the difference and the
+customer approves in the app.
+
+**Provider job screen (shopping errands).** When the receipt is above the float, call
+`request_float_top_up(key, request_id, spent_minor, receipt_path)` instead of
+`submit_float_receipt`. The receipt photo is uploaded to the job's folder first, as for a normal
+receipt. Errors to handle:
+- `ERR_FLOAT_TOP_UP_TOO_LARGE`: more than the float again. File the float and offer a dispute.
+- `ERR_FLOAT_TOP_UP_EXISTS`: one per job; show the existing one.
+
+Show the row from `float_top_ups` and its `status`. When it ends `declined` or `expired`, the
+notification carries `disputable_minor`: offer `open_dispute` for that amount.
+
+**Customer job screen.** A `job_status` notification with `top_up_id` asks the customer to
+approve. Show the amount, the receipt and the deadline (`respond_by`), then call
+`respond_float_top_up(key, top_up_id, true|false)`. Approving returns a payment id; open the
+checkout from `get_payment_checkout(request_id)`, exactly as for the job payment. Hold the
+idempotency key per top-up, so a retry after a dropped connection does not create a second
+payment.
+
+**New notification keys** for `suskii_l10n`:
+- `notification.float.top_up.requested.*`
+- `notification.float.top_up.paid.*`
+- `notification.float.top_up.unpaid.*`
+
+---
+
 ## 2026-09-29 — Claude Code — saved places, access notes, and field encryption that exists
 
 Backend only; nothing in `apps/` or `packages/` changed. Contracts **1.4.0** (MINOR,

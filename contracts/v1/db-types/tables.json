@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
-  "count": 67,
+  "count": 68,
   "tables": [
     {
       "name": "public.account_deletion_requests",
@@ -1421,6 +1421,148 @@
         }
       },
       "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.float_top_ups",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "request_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "requested_by",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "float_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "spent_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "amount_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "receipt_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "payment_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "respond_by",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "responded_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "paid_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20261012120000_float_top_ups.sql"
     },
     {
       "name": "public.fraud_flags",

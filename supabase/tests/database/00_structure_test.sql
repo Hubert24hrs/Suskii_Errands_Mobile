@@ -99,6 +99,8 @@ SELECT is(
        'public.my_balances', 'public.start_payment', 'public.cancel_job',
        'public.preview_promo', 'public.add_tip',
        'public.submit_float_receipt', 'public.approve_float_receipt',
+       -- OD-04 float top-up (20261012120000): the provider asks, the customer answers.
+       'public.request_float_top_up', 'public.respond_float_top_up',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',

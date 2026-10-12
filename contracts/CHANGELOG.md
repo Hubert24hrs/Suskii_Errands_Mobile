@@ -8,6 +8,41 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [1.5.0] - 2026-10-12
+
+The item float top-up, for OD-04 as the client answered it on 2026-10-12: a receipt above the
+float is never charged automatically; the provider asks and the customer approves in the app.
+MINOR: one table, two functions and one payment kind, all new.
+
+### Added
+
+- **`public.float_top_ups`** (read by the customer and the job's provider or worker; staff by
+  scope): `float_minor`, `spent_minor`, `amount_minor` (the difference), `status`
+  (`requested` → `approved` → `paid`, or `declined` / `expired` / `cancelled` / `refunded`),
+  `payment_id`, `respond_by`. One per job.
+- **`request_float_top_up(p_idempotency_key, p_request_id, p_spent_minor, p_receipt_path)` →
+  `uuid`**: the provider or dispatched worker, while the job is `in_progress` or
+  `completed_by_provider`, with a receipt above the float. At most `float_top_up_max_bps` (100%)
+  of the float above it.
+- **`respond_float_top_up(p_idempotency_key, p_top_up_id, p_approve)` → `uuid`**: the customer,
+  before `respond_by` (`float_top_up_response_hours`, 24). Approving returns a new payment to check
+  out: the existing `get_payment_checkout(request_id)` returns its link, because it is the
+  customer's latest payment on the job. Declining returns `NULL`.
+- Payment kind **`float_top_up`**: the amount is the top-up plus the float fee surcharge
+  (`item_float_fee_surcharge_bps`, 3%), and it moves no job state.
+- Error codes `ERR_FLOAT_TOP_UP_EXISTS`, `ERR_FLOAT_TOP_UP_TOO_LARGE` and
+  `ERR_FLOAT_TOP_UP_NOT_FOUND`.
+- Remote config `float_top_up_max_bps` and `float_top_up_response_hours`, both client-visible.
+
+### Changed (behaviour, no signature change)
+
+- `submit_float_receipt` refuses a new receipt while a top-up is requested, approved or paid
+  (`ERR_ILLEGAL_TRANSITION`); the receipt is the one the top-up was asked against.
+- `approve_float_receipt` (and the auto-approval sweep) waits while a top-up is requested or
+  approved, then releases the whole float including a paid top-up.
+- When a top-up is declined, expires, or is approved and never paid, the job's receipt is set to
+  the whole float, so the provider is reimbursed all of it. The difference is theirs to dispute.
+
 ## [1.4.0] - 2026-09-29
 
 Saved places and access notes (RLS matrix §2; audit 2026-09-22c), on field-level encryption that
