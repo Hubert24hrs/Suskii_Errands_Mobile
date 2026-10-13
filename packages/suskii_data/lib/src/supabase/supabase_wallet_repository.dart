@@ -30,9 +30,13 @@ Future<String> defaultPayoutAccountId(SupabaseGateway gateway) async {
   return SupabaseGateway.asId(rows.first['id']);
 }
 
-/// WalletRepository over Supabase: the balance comes from the private
-/// double-entry ledger via `available_balance`; withdrawals go through
-/// `request_withdrawal` (provider-earnings source, default payout account).
+/// WalletRepository over Supabase. The available balance is
+/// `available_balance`; what is on its way is `my_pending_balance` (funded
+/// jobs not yet recognised); history is `my_wallet_transactions`, a
+/// client-safe projection of the private ledger plus the withdrawals that
+/// have not reached it (CR-20260923-03, contracts 2.0.0). Withdrawals go
+/// through `request_withdrawal` (provider-earnings source, default payout
+/// account).
 class SupabaseWalletRepository implements WalletRepository {
   SupabaseWalletRepository(this._gateway);
 
@@ -45,12 +49,13 @@ class SupabaseWalletRepository implements WalletRepository {
       'p_source': 'provider_earnings',
       'p_currency': currency,
     });
-    // The contract exposes no "pending" read for user accounts (my_balances
-    // returns posted balances only) — pending reports zero until
-    // CR-20260923-03 lands a ledger read that can answer it.
+    final pending = await _gateway.rpc('my_pending_balance', <String, Object?>{
+      'p_source': 'provider_earnings',
+      'p_currency': currency,
+    });
     return WalletSummary(
       available: Money(SupabaseGateway.asMinorUnits(available), currency),
-      pending: Money(0, currency),
+      pending: Money(SupabaseGateway.asMinorUnits(pending), currency),
     );
   }
 
@@ -59,25 +64,14 @@ class SupabaseWalletRepository implements WalletRepository {
     String? cursor,
     int limit = 20,
   }) async {
-    // PROVISIONAL (CR-20260923-03): the private ledger is not client-readable
-    // by design, so history is withdrawals-only until the contract grows a
-    // transaction feed. Cursor is the last row's created_at (ISO-8601).
-    final rows = await _gateway.selectList(
-      'withdrawals',
-      'id, amount_minor, currency, status, created_at',
-      ltColumn: cursor == null ? null : 'created_at',
-      ltValue: cursor,
-      orderBy: 'created_at',
-      ascending: false,
-      limit: limit,
-    );
-    return rows
-        .map(
-          (row) => withdrawalTransactionFromRow(
-            row,
-            kind: WalletTransactionKind.payout,
-          ),
-        )
+    // Cursor is the last row's created_at (ISO-8601).
+    final rows = await _gateway.rpc('my_wallet_transactions', <String, Object?>{
+      'p_source': 'provider_earnings',
+      'p_cursor': cursor,
+      'p_limit': limit,
+    });
+    return List<Map<String, dynamic>>.from(rows as List<dynamic>)
+        .map(walletTransactionFromFeedRow)
         .toList(growable: false);
   }
 

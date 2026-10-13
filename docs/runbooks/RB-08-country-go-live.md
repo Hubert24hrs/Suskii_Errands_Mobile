@@ -49,6 +49,7 @@ that actually block a launch:
 | Merchant account live, not sandbox | Client | Client action 4 |
 | Police-clearance recency rule | Client + counsel | OD-09 |
 | SOS partner contracted for the city | Client | Client action 12 — and RB-06's escalation is a phone call until it is |
+| Trip-share link base set | Ops | `remote_config.trip_share_base_url` (global): the page a trusted contact opens. Until it is set, `create_trip_share` returns no URL and the app says sharing is unavailable. Needs the domain (I-2) |
 
 **Do not flip a country to `live` with any of these open.** The gap check passing is necessary and
 nowhere near sufficient.

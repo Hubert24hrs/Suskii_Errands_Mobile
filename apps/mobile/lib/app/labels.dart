@@ -42,8 +42,18 @@ String categoryLabel(AppLocalizations l10n, String labelKey) =>
       _ => l10n.catCustom,
     };
 
+/// `doc<KycStepKind>` keys from `provider_home_summary` reuse the step labels.
 String documentTypeLabel(AppLocalizations l10n, String key) => switch (key) {
   'docPoliceClearance' => l10n.docPoliceClearance,
+  'docGovernmentId' => l10n.kycStepGovernmentId,
+  'docIdDocumentCapture' => l10n.kycStepIdDocumentCapture,
+  'docProviderFacial' => l10n.kycStepProviderFacial,
+  'docCustomerFacial' => l10n.kycStepCustomerFacial,
+  'docAddress' => l10n.kycStepAddress,
+  'docGuarantor' => l10n.kycStepGuarantor,
+  'docPayoutAccount' => l10n.kycStepPayoutAccount,
+  'docVehicleDocuments' => l10n.kycStepVehicleDocuments,
+  'docCredentials' => l10n.kycStepCredentials,
   _ => key,
 };
 
@@ -56,6 +66,10 @@ String transactionLabel(AppLocalizations l10n, String? key) => switch (key) {
   'txnWithdrawalAwaitingApproval' => l10n.txnWithdrawalAwaitingApproval,
   'txnReferralWithdrawal' => l10n.txnReferralWithdrawal,
   'txnInstantPayout' => l10n.txnInstantPayout,
+  'txnJobEarnings' => l10n.txnJobEarnings,
+  'txnFloatReimbursed' => l10n.txnFloatReimbursed,
+  'txnAdjustment' => l10n.txnAdjustment,
+  'txnChargeback' => l10n.txnChargeback,
   _ => key ?? '',
 };
 

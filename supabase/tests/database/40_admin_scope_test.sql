@@ -211,7 +211,7 @@ RESET ROLE;
 SELECT pg_temp.act('92222222-2222-4222-8222-777777777777', 'aal1');
 SET LOCAL ROLE authenticated;
 INSERT INTO sc VALUES ('org', public.register_organization('key-sc-org-000000001',
-  'Emeka Logistics Ltd', '\xdeadbeef'::bytea, sha256('RC999999'::bytea))::text);
+  'Emeka Logistics Ltd', 'RC999999')::text);
 SELECT lives_ok(
   format($$UPDATE public.organizations SET legal_name = 'Emeka Holdings Ltd' WHERE id = %L$$,
          (SELECT val FROM sc WHERE name = 'org')),
@@ -236,9 +236,9 @@ SELECT is((SELECT legal_name FROM public.organizations
 SELECT pg_temp.act('91111111-1111-4111-8111-777777777777', 'aal1');
 SET LOCAL ROLE authenticated;
 INSERT INTO sc VALUES ('tc', public.add_trusted_contact('key-sc-contact-000001',
-  'Chidi', '\x1111'::bytea, sha256('2348030009001'::bytea), 'brother')::text);
+  'Chidi', '+2348030009001', 'brother')::text);
 SELECT is(public.add_trusted_contact('key-sc-contact-000001',
-            'Chidi', '\x1111'::bytea, sha256('2348030009001'::bytea), 'brother')::text,
+            'Chidi', '+2348030009001', 'brother')::text,
   (SELECT val FROM sc WHERE name = 'tc'),
   'the same key replays the contact rather than raising a unique violation at a retrying client');
 SELECT is((SELECT count(*)::int FROM public.trusted_contacts), 1, 'and there is still one of them');

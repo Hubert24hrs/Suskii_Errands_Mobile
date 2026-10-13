@@ -70,7 +70,7 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "6b111111-1111-4111-8111-ffffffffffff", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 SELECT ok(public.submit_identity_document('key-ky-id-a-0000000000001', 'nin',
-            '\xdeadbeef'::bytea, sha256('12345678901'::bytea)) IS NOT NULL,
+            '12345678901') IS NOT NULL,
   'a provider submits their national ID');
 RESET ROLE;
 SELECT set_config('request.jwt.claims',
@@ -78,7 +78,7 @@ SELECT set_config('request.jwt.claims',
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   $$SELECT public.submit_identity_document('key-ky-id-b-0000000000001', 'nin',
-      '\xfeedface'::bytea, sha256('12345678901'::bytea))$$,
+      '123-4567-8901')$$,
   'P0001', 'ERR_IDENTITY_ALREADY_REGISTERED',
   'the same number cannot back a second account — matched on the blind index, read by nobody');
 RESET ROLE;
@@ -98,20 +98,20 @@ SELECT throws_ok(
   '22023', 'ERR_INVALID_ARGUMENT',
   'and it has to be in your own folder, not somebody else''s');
 SELECT throws_ok(
-  $$SELECT public.submit_police_clearance('key-ky-pc-a-0000000001', '\x01'::bytea,
-      sha256('PC-1'::bytea), (now() - interval '2 years')::date,
+  $$SELECT public.submit_police_clearance('key-ky-pc-a-0000000001', 'PC-1',
+      (now() - interval '2 years')::date,
       (now() + interval '1 year')::date)$$,
   'P0001', 'ERR_CONSENT_REQUIRED', 'a police clearance needs its own consent');
 SELECT public.record_consent('criminal_record_check', true,
   'key-ky-consent-crc-00001');
 SELECT throws_ok(
-  $$SELECT public.submit_police_clearance('key-ky-pc-a-0000000002', '\x01'::bytea,
-      sha256('PC-1'::bytea), (now() - interval '2 years')::date,
+  $$SELECT public.submit_police_clearance('key-ky-pc-a-0000000002', 'PC-1',
+      (now() - interval '2 years')::date,
       (now() + interval '1 year')::date)$$,
   'P0001', 'ERR_KYC_STEP_INVALID',
   'a certificate issued two years ago is not evidence of anything current (OD-09)');
-SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000003', '\x01'::bytea,
-            sha256('PC-1'::bytea), (now() - interval '1 month')::date,
+SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000003', 'PC-1',
+            (now() - interval '1 month')::date,
             (now() + interval '2 months')::date, '6b111111-1111-4111-8111-ffffffffffff/pc.pdf'),
   'in_review'::public.kyc_step_status, 'a recent one is accepted for review');
 SELECT is((SELECT status FROM public.get_my_kyc_profile() WHERE kind = 'police_clearance'),
@@ -239,8 +239,8 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "6b111111-1111-4111-8111-ffffffffffff", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 -- Issued last month, already out of date: the certificate is real, its validity is not.
-SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000004', ''::bytea,
-            sha256('PC-2'::bytea), (now() - interval '1 month')::date,
+SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000004', 'PC-2',
+            (now() - interval '1 month')::date,
             (now() - interval '1 day')::date, '6b111111-1111-4111-8111-ffffffffffff/pc2.pdf'),
   'in_review'::public.kyc_step_status, 'a replacement certificate is submitted');
 RESET ROLE;

@@ -99,6 +99,9 @@
   "errVerificationRejected": "Dem reject the verification. Check the details, try again.",
   "errKycStepInvalid": "You no fit submit this step right now.",
   "errKycIncomplete": "Complete all the required steps before you submit for review.",
+  "errSavedPlaceLimit": "You don reach di limit of places wey you fit save. Remove one make you add another.",
+  "errFloatTopUpExists": "Dem don already ask for top-up for dis job.",
+  "errFloatTopUpTooLarge": "Dis one pass wetin top-up fit cover. Submit di receipt for di float, then open dispute for di remaining.",
 
   "onboardingTitle1": "Request anything",
   "onboardingBody1": "Yarn wetin you need for plain words — errand, shopping, repair, document, anything.",
@@ -182,6 +185,10 @@
   "txnWithdrawal": "Withdrawal",
   "txnWithdrawalAwaitingApproval": "Withdrawal (dey wait approval)",
   "txnReferralWithdrawal": "Referral withdrawal",
+  "txnJobEarnings": "Money wey you work collect",
+  "txnFloatReimbursed": "Dem don pay you back for di items",
+  "txnAdjustment": "Adjustment",
+  "txnChargeback": "Chargeback (money wey dem collect back)",
 
   "welcomeTitle": "Welcome to Suskii",
   "welcomeBody": "One app for errand, delivery and service-dem — as customer or provider.",

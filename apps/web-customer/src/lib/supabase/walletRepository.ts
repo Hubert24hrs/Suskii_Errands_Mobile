@@ -8,7 +8,7 @@ import { AppError, ErrorCodes } from '@/mocks/errors';
 import type { Money, WalletSummary, WalletTransaction } from '@/mocks/types';
 
 import { SupabaseGateway, type Row } from './gateway';
-import { withdrawalTransactionFromRow } from './mappers';
+import { walletTransactionFromFeedRow, withdrawalTransactionFromRow } from './mappers';
 
 const withdrawalColumns = 'id, amount_minor, currency, status, created_at';
 
@@ -44,15 +44,17 @@ export class SupabaseWalletRepository {
       p_source: 'provider_earnings',
       p_currency: currency,
     });
-    // The contract exposes no "pending" read for user accounts (my_balances
-    // returns posted balances only) — pending reports zero until
-    // CR-20260923-03 lands a ledger read that can answer it.
+    // Funded jobs not yet recognised (CR-20260923-03, contracts 2.0.0).
+    const pending = await this.gateway.rpc('my_pending_balance', {
+      p_source: 'provider_earnings',
+      p_currency: currency,
+    });
     return {
       available: {
         amountMinor: SupabaseGateway.asMinorUnits(available),
         currency,
       },
-      pending: { amountMinor: 0, currency },
+      pending: { amountMinor: SupabaseGateway.asMinorUnits(pending), currency },
     };
   }
 
@@ -60,17 +62,14 @@ export class SupabaseWalletRepository {
     cursor?: string;
     limit?: number;
   }): Promise<WalletTransaction[]> {
-    // PROVISIONAL (CR-20260923-03): the private ledger is not client-readable
-    // by design, so history is withdrawals-only until the contract grows a
-    // transaction feed. Cursor is the last row's created_at (ISO-8601).
-    const rows = await this.gateway.selectList('withdrawals', withdrawalColumns, {
-      ltColumn: options?.cursor != null ? 'created_at' : undefined,
-      ltValue: options?.cursor,
-      orderBy: 'created_at',
-      ascending: false,
-      limit: options?.limit ?? 20,
+    // The ledger projection plus withdrawals not yet in it, newest first.
+    // Cursor is the last row's created_at (ISO-8601).
+    const rows = await this.gateway.rpc('my_wallet_transactions', {
+      p_source: 'provider_earnings',
+      p_cursor: options?.cursor,
+      p_limit: options?.limit ?? 20,
     });
-    return rows.map((row) => withdrawalTransactionFromRow(row, 'payout'));
+    return ((Array.isArray(rows) ? rows : []) as Row[]).map(walletTransactionFromFeedRow);
   }
 
   async requestWithdrawal(

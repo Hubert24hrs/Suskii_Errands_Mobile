@@ -8,7 +8,7 @@ import { AppError, ErrorCodes } from '@/mocks/errors';
 import type { GeoPoint, SosAlert, TripShare } from '@/mocks/types';
 import type { Unsubscribe } from '@/mocks/repos/base';
 
-import { SupabaseGateway } from './gateway';
+import { SupabaseGateway, type Row } from './gateway';
 import { sosAlertFromRow } from './mappers';
 
 const sosColumns =
@@ -74,18 +74,19 @@ export class SupabaseSafetyRepository {
   }
 
   async createTripShareLink(jobId: string, idempotencyKey: string): Promise<TripShare> {
-    // The RPC returns the raw share TOKEN only — the URL base and the
-    // server-config TTL are server-side knowledge the contract does not hand
-    // out yet (CR-20260923-01). PROVISIONAL: the token rides in `url` and
-    // the expiry assumes the documented default TTL (60 min, remote_config
-    // trip_share_ttl_minutes) until the CR lands.
-    const token = await this.gateway.rpc('create_trip_share', {
+    // `{share_id, token, url, expires_at}` (CR-20260923-01, contracts 2.0.0).
+    // `url` is null when the server has no share base configured, and on a
+    // replay, which never returns the token again: either way there is no
+    // link to hand somebody, so say so rather than share a broken one.
+    const share = (await this.gateway.rpc('create_trip_share', {
       p_idempotency_key: idempotencyKey,
       p_request_id: jobId,
-    });
-    return {
-      url: token as string,
-      expiresAt: new Date(Date.now() + 60 * 60_000),
-    };
+    })) as Row | null;
+    const url = share?.['url'];
+    if (typeof url !== 'string' || url === '') {
+      throw new AppError(ErrorCodes.featureUnavailable);
+    }
+    return { url, expiresAt: SupabaseGateway.asTimestamp(share?.['expires_at']) };
   }
+
 }

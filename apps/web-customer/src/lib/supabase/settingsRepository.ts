@@ -6,10 +6,8 @@
 // notificationPreferencesFromRows / notificationPreferenceRows and written
 // with an upsert on the (user_id, channel, category) key.
 //
-// Trusted contacts: the contract stores phone numbers encrypted
-// (`phone_ciphertext` + blind index) and offers no client key-management or
-// server-side encrypt helper, so addTrustedContact is unavailable until
-// CR-20260923-06 lands; reads map with an empty `phoneE164`.
+// Trusted contacts: the number goes in as plaintext over TLS and the server
+// seals it (CR-20260923-06, contracts 2.0.0); the list reads it back masked.
 //
 // Account deletion and data export: request_account_deletion and
 // request_data_export (CR-20260923-07, contracts 1.2.0).
@@ -28,7 +26,7 @@ import {
 } from './mappers';
 
 const prefColumns = 'channel, category, enabled, quiet_start, quiet_end';
-const contactColumns = 'id, name, created_at';
+const contactColumns = 'id, name, phone_masked, created_at';
 
 export class SupabaseSettingsRepository {
   constructor(private readonly gateway: SupabaseGateway) {}
@@ -65,15 +63,24 @@ export class SupabaseSettingsRepository {
     return rows.map(trustedContactFromRow);
   }
 
-  async addTrustedContact(_options: {
+  async addTrustedContact(options: {
     name: string;
     phoneE164: string;
     idempotencyKey: string;
   }): Promise<TrustedContact> {
-    // add_trusted_contact expects phone_ciphertext + blind index; the client
-    // has no encryption story (CR-20260923-06) and sending plaintext as
-    // "ciphertext" would weaken the security model.
-    throw new AppError(ErrorCodes.featureUnavailable);
+    const id = await this.gateway.rpc('add_trusted_contact', {
+      p_idempotency_key: options.idempotencyKey,
+      p_name: options.name,
+      p_phone_e164: options.phoneE164,
+    });
+    const row = await this.gateway.selectSingle(
+      'trusted_contacts',
+      contactColumns,
+      'id',
+      SupabaseGateway.asId(id),
+    );
+    if (row == null) throw new AppError(ErrorCodes.unknown);
+    return trustedContactFromRow(row);
   }
 
   async removeTrustedContact(

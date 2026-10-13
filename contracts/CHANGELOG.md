@@ -8,6 +8,62 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.0.0] - 2026-10-12
+
+Kimi's change requests, closed from the server side, and the two app data layers wired to them
+in the same change. **MAJOR**: six signatures change (migration note in `HANDOFF.md`,
+2026-10-13). No released client calls any of them correctly today: five took ciphertext no client
+can produce, so both apps refused to call them, and the sixth (`create_trip_share`) is updated in
+both apps here.
+
+### Changed (breaking)
+
+- **`create_trip_share` returns `jsonb`** `{share_id, token, url, expires_at}` instead of the bare
+  token (CR-20260923-01). `url` is `remote_config.trip_share_base_url` + token, null until an
+  environment sets the base (RB-08). A replay returns `share_id` and `expires_at` and never the
+  token again.
+- **Plaintext in, sealed server-side** (CR-20260923-06, -08, audit Y.19; ADR-0018). Each takes
+  the value as typed, normalises it, seals it with its own data key bound to the row, and keeps a
+  keyed blind index for the lookup that needs one:
+  - `add_trusted_contact(p_idempotency_key, p_name, p_phone_e164, p_relationship_key)`; E.164,
+    spaces and dashes allowed.
+  - `submit_identity_document(p_idempotency_key, p_id_type, p_id_number)`; one identity per
+    account is still enforced on the index, and the same person sending the same number again
+    updates their one document.
+  - `submit_police_clearance(p_idempotency_key, p_certificate_number, p_issued_on, p_expires_on,
+    p_upload_ref, p_document_name)`; the upload must now be in the caller's own folder.
+  - `register_organization(p_idempotency_key, p_legal_name, p_registration_number)`.
+  - `register_vehicle(p_idempotency_key, p_type, p_plate, p_organization_id,
+    p_assigned_worker_id, p_documents_expire_on)`.
+  `add_payout_account` is unchanged: the payments worker opens its ciphertext under a KMS key, and
+  its holder name must come from the gateway's name check.
+
+### Added
+
+- Display columns `trusted_contacts.phone_masked` (`+234••••••4567`),
+  `organizations.registration_masked` and `vehicles.plate_masked`, readable wherever the row is.
+- `submit_kyc_step` gains **`p_payload jsonb`** (CR-20260923-10 a) for `address` (`line1`, `city`,
+  `state` required; `line2`, `landmark`), `guarantor` (`name`, `phone_e164`, `relationship`) and
+  `credentials` (`description`). Unknown keys are refused; the payload is sealed. Existing
+  three-argument calls are unchanged.
+- **`get_kyc_step_payload(p_step_id, p_reason_code)` → `jsonb`**: verification officers in scope
+  only, never their own, written to `audit.kyc_access` before it returns.
+- **`submit_kyc_for_review(p_idempotency_key)` → `verification_status`** (CR-10 b): refuses with
+  `ERR_KYC_INCOMPLETE` (now implemented; `DETAIL` lists the missing kinds) and decides nothing.
+- `get_my_kyc_profile` rows gain `submitted_at`, `reviewed_at`, `overall_status` and
+  `submitted_for_review_at` (CR-10 d).
+- `provider_profiles.business_name`, client-updatable (CR-10 e).
+- **`my_wallet_transactions(p_source, p_cursor, p_limit)`** and **`my_pending_balance(p_source,
+  p_currency)`** (CR-20260923-03). Sources: `provider_earnings`, `referral_earnings`,
+  `customer_wallet`. Amounts signed, money in positive.
+- **`provider_home_summary()`** (CR-20260923-05, the home card).
+- Remote config `trip_share_base_url` (not client-visible), null by default.
+
+### Declined
+
+- CR-10 (f): idempotency keys on `update_provider_services` / `update_provider_service_areas`.
+  Both replace a set, so a retry converges on the same state.
+
 ## [1.5.0] - 2026-10-12
 
 The item float top-up, for OD-04 as the client answered it on 2026-10-12: a receipt above the

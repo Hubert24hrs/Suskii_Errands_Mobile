@@ -1743,7 +1743,8 @@ class MockWalletRepository extends _MockRepo implements WalletRepository {
         id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.pending,
-        amount: amount,
+        // Money going out: negative, which is how the screens draw it.
+        amount: Money(-amount.minorUnits, amount.currencyCode),
         descriptionKey: needsApproval
             ? 'txnWithdrawalAwaitingApproval'
             : 'txnWithdrawal',
@@ -1791,9 +1792,9 @@ class MockReferralRepository extends _MockRepo implements ReferralRepository {
       }
       return WalletTransaction(
         id: _mockId('txn-ref'),
-        kind: WalletTransactionKind.referral,
+        kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.pending,
-        amount: amount,
+        amount: Money(-amount.minorUnits, amount.currencyCode),
         descriptionKey: 'txnReferralWithdrawal',
         createdAt: clock.now(),
       );
@@ -3160,7 +3161,7 @@ class MockProviderToolsRepository extends _MockRepo
         id: _mockId('txn'),
         kind: WalletTransactionKind.payout,
         status: WalletTransactionStatus.completed,
-        amount: quote.net,
+        amount: Money(-quote.net.minorUnits, quote.net.currencyCode),
         descriptionKey: 'txnInstantPayout',
         createdAt: serverNow(),
       );

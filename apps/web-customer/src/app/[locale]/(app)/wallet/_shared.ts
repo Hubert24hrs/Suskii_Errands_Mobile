@@ -64,6 +64,7 @@ const CREDIT_KINDS: ReadonlySet<WalletTransactionKind> = new Set([
   'release',
   'referral',
   'tip',
+  'item_float',
 ]);
 
 /** Display sign only — the amount itself always comes from the server. */

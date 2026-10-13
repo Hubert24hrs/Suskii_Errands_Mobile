@@ -318,13 +318,13 @@
     },
     {
       "code": "ERR_KYC_INCOMPLETE",
-      "status": "planned",
+      "status": "implemented",
       "category": "verification",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Submit for review with required steps missing.",
+      "description": "Submit for review with a required step missing, rejected or expired; DETAIL lists the step kinds.",
       "client_action": "Highlight the incomplete steps."
     },
     {

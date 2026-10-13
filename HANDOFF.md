@@ -5,6 +5,94 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-13 — Claude Code — whole-platform audit; your change requests closed; contracts 2.0.0
+
+At the owner's request ("audit, edit and modify the code of both Kimi and Claude, merge the best
+code, test the whole platform end to end"). Audit: `docs/audit/AUDIT-2026-10-13.md`. **This edits
+your code again under an explicit instruction; still not standing licence.** Every edit is below.
+
+### Migration note: contracts 2.0.0 (MAJOR)
+
+Six signatures changed. Nothing you shipped called five of them (they took ciphertext no client can
+produce, so your repositories threw `featureUnavailable`), and I updated both callers of the sixth.
+
+| Function | Was | Now |
+|---|---|---|
+| `create_trip_share` | returned the token (`text`) | returns `{share_id, token, url, expires_at}`; `url` null until `trip_share_base_url` is configured |
+| `add_trusted_contact` | `p_phone_ciphertext, p_phone_blind_index` | `p_phone_e164` (sealed server-side); read back as `phone_masked` |
+| `submit_identity_document` | `p_id_number_ciphertext, p_id_number_blind_index` | `p_id_number` |
+| `submit_police_clearance` | `p_certificate_ciphertext, p_certificate_blind_index, …` | `p_certificate_number, …`; the upload must be in your own folder |
+| `register_organization` | `p_registration_ciphertext, p_registration_blind_index` | `p_registration_number`; read back as `registration_masked` |
+| `register_vehicle` | `p_plate_ciphertext, p_plate_blind_index, …` | `p_plate, …`; read back as `plate_masked` |
+
+Additive: `submit_kyc_step(…, p_payload)` for address / guarantor / credentials;
+`submit_kyc_for_review`; `get_my_kyc_profile` gains `submitted_at`, `reviewed_at`,
+`overall_status`, `submitted_for_review_at`; `provider_profiles.business_name` (updatable);
+`my_wallet_transactions`; `my_pending_balance`; `provider_home_summary`. Full list in
+`contracts/CHANGELOG.md`; each CR's status in `contracts/CHANGE_REQUESTS.md`.
+
+### What I changed in your code
+
+**Dart, `packages/suskii_data` (real-backend repositories):**
+- **Settings:** `addTrustedContact` calls the RPC; contacts read `phone_masked` into `phoneE164`,
+  which on this backend is a display string. Nothing dials it.
+- **Provider KYC:**
+  - `submitStep` sends address, guarantor and credentials as payloads.
+  - `governmentId` and `policeClearance` send the numbers.
+  - `submitForReview` calls the RPC.
+  - The profile carries the server's overall status and dates (`kycOverallFromProfileRows`).
+  - Onboarding writes `business_name`.
+  - Still `featureUnavailable`, on purpose: payout account (gateway) and provider facial (vendor).
+- **Verification:** `submitIdLookup` records the number; the verdict stays the vendor's.
+- **Safety:** `createTripShareLink` uses the returned url and expiry, and throws
+  `featureUnavailable` when the server has no share base rather than share a broken link.
+- **Wallet:** `pending` from `my_pending_balance`; history from `my_wallet_transactions`.
+- **Provider:** `getHomeSummary` is one `provider_home_summary` call.
+- **Sign fix (audit Z.2):** a withdrawal is now **negative** (money out), in the mapper and in the
+  mock's withdrawal, referral withdrawal (kind `payout`, no longer `referral`) and instant payout.
+  Your screens draw direction from the sign, so withdrawals had been drawn as income.
+- **New mappers** `walletTransactionFromFeedRow`, `providerHomeSummaryFromRow`, `dateToWire`, with
+  tests (data package: 208).
+- **E2E:** six new flows in `test/integration/supabase_e2e_test.dart` (17 in all, against a real
+  local stack).
+
+**Dart, `apps/mobile` and `packages/suskii_l10n`:**
+- `transactionLabel` knows `txnJobEarnings`, `txnFloatReimbursed`, `txnAdjustment`,
+  `txnChargeback` (new strings, English and Pidgin).
+- `documentTypeLabel` maps the home card's `doc<StepKind>` keys onto your existing KYC step labels.
+- `error_l10n` maps `ERR_SAVED_PLACE_LIMIT`, `ERR_FLOAT_TOP_UP_EXISTS` and
+  `ERR_FLOAT_TOP_UP_TOO_LARGE` (new strings).
+
+**Web, `apps/web-customer`:**
+- The same five wirings in `src/lib/supabase`: trip share, trusted contacts, ID lookup, wallet
+  pending, and wallet feed (`walletTransactionFromFeedRow`).
+- The feed keeps the absolute amount, because your web app draws direction from the kind.
+- `CREDIT_KINDS` gains `item_float` (audit Z.3).
+
+### Worth knowing
+
+- **Two sign conventions.** The Dart app reads direction from the amount's sign; the web app reads
+  it from the kind. The server's feed satisfies both: earnings are `credit` and positive,
+  withdrawals are `payout` and negative. If you ever unify them, sign is the one the server
+  speaks.
+- **A new CI check reads your data layers:** `contracts/tools/check_frontend_calls.py`, in
+  `contracts.yaml`. It fails on a call to a function, argument, table or column the contract does
+  not have or grant.
+- **Pass RPC arguments as a literal map** at the call site, or through a helper that takes
+  `String function` and calls `rpc(function, {...})`. A map built anywhere else is invisible to
+  the check.
+
+### Unblocked for you now
+
+- Business console registration (Y.19): the RPCs take plaintext.
+- The float top-up screens: backend since 1.5.0, now with error strings.
+- Saved places screens.
+- **The admin web app (audit Z.8, High):** it has no backend at all. The admin functions are built
+  and tested, and every one needs an `aal2` session, so start with admin sign-in and TOTP
+  enrolment.
+
+---
+
 ## 2026-10-12 — Claude Code — web lockfile: the scanner on `main` was red
 
 At the owner's request ("fix the scanner"). **This touches your npm workspace.** It is a one-off

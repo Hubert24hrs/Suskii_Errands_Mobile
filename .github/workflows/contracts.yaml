@@ -11,6 +11,9 @@ name: contracts
 # must appear in contracts/v1/state-machines/job.json.
 #
 # Codes the apps use but the catalogue lacks are reported as warnings only: those are Kimi's files.
+#
+# check_frontend_calls.py checks the other direction: every RPC, argument, table and column the
+# apps' data layers use must exist in contracts/v1 and be granted. It runs when either side changes.
 on:
   push:
     branches: [main]
@@ -20,6 +23,8 @@ on:
       - 'supabase/functions/**'
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
+      - 'packages/suskii_data/lib/src/supabase/**'
+      - 'apps/web-*/src/**'
       - '.github/workflows/contracts.yaml'
   pull_request:
     paths:
@@ -28,6 +33,8 @@ on:
       - 'supabase/functions/**'
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
+      - 'packages/suskii_data/lib/src/supabase/**'
+      - 'apps/web-*/src/**'
       - '.github/workflows/contracts.yaml'
 
 permissions:
@@ -41,12 +48,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Checker unit tests
         working-directory: contracts/tools
-        run: python3 -m unittest -v test_check_preview test_generate_v1
+        run: python3 -m unittest -v test_check_preview test_generate_v1 test_check_frontend_calls
       - name: Validate JSON files
         run: |
           set -euo pipefail
           find contracts/v1 -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool > /dev/null
       - name: Error-code drift against backend code
         run: python3 contracts/tools/check_preview.py .
+      - name: Frontend calls against the contract
+        run: python3 contracts/tools/check_frontend_calls.py .
       - name: contracts/v1 drift against supabase/migrations
         run: python3 contracts/tools/generate_v1.py .
