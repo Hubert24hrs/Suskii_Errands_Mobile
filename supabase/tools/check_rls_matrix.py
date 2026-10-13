@@ -98,6 +98,8 @@ NON_TABLE_SECTIONS = (
     "Storage bucket policies",
     "Realtime channel authorisation",
     "pgTAP obligations",
+    # A record of what the rows used to say; the names in it are gone on purpose.
+    "Revisions",
 )
 
 

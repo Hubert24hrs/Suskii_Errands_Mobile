@@ -64,7 +64,7 @@ Every table below has `ENABLE ROW LEVEL SECURITY` **and** `FORCE ROW LEVEL SECUR
 | `countries` | — | — | R | R | R | R | R + F (four-eyes) |
 | `cities`, `zones` | R | R | R | R | R | R | R + F |
 | `service_categories` | R | R | R | R | R | R | R + F |
-| `category_country_settings` | — | R | R | R | R | R | R + F |
+| per-country category settings: `countries.config` and the country pack, not a table (rev. 2026-10-13) | — | R | R | R | R | R | R + F (four-eyes, via `propose_config_change()`) |
 | `feature_flags` | — | — | R | R | R | R | R + F (four-eyes) |
 | `legal_documents` | R | R | R | R | R | R | R + F |
 | `prohibited_items`, `price_bands` | — | — | R | — | — | R | R + F |
@@ -110,11 +110,11 @@ No role has table privileges on `kyc.*`. The matrix is expressed as **functions*
 | Function | User | Verification Officer | Support | Super admin |
 |---|---|---|---|---|
 | `start_verification_session(kind)` / `submit_kyc_step(kind, input)` | own | — | — | — |
-| `get_my_verification()` / `get_my_kyc_profile()` → outcomes + reason keys | own | — | — | — |
-| `resolve_payout_account(input)` → `name_match` | own | — | — | — |
-| `review_queue()` | — | scope | — | — |
+| `get_my_kyc_profile()` → outcomes + reason keys | own | — | — | — |
+| payout name check: not a client function (rev. 2026-10-13). `add_payout_account()` takes the account; the gateway's name enquiry runs in `payments-worker` and returns through `gateway_record_account_verification()` | own | — | — | — |
+| `kyc_review_queue()`, `business_verification_queue()` (one queue per surface, rev. 2026-10-13) | — | scope | — | — |
 | `decide_kyc_step(step_id, decision, reason_key)` | — | scope; **writes `audit.log`** | — | — |
-| `get_document_url(upload_ref, reason_code)` → signed URL ≤ 5 min | — | scope; **writes `audit.kyc_access`** | — | — |
+| `request_document_access(upload_ref, reason_code)`, then the `kyc-document-url` Edge Function signs → URL valid 60 s | — | scope; **writes `audit.kyc_access`**; TOTP code within 5 min | — | — |
 | `verification_summary(user_id)` — status only, no documents | — | scope | scope | yes |
 
 **Deny cases that must have tests:** a user reading their own uploaded document (upload-only bucket — denied, spec); support viewing any document; a Verification Officer deciding their *own* KYC; a signed URL used after expiry.
@@ -149,8 +149,8 @@ The competitive invariant: **a provider never reads another provider's offer amo
 | `promo_codes` | via F (`validate_promo`) | — | R | R | — | R + F (four-eyes) |
 | `promo_redemptions` | R:own | — | R:scope | R | — | R |
 | `webhook_events` | — | — | — | R | — | R |
-| `get_wallet()` → balances + history | own | — | scope | scope | — | yes |
-| `get_price_breakdown(request_id)` | own/part | part | scope | scope | scope | yes |
+| `my_balances()`, `available_balance()`, `my_wallet_transactions()` → balances, what is spendable, history (rev. 2026-10-13) | own | — | scope | scope | — | yes |
+| price breakdown: the `payments` row's own columns (`job_amount_minor`, `float_minor`, `discount_minor`, fees), not a function (rev. 2026-10-13) | own/part | part | scope | scope | scope | yes |
 
 **Four-eyes** (spec): `approvals.approved_by <> requested_by` is a table `CHECK`, so it holds even if a function has a bug. Applies to payouts and withdrawals above the country threshold, commission changes, country-pack changes, promo budgets and admin role grants.
 
@@ -159,11 +159,11 @@ The competitive invariant: **a provider never reads another provider's offer amo
 | Table / function | User | Finance | Support | Super admin |
 |---|---|---|---|---|
 | `referral_codes` | R:own, F (`get_or_create_referral_code`) | R | R:scope | R |
-| `referral_attributions` | R:own-as-referrer (referee **display name only**, never contact details) | R | R:scope | R |
+| `referrals` | R:own-as-referrer (referee **display name only**, never contact details); the referee reads their own row | R | R:scope | R |
 | `referral_commissions` | R:own | R + F (`release`, `reverse`) | R:scope | R |
 | `referral_campaigns` | via F (active campaign for my country) | R | R | R + F (four-eyes) |
 | `fraud_flags` | — | R + F (review) | R:scope | R |
-| `attribute_referral(code)` | own, **before first job only** (spec) | — | — | — |
+| `claim_referral_code(code)` | own, **before first job only** (spec) | — | — | — |
 
 ## 8. Communication
 
@@ -210,7 +210,7 @@ Support reads a conversation only when a ticket references it, not by browsing. 
 | `chat-media` | participants, via `send_message` path | participants | support/dispute scope |
 | `proofs` | assigned provider, active job | participants (EXIF-stripped rendition only) | dispute scope |
 | `receipts` | assigned provider, item-float jobs | participants | finance, dispute scope |
-| `kyc-docs` | **own path via signed upload URL** | **none — no client read policy exists** (spec) | Verification Officer via `get_document_url`, audited |
+| `kyc-docs` | **own path via signed upload URL** | **none — no client read policy exists** (spec) | Verification Officer via `request_document_access` and the `kyc-document-url` Edge Function, audited, TOTP code within 5 min |
 
 All uploads: size and MIME limits per bucket, malware scan and image re-encode before the file becomes readable (spec).
 
@@ -254,3 +254,22 @@ For each table: one **allow** test per non-`—` cell and one **deny** test per 
 | `service_role` updates `audit.log` → `42501` | Hash chain integrity |
 | Unauthenticated call to any F → `28000`, not `22P02` | S-13 finding 2 |
 | Admin claim present but `aal1` → denied | MFA mandatory for admins |
+
+## Revisions
+
+**2026-10-13** (audit 2026-10-13, part 2). The rows below described a system that changed underneath
+them; each had a waiver in `supabase/tools/rls-matrix-waivers.json` naming the correction, and the
+correction is now made here instead, so the waivers are gone. Nothing about who may do what changed.
+
+| Was | Now | Why |
+|---|---|---|
+| `get_document_url` | `request_document_access` + Edge Function `kyc-document-url` | The database writes the access row as the officer; only then does the service role sign, for 60 s. Since Z.11 it also needs a TOTP code within five minutes |
+| `get_my_verification` | `get_my_kyc_profile` | The second of the two names the matrix gave is the one that shipped |
+| `resolve_payout_account` | gateway-side name enquiry | Not a client function: the result arrives from the gateway |
+| `review_queue` | one queue per surface | KYC, business verification, disputes, fraud, moderation, tickets, config changes |
+| `get_wallet` | `my_balances`, `available_balance`, `my_wallet_transactions` | A balance and what is spendable from it are different questions |
+| `get_price_breakdown` | the payment row's columns | The breakdown is stored once, when the payment starts |
+| `attribute_referral` | `claim_referral_code` | Renamed; same before-first-job rule |
+| `category_country_settings` | `countries.config` and the country pack | Never built as a table; the go-live gap check reads it there |
+| `referral_attributions` | `referrals` (+ `referral_commissions`) | Attribution is the `referrals` row; UNIQUE on the referee keeps it single-level |
+
