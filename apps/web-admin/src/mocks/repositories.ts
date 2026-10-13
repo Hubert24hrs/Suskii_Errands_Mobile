@@ -42,7 +42,7 @@ export type { DirectoryKind, DirectoryFilter } from './repos/directory';
 export type { VerificationFilter } from './repos/verification';
 export type { JobSearchFilter } from './repos/jobs';
 export type { PaymentFilter } from './repos/payments';
-export type { PromoInput } from './repos/growth';
+export type { CampaignInput, PromoInput } from './repos/growth';
 export type { AdminConfig, ConfigChangeInput, AuditFilter } from './repos/config';
 export type { SignedInAdmin } from './repos/session';
 

@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { sosRepository } from '@/mocks/repositories';
+import { sosRepository } from '@/lib/repositories';
 import type { SosAlertAdmin, SosStatus } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Drawer } from '@/components/Drawer';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 
 function sosStatusChip(status: SosStatus) {
   const label = (dict.sos.statuses as Record<string, string>)[status] ?? status;
@@ -188,7 +195,7 @@ export function SosClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'sos.read');
   const mayManage = role !== undefined && can(role, 'sos.manage');
 

@@ -3,6 +3,7 @@
     "./auth-send-sms",
     "./device-integrity",
     "./health",
+    "./kyc-document-url",
     "./payments-webhook",
     "./payments-worker",
     "./notifications-worker",

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { referralRepository } from '@/mocks/repositories';
+import { referralRepository } from '@/lib/repositories';
 import { Modal } from '@/components/Modal';
 import { errorText, isSessionError } from '../_shared';
 import { COUNTRIES, COUNTRY_CURRENCY, countryLabel } from './_shared';
@@ -14,18 +14,19 @@ const inputClass =
   'w-full rounded-md border border-outline bg-surface px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard focus:border-brand-primary dark:border-outline-dark dark:bg-surface-dark dark:text-ink-dark-primary';
 const labelClass = 'text-label-large text-ink-primary dark:text-ink-dark-primary';
 
+// A real <label>, so the text names its control for screen readers.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-xs">
+    <label className="flex flex-col gap-xs">
       <span className={labelClass}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 
 /**
- * Reward amounts are entered as integer minor units (kobo, cents) — the
- * currency code follows the selected country and is display-only here.
+ * The budget is entered as integer minor units (kobo, cents) — the currency
+ * code follows the selected country and is display-only here.
  */
 function MinorUnitsInput({
   value,
@@ -46,7 +47,7 @@ function MinorUnitsInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={inputClass}
-        aria-label={dict.referrals.campaign.rewardAmountLabel}
+        aria-label={dict.referrals.campaign.budgetLabel}
       />
       <span className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
         {currency}
@@ -58,17 +59,21 @@ function MinorUnitsInput({
 export function CreateCampaignModal({
   open,
   onClose,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Called after a successful create (the screen says whether it awaits approval). */
+  onCreated?: () => void;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
   const [country, setCountry] = useState(COUNTRIES[0]);
-  const [referrerReward, setReferrerReward] = useState('');
-  const [refereeReward, setRefereeReward] = useState('');
+  // A referral campaign is a share of the platform's commission (OD-01), with a budget.
+  const [ratePercent, setRatePercent] = useState('');
+  const [budget, setBudget] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,8 +85,8 @@ export function CreateCampaignModal({
   const reset = () => {
     setName('');
     setCountry(COUNTRIES[0]);
-    setReferrerReward('');
-    setRefereeReward('');
+    setRatePercent('');
+    setBudget('');
     setStartsAt('');
     setEndsAt('');
     setError(null);
@@ -94,14 +99,15 @@ export function CreateCampaignModal({
   }, [open]);
 
   const currency = COUNTRY_CURRENCY[country];
-  const referrerMinor = Number.parseInt(referrerReward, 10);
-  const refereeMinor = Number.parseInt(refereeReward, 10);
+  // Whole or decimal percent → basis points; the server stores bps.
+  const rateBps = Math.round(Number.parseFloat(ratePercent) * 100);
+  const budgetMinor = budget === '' ? undefined : Number.parseInt(budget, 10);
   const valid =
     name.trim() !== '' &&
-    Number.isInteger(referrerMinor) &&
-    referrerMinor >= 0 &&
-    Number.isInteger(refereeMinor) &&
-    refereeMinor >= 0 &&
+    Number.isInteger(rateBps) &&
+    rateBps > 0 &&
+    rateBps <= 10_000 &&
+    (budgetMinor === undefined || (Number.isInteger(budgetMinor) && budgetMinor > 0)) &&
     startsAt !== '';
 
   const submit = async () => {
@@ -113,8 +119,8 @@ export function CreateCampaignModal({
         {
           name: name.trim(),
           country,
-          referrerReward: { amountMinor: referrerMinor, currency },
-          refereeReward: { amountMinor: refereeMinor, currency },
+          rateBps,
+          budget: budgetMinor === undefined ? undefined : { amountMinor: budgetMinor, currency },
           startsAt: new Date(startsAt),
           endsAt: endsAt ? new Date(endsAt) : undefined,
         },
@@ -122,6 +128,7 @@ export function CreateCampaignModal({
       );
       setCreateKey(newIdempotencyKey());
       void queryClient.invalidateQueries({ queryKey: ['referrals'] });
+      onCreated?.();
       onClose();
     } catch (e) {
       if (isSessionError(e)) {
@@ -169,11 +176,20 @@ export function CreateCampaignModal({
             ))}
           </select>
         </Field>
-        <Field label={`${dict.referrals.columns.referrer} — ${dict.referrals.campaign.rewardAmountLabel}`}>
-          <MinorUnitsInput value={referrerReward} onChange={setReferrerReward} currency={currency} />
+        <Field label={dict.referrals.campaign.rateLabel}>
+          <input
+            type="number"
+            min={0.01}
+            max={100}
+            step={0.01}
+            inputMode="decimal"
+            value={ratePercent}
+            onChange={(e) => setRatePercent(e.target.value)}
+            className={inputClass}
+          />
         </Field>
-        <Field label={`${dict.referrals.columns.referee} — ${dict.referrals.campaign.rewardAmountLabel}`}>
-          <MinorUnitsInput value={refereeReward} onChange={setRefereeReward} currency={currency} />
+        <Field label={dict.referrals.campaign.budgetLabel}>
+          <MinorUnitsInput value={budget} onChange={setBudget} currency={currency} />
         </Field>
         <Field label={dict.common.fromDate}>
           <input

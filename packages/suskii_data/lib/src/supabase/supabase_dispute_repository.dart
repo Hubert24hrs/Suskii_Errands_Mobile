@@ -64,7 +64,7 @@ class SupabaseDisputeRepository implements DisputeRepository {
     final id = await _gateway.rpc('open_dispute', <String, Object?>{
       'p_idempotency_key': idempotencyKey,
       'p_request_id': jobId,
-      'p_reason_code': reasonKey,
+      'p_reason_code': disputeReasonToWire(reasonKey),
       'p_description': details,
     });
     final disputeId = SupabaseGateway.asId(id);

@@ -29,10 +29,7 @@ class OrganizationPage extends ConsumerWidget {
       body: switch (org) {
         AsyncData(:final value) =>
           value == null
-              ? SEmptyState(
-                  icon: Icons.business_outlined,
-                  title: l10n.orgNotAvailable,
-                )
+              ? const _NoOrganization()
               : _OrgBody(organization: value),
         AsyncError(:final error) => SErrorState(
           title: l10n.stateErrorGeneric,
@@ -42,6 +39,174 @@ class OrganizationPage extends ConsumerWidget {
         ),
         _ => const Center(child: CircularProgressIndicator()),
       },
+    );
+  }
+}
+
+/// No business yet: invitations waiting for the provider, and registering
+/// one of their own.
+class _NoOrganization extends ConsumerWidget {
+  const _NoOrganization();
+
+  Future<void> _register(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final nameController = TextEditingController();
+    final numberController = TextEditingController();
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: SSpacing.lg,
+            right: SSpacing.lg,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + SSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                l10n.orgRegister,
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: SSpacing.lg),
+              STextField(
+                label: l10n.orgRegisterLegalName,
+                controller: nameController,
+              ),
+              const SizedBox(height: SSpacing.md),
+              STextField(
+                label: l10n.orgRegisterNumber,
+                controller: numberController,
+              ),
+              const SizedBox(height: SSpacing.lg),
+              SButton(
+                label: l10n.orgRegisterSubmit,
+                onPressed: () => Navigator.of(sheetContext).pop(true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (submitted != true || !context.mounted) return;
+    final name = nameController.text.trim();
+    final number = numberController.text.trim();
+    if (name.isEmpty || number.isEmpty) {
+      showSToast(context, l10n.createRequiredField, isError: true);
+      return;
+    }
+    // One registration per number: a second business is a different intent.
+    final keys = ref.read(idempotencyKeysProvider);
+    final intent = 'org.register:$number';
+    try {
+      await ref
+          .read(organizationRepositoryProvider)
+          .registerOrganization(
+            legalName: name,
+            registrationNumber: number,
+            idempotencyKey: keys.forIntent(intent),
+          );
+      keys.done(intent);
+      ref.invalidate(myOrganizationProvider);
+      if (context.mounted) showSToast(context, l10n.orgRegistered);
+    } on Object catch (error) {
+      if (context.mounted) {
+        showSToast(
+          context,
+          localizedError(AppLocalizations.of(context), error),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  Future<void> _accept(
+    BuildContext context,
+    WidgetRef ref,
+    OrgInvitation invitation,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final keys = ref.read(idempotencyKeysProvider);
+    final intent = 'org.accept:${invitation.organizationId}';
+    try {
+      await ref
+          .read(organizationRepositoryProvider)
+          .acceptInvitation(
+            invitation.organizationId,
+            idempotencyKey: keys.forIntent(intent),
+          );
+      keys.done(intent);
+      ref
+        ..invalidate(myOrgInvitationsProvider)
+        ..invalidate(myOrganizationProvider);
+      if (context.mounted) {
+        showSToast(
+          context,
+          l10n.orgInvitationAccepted(invitation.organizationName),
+        );
+      }
+    } on Object catch (error) {
+      if (context.mounted) {
+        showSToast(
+          context,
+          localizedError(AppLocalizations.of(context), error),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final invitations =
+        ref.watch(myOrgInvitationsProvider).value ?? const <OrgInvitation>[];
+    return ListView(
+      padding: const EdgeInsets.all(SSpacing.lg),
+      children: <Widget>[
+        if (invitations.isNotEmpty) ...<Widget>[
+          _SectionHeader(title: l10n.orgInvitations),
+          for (final invitation in invitations) ...<Widget>[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(SSpacing.md),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        l10n.orgInvitationBody(
+                          invitation.organizationName,
+                          businessRoleLabel(l10n, invitation.role),
+                        ),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: SSpacing.sm),
+                    SButton(
+                      label: l10n.orgInvitationAccept,
+                      expand: false,
+                      onPressed: () => _accept(context, ref, invitation),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: SSpacing.sm),
+          ],
+          const SizedBox(height: SSpacing.lg),
+        ],
+        SEmptyState(
+          icon: Icons.business_outlined,
+          title: l10n.orgNoneTitle,
+          message: l10n.orgNoneBody,
+          actionLabel: l10n.orgRegister,
+          onAction: () => _register(context, ref),
+        ),
+      ],
     );
   }
 }

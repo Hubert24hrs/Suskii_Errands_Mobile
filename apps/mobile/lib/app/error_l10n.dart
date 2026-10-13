@@ -79,6 +79,9 @@ String? _specific(AppLocalizations l10n, String code) => switch (code) {
   'ERR_PSTN_UNAVAILABLE' => l10n.errPstnUnavailable,
   'ERR_TICKET_CLOSED' => l10n.errTicketClosed,
   'ERR_ORG_ROLE_REQUIRED' => l10n.errOrgRoleRequired,
+  'ERR_ORG_NOT_FOUND' => l10n.errOrgNotFound,
+  'ERR_ORGANIZATION_ALREADY_REGISTERED' =>
+    l10n.errOrganizationAlreadyRegistered,
   'ERR_WORKER_NOT_ELIGIBLE' => l10n.errWorkerNotEligible,
   'ERR_SAVED_PLACE_LIMIT' => l10n.errSavedPlaceLimit,
   'ERR_FLOAT_TOP_UP_EXISTS' => l10n.errFloatTopUpExists,

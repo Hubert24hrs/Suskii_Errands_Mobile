@@ -521,6 +521,37 @@ DisputeStatus disputeStatusFromWire(Object? value) => switch (value) {
   _ => DisputeStatus.open,
 };
 
+/// The dispute reasons the app offers, as the codes `open_dispute` accepts
+/// (`^[a-z0-9_]{3,60}$`). The web app sends the same four codes, so a dispute
+/// reads the same whichever app opened it.
+const Map<String, String> _disputeReasonWire = <String, String>{
+  'disputeReasonNotDelivered': 'not_delivered',
+  'disputeReasonDamaged': 'damaged',
+  'disputeReasonLate': 'late',
+  'disputeReasonOther': 'other',
+};
+
+/// The wire code for an app reason key; a key that is already a code passes through.
+String disputeReasonToWire(String reasonKey) =>
+    _disputeReasonWire[reasonKey] ?? reasonKey;
+
+/// `resolve_dispute`'s resolution keys (sent by the admin console) as the app's
+/// l10n keys.
+const Map<String, String> _disputeResolutionKeys = <String, String>{
+  'full_refund': 'disputeResolvedFullRefund',
+  'partial_refund': 'disputeResolvedPartialRefund',
+  'released_to_provider': 'disputeResolvedReleased',
+  'dispute_rejected': 'disputeResolvedRejected',
+};
+
+/// The app's reason key for a wire code, so the label lookup finds it.
+String disputeReasonFromWire(String code) {
+  for (final entry in _disputeReasonWire.entries) {
+    if (entry.value == code) return entry.key;
+  }
+  return code;
+}
+
 /// A `disputes` row with the `requests(currency)` embed (the table itself
 /// carries no currency, so the refund money needs the request's). Evidence
 /// paths come from `dispute_evidence`, loaded separately.
@@ -536,7 +567,7 @@ Dispute disputeFromRow(
     id: SupabaseGateway.asId(row['id']),
     jobId: SupabaseGateway.asId(row['request_id']),
     openedBy: SupabaseGateway.asId(row['opened_by']),
-    reasonKey: row['reason_code'] as String? ?? '',
+    reasonKey: disputeReasonFromWire(row['reason_code'] as String? ?? ''),
     status: disputeStatusFromWire(row['status']),
     createdAt: SupabaseGateway.asTimestamp(row['created_at']),
     details: row['description'] as String?,
@@ -544,7 +575,10 @@ Dispute disputeFromRow(
     slaDeadline: row['sla_due_at'] == null
         ? null
         : SupabaseGateway.asTimestamp(row['sla_due_at']),
-    resolutionNoteKey: row['resolution_key'] as String?,
+    resolutionNoteKey: row['resolution_key'] == null
+        ? null
+        : _disputeResolutionKeys[row['resolution_key']] ??
+              row['resolution_key'] as String,
     refundAmount: moneyOrNull(row['refund_minor'], currency),
   );
 }

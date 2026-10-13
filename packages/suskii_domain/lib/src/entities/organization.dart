@@ -25,6 +25,21 @@ abstract class Organization with _$Organization {
       _$OrganizationFromJson(json);
 }
 
+/// An invitation waiting for the signed-in user: the business and the role
+/// it offers. Accepting makes them a member.
+@freezed
+abstract class OrgInvitation with _$OrgInvitation {
+  const factory OrgInvitation({
+    required String organizationId,
+    required String organizationName,
+    required BusinessRole role,
+    required DateTime invitedAt,
+  }) = _OrgInvitation;
+
+  factory OrgInvitation.fromJson(Map<String, dynamic> json) =>
+      _$OrgInvitationFromJson(json);
+}
+
 /// A member of an organization. Per-worker earnings are visible to the Owner
 /// only (enforced server-side; the mock redacts them for other roles).
 @freezed

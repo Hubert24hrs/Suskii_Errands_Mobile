@@ -37,11 +37,6 @@
       "action": "Replace the matrix row with a pointer to the payments columns."
     },
     {
-      "id": "table:availability_schedules",
-      "reason": "Not built. Kimi's provider tools page has an availability editor on mock data, so this is a real gap between the app and the backend -- but it is a missing feature rather than a broken control, and it is filed for Kimi in HANDOFF.md so the two halves land together.",
-      "action": "Build alongside Kimi's M9 wiring of the provider tools page."
-    },
-    {
       "id": "table:category_country_settings",
       "reason": "Not built as a table. Per-country category settings live in `countries.config` jsonb and in the country packs, which is where the go-live gap check reads them from. A separate table would be a second place for the same fact.",
       "action": "Correct the matrix to name countries.config."

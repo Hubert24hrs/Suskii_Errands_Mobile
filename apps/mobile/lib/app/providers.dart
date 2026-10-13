@@ -151,6 +151,9 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
 
 final conciergeRepositoryProvider = Provider<ConciergeRepository>((ref) {
   ref.watch(sessionUserIdProvider);
+  if (ref.watch(supabaseGatewayProvider) != null) {
+    return const SupabaseConciergeRepository();
+  }
   return MockConciergeRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
@@ -480,6 +483,9 @@ final supportRepositoryProvider = Provider<SupportRepository>((ref) {
 
 final promoRepositoryProvider = Provider<PromoRepository>((ref) {
   ref.watch(sessionUserIdProvider);
+  if (ref.watch(supabaseGatewayProvider) != null) {
+    return const SupabasePromoRepository();
+  }
   return MockPromoRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
@@ -532,6 +538,8 @@ final providerToolsRepositoryProvider = Provider<ProviderToolsRepository>((
   ref,
 ) {
   ref.watch(sessionUserIdProvider);
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseProviderToolsRepository(gateway);
   return MockProviderToolsRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
@@ -540,6 +548,8 @@ final providerToolsRepositoryProvider = Provider<ProviderToolsRepository>((
 
 final organizationRepositoryProvider = Provider<OrganizationRepository>((ref) {
   ref.watch(sessionUserIdProvider);
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseOrganizationRepository(gateway);
   return MockOrganizationRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
@@ -564,6 +574,10 @@ final providerInsightsProvider = FutureProvider<ProviderInsights>(
 
 final myOrganizationProvider = FutureProvider<Organization?>(
   (ref) => ref.watch(organizationRepositoryProvider).getMyOrganization(),
+);
+
+final myOrgInvitationsProvider = FutureProvider<List<OrgInvitation>>(
+  (ref) => ref.watch(organizationRepositoryProvider).getMyInvitations(),
 );
 
 final orgMembersProvider = FutureProvider<List<OrgMember>>(

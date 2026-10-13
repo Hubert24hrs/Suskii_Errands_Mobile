@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { auditRepository } from '@/mocks/repositories';
+import { auditRepository } from '@/lib/repositories';
 import type { AuditLogEntry } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { FilterBar } from '@/components/FilterBar';

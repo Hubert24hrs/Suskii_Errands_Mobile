@@ -475,6 +475,14 @@ verify_jwt = false
 import_map = "./functions/storage-worker/deno.json"
 entrypoint = "./functions/storage-worker/index.ts"
 
+[functions.kyc-document-url]
+enabled = true
+# Called by the admin console. withSupabase auth "user" verifies the JWT inside the function, and
+# request_document_access (run as the caller) requires aal2 and the verification role.
+verify_jwt = false
+import_map = "./functions/kyc-document-url/deno.json"
+entrypoint = "./functions/kyc-document-url/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false

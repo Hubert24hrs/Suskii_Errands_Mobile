@@ -44,10 +44,16 @@ void main() {
       authOptions: const AuthClientOptions(autoRefreshToken: false),
     );
 
-    Future<String> createUser(String email, {required bool provider}) async {
+    Future<String> createUser(
+      String email, {
+      required bool provider,
+      String? phone,
+    }) async {
       final created = await service.auth.admin.createUser(
         AdminUserAttributes(
           email: email,
+          phone: phone,
+          phoneConfirm: phone != null,
           password: password,
           emailConfirm: true,
           userMetadata: <String, dynamic>{
@@ -405,14 +411,214 @@ void main() {
       expect(card.todayEarnings.currencyCode, 'NGN');
     });
 
+    test('the provider keeps a week, a goal and sees their numbers', () async {
+      final tools = SupabaseProviderToolsRepository(provider);
+      final week = await tools.setAvailability(const <AvailabilitySlot>[
+        AvailabilitySlot(dayOfWeek: 1, startMinutes: 540, endMinutes: 1020),
+        AvailabilitySlot(dayOfWeek: 6, startMinutes: 600, endMinutes: 1440),
+      ], idempotencyKey: newIdempotencyKey());
+      expect(week, hasLength(2));
+      expect(week.last.endMinutes, 1440);
+      expect(await tools.getAvailability(), week);
+
+      final goal = await tools.setEarningsGoal(
+        const Money(10000000, 'NGN'),
+        GoalPeriod.weekly,
+        idempotencyKey: newIdempotencyKey(),
+      );
+      expect(goal.target, const Money(10000000, 'NGN'));
+      // The confirmed job counts towards this week.
+      expect(goal.progress.minorUnits, greaterThan(0));
+      expect(goal.progress.currencyCode, 'NGN');
+
+      final insights = await tools.getInsights();
+      expect(insights.acceptanceRate, 1.0);
+      expect(insights.periodDays, 30);
+
+      await expectLater(
+        tools.getDemandHeatmap(),
+        throwsA(
+          isA<AppError>().having(
+            (e) => e.code,
+            'code',
+            ErrorCodes.featureUnavailable,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'a business registers, invites by phone, and dispatches to its worker',
+      () async {
+        Future<SupabaseGateway> signedIn(String email) async {
+          final c = client(anonKey);
+          addTearDown(c.dispose);
+          await c.auth.signInWithPassword(email: email, password: password);
+          return SupabaseGateway(c);
+        }
+
+        final digits = (run % 100000000).toString().padLeft(8, '0');
+        final workerPhone = '+23481$digits';
+        await createUser('e2e-owner-$run@suskii.test', provider: true);
+        final workerId = await createUser(
+          'e2e-worker-$run@suskii.test',
+          provider: true,
+          phone: workerPhone,
+        );
+        final owner = SupabaseOrganizationRepository(
+          await signedIn('e2e-owner-$run@suskii.test'),
+        );
+        final worker = SupabaseOrganizationRepository(
+          await signedIn('e2e-worker-$run@suskii.test'),
+        );
+
+        expect(await owner.getMyOrganization(), isNull);
+        final org = await owner.registerOrganization(
+          legalName: 'E2E Logistics $run',
+          registrationNumber: 'RC$run',
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(org.name, 'E2E Logistics $run');
+        expect(org.memberCount, 1);
+        // One number, one business, however it is typed.
+        await expectLater(
+          worker.registerOrganization(
+            legalName: 'Copycat',
+            registrationNumber: 'rc $run',
+            idempotencyKey: newIdempotencyKey(),
+          ),
+          throwsA(
+            isA<AppError>().having(
+              (e) => e.code,
+              'code',
+              'ERR_ORGANIZATION_ALREADY_REGISTERED',
+            ),
+          ),
+        );
+
+        final invited = await owner.inviteMember(
+          phoneE164: workerPhone,
+          role: BusinessRole.worker,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(invited.userId, workerId);
+        // Not a member yet: the owner sees the number masked, not a name.
+        expect(invited.displayName, isNot(contains(digits)));
+
+        final invitations = await worker.getMyInvitations();
+        expect(invitations.single.organizationName, 'E2E Logistics $run');
+        expect(invitations.single.role, BusinessRole.worker);
+        final joined = await worker.acceptInvitation(
+          org.id,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(joined.id, org.id);
+        expect(await worker.getMyInvitations(), isEmpty);
+        final members = await owner.getMembers();
+        expect(members, hasLength(2));
+        expect(
+          members.firstWhere((m) => m.userId == workerId).role,
+          BusinessRole.worker,
+        );
+
+        final vehicle = await owner.upsertVehicle(
+          Vehicle(
+            id: 'new',
+            organizationId: org.id,
+            type: VehicleType.motorcycle,
+            plate: 'LAG-$digits',
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(vehicle.type, VehicleType.motorcycle);
+        expect(vehicle.plate, isNot(contains(digits)));
+        final assigned = await owner.assignVehicle(
+          vehicle.id,
+          workerId,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(assigned.assignedWorkerId, workerId);
+
+        // A funded job the business won, handed to the worker.
+        final categories = await SupabaseCatalogRepository(customer)
+            .getCategories();
+        final requests = SupabaseRequestRepository(customer);
+        final draft = await requests.createRequest(
+          CreateRequestInput(
+            categoryId: categories.first.id,
+            description: 'E2E: a job for the business',
+            pickup: const PlaceRef(
+              label: 'Ikeja',
+              point: GeoPoint(latitude: 6.6018, longitude: 3.3515),
+            ),
+            preferredPrice: const Money(300000, 'NGN'),
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        final published = await requests.publishRequest(
+          draft.id,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        final ownerGateway = await signedIn('e2e-owner-$run@suskii.test');
+        final offer = await SupabaseProviderRepository(ownerGateway)
+            .submitOffer(
+              requestId: published.id,
+              amount: const Money(300000, 'NGN'),
+              idempotencyKey: newIdempotencyKey(),
+            );
+        await SupabaseOfferRepository(customer)
+            .acceptOffer(offer.id, idempotencyKey: newIdempotencyKey());
+        final session = await SupabasePaymentRepository(customer)
+            .initializePayment(
+              jobId: published.id,
+              method: PaymentMethod.card,
+              idempotencyKey: newIdempotencyKey(),
+            );
+        final reference = 'e2e-org-$run';
+        await service.rpc<dynamic>(
+          'gateway_record_checkout',
+          params: <String, dynamic>{
+            'p_payment_id': session.payment.id,
+            'p_gateway': 'flutterwave',
+            'p_gateway_reference': reference,
+            'p_checkout_url': 'https://checkout.example/$reference',
+          },
+        );
+        await service.rpc<dynamic>(
+          'gateway_confirm_payment',
+          params: <String, dynamic>{
+            'p_gateway': 'flutterwave',
+            'p_gateway_reference': reference,
+            'p_amount_minor': session.payment.amount.minorUnits,
+            'p_fee_minor': 0,
+          },
+        );
+
+        final assignable = await owner.getAssignableJobs();
+        expect(assignable.map((j) => j.id), contains(published.id));
+        final dispatched = await owner.assignJob(
+          jobId: published.id,
+          workerId: workerId,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(dispatched.status, JobStatus.assigned);
+        expect(
+          (await owner.getAssignableJobs()).map((j) => j.id),
+          isNot(contains(published.id)),
+        );
+      },
+    );
+
     test('a dispute freezes the job', () async {
       final dispute = await SupabaseDisputeRepository(customer).openDispute(
         jobId: requestId,
-        reasonKey: 'not_as_described',
+        // The key the app's sheet sends; open_dispute only takes snake_case codes.
+        reasonKey: 'disputeReasonNotDelivered',
         details: 'E2E dispute',
         idempotencyKey: newIdempotencyKey(),
       );
       expect(dispute.jobId, requestId);
+      expect(dispute.reasonKey, 'disputeReasonNotDelivered');
       final job = await SupabaseRequestRepository(customer).getMyActiveJobs();
       expect(
         job.firstWhere((j) => j.id == requestId).status,

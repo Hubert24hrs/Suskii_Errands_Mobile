@@ -610,6 +610,33 @@ void walletDisputeMapperTests() {
     });
 
     test(
+      'reason and resolution codes come back as the keys the app labels',
+      () {
+        final dispute = disputeFromRow(
+          disputeRow()
+            ..['reason_code'] = 'not_delivered'
+            ..['resolution_key'] = 'released_to_provider',
+        );
+        expect(dispute.reasonKey, 'disputeReasonNotDelivered');
+        expect(dispute.resolutionNoteKey, 'disputeResolvedReleased');
+        expect(disputeReasonToWire('disputeReasonDamaged'), 'damaged');
+        // Every app key becomes a code open_dispute accepts.
+        for (final key in <String>[
+          'disputeReasonNotDelivered',
+          'disputeReasonDamaged',
+          'disputeReasonLate',
+          'disputeReasonOther',
+        ]) {
+          expect(
+            disputeReasonToWire(key),
+            matches(RegExp(r'^[a-z0-9_]{3,60}$')),
+          );
+          expect(disputeReasonFromWire(disputeReasonToWire(key)), key);
+        }
+      },
+    );
+
+    test(
       'wire statuses fold: under_review → inReview, withdrawn stays distinct',
       () {
         expect(
@@ -1223,5 +1250,116 @@ void chatMapperTests() {
 
   test('dateToWire is a Postgres date', () {
     expect(dateToWire(DateTime(2026, 3, 7, 23, 59)), '2026-03-07');
+  });
+
+  group('business console rows', () {
+    test('organizationFromRow reads my_organization', () {
+      final org = organizationFromRow(<String, dynamic>{
+        'id': '3f2a91c4-0000-4000-8000-0000000000c1',
+        'name': 'Lagos Dash Ltd',
+        'owner_id': '3f2a91c4-0000-4000-8000-0000000000c2',
+        'country_code': 'NG',
+        'verification_status': 'in_review',
+        'payout_account_set': false,
+        'member_count': 3,
+        'active_vehicle_count': 1,
+        'my_role': 'owner',
+      });
+      expect(org.name, 'Lagos Dash Ltd');
+      expect(org.verificationStatus, VerificationStatus.inReview);
+      expect(org.memberCount, 3);
+      expect(org.activeVehicleCount, 1);
+    });
+
+    test('orgMemberFromRow has earnings for the owner only', () {
+      final owner = orgMemberFromRow(<String, dynamic>{
+        'user_id': '3f2a91c4-0000-4000-8000-0000000000c3',
+        'display_name': 'Ada',
+        'role': 'worker',
+        'status': 'active',
+        'verification_status': 'verified',
+        'jobs_completed': 12,
+        'earnings_minor': 845000,
+        'currency': 'NGN',
+      });
+      expect(owner.role, BusinessRole.worker);
+      expect(owner.earningsToDate, const Money(845000, 'NGN'));
+
+      final dispatcher = orgMemberFromRow(<String, dynamic>{
+        'user_id': '3f2a91c4-0000-4000-8000-0000000000c3',
+        'display_name': '+234••••••4567',
+        'role': 'dispatcher',
+        'status': 'invited',
+        'verification_status': 'unverified',
+        'jobs_completed': 0,
+        'earnings_minor': null,
+        'currency': null,
+      });
+      expect(dispatcher.earningsToDate, isNull);
+      expect(dispatcher.displayName, '+234••••••4567');
+    });
+
+    test('vehicleFromRow shows the masked plate', () {
+      final vehicle = vehicleFromRow(<String, dynamic>{
+        'id': '3f2a91c4-0000-4000-8000-0000000000c4',
+        'organization_id': '3f2a91c4-0000-4000-8000-0000000000c1',
+        'type': 'motorcycle',
+        'plate_masked': '•••-123AB',
+        'assigned_worker_id': null,
+        'documents_expire_on': '2027-01-31',
+      });
+      expect(vehicle.type, VehicleType.motorcycle);
+      expect(vehicle.plate, '•••-123AB');
+      expect(vehicle.assignedWorkerId, isNull);
+      expect(vehicle.documentExpiry, DateTime(2027, 1, 31));
+    });
+  });
+
+  group('provider tools rows', () {
+    test('availability round-trips, midnight included', () {
+      final slot = availabilitySlotFromRow(<String, dynamic>{
+        'weekday': 5,
+        'start_time': '18:30:00',
+        'end_time': '23:59:59',
+      });
+      expect(slot.dayOfWeek, 5);
+      expect(slot.startMinutes, 18 * 60 + 30);
+      expect(slot.endMinutes, 1440);
+      expect(availabilitySlotToWire(slot), <String, Object>{
+        'weekday': 5,
+        'start_minutes': 1110,
+        'end_minutes': 1440,
+      });
+    });
+
+    test('earningsGoalFromRow keeps minor units in the goal currency', () {
+      final goal = earningsGoalFromRow(<String, dynamic>{
+        'target_minor': 5000000,
+        'currency': 'UGX',
+        'period': 'weekly',
+        'progress_minor': 1250000,
+        'period_start': '2026-10-12T00:00:00+03:00',
+      });
+      expect(goal.target, const Money(5000000, 'UGX'));
+      expect(goal.progress, const Money(1250000, 'UGX'));
+      expect(goal.period, GoalPeriod.weekly);
+    });
+
+    test('providerInsightsFromRow reads numeric rates', () {
+      final insights = providerInsightsFromRow(<String, dynamic>{
+        'acceptance_rate': '0.75',
+        'completion_rate': 1,
+        'avg_rating': '4.50',
+        'five_star_share': '0.5',
+        'avg_response_time_seconds': 95,
+        'period_days': 30,
+        'rating_count': 2,
+      });
+      expect(insights.acceptanceRate, 0.75);
+      expect(insights.completionRate, 1.0);
+      expect(insights.avgRating, 4.5);
+      expect(insights.fiveStarShare, 0.5);
+      expect(insights.avgResponseTimeSeconds, 95);
+    });
   });
 }

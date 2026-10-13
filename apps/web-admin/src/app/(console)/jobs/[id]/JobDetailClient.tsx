@@ -5,12 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { jobsRepository } from '@/mocks/repositories';
+import { jobsRepository } from '@/lib/repositories';
 import type { GeoPoint, JobAdminView } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { Timeline } from '@/components/Timeline';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../../_shared';
 import { categoryLabel, countryLabel, jobStatusChip, jobStatusLabel } from '../_shared';
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -97,7 +104,7 @@ function RoutePlot({ job }: { job: JobAdminView }) {
 export function JobDetailClient({ jobId }: { jobId: string }) {
   const router = useRouter();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'jobs.read');
 
   const jobQuery = useQuery({

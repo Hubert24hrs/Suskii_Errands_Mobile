@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
           production: process.env.NODE_ENV === 'production',
           allowGeolocation: false,
+          // Edge Functions live under the Supabase origin when deployed; a local run
+          // may serve them elsewhere (tests/web-admin-e2e).
+          connectSrc: process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL
+            ? [new URL(process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL).origin]
+            : [],
         }),
       },
     ];

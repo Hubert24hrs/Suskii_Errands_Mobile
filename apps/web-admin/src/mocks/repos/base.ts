@@ -65,38 +65,48 @@ const ALL: AdminRole[] = [
   'dispute_officer',
 ];
 
-/** The role × action matrix. super_admin is explicitly listed everywhere. */
+/**
+ * The role × action matrix. super_admin is explicitly listed everywhere.
+ *
+ * It mirrors the role checks in the backend's functions (contracts/v1/rpc-catalog,
+ * `requires.admin_roles`), so a button is shown to exactly the people the server will
+ * answer. Where the RLS matrix lets a role read rows of a table, the read stays open and
+ * the policy decides which rows.
+ */
 export const PERMISSIONS: Record<AdminAction, AdminRole[]> = {
   'metrics.read': ALL,
-  'directory.read': ALL,
+  'directory.read': ['super_admin', 'support_agent', 'verification_officer'],
   'verification.read': ['super_admin', 'verification_officer'],
   'jobs.read': ALL,
   'payments.read': ['super_admin', 'finance_officer'],
-  'referrals.read': ['super_admin', 'support_agent'],
-  'promos.read': ['super_admin', 'support_agent'],
-  'disputes.read': ['super_admin', 'dispute_officer', 'support_agent'],
+  'referrals.read': ['super_admin', 'finance_officer', 'support_agent'],
+  'promos.read': ['super_admin', 'finance_officer', 'support_agent'],
+  'disputes.read': ['super_admin', 'dispute_officer'],
   'support.read': ['super_admin', 'support_agent'],
   'sos.read': ['super_admin', 'support_agent'],
-  'risk.read': ['super_admin', 'dispute_officer'],
+  'risk.read': ['super_admin', 'support_agent'],
   'config.read': ['super_admin', 'finance_officer'],
-  'analytics.read': ALL,
+  'analytics.read': ['super_admin', 'finance_officer'],
   'audit.read': ['super_admin'],
   'adminUsers.read': ['super_admin'],
   'aiAdmin.use': ALL,
 
-  'directory.suspend': ['super_admin', 'support_agent'],
+  // suspend_provider / suspend_organization
+  'directory.suspend': ['super_admin'],
   'verification.claim': ['super_admin', 'verification_officer'],
   'verification.review': ['super_admin', 'verification_officer'],
   'verification.view_document': ['super_admin', 'verification_officer'],
   'payments.approve': ['super_admin', 'finance_officer'],
-  'referrals.manage': ['super_admin', 'support_agent'],
-  'promos.manage': ['super_admin', 'support_agent'],
+  // A referral campaign is a config change finance may propose.
+  'referrals.manage': ['super_admin', 'finance_officer'],
+  // A promo is a config change only a super admin proposes (RLS matrix §6, four eyes).
+  'promos.manage': ['super_admin'],
   'disputes.resolve': ['super_admin', 'dispute_officer'],
   'support.manage': ['super_admin', 'support_agent'],
   'sos.manage': ['super_admin', 'support_agent'],
-  'risk.review': ['super_admin', 'dispute_officer'],
-  'config.propose': ['super_admin', 'finance_officer'],
-  'config.approve': ['super_admin', 'finance_officer'],
+  'risk.review': ['super_admin', 'support_agent'],
+  'config.propose': ['super_admin'],
+  'config.approve': ['super_admin'],
   'adminUsers.manage': ['super_admin'],
 };
 

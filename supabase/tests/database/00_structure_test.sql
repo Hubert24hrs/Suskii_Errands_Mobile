@@ -105,6 +105,14 @@ SELECT is(
        'public.get_kyc_step_payload', 'public.submit_kyc_for_review',
        'public.my_wallet_transactions', 'public.my_pending_balance',
        'public.provider_home_summary',
+       -- The admin console (20261013120000, audit Z.8).
+       'public.admin_overview', 'public.audit_search', 'public.admin_staff_list',
+       'public.admin_staff_lookup', 'public.dispute_resolution_quote', 'public.admin_promo_codes',
+       -- The business console and provider tools (20261013120100, audit Z.9/Z.15).
+       'public.my_organization', 'public.my_organization_members',
+       'public.my_organization_invitations', 'public.invite_member_by_phone', 'public.assign_vehicle', 'public.org_assignable_jobs',
+       'public.set_availability', 'public.set_earnings_goal', 'public.my_earnings_goal',
+       'public.my_provider_insights',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',

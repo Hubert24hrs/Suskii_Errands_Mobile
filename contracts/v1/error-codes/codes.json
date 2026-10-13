@@ -1186,6 +1186,17 @@
       "client_action": "Internal: the webhook is acknowledged and the case goes to finance. No client surface."
     },
     {
+      "code": "ERR_ORGANIZATION_ALREADY_REGISTERED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A business with that registration number is already on the platform in this country. Matched on a blind index, so nothing reads either number.",
+      "client_action": "Say the number is already registered and route to support. Never say which business holds it."
+    },
+    {
       "code": "ERR_ORGANIZATION_NOT_FOUND",
       "status": "implemented",
       "category": "provider",

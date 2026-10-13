@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { verificationRepository } from '@/mocks/repositories';
+import { verificationRepository } from '@/lib/repositories';
 import type { VerificationKind, VerificationQueueItem } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Modal } from '@/components/Modal';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { VerificationDrawer } from './VerificationDrawer';
 
 const KINDS: VerificationKind[] = [
@@ -41,7 +48,7 @@ export function VerificationClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayReview = role !== undefined && can(role, 'verification.review');
   const mayRead = role !== undefined && can(role, 'verification.read');
 

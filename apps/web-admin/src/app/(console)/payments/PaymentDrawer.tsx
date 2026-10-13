@@ -9,14 +9,24 @@ import {
   isAppError,
   paymentsRepository,
   sessionRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { PaymentAdminView } from '@/mocks/types';
 import { Drawer } from '@/components/Drawer';
 import { MoneyText } from '@/components/MoneyText';
 import { ReauthModal } from '@/components/ReauthModal';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { kindLabel, paymentStatusChip } from './_shared';
+
+/** Reason keys the backend stores and the apps localise — never free text. */
+const REJECTION_REASONS = Object.keys(dict.payments.rejectionReasons);
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -64,7 +74,7 @@ export function PaymentDrawer({
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const adminId = sessionQuery.data?.admin.id;
   const mayApprove = role !== undefined && can(role, 'payments.approve');
 
@@ -78,7 +88,7 @@ export function PaymentDrawer({
   const [actionError, setActionError] = useState<string | null>(null);
   const [sameApprover, setSameApprover] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState<string>(REJECTION_REASONS[0]);
   const [rejectKey, setRejectKey] = useState(() => newIdempotencyKey());
 
   // One key per (action, payment) intent; kept across the reauth retry,
@@ -128,11 +138,11 @@ export function PaymentDrawer({
     }
   };
 
-  const confirmReauth = async (_code: string) => {
-    // The mock reauth records the purpose in the audit log; the authenticator
-    // code itself is not verified at this layer.
+  const confirmReauth = async (code: string) => {
+    // The real backend verifies the authenticator code (a fresh TOTP
+    // challenge); the mock accepts any code and records the purpose.
     try {
-      await sessionRepository.reauth('payments.approve');
+      await sessionRepository.reauth('payments.approve', code);
       setReauthOpen(false);
       const next = pendingAction.current;
       pendingAction.current = null;
@@ -188,7 +198,7 @@ export function PaymentDrawer({
       onSuccess: () => {
         setRejectKey(newIdempotencyKey());
         setRejectOpen(false);
-        setRejectReason('');
+        setRejectReason(REJECTION_REASONS[0]);
       },
     });
 
@@ -389,7 +399,7 @@ export function PaymentDrawer({
               >
                 {dict.common.reason}
               </label>
-              <textarea
+              <select
                 id="reject-reason"
                 value={rejectReason}
                 onChange={(e) => {
@@ -398,10 +408,14 @@ export function PaymentDrawer({
                   // new intent, so the key rotates with it.
                   setRejectKey(newIdempotencyKey());
                 }}
-                placeholder={dict.common.reasonPlaceholder}
-                rows={3}
-                className="w-full rounded-md border border-outline bg-surface px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard placeholder:text-ink-secondary focus:border-brand-primary dark:border-outline-dark dark:bg-surface-dark dark:text-ink-dark-primary"
-              />
+                className="w-full rounded-md border border-outline bg-surface px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard focus:border-brand-primary dark:border-outline-dark dark:bg-surface-dark dark:text-ink-dark-primary"
+              >
+                {REJECTION_REASONS.map((key) => (
+                  <option key={key} value={key}>
+                    {(dict.payments.rejectionReasons as Record<string, string>)[key]}
+                  </option>
+                ))}
+              </select>
               <div className="flex gap-md">
                 <button
                   type="button"

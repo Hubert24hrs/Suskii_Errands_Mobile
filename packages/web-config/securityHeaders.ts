@@ -19,8 +19,10 @@ export function securityHeaders(options: {
   allowGeolocation?: boolean;
 }): Header[] {
   const supabase = options.supabaseUrl ? new URL(options.supabaseUrl) : undefined;
+  // Realtime's socket follows the API's scheme: wss in every deployed environment, ws
+  // against a local stack on plain http.
   const supabaseOrigins = supabase
-    ? [supabase.origin, `wss://${supabase.host}`]
+    ? [supabase.origin, `${supabase.protocol === 'https:' ? 'wss' : 'ws'}://${supabase.host}`]
     : [];
   const csp = [
     "default-src 'self'",
@@ -33,7 +35,9 @@ export function securityHeaders(options: {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    ...(options.production ? ['upgrade-insecure-requests'] : []),
+    // Never against a plain-http Supabase: that is a local stack, and upgrading its requests
+    // to https would break every call. Deployed projects are https only.
+    ...(options.production && supabase?.protocol !== 'http:' ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
 
   const headers: Header[] = [

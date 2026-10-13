@@ -399,8 +399,8 @@ export function createMockDatabase(): MockDatabase {
   for (const f of flags) db.referralFlags[f.id] = f;
 
   const campaigns: ReferralCampaign[] = [
-    { id: 'rc-1', name: 'Lagos Launch Boost', country: 'NG', referrerReward: money(100_000, 'NGN'), refereeReward: money(50_000, 'NGN'), status: 'active', startsAt: daysAgo(30) },
-    { id: 'rc-2', name: 'Nairobi Refer-a-Friend', country: 'KE', referrerReward: money(50_000, 'KES'), refereeReward: money(25_000, 'KES'), status: 'paused', startsAt: daysAgo(90), endsAt: daysAgo(10) },
+    { id: 'rc-1', name: 'Lagos Launch Boost', country: 'NG', rateBps: 300, budget: money(50_000_000, 'NGN'), status: 'active', startsAt: daysAgo(30) },
+    { id: 'rc-2', name: 'Nairobi Refer-a-Friend', country: 'KE', rateBps: 250, budget: money(2_000_000, 'KES'), status: 'paused', startsAt: daysAgo(90), endsAt: daysAgo(10) },
   ];
   for (const c of campaigns) db.referralCampaigns[c.id] = c;
 

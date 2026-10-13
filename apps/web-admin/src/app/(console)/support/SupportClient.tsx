@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { supportRepository } from '@/mocks/repositories';
+import { supportRepository } from '@/lib/repositories';
 import type { SupportTicketAdmin } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { FilterBar } from '@/components/FilterBar';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 
 type TicketStatus = SupportTicketAdmin['status'];
 
@@ -37,7 +44,7 @@ export function SupportClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'support.read');
   const mayManage = role !== undefined && can(role, 'support.manage');
 

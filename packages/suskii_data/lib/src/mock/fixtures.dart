@@ -98,6 +98,9 @@ class MockDatabase {
   /// Dispatch assignments: jobId → worker user id (M6 business console).
   late final Map<String, String> orgAssignments;
 
+  /// Invitations waiting for a user: userId → invitations.
+  late final Map<String, List<OrgInvitation>> orgInvitations;
+
   /// Customer facial-verification sessions, keyed by user id.
   late final Map<String, VerificationSession> verificationSessions;
 
@@ -335,6 +338,7 @@ class MockDatabase {
       ],
     };
     orgAssignments = <String, String>{};
+    orgInvitations = <String, List<OrgInvitation>>{};
 
     users = <String, AppUser>{
       'user-ada': AppUser(

@@ -27,8 +27,15 @@ export function campaignStatusChip(status: ReferralCampaign['status']) {
       ? dict.referrals.campaign.statusActive
       : status === 'paused'
         ? dict.referrals.campaign.statusPaused
-        : dict.referrals.campaign.statusEnded;
-  const tone = status === 'active' ? 'success' : status === 'paused' ? 'warning' : 'neutral';
+        : status === 'pending_approval'
+          ? dict.referrals.campaign.statusPendingApproval
+          : dict.referrals.campaign.statusEnded;
+  const tone =
+    status === 'active'
+      ? 'success'
+      : status === 'paused' || status === 'pending_approval'
+        ? 'warning'
+        : 'neutral';
   return <StatusChip label={label} tone={tone} />;
 }
 

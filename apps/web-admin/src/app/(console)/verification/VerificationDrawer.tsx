@@ -10,7 +10,7 @@ import {
   isAppError,
   sessionRepository,
   verificationRepository,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { DocumentViewGrant } from '@/mocks/types';
 import { CopyButton } from '@/components/CopyButton';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -18,7 +18,14 @@ import { Drawer } from '@/components/Drawer';
 import { ReauthModal } from '@/components/ReauthModal';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -42,7 +49,7 @@ export function VerificationDrawer({
 }) {
   const router = useRouter();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayViewDocument = role !== undefined && can(role, 'verification.view_document');
 
   const clockOffsetMs = useMemo(() => serverClockOffsetMs(), []);
@@ -84,11 +91,11 @@ export function VerificationDrawer({
     }
   };
 
-  const confirmReauth = async (_code: string) => {
-    // The mock reauth records the purpose in the audit log; the authenticator
-    // code itself is not verified at this layer.
+  const confirmReauth = async (code: string) => {
+    // The real backend verifies the authenticator code (a fresh TOTP
+    // challenge); the mock accepts any code and records the purpose.
     try {
-      await sessionRepository.reauth('verification.view_document');
+      await sessionRepository.reauth('verification.view_document', code);
       setReauthOpen(false);
       if (itemId) await requestView(itemId);
     } catch (e) {

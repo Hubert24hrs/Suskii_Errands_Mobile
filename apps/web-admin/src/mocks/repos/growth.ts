@@ -11,6 +11,16 @@ import type {
 } from '../types';
 import { MockRepo } from './base';
 
+/** A referral campaign is a commission rate with a budget (OD-01), not a fixed reward. */
+export interface CampaignInput {
+  name: string;
+  country: string;
+  rateBps: number;
+  budget?: Money;
+  startsAt: Date;
+  endsAt?: Date;
+}
+
 export class MockReferralRepository extends MockRepo {
   async listAttributions(country?: string): Promise<ReferralAttribution[]> {
     await this.gate();
@@ -52,14 +62,7 @@ export class MockReferralRepository extends MockRepo {
   }
 
   async createCampaign(
-    input: {
-      name: string;
-      country: string;
-      referrerReward: Money;
-      refereeReward: Money;
-      startsAt: Date;
-      endsAt?: Date;
-    },
+    input: CampaignInput,
     idempotencyKey: string,
   ): Promise<ReferralCampaign> {
     await this.gate();
@@ -73,8 +76,8 @@ export class MockReferralRepository extends MockRepo {
           id: `rc-${globalThis.crypto.randomUUID().slice(0, 8)}`,
           name: input.name,
           country: input.country,
-          referrerReward: input.referrerReward,
-          refereeReward: input.refereeReward,
+          rateBps: input.rateBps,
+          budget: input.budget,
           status: 'active',
           startsAt: input.startsAt,
           endsAt: input.endsAt,
