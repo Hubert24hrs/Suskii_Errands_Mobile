@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / Finance |
 | Severity | SEV2 by default. SEV1 if the gap is growing, or if any provider balance is affected |
-| Last rehearsed | **Not yet.** Rehearse on staging with a deliberately broken posting before the first live country |
+| Last rehearsed | **2026-10-13, locally**, the detection half: the nightly job's own command run by hand (`ok`), then a one-unit drift planted in `ledger.balances` inside a rolled-back transaction (`ledger.reconcile()` found the account; the health check recorded `fail` with `drifted_accounts: 1`). The gateway-settlement comparison and the Finance steps need a gateway (action 4). Rehearse the whole runbook on staging with a deliberately broken posting before the first live country |
 | Related | ADR-0011 (chart of accounts); S-14 (money invariants); money-flows.md; RB-02, RB-04 |
 
 ## What reconciliation actually checks

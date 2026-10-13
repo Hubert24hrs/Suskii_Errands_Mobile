@@ -39,6 +39,41 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
   /// Off-app completion instructions from the last initialization.
   PaymentSession? _session;
 
+  final TextEditingController _promoController = TextEditingController();
+
+  /// The code the server accepted and what it takes off; both null until a
+  /// code is applied. The discount is the server's number, never computed here.
+  String? _promoCode;
+  Money? _discount;
+
+  @override
+  void dispose() {
+    _promoController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _applyPromo() => _run(() async {
+    final code = _promoController.text.trim();
+    if (code.isEmpty) return;
+    final discount = await ref
+        .read(paymentRepositoryProvider)
+        .previewPromo(jobId: widget.jobId, code: code);
+    if (!mounted) return;
+    setState(() {
+      _promoCode = code;
+      _discount = discount;
+      // A different charge is a different intent: a new key.
+      _payKey = null;
+    });
+  });
+
+  void _removePromo() => setState(() {
+    _promoCode = null;
+    _discount = null;
+    _promoController.clear();
+    _payKey = null;
+  });
+
   Future<void> _pay() => _run(() async {
     _payKey ??= newIdempotencyKey();
     final session = await ref
@@ -47,6 +82,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           jobId: widget.jobId,
           method: _method,
           idempotencyKey: _payKey!,
+          promoCode: _promoCode,
         );
     if (mounted) setState(() => _session = session);
     // Card and mobile money complete on the gateway's hosted page; open it
@@ -148,13 +184,63 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               child: Padding(
                 padding: const EdgeInsets.all(SSpacing.lg),
                 child: SButton(
-                  label: l10n.payNow(job.value!.agreedPrice!.format()),
+                  label: l10n.payNow(_due(job.value!.agreedPrice!).format()),
                   onPressed: _busy ? null : _pay,
                   loading: _busy,
                 ),
               ),
             )
           : null,
+    );
+  }
+
+  /// The agreed price less an applied promo; the server charges the same.
+  Money _due(Money agreed) {
+    final discount = _discount;
+    if (discount == null || discount.currencyCode != agreed.currencyCode) {
+      return agreed;
+    }
+    return Money(agreed.minorUnits - discount.minorUnits, agreed.currencyCode);
+  }
+
+  Widget _promoSection(AppLocalizations l10n, ThemeData theme) {
+    final discount = _discount;
+    if (discount != null && _promoCode != null) {
+      return Row(
+        children: <Widget>[
+          Icon(Icons.local_offer_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: SSpacing.sm),
+          Expanded(
+            child: Text(
+              l10n.payPromoApplied(_promoCode!, discount.format()),
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          TextButton(
+            onPressed: _busy ? null : _removePromo,
+            child: Text(l10n.payPromoRemove),
+          ),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        Expanded(
+          child: STextField(
+            label: l10n.payPromoTitle,
+            hint: l10n.promoCodeHint,
+            controller: _promoController,
+          ),
+        ),
+        const SizedBox(width: SSpacing.sm),
+        SButton(
+          label: l10n.payPromoApply,
+          variant: SButtonVariant.secondary,
+          expand: false,
+          onPressed: _busy ? null : _applyPromo,
+        ),
+      ],
     );
   }
 
@@ -167,7 +253,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     final clock = ref.watch(serverClockProvider);
     // What the server charged (the float, its surcharge and a promo all move
     // it off the agreed price); the agreed price only until a payment exists.
-    final amount = payment?.amount ?? request.agreedPrice;
+    final agreed = request.agreedPrice;
+    final amount = payment?.amount ?? (agreed == null ? null : _due(agreed));
     if (amount == null) {
       return SErrorState(
         title: l10n.stateErrorGeneric,
@@ -295,6 +382,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             ),
           ),
         ] else ...<Widget>[
+          _promoSection(l10n, theme),
+          const SizedBox(height: SSpacing.lg),
           Text(l10n.payMethodTitle, style: theme.textTheme.titleMedium),
           const SizedBox(height: SSpacing.sm),
           RadioGroup<PaymentMethod>(

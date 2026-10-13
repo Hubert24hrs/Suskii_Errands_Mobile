@@ -366,6 +366,12 @@ const pcm = {
     checkoutLinkHint:
       'Finish the payment for the secure checkout page — if e no open, copy this link put for your browser.',
     ttlLabel: 'Complete am within',
+    promoLabel: 'Promo code',
+    promoPlaceholder: 'Put promo code',
+    promoApply: 'Use am',
+    promoApplied: '{code}: {amount} comot',
+    promoRemove: 'Comot am',
+    promoDiscountLabel: 'Promo discount',
     payCta: 'Pay now',
     waiting: 'We dey wait for payment confirmation…',
     successTitle: 'Payment don land',
@@ -484,6 +490,7 @@ const pcm = {
     redeemCta: 'Apply am',
     redeemedNote: 'Promo don apply to your account.',
     empty: 'No promo dey available right now.',
+    atCheckoutHint: 'You get code? Put am when you dey pay for errand; dem go remove the discount for checkout.',
     badges: {
       expired: 'Don expire',
       applied: 'Don apply',

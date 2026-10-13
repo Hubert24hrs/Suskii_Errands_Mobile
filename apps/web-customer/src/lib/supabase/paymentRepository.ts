@@ -5,7 +5,7 @@
 // packages/suskii_data/lib/src/supabase/supabase_payment_repository.dart.
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
-import type { Payment, PaymentMethod, PaymentSession } from '@/mocks/types';
+import type { Money, Payment, PaymentMethod, PaymentSession } from '@/mocks/types';
 import type { Unsubscribe } from '@/mocks/repos/base';
 
 import { SupabaseGateway, type Row } from './gateway';
@@ -64,15 +64,31 @@ export class SupabasePaymentRepository {
     );
   }
 
+  /** What a promo code takes off this job, as the server computes it. */
+  async previewPromo(options: { jobId: string; code: string }): Promise<Money> {
+    const rows = (await this.gateway.rpc('preview_promo', {
+      p_code: options.code.trim(),
+      p_request_id: options.jobId,
+    })) as Row[];
+    if (rows.length === 0) throw new AppError(ErrorCodes.promoInvalid);
+    return {
+      amountMinor: SupabaseGateway.asMinorUnits(rows[0]['discount_minor']),
+      currency: String(rows[0]['currency']),
+    };
+  }
+
   async initializePayment(options: {
     jobId: string;
     method: PaymentMethod;
     idempotencyKey: string;
+    promoCode?: string;
   }): Promise<PaymentSession> {
+    const code = options.promoCode?.trim();
     const rows = (await this.gateway.rpc('start_payment', {
       p_idempotency_key: options.idempotencyKey,
       p_request_id: options.jobId,
       p_method: paymentMethodToWire(options.method),
+      p_promo_code: code ? code : null,
     })) as Row[];
     const paymentId = SupabaseGateway.asId(rows[0]['payment_id']);
     const paymentRow = await this.gateway.selectSingle(

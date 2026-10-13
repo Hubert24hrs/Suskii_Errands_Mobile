@@ -12,6 +12,7 @@ import type {
   HandoverPinKind,
   JobRequest,
   JobStatus,
+  Money,
   Payment,
   PaymentMethod,
   PaymentSession,
@@ -69,13 +70,33 @@ export class MockPaymentRepository extends MockRepo {
    * `paymentConfirmDelayMs`; a pending payment past its TTL fails with
    * `paymentTtlExpired`.
    */
+  /** Percent off the agreed price, capped; unknown or expired codes fail the same way. */
+  private promoDiscount(code: string, agreed: Money): Money {
+    const promo = this.db.promos[code.trim().toUpperCase()];
+    if (!promo || promo.expiresAt.getTime() < this.now().getTime()) {
+      throw new AppError(ErrorCodes.promoInvalid);
+    }
+    let minor = Math.floor((agreed.amountMinor * promo.percentOff) / 100);
+    const cap = promo.maxDiscount;
+    if (cap && cap.currency === agreed.currency) minor = Math.min(minor, cap.amountMinor);
+    return { amountMinor: minor, currency: agreed.currency };
+  }
+
+  async previewPromo(options: { jobId: string; code: string }): Promise<Money> {
+    await this.gate();
+    const agreed = this.db.requests[options.jobId]?.agreedPrice;
+    if (!agreed) throw new AppError(ErrorCodes.invalidState);
+    return this.promoDiscount(options.code, agreed);
+  }
+
   async initializePayment(options: {
     jobId: string;
     method: PaymentMethod;
     idempotencyKey: string;
+    promoCode?: string;
   }): Promise<PaymentSession> {
     await this.gate();
-    const { jobId, method, idempotencyKey } = options;
+    const { jobId, method, idempotencyKey, promoCode } = options;
     return this.idempotent(`initializePayment:${jobId}`, idempotencyKey, method, () => {
       const user = this.currentUser;
       if (user.customerVerification !== 'verified') {
@@ -105,11 +126,14 @@ export class MockPaymentRepository extends MockRepo {
       if (existing && existing.status === 'pending') {
         return sessionFor(existing);
       }
+      const discount = promoCode?.trim() ? this.promoDiscount(promoCode, agreed) : undefined;
       const id = `pay-${Date.now()}`;
       const payment: Payment = {
         id,
         jobId,
-        amount: agreed,
+        amount: discount
+          ? { amountMinor: agreed.amountMinor - discount.amountMinor, currency: agreed.currency }
+          : agreed,
         method,
         status: 'pending',
         createdAt: this.now(),

@@ -136,6 +136,7 @@ class _PromosPageState extends ConsumerState<PromosPage> {
                   return SEmptyState(
                     icon: Icons.local_offer_outlined,
                     title: l10n.promoEmpty,
+                    message: l10n.promoAtCheckoutHint,
                   );
                 }
                 return Column(

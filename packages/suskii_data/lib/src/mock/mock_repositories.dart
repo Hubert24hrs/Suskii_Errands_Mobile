@@ -1309,11 +1309,41 @@ class MockPaymentRepository extends _MockRepo implements PaymentRepository {
     return controller.stream;
   }
 
+  /// The discount [code] gives on [agreed]: percent off, capped. Unknown or
+  /// expired codes fail with the one error, as on the server.
+  Money _promoDiscount(String code, Money agreed) {
+    final promo = db.promos[code.trim().toUpperCase()];
+    if (promo == null || promo.expiresAt.isBefore(serverNow())) {
+      throw const AppError(ErrorCodes.promoInvalid);
+    }
+    var minor = agreed.minorUnits * promo.percentOff ~/ 100;
+    final cap = promo.maxDiscount;
+    if (cap != null && cap.currencyCode == agreed.currencyCode) {
+      minor = minor > cap.minorUnits ? cap.minorUnits : minor;
+    }
+    return Money(minor, agreed.currencyCode);
+  }
+
+  @override
+  Future<Money> previewPromo({
+    required String jobId,
+    required String code,
+  }) async {
+    await gate();
+    final job = db.requests[jobId];
+    final agreed = job?.agreedPrice;
+    if (job == null || agreed == null) {
+      throw const AppError(ErrorCodes.invalidState);
+    }
+    return _promoDiscount(code, agreed);
+  }
+
   @override
   Future<PaymentSession> initializePayment({
     required String jobId,
     required PaymentMethod method,
     required String idempotencyKey,
+    String? promoCode,
   }) async {
     await gate();
     return idempotent('initializePayment:$jobId', idempotencyKey, () async {
@@ -1347,11 +1377,19 @@ class MockPaymentRepository extends _MockRepo implements PaymentRepository {
               : null,
         );
       }
+      final discount = promoCode == null || promoCode.trim().isEmpty
+          ? null
+          : _promoDiscount(promoCode, agreed);
       final id = _mockId('pay');
       final payment = Payment(
         id: id,
         jobId: jobId,
-        amount: agreed,
+        amount: discount == null
+            ? agreed
+            : Money(
+                agreed.minorUnits - discount.minorUnits,
+                agreed.currencyCode,
+              ),
         method: method,
         status: PaymentStatus.pending,
         createdAt: serverNow(),

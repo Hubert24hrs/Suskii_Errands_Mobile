@@ -154,7 +154,11 @@ export function PromosClient({ dict }: { dict: Dictionary }) {
             onRetry={() => void promosQuery.refetch()}
           />
         ) : promos.length === 0 ? (
-          <StateBlock variant="empty" emptyTitle={dict.promos.empty} />
+          <StateBlock
+            variant="empty"
+            emptyTitle={dict.promos.empty}
+            emptyBody={dict.promos.atCheckoutHint}
+          />
         ) : (
           <ul className="flex flex-col gap-lg">
             {promos.map((promo) => (

@@ -5,6 +5,62 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-13 (part 3) — Claude Code — promo codes that work, the heatmap, invitations without an oracle; contracts 2.2.0
+
+Same owner instruction. Audit: `docs/audit/AUDIT-2026-10-13.md`, part 3 (Z.20–Z.25). **Still not
+standing licence.** Contracts 2.2.0 is additive for you: nothing you call changed signature.
+
+### What I changed in your code
+
+**Promo codes at checkout (Z.21).** Neither app ever sent `p_promo_code`, so no promo could be
+redeemed.
+- Domain (`PaymentRepository`):
+  - `previewPromo({jobId, code})` → `Money`, the server's discount;
+  - `initializePayment(…, promoCode)`.
+- Implemented in:
+  - the mock (percent off, capped);
+  - `SupabasePaymentRepository` (`preview_promo`, `p_promo_code`).
+- `payment_page.dart`: a promo field, then Apply, then "CODE: X off" with Remove. The pay button
+  shows the discounted amount, and a changed promo takes a new idempotency key. Goldens re-recorded
+  for this screen only.
+- `promos_page.dart`: the empty state says codes go in at checkout (`promoAtCheckoutHint`).
+- Web `apps/web-customer`:
+  - the same in `lib/supabase/paymentRepository.ts`, the mock (`mocks/repos/jobs.ts`) and
+    `PayClient.tsx`;
+  - `dict.payment.promo*` and `dict.promos.atCheckoutHint`, English and Pidgin.
+
+**Web promo and concierge on a real backend (Z.22).** They always used the mock. Now
+`lib/supabase/unavailableRepositories.ts` takes over when the backend is configured:
+- the promo wallet is empty, and redeeming outside a job says it is not available;
+- the concierge says it is not available.
+
+**Demand heatmap.** `SupabaseProviderToolsRepository.getDemandHeatmap` reads
+`provider_demand_heatmap`, and `demandZoneFromRow` maps it. A cell with no zone or city nearby is
+labelled by its centre. Your tools page needed no change.
+
+**Strings, English and Pidgin:**
+- `payPromoTitle`, `payPromoApply`, `payPromoApplied`, `payPromoRemove`;
+- `promoAtCheckoutHint`.
+
+**Tests:**
+- a mock promo test;
+- a heatmap mapper test;
+- a journey: "a promo code takes the server-quoted discount off the payment" (22 journeys in all);
+- end-to-end flows against the real stack: promo preview and charge, the heatmap, and a number
+  without an account invited and withdrawn.
+
+### Worth knowing
+
+- **Invitations are listed under an opaque id until accepted (Z.20).** `my_organization_members`
+  gives a pending invitation, with or without an account, a keyed id rather than the person's user
+  id. `removeMember` with that id withdraws it. After acceptance the member appears under their
+  real id and name. Your screen already used the ids it was given, so it needed nothing.
+- **`customer_requests_req_1` is timing-dependent.** An offer countdown in it ticks during the run
+  (05:50 against 05:53 between two runs). It is inside the comparator's tolerance, but pinning the
+  ticker as well as the clock would make the golden exact.
+
+---
+
 ## 2026-10-13 (part 2) — Claude Code — the admin console on the real backend; the last mock repositories; contracts 2.1.0
 
 Same owner instruction as the entry below, which the owner did not accept as finished while

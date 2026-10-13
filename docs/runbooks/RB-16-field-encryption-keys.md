@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | Routine rotation and escrow: none. `ERR_ENCRYPTION_KEY_UNAVAILABLE` in production: SEV2 (the features that seal or open stop working). `ERR_CIPHERTEXT_INVALID`: SEV1 security incident (RB-01, and RB-07 if personal data could be read) |
-| Last rehearsed | **Not yet.** Rehearse escrow, rotation and a cross-project restore on staging before any real access note exists |
+| Last rehearsed | **2026-10-13, locally** (CLI stack, real sealed rows): §2 rotation including step 3, §4 a missing KEK, §5 a tampered and a misplaced ciphertext, and `vault.create_secret` for the escrow restore. **Not** rehearsed: escrow to and restore from GCP Secret Manager, and a cross-project restore; both need staging and action 1. Do those on staging before any real access note exists |
 | Related | [ADR-0018](../adr/0018-field-encryption-in-the-database.md), [ADR-0007](../adr/0007-encryption-without-pgsodium.md), [RB-10](RB-10-key-rotation.md) (inventory), [RB-09](RB-09-backup-restore.md) (restore), migration `20260929120000_field_encryption.sql` |
 
 ## What exists
@@ -88,3 +88,11 @@ Do not "fix" the row by re-sealing a guess.
 - Rotation: none externally.
 - Lost KEK: customers whose notes are gone see an empty note and re-enter it. Say so in the app release notes if many are affected.
 - Integrity failure: RB-01 comms.
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result | Findings |
+|---|---|---|---|---|
+| 2026-10-13 | Local CLI stack (PostgreSQL 17.6, Vault), with the rows the end-to-end suite seals (a trusted contact's number, a business registration number) | §2: `rotate_field_kek()` v1 → v2, the verify query, `audit.log`, then step 3 (old Vault entry deleted). §4: the current KEK deleted inside a rolled-back transaction. §5: one byte of a ciphertext changed, and a ciphertext opened under another row's context, both rolled back | Rotation re-wrapped all 13 data keys and changed no ciphertext; both values opened before and after, and after the old entry was gone. §4 raised `ERR_ENCRYPTION_KEY_UNAVAILABLE` and the §4 diagnosis query named the missing secret. §5 raised `ERR_CIPHERTEXT_INVALID` both times. `vault.create_secret` and `vault.decrypted_secrets` work for `postgres`, which the escrow steps need | The `postgres` role may delete a Vault secret but not update one, so "restore the entry" (§1, §4) means **create** it again with `vault.create_secret` under the same name, never rename or edit one |
+| — | Staging | Escrow round trip through Secret Manager, cross-project restore | — | Needs client action 1 |
+

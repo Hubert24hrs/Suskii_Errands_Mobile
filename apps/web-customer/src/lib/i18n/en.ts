@@ -364,6 +364,12 @@ const en = {
     checkoutLinkHint:
       'Finish paying on the secure checkout page — if it did not open, copy this link into your browser.',
     ttlLabel: 'Complete within',
+    promoLabel: 'Promo code',
+    promoPlaceholder: 'Enter promo code',
+    promoApply: 'Apply',
+    promoApplied: '{code}: {amount} off',
+    promoRemove: 'Remove',
+    promoDiscountLabel: 'Promo discount',
     payCta: 'Pay now',
     waiting: 'Waiting for payment confirmation…',
     successTitle: 'Payment received',
@@ -482,6 +488,7 @@ const en = {
     redeemCta: 'Apply',
     redeemedNote: 'Promo applied to your account.',
     empty: 'No promos available right now.',
+    atCheckoutHint: 'Have a code? Enter it when you pay for an errand; the discount is applied at checkout.',
     badges: {
       expired: 'Expired',
       applied: 'Applied',

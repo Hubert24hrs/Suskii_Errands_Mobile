@@ -39,6 +39,10 @@ import { SupabaseGateway } from './supabase/gateway';
 import { SupabaseJobProgressRepository } from './supabase/jobProgressRepository';
 import { SupabaseOfferRepository } from './supabase/offerRepository';
 import { SupabasePaymentRepository } from './supabase/paymentRepository';
+import {
+  SupabaseConciergeRepository,
+  SupabasePromoRepository,
+} from './supabase/unavailableRepositories';
 import { SupabaseRatingRepository } from './supabase/ratingRepository';
 import { SupabaseReferralRepository } from './supabase/referralRepository';
 import { SupabaseRequestRepository } from './supabase/requestRepository';
@@ -127,6 +131,8 @@ export const verificationRepository = supabaseGateway
   ? new SupabaseVerificationRepository(supabaseGateway)
   : mockVerificationRepository;
 
-// Mock-only until their wiring slices land.
-export const promoRepository = mockPromoRepository;
-export const conciergeRepository = mockConciergeRepository;
+// No backend yet: against a real one they say so instead of serving the mock's invented data.
+export const promoRepository = supabaseGateway ? new SupabasePromoRepository() : mockPromoRepository;
+export const conciergeRepository = supabaseGateway
+  ? new SupabaseConciergeRepository()
+  : mockConciergeRepository;

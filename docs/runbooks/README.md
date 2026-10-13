@@ -14,6 +14,15 @@ environments, which needs GCP billing and a Supabase organisation (client action
 unstarted) — so the gap between this table and an operable platform is a credential, not more
 writing.
 
+**Local rehearsals, 2026-10-13.** Five runbooks have had the parts that a local stack can run
+rehearsed against the CLI's stack, with real data and the real jobs; each records exactly what ran
+and what did not. RB-09 (the logical backup: dump, verify, damage, restore; its step 4 failed as
+written and is fixed), RB-16 (KEK rotation, a missing key, two integrity failures), RB-13 (the
+break-glass switches; the text predated the admin console and is fixed), RB-03 (reconciliation
+detection with a planted drift) and RB-06 (the automatic escalation, which lands between three and
+four minutes, now written down). **A local rehearsal is not a staging one**: none of them touched a
+console, a vendor, a phone or a real-sized database, and each still says so.
+
 Two runbooks cannot be fully rehearsed even then, and say so at the top of the file rather than
 pretending otherwise: **RB-11** needs the AI service that Vertex billing blocks, and **RB-12** needs
 spike S-11 to replace vendor limits with our own measurements. Two more describe a vendor that does
