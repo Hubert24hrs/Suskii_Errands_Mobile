@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { promoRepository } from '@/mocks/repositories';
+import { changesNeedSecondApproval, promoRepository } from '@/lib/repositories';
 import type { PromoCampaign } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { CreatePromoModal } from './CreatePromoModal';
 
 function promoStatusChip(status: PromoCampaign['status']) {
@@ -19,7 +26,7 @@ function promoStatusChip(status: PromoCampaign['status']) {
   const tone =
     status === 'active'
       ? 'success'
-      : status === 'paused'
+      : status === 'paused' || status === 'pending_approval'
         ? 'warning'
         : status === 'expired'
           ? 'error'
@@ -34,12 +41,15 @@ export function PromosClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'promos.read');
   const mayManage = role !== undefined && can(role, 'promos.manage');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Against the real backend a change waits for a second super admin; say so.
+  const [notice, setNotice] = useState<string | null>(null);
+  const announce = () => setNotice(changesNeedSecondApproval ? dict.common.sentForApproval : null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // One idempotency key per (status change, promo) intent; deleted on success.
@@ -63,6 +73,7 @@ export function PromosClient() {
     try {
       await promoRepository.setPromoStatus(promo.id, status, keyFor(keyName));
       delete intentKeys.current[keyName];
+      announce();
       void queryClient.invalidateQueries({ queryKey: ['promos'] });
     } catch (e) {
       if (isSessionError(e)) {
@@ -80,7 +91,12 @@ export function PromosClient() {
     {
       key: 'percentOff',
       label: dict.promos.columns.percentOff,
-      render: (p) => `${p.discountPercent}%`,
+      render: (p) =>
+        p.discountFixed ? (
+          <MoneyText amountMinor={p.discountFixed.amountMinor} currency={p.discountFixed.currency} />
+        ) : (
+          `${p.discountPercent}%`
+        ),
     },
     {
       key: 'maxDiscount',
@@ -98,12 +114,12 @@ export function PromosClient() {
     {
       key: 'redemptions',
       label: dict.promos.columns.redemptions,
-      render: (p) => `${p.redemptions} / ${p.maxRedemptions}`,
+      render: (p) => `${p.redemptions} / ${p.maxRedemptions ?? '∞'}`,
     },
     {
       key: 'expires',
       label: dict.promos.columns.expires,
-      render: (p) => formatDateTime(p.endsAt),
+      render: (p) => (p.endsAt ? formatDateTime(p.endsAt) : '—'),
     },
     {
       key: 'status',
@@ -114,7 +130,7 @@ export function PromosClient() {
       key: 'actions',
       label: dict.common.actions,
       render: (p) => {
-        if (!mayManage || p.status === 'expired') return null;
+        if (!mayManage || p.status === 'expired' || p.status === 'pending_approval') return null;
         // setPromoStatus: draft → active, active ⇄ paused.
         const target = p.status === 'active' ? 'paused' : 'active';
         return (
@@ -162,6 +178,14 @@ export function PromosClient() {
         </p>
       ) : null}
 
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-md border border-outline bg-surface-raised px-lg py-md text-body-medium text-ink-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary"
+        >
+          {notice}
+        </p>
+      ) : null}
       {promosQuery.isPending ? (
         <StateBlock variant="loading" />
       ) : promosQuery.isError ? (
@@ -180,7 +204,11 @@ export function PromosClient() {
         />
       )}
 
-      <CreatePromoModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreatePromoModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={announce}
+      />
     </div>
   );
 }

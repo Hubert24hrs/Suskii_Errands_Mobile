@@ -11,12 +11,21 @@ import {
   isAppError,
   sessionRepository,
   type AdminAction,
-} from '@/mocks/repositories';
+} from '@/lib/repositories';
 import type { AdminRole } from '@/mocks/types';
 
 /** Client-side mirror of the role × action matrix for CTA/nav gating. */
-export function can(role: AdminRole, action: AdminAction): boolean {
-  return PERMISSIONS[action].includes(role);
+export function can(role: AdminRole | readonly AdminRole[], action: AdminAction): boolean {
+  const roles = typeof role === 'string' ? [role] : role;
+  return roles.some((r) => PERMISSIONS[action].includes(r));
+}
+
+/** Every role the signed-in admin holds (staff may hold several). */
+export function adminRoles(
+  session: { admin: { role: AdminRole; roles?: AdminRole[] } } | null | undefined,
+): readonly AdminRole[] | undefined {
+  if (!session) return undefined;
+  return session.admin.roles ?? [session.admin.role];
 }
 
 export function roleLabel(role: AdminRole): string {

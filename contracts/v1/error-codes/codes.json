@@ -405,6 +405,17 @@
       "client_action": "Show a neutral message; do not retry."
     },
     {
+      "code": "ERR_REAUTH_REQUIRED",
+      "status": "implemented",
+      "category": "auth",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 401,
+      "retryable": true,
+      "description": "A sensitive admin action (approving a withdrawal, resolving a dispute, opening a KYC document, proposing or signing a configuration change) needs a TOTP code entered in the last five minutes. Read from the session's `amr`; `aal2` alone is not enough.",
+      "client_action": "Ask for a fresh code (`mfa.challengeAndVerify` on the same session), then retry with the same idempotency key."
+    },
+    {
       "code": "ERR_PRICE_OUT_OF_RANGE",
       "status": "implemented",
       "category": "marketplace",
@@ -1184,6 +1195,17 @@
       "retryable": false,
       "description": "A chargeback arrived on a payment that has already been refunded, or on a job with an item float. The customer has been paid twice and which of the two to unwind is a person's decision, not arithmetic.",
       "client_action": "Internal: the webhook is acknowledged and the case goes to finance. No client surface."
+    },
+    {
+      "code": "ERR_ORGANIZATION_ALREADY_REGISTERED",
+      "status": "implemented",
+      "category": "provider",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A business with that registration number is already on the platform in this country. Matched on a blind index, so nothing reads either number.",
+      "client_action": "Say the number is already registered and route to support. Never say which business holds it."
     },
     {
       "code": "ERR_ORGANIZATION_NOT_FOUND",

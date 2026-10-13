@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { dict } from '@/lib/i18n';
-import { sessionRepository } from '@/mocks/repositories';
+import { sessionRepository, usingRealBackend, type TotpEnrolment } from '@/lib/repositories';
 import { StateBlock } from '@/components/StateBlock';
 import { errorText } from '../(console)/_shared';
 
@@ -21,6 +21,9 @@ export function SignInClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  // First sign-in against the real backend: the authenticator is enrolled here.
+  const [enrolment, setEnrolment] = useState<TotpEnrolment | null>(null);
+  const hint = usingRealBackend ? dict.auth.liveHint : dict.auth.demoHint;
 
   // Already signed in → straight to the console.
   useEffect(() => {
@@ -48,7 +51,9 @@ export function SignInClient() {
     setBusy(true);
     setError(null);
     try {
-      await sessionRepository.signIn(email, password);
+      const result = await sessionRepository.signIn(email, password);
+      // Only the real backend enrols; the mock answers without one.
+      setEnrolment((result as { enrolment?: TotpEnrolment }).enrolment ?? null);
       setStep('mfa');
     } catch (err) {
       setError(errorText(err));
@@ -136,17 +141,39 @@ export function SignInClient() {
             {dict.auth.signInCta}
           </button>
           <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
-            {dict.auth.demoHint}
+            {hint}
           </p>
         </form>
       ) : (
         <form onSubmit={submitMfa} className="mt-xxl flex flex-col gap-lg">
           <h1 className="text-headline-medium text-ink-primary dark:text-ink-dark-primary">
-            {dict.auth.mfaTitle}
+            {enrolment ? dict.auth.enrolTitle : dict.auth.mfaTitle}
           </h1>
           <p className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
-            {dict.auth.mfaBody}
+            {enrolment ? dict.auth.enrolBody : dict.auth.mfaBody}
           </p>
+          {enrolment ? (
+            <div className="flex flex-col items-center gap-sm rounded-lg border border-outline bg-surface-raised p-lg dark:border-outline-dark dark:bg-surface-dark-raised">
+              {/* GoTrue returns the QR as an SVG data URI; it never leaves the browser. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={enrolment.qrCode}
+                alt={dict.auth.enrolQrAlt}
+                width={192}
+                height={192}
+                className="rounded-md bg-white p-sm"
+              />
+              <span className="text-label-medium text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.auth.enrolSecretLabel}
+              </span>
+              <code
+                data-testid="totp-secret"
+                className="break-all text-center font-mono text-body-medium text-ink-primary dark:text-ink-dark-primary"
+              >
+                {enrolment.secret}
+              </code>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-xs">
             <label htmlFor="mfa-code" className={labelClasses}>
               {dict.auth.mfaCodeLabel}
@@ -175,7 +202,7 @@ export function SignInClient() {
             {dict.auth.mfaVerifyCta}
           </button>
           <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
-            {dict.auth.demoHint}
+            {hint}
           </p>
         </form>
       )}

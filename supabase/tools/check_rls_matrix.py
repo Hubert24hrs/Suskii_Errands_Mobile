@@ -20,6 +20,13 @@ proves the matrix and the schema are talking about the same things:
   C. a cell that names specific columns has a column-restricted grant, not a whole-row one
   D. a table with an `R:scope` cell has a policy that actually reads the admin scope
   E. a table with an `R:part` cell has a policy that actually tests participation
+  F. the role whose column holds an `R:scope` cell is one of the roles that policy admits
+
+F came from wiring the admin console (audit 2026-10-13, Z.14): the matrix gives the Dispute
+column `R:scope` on `requests`, the policy read the scope for `support_agent` alone, and D was
+satisfied because *a* scope helper was there. A dispute officer could not see the request a
+dispute was about. A helper that names no role is checked by role name in the policy text, so a
+policy that admits a role through some other route needs a waiver saying which.
 
 C, D and E are heuristics over policy text, so they are wrong sometimes. That is what
 `rls-matrix-waivers.json` is for: a divergence is either fixed or **written down with a reason**,
@@ -94,15 +101,40 @@ NON_TABLE_SECTIONS = (
 )
 
 
+# Matrix column headers that are admin roles, and the role each one is.
+ROLE_COLUMNS = {
+    "support": "support_agent",
+    "finance": "finance_officer",
+    "dispute": "dispute_officer",
+    "verification officer": "verification_officer",
+    "verification": "verification_officer",
+}
+# Helpers that admit a role without naming it in the policy text.
+IMPLIED_ROLES = {
+    "dispute_scope": {"dispute_officer"},
+    "support_ticket_scope": {"support_agent"},
+    "is_any_admin": set(ROLE_COLUMNS.values()),
+}
+
+HEADERS: dict[str, list[str]] = {}
+
+
 def matrix_rows(text: str) -> list[tuple[str, str, bool]]:
-    """(identifier, rest-of-row, is_function) for every table/function row in the matrix."""
+    """(identifier, rest-of-row, is_function) for every table/function row in the matrix.
+
+    Also records, in HEADERS, the column headers each row was written under (rule F).
+    """
     out = []
     section = ""
+    header: list[str] = []
     for line in text.split("\n"):
         if line.startswith("## "):
             section = line[3:].strip()
             continue
         if any(section.startswith(s) for s in NON_TABLE_SECTIONS):
+            continue
+        if line.startswith("| Table"):
+            header = [c.strip().lower() for c in line.strip().strip("|").split("|")]
             continue
         m = ROW.match(line)
         if not m:
@@ -113,7 +145,23 @@ def matrix_rows(text: str) -> list[tuple[str, str, bool]]:
         if len(name) <= 2:  # legend rows: `R`, `F`
             continue
         out.append((name, m.group(3), m.group(2) is not None))
+        HEADERS[name] = header
     return out
+
+
+def scope_roles(name: str, rest: str) -> list[str]:
+    """The admin roles whose column in this row is an `R:scope` cell."""
+    header = HEADERS.get(name, [])
+    cells = [c.strip() for c in rest.split("|")]
+    roles = []
+    # `rest` starts after the first cell, so cell i sits under header i + 1.
+    for i, cell in enumerate(cells):
+        if i + 1 >= len(header) or not cell.startswith("R:scope"):
+            continue
+        role = ROLE_COLUMNS.get(header[i + 1])
+        if role:
+            roles.append(role)
+    return roles
 
 
 def policies_by_table(root: Path) -> dict[str, list[str]]:
@@ -237,6 +285,16 @@ def main(argv: list[str]) -> int:
                 f"the matrix gives `{name}` an R:scope cell but no policy on it reads an admin "
                 "scope helper -- this is the U.1 shape",
             )
+        if "R:scope" in rest and any(h in bodies for h in SCOPE_HELPERS):
+            admitted = {r for helper, implied in IMPLIED_ROLES.items() if helper in bodies
+                        for r in implied}
+            for role in scope_roles(name, rest):
+                if role not in bodies and role not in admitted:
+                    report(
+                        f"scope-role:{name}:{role}",
+                        f"the matrix gives `{role}` R:scope on `{name}` but no policy on it admits "
+                        "that role -- a scope helper is there for another role (Z.14)",
+                    )
         if "R:part" in rest and not any(h in bodies for h in PARTICIPANT_HELPERS):
             report(
                 f"part:{name}",

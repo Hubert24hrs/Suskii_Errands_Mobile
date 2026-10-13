@@ -72,7 +72,7 @@ export class MockSessionRepository extends MockRepo {
    * Re-authentication for sensitive actions: refreshes reauthenticatedAt.
    * `purpose` lands in the audit log (e.g. 'approve withdrawal').
    */
-  async reauth(purpose: string): Promise<AdminSession> {
+  async reauth(purpose: string, _code?: string): Promise<AdminSession> {
     await this.gate();
     const session = this.session;
     session.reauthenticatedAt = this.now();

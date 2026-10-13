@@ -8,6 +8,77 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.1.0] - 2026-10-13
+
+The admin console's backend (audit 2026-10-13 Z.8) and the four mobile repositories that drew
+from mock data in every build (Z.9, Z.15). **MINOR**: everything is new or a behaviour that was
+an unnamed failure before; no signature changes.
+
+### Added: the admin console
+
+- **`admin_overview()`**: one row per live country in the caller's scope: `active_users`,
+  `active_jobs`, `offers_per_request` (numeric), `gmv_30d_minor`, `held_minor`,
+  `open_disputes`, `open_sos`. Any admin. The two money columns are NULL unless the caller is
+  `super_admin` or `finance_officer`.
+- **`audit_search(p_before_id, p_limit, p_actor_id, p_action_prefix, p_target_id)`**:
+  `super_admin` only, keyset-paged on `id`; `p_action_prefix` is `^[a-z0-9_.]{1,60}$`. The search
+  is itself audited (`audit.search`).
+- **`admin_staff_list()`** and **`admin_staff_lookup(p_email)`**: `super_admin` only. The
+  lookup is an exact match, audited with the domain only, and raises `ERR_PROFILE_NOT_FOUND`
+  when no account exists.
+- **`dispute_resolution_quote(p_dispute_id, p_refund_bps)`**: what `resolve_dispute` will post
+  for a refund share: `held_minor`, `refund_minor`, `commission_minor`, `gateway_fee_minor`,
+  `provider_minor`, by the same arithmetic.
+- **`admin_promo_codes(p_country)`**: full rows plus `uses`, for super admin, finance and
+  support, scoped by country.
+- `propose_config_change` takes two new targets, **`admin_user`** (roles, country scope, active)
+  and **`promo_code`** (create, or change active/budget/end/limits), each needing one other
+  super admin. Nobody may propose or sign a change to their own access.
+- Edge Function **`kyc-document-url`** (`POST {upload_ref, reason_code}` →
+  `{url, expires_at}`): a 60-second signed URL to a KYC document, issued only after
+  `request_document_access` has written the access row as the officer. It is the second Edge
+  Function an app calls, and the admin console is that app.
+
+### Added: the business console and provider tools
+
+- **`my_organization()`**, **`my_organization_members()`** (names for active members, a
+  masked number for invited ones, `earnings_minor` for the owner only) and
+  **`my_organization_invitations()`** (what the caller has been invited to, by name).
+- **`invite_member_by_phone(p_idempotency_key, p_organization_id, p_phone_e164, p_role)`** →
+  the invitee's id. Owner only; the person must already have an account under that number.
+- **`assign_vehicle(p_idempotency_key, p_vehicle_id, p_worker_id)`**: owner or dispatcher;
+  NULL unassigns.
+- **`org_assignable_jobs()`** → request rows (with `service_categories` and `jobs`), funded and
+  not yet handed to a worker. Owner or dispatcher.
+- Table **`availability_schedules`** (own; the owner or dispatcher of an active member) and
+  **`set_availability(p_idempotency_key, p_slots)`**, which replaces the week:
+  `[{weekday 1-7, start_minutes, end_minutes ≤ 1440}]`.
+- Table **`provider_earnings_goals`**, **`set_earnings_goal(p_idempotency_key, p_target_minor,
+  p_period)`** (`weekly`/`monthly`) and **`my_earnings_goal()`** with progress computed in the
+  provider's time zone.
+- **`my_provider_insights(p_days default 30)`**: acceptance and completion rates, average rating
+  and five-star share (numeric), response time; reviews still in their blind period are not
+  counted.
+- Error code **`ERR_ORGANIZATION_ALREADY_REGISTERED`**.
+
+### Changed (behaviour, no signature change)
+
+- **Step-up for the sensitive admin verbs (Z.11).** `approve_withdrawal`, `resolve_dispute`,
+  `request_document_access`, `propose_config_change` and `review_config_change` now also need a
+  TOTP code entered in the last five minutes, read from the JWT's `amr`
+  (`{"method": "totp", "timestamp": …}`); `aal2` alone is refused with **`ERR_REAUTH_REQUIRED`**
+  (new). Verify a fresh code on the same session (`mfa.challengeAndVerify`) and retry with the same
+  idempotency key. `kyc-document-url` answers it as `401`. The catalogue marks these five with
+  `requires.recent_mfa`.
+- `register_organization` raises `ERR_ORGANIZATION_ALREADY_REGISTERED` for a registration number
+  already on the platform in that country, where it failed on the UNIQUE constraint (`23505`).
+- `analytics_report` honours the caller's country scope; a scoped caller asking for a view without
+  `country_code` gets `ERR_PERMISSION_DENIED` (Z.12).
+- Staff reads the RLS matrix specifies and the policies had left out (Z.14): support and dispute
+  officers read `requests`, `offer_threads` and `offers`; finance, dispute and support read
+  `payments`; finance and support read `payouts`, `withdrawals`, `promo_redemptions` and
+  `referral_commissions`; finance, support and dispute read `tips`. All within country scope.
+
 ## [2.0.0] - 2026-10-12
 
 Kimi's change requests, closed from the server side, and the two app data layers wired to them

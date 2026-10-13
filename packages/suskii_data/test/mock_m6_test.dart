@@ -275,5 +275,67 @@ void main() {
         expect((await repo.getVehicles()), hasLength(4));
       },
     );
+
+    test('a provider registers a business and becomes its owner', () async {
+      final repo = MockOrganizationRepository(db, behavior);
+      await expectThrows(
+        () => repo.registerOrganization(
+          legalName: ' ',
+          registrationNumber: 'RC1',
+          idempotencyKey: newIdempotencyKey(),
+        ),
+        ErrorCodes.invalidArgument,
+      );
+      final key = newIdempotencyKey();
+      final org = await repo.registerOrganization(
+        legalName: 'Ada Errands Ltd',
+        registrationNumber: 'RC 778899',
+        idempotencyKey: key,
+      );
+      expect(org.ownerId, 'user-ada');
+      expect(org.verificationStatus, VerificationStatus.pending);
+      final replay = await repo.registerOrganization(
+        legalName: 'Ada Errands Ltd',
+        registrationNumber: 'RC 778899',
+        idempotencyKey: key,
+      );
+      expect(replay.id, org.id);
+      expect((await repo.getMembers()).single.role, BusinessRole.owner);
+      await expectThrows(
+        () => repo.registerOrganization(
+          legalName: 'Second Ltd',
+          registrationNumber: 'RC 112233',
+          idempotencyKey: newIdempotencyKey(),
+        ),
+        ErrorCodes.invalidState,
+      );
+    });
+
+    test('an invitation is accepted once and makes a member', () async {
+      db.orgInvitations['user-ada'] = <OrgInvitation>[
+        OrgInvitation(
+          organizationId: 'org-swift',
+          organizationName: 'SwiftErrands Ltd',
+          role: BusinessRole.worker,
+          invitedAt: DateTime.utc(2026, 10, 2),
+        ),
+      ];
+      final repo = MockOrganizationRepository(db, behavior);
+      expect(await repo.getMyInvitations(), hasLength(1));
+      final org = await repo.acceptInvitation(
+        'org-swift',
+        idempotencyKey: newIdempotencyKey(),
+      );
+      expect(org.memberCount, 5);
+      expect(await repo.getMyInvitations(), isEmpty);
+      expect((await repo.getMyOrganization())?.id, 'org-swift');
+      await expectThrows(
+        () => repo.acceptInvitation(
+          'org-swift',
+          idempotencyKey: newIdempotencyKey(),
+        ),
+        'ERR_ORG_NOT_FOUND',
+      );
+    });
   });
 }

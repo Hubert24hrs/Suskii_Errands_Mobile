@@ -27,7 +27,10 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
+  /** The role the console shows; with several, super_admin wins, else the first. */
   role: AdminRole;
+  /** Every role the staff member holds (the backend allows several). */
+  roles?: AdminRole[];
   mfaEnrolled: boolean;
   active: boolean;
   createdAt: Date;
@@ -52,8 +55,9 @@ export interface CountryMetrics {
   dau: number;
   activeJobs: number;
   offersPerRequest: number;
-  gmv: Money;
-  holdBalance: Money;
+  /** Absent for a role that may not read money (the KPIs draw the same line). */
+  gmv?: Money;
+  holdBalance?: Money;
   openDisputes: number;
   openSos: number;
 }
@@ -63,25 +67,41 @@ export interface CountryMetrics {
 // ---------------------------------------------------------------------------
 
 export type ManagedStatus = 'active' | 'suspended';
-export type TrustLevel = 'new' | 'established' | 'trusted' | 'flagged';
-export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
+export type TrustLevel =
+  | 'new'
+  | 'established'
+  | 'trusted'
+  | 'flagged'
+  | 'verified'
+  | 'elite';
+export type VerificationStatus =
+  | 'unverified'
+  | 'pending'
+  | 'in_review'
+  | 'verified'
+  | 'rejected'
+  | 'suspended'
+  | 'expired';
 
 export interface SuspensionRecord {
   reason: string;
-  byAdminId: string;
+  byAdminId?: string;
   at: Date;
+  /** Suspensions end; the backend refuses one without an end date. */
+  until?: Date;
 }
 
 export interface ManagedUser {
   id: string;
   name: string;
-  phone: string;
+  /** Absent on the real backend: staff confirm a number they have, they do not read one. */
+  phone?: string;
   country: string;
   status: ManagedStatus;
-  trustLevel: TrustLevel;
+  trustLevel?: TrustLevel;
   verificationStatus: VerificationStatus;
-  jobsCount: number;
-  totalSpend: Money;
+  jobsCount?: number;
+  totalSpend?: Money;
   joinedAt: Date;
   suspension?: SuspensionRecord;
 }
@@ -89,13 +109,13 @@ export interface ManagedUser {
 export interface ManagedProvider {
   id: string;
   name: string;
-  phone: string;
+  phone?: string;
   country: string;
   status: ManagedStatus;
-  trustLevel: TrustLevel;
+  trustLevel?: TrustLevel;
   verificationStatus: VerificationStatus;
-  rating: number;
-  completedJobs: number;
+  rating?: number;
+  completedJobs?: number;
   businessId?: string;
   joinedAt: Date;
   suspension?: SuspensionRecord;
@@ -126,8 +146,10 @@ export interface ManagedWorker {
 export interface ManagedVehicle {
   id: string;
   plate: string;
-  make: string;
-  model: string;
+  make?: string;
+  model?: string;
+  /** Vehicle type key (motorcycle, car, van, …) where make and model are not recorded. */
+  type?: string;
   ownerProviderId: string;
   status: ManagedStatus;
   verificationStatus: VerificationStatus;
@@ -143,6 +165,7 @@ export type VerificationKind =
   | 'facial'
   | 'police_clearance'
   | 'vehicle_document'
+  | 'provider_details'
   | 'business_document';
 
 export type VerificationQueueStatus = 'queued' | 'in_review' | 'approved' | 'rejected';
@@ -162,6 +185,10 @@ export interface VerificationQueueItem {
   reviewedAt?: Date;
   /** Rejection reason key (localization key, never raw text). */
   decisionReasonKey?: string;
+  /** The backend's own step kind (government_id, address, …) when it is finer than `kind`. */
+  stepKind?: string;
+  /** Documents in `kyc-docs`, each viewable through a 60-second grant. */
+  uploadRefs?: string[];
 }
 
 /** Short-lived (60s) document viewing grant. Every issue is audit-logged. */
@@ -179,13 +206,22 @@ export interface DocumentViewGrant {
 
 export type JobStatus =
   | 'draft'
+  | 'published'
+  | 'offers_received'
   | 'negotiating'
   | 'agreed'
   | 'payment_pending'
   | 'paid_held'
+  | 'assigned'
+  | 'en_route'
+  | 'arrived'
   | 'in_progress'
   | 'completed_by_provider'
   | 'confirmed'
+  | 'settlement_pending'
+  | 'settled'
+  | 'closed'
+  | 'expired'
   | 'disputed'
   | 'refunded'
   | 'cancelled';
@@ -263,6 +299,8 @@ export interface PaymentAdminView {
   };
   status: PaymentAdminStatus;
   approval: ApprovalRecord;
+  /** Signatures this withdrawal needs (the country pack's threshold decides one or two). */
+  approvalsRequired?: number;
   createdAt: Date;
 }
 
@@ -303,10 +341,15 @@ export interface ReferralCampaign {
   id: string;
   name: string;
   country: string;
-  /** Server-set reward amounts. */
-  referrerReward: Money;
-  refereeReward: Money;
-  status: 'active' | 'paused' | 'ended';
+  /**
+   * The referrer's share of the platform's commission, in basis points (OD-01: a referral
+   * is a commission rate, not a fixed reward).
+   */
+  rateBps: number;
+  /** What the campaign may pay out in total; absent means no cap. */
+  budget?: Money;
+  /** `pending_approval`: proposed, waiting for a second signature (four eyes). */
+  status: 'active' | 'paused' | 'ended' | 'pending_approval';
   startsAt: Date;
   endsAt?: Date;
 }
@@ -321,14 +364,19 @@ export interface PromoCampaign {
   country: string;
   /** Percentage off (0–100); caps and budgets are server-set Money. */
   discountPercent: number;
+  /** A fixed amount off instead of a percentage. */
+  discountFixed?: Money;
   maxDiscount?: Money;
-  budget: Money;
+  /** Absent means no cap. */
+  budget?: Money;
   spent: Money;
-  maxRedemptions: number;
+  /** Absent means unlimited. */
+  maxRedemptions?: number;
   redemptions: number;
-  status: 'draft' | 'active' | 'paused' | 'expired';
+  /** `pending_approval`: proposed, waiting for a second signature (four eyes). */
+  status: 'draft' | 'active' | 'paused' | 'expired' | 'pending_approval';
   startsAt: Date;
-  endsAt: Date;
+  endsAt?: Date;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +385,7 @@ export interface PromoCampaign {
 
 export interface DisputeEvidenceRef {
   id: string;
-  kind: 'photo' | 'chat_excerpt' | 'location_log' | 'payment_record';
+  kind: 'photo' | 'chat_excerpt' | 'location_log' | 'payment_record' | 'note';
   label: string;
   uploadedBy: 'customer' | 'provider' | 'system';
   uploadedAt: Date;
@@ -349,7 +397,7 @@ export type DisputeResolutionAction =
   | 'release_to_provider'
   | 'reject';
 
-export type DisputeCaseStatus = 'open' | 'in_review' | 'resolved' | 'rejected';
+export type DisputeCaseStatus = 'open' | 'in_review' | 'resolved' | 'rejected' | 'withdrawn';
 
 export interface DisputeCase {
   id: string;
@@ -426,7 +474,8 @@ export interface SosAlertAdmin {
   country: string;
   triggeredBy: 'customer' | 'provider';
   userName: string;
-  userPhone: string;
+  /** Absent on the real backend: ops call through the masked line or the SOS partner. */
+  userPhone?: string;
   status: SosStatus;
   triggeredAt: Date;
   acknowledgedByAdminId?: string;
@@ -446,7 +495,18 @@ export type RiskCaseKind =
   | 'account_takeover'
   | 'collusion'
   | 'incentive_abuse'
-  | 'identity_mismatch';
+  | 'identity_mismatch'
+  // The backend's rule keys (supabase/migrations/*_risk.sql).
+  | 'cancellation_abuse'
+  | 'device_integrity_failed'
+  | 'mock_location'
+  | 'offer_velocity'
+  | 'payment_chargeback'
+  | 'payout_account_reuse'
+  | 'request_velocity'
+  | 'self_dealing_device'
+  | 'referral_shared_device'
+  | 'referral_velocity';
 
 export interface RiskCase {
   id: string;
@@ -491,7 +551,14 @@ export type ConfigChangeStatus = 'proposed' | 'approved' | 'rejected';
 
 export interface ConfigChange {
   id: string;
-  target: 'feature_flag' | 'country_pack' | 'commission';
+  target:
+    | 'feature_flag'
+    | 'country_pack'
+    | 'commission'
+    | 'remote_config'
+    | 'referral_campaign'
+    | 'admin_user'
+    | 'promo_code';
   targetKey: string;
   /** Human-readable summary of the proposed value(s). */
   summary: string;
@@ -501,6 +568,9 @@ export interface ConfigChange {
   status: ConfigChangeStatus;
   decidedByAdminId?: string;
   decidedAt?: Date;
+  /** Signatures the change needs besides the proposer's, and how many it has. */
+  approvalsRequired?: number;
+  approvalsGiven?: number;
 }
 
 // ---------------------------------------------------------------------------

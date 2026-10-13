@@ -16,11 +16,6 @@ import '../../app/router.dart';
 class DisputesPage extends ConsumerWidget {
   const DisputesPage({super.key});
 
-  String _resolutionLabel(AppLocalizations l10n, String key) => switch (key) {
-    'disputeResolvedPartialRefund' => l10n.disputeResolvedPartialRefund,
-    _ => key,
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
@@ -114,7 +109,7 @@ class DisputesPage extends ConsumerWidget {
                             if (dispute.resolutionNoteKey != null) ...<Widget>[
                               const SizedBox(height: SSpacing.xs),
                               Text(
-                                _resolutionLabel(
+                                disputeResolutionLabel(
                                   l10n,
                                   dispute.resolutionNoteKey!,
                                 ),

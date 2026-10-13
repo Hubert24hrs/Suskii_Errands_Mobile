@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
-  "count": 68,
+  "count": 70,
   "tables": [
     {
       "name": "public.account_deletion_requests",
@@ -275,6 +275,72 @@
         }
       },
       "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.availability_schedules",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "weekday",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "start_time",
+          "type": {
+            "type": "object",
+            "sql_type": "time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "end_time",
+          "type": {
+            "type": "object",
+            "sql_type": "time"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20261013120100_business_console_and_provider_tools.sql"
     },
     {
       "name": "public.blocks",
@@ -4504,6 +4570,61 @@
         }
       },
       "defined_in": "20260918120400_proofs_and_media.sql"
+    },
+    {
+      "name": "public.provider_earnings_goals",
+      "columns": [
+        {
+          "name": "provider_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "target_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "currency",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "period",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "updated_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "*"
+          ]
+        }
+      },
+      "defined_in": "20261013120100_business_console_and_provider_tools.sql"
     },
     {
       "name": "public.provider_profiles",

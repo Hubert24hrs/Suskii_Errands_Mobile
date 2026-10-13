@@ -5,12 +5,18 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { disputeRepository } from '@/mocks/repositories';
+import { disputeRepository } from '@/lib/repositories';
 import type { DisputeCase, DisputeCaseStatus } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { FilterBar } from '@/components/FilterBar';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { ageDays, disputeReasonLabel, disputeStatusChip } from './_shared';
 
 const STATUS_FILTERS: (DisputeCaseStatus | 'all')[] = [
@@ -25,7 +31,7 @@ export function DisputesClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'disputes.read');
   const mayResolve = role !== undefined && can(role, 'disputes.resolve');
 

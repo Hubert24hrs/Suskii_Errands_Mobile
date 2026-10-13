@@ -4,19 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { jobsRepository } from '@/mocks/repositories';
+import { jobsRepository } from '@/lib/repositories';
 import type { JobAdminView } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { FilterBar } from '@/components/FilterBar';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { categoryLabel, jobStatusChip, jobUpdatedAt } from './_shared';
 
 export function JobsClient() {
   const router = useRouter();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'jobs.read');
 
   const [search, setSearch] = useState('');

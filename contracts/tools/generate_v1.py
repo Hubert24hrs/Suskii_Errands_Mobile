@@ -118,6 +118,9 @@ CALLER_BINDING = re.compile(
 )
 
 
+STEP_UP = "private.require_recent_mfa("
+
+
 def caller_variables(body: str) -> set[str]:
     """The local variables that hold the caller's own id.
 
@@ -156,6 +159,9 @@ def requirements(fn: pgparse.Function) -> dict:
         req["active_provider"] = True
     if _guards_the_caller(body, r"private\.require_dispatchable_worker", callers):
         req["dispatchable_worker"] = True
+    if STEP_UP in body:
+        # The TOTP code must have been entered within the helper's window (audit Z.11).
+        req["recent_mfa"] = "totp within 5 minutes"
     return req
 
 
@@ -171,7 +177,10 @@ def describe(fn: pgparse.Function, enums: dict[str, list[str]]) -> dict:
         if a.default is not None:
             node["default"] = a.default
         args.append(node)
-    errors = sorted(set(ERR.findall(fn.body)))
+    errors = set(ERR.findall(fn.body))
+    if STEP_UP in fn.body:
+        errors.add("ERR_REAUTH_REQUIRED")  # raised inside the helper, not in this body
+    errors = sorted(errors)
     idem = next((a.name for a in fn.args if a.name and "idempotency" in a.name), None)
     return {
         "name": fn.name,

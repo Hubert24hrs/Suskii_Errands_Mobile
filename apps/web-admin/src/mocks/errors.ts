@@ -11,6 +11,8 @@ export const ErrorCodes = {
   permissionDenied: 'ERR_PERMISSION_DENIED',
   idempotencyKeyReused: 'ERR_IDEMPOTENCY_KEY_REUSED',
   invalidState: 'ERR_INVALID_STATE',
+  notFound: 'ERR_NOT_FOUND',
+  featureUnavailable: 'ERR_FEATURE_UNAVAILABLE',
 
   // Admin session
   sessionExpired: 'ERR_SESSION_EXPIRED',
@@ -23,7 +25,8 @@ export const ErrorCodes = {
   alreadyReviewed: 'ERR_ALREADY_REVIEWED',
 } as const;
 
-export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
+/** A known code, or any backend wire code (contracts/v1/error-codes/codes.json). */
+export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes] | `ERR_${string}`;
 
 /** Error type surfaced to the app. `messageKey` is a localization key. */
 export class AppError extends Error {

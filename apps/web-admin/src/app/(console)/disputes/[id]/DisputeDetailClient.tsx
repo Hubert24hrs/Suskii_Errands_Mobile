@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { disputeRepository, isAppError, sessionRepository } from '@/mocks/repositories';
+import { disputeRepository, isAppError, sessionRepository } from '@/lib/repositories';
 import type {
   DisputeCase,
   DisputeResolutionAction,
@@ -15,7 +15,14 @@ import type {
 import { MoneyText } from '@/components/MoneyText';
 import { ReauthModal } from '@/components/ReauthModal';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../../_shared';
 import {
   disputeReasonLabel,
   disputeStatusChip,
@@ -97,7 +104,7 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayResolve = role !== undefined && can(role, 'disputes.resolve');
 
   const [action, setAction] = useState<DisputeResolutionAction>('refund_full');
@@ -146,11 +153,11 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
     }
   };
 
-  const confirmReauth = async (_code: string) => {
-    // The mock reauth records the purpose in the audit log; the authenticator
-    // code itself is not verified at this layer.
+  const confirmReauth = async (code: string) => {
+    // The real backend verifies the authenticator code (a fresh TOTP
+    // challenge); the mock accepts any code and records the purpose.
     try {
-      await sessionRepository.reauth('disputes.resolve');
+      await sessionRepository.reauth('disputes.resolve', code);
       setReauthOpen(false);
       const next = pendingAction.current;
       pendingAction.current = null;
@@ -196,7 +203,7 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
         disputeRepository.resolveDispute(
           dispute.id,
           action,
-          { partialPercent: pct, note: note.trim() === '' ? undefined : note.trim() },
+          { partialPercent: pct, note: note.trim() },
           keyFor(intentName),
         ),
       {
@@ -269,7 +276,7 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
           htmlFor="resolution-note"
           className="text-label-large text-ink-primary dark:text-ink-dark-primary"
         >
-          {dict.common.reason}
+          {dict.disputes.detail.noteLabel}
         </label>
         <textarea
           id="resolution-note"
@@ -290,7 +297,9 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
       <div>
         <button
           type="button"
-          disabled={busy || quoteQuery.isError}
+          // Both parties are owed a reason; the backend refuses a resolution without one.
+          disabled={busy || quoteQuery.isError || note.trim() === ''}
+          title={note.trim() === '' ? dict.disputes.detail.noteRequired : undefined}
           onClick={() => void resolve()}
           className="rounded-md bg-brand-primary px-xl py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50"
         >
@@ -316,7 +325,7 @@ function ResolutionSection({ dispute }: { dispute: DisputeCase }) {
 export function DisputeDetailClient({ disputeId }: { disputeId: string }) {
   const router = useRouter();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'disputes.read');
 
   const disputeQuery = useQuery({

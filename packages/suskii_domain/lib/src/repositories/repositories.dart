@@ -565,6 +565,23 @@ abstract interface class OrganizationRepository {
   Future<Organization?> getMyOrganization();
   Future<List<OrgMember>> getMembers();
 
+  /// Registers a business with the caller as its owner. The registration
+  /// number is sealed server-side; one number, one business.
+  Future<Organization> registerOrganization({
+    required String legalName,
+    required String registrationNumber,
+    required String idempotencyKey,
+  });
+
+  /// Invitations waiting for the caller.
+  Future<List<OrgInvitation>> getMyInvitations();
+
+  /// Accepts an invitation; the caller becomes a member in the invited role.
+  Future<Organization> acceptInvitation(
+    String organizationId, {
+    required String idempotencyKey,
+  });
+
   /// Invites a worker/dispatcher by phone. Idempotent per phone+role.
   Future<OrgMember> inviteMember({
     required String phoneE164,

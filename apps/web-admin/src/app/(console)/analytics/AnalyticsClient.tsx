@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { analyticsRepository } from '@/mocks/repositories';
+import { analyticsRepository } from '@/lib/repositories';
 import type { AnalyticsMetric } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { errorText, isSessionError } from '../_shared';

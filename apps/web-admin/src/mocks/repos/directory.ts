@@ -109,6 +109,7 @@ export class MockDirectoryRepository extends MockRepo {
     id: string,
     reason: string,
     idempotencyKey: string,
+    days = 30,
   ): Promise<DirectoryEntity> {
     await this.gate();
     const admin = this.requirePermission('directory.suspend');
@@ -121,6 +122,7 @@ export class MockDirectoryRepository extends MockRepo {
         reason,
         byAdminId: admin.id,
         at: this.now(),
+        until: new Date(this.now().getTime() + days * 86_400_000),
       };
       entity.status = 'suspended';
       entity.suspension = suspension;

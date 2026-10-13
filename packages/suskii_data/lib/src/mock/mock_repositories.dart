@@ -3228,6 +3228,87 @@ class MockOrganizationRepository extends _MockRepo
   }
 
   @override
+  Future<Organization> registerOrganization({
+    required String legalName,
+    required String registrationNumber,
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgRegister', idempotencyKey, () async {
+      final name = legalName.trim();
+      final number = registrationNumber.replaceAll(RegExp(r'[\s-]'), '');
+      if (name.isEmpty || number.length < 3 || number.length > 40) {
+        throw const AppError(ErrorCodes.invalidArgument);
+      }
+      if (_myOrg() != null) throw const AppError(ErrorCodes.invalidState);
+      final user = currentUser;
+      final org = Organization(
+        id: 'org-${db.organizations.length + 1}',
+        name: name,
+        ownerId: user.id,
+        verificationStatus: VerificationStatus.pending,
+        payoutAccountSet: false,
+        memberCount: 1,
+        activeVehicleCount: 0,
+      );
+      db.organizations[org.id] = org;
+      db.orgMembers[org.id] = <OrgMember>[
+        OrgMember(
+          userId: user.id,
+          displayName: user.displayName,
+          role: BusinessRole.owner,
+          verificationStatus: VerificationStatus.verified,
+          jobsCompleted: 0,
+          earningsToDate: const Money(0, 'NGN'),
+        ),
+      ];
+      return org;
+    }, argsHash: '$legalName|$registrationNumber');
+  }
+
+  @override
+  Future<List<OrgInvitation>> getMyInvitations() async {
+    await gate();
+    return List<OrgInvitation>.unmodifiable(
+      db.orgInvitations[currentUser.id] ?? const <OrgInvitation>[],
+    );
+  }
+
+  @override
+  Future<Organization> acceptInvitation(
+    String organizationId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('orgAccept:$organizationId', idempotencyKey, () async {
+      final user = currentUser;
+      final pending = db.orgInvitations[user.id] ?? <OrgInvitation>[];
+      final invitation = pending
+          .where((OrgInvitation i) => i.organizationId == organizationId)
+          .firstOrNull;
+      final org = db.organizations[organizationId];
+      if (invitation == null || org == null) {
+        throw const AppError('ERR_ORG_NOT_FOUND');
+      }
+      pending.remove(invitation);
+      final members = db.orgMembers.putIfAbsent(org.id, () => <OrgMember>[]);
+      members.add(
+        OrgMember(
+          userId: user.id,
+          displayName: user.displayName,
+          role: invitation.role,
+          verificationStatus: VerificationStatus.verified,
+          jobsCompleted: 0,
+          earningsToDate: const Money(0, 'NGN'),
+        ),
+      );
+      final updated = org.copyWith(memberCount: members.length);
+      db.organizations[org.id] = updated;
+      return updated;
+    });
+  }
+
+  @override
   Future<OrgMember> inviteMember({
     required String phoneE164,
     required BusinessRole role,

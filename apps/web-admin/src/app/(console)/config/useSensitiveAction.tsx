@@ -9,7 +9,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { dict } from '@/lib/i18n';
-import { isAppError, sessionRepository } from '@/mocks/repositories';
+import { isAppError, sessionRepository } from '@/lib/repositories';
 import { ReauthModal } from '@/components/ReauthModal';
 import { errorText, isSessionError } from '../_shared';
 
@@ -50,16 +50,16 @@ export function useSensitiveAction(): {
     }
   };
 
-  const confirmReauth = async (_code: string) => {
+  const confirmReauth = async (code: string) => {
     const pending = pendingRef.current;
     if (!pending) {
       setReauthOpen(false);
       return;
     }
     try {
-      // The mock records the purpose in the audit log; the authenticator
-      // code itself is not verified at this layer.
-      await sessionRepository.reauth(pending.purpose);
+      // The real backend verifies the authenticator code (a fresh TOTP
+      // challenge); the mock accepts any code and records the purpose.
+      await sessionRepository.reauth(pending.purpose, code);
     } catch (e) {
       if (isSessionError(e)) {
         router.replace('/sign-in');

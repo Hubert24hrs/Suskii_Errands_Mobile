@@ -5,6 +5,15 @@ CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
 SELECT plan(41);
 
+-- An admin session that entered its TOTP code just now: `aal2`, and the step-up the sensitive
+-- verbs ask for (audit Z.11).
+CREATE FUNCTION pg_temp.admin_claims(p_user text) RETURNS text LANGUAGE sql STABLE AS $fn$
+  SELECT jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2',
+    'amr', jsonb_build_array(jsonb_build_object(
+      'method', 'totp', 'timestamp', extract(epoch FROM now())::bigint)))::text;
+$fn$;
+
+
 INSERT INTO auth.users (id, phone) VALUES
   ('6b111111-1111-4111-8111-ffffffffffff', '2348000000151'),   -- a provider applicant
   ('6b222222-2222-4222-8222-ffffffffffff', '2348000000152'),   -- someone with the same ID number
@@ -139,7 +148,7 @@ RESET ROLE;
 -- The officer. Admin roles need MFA on the session, which is why these claims say aal2.
 -- ---------------------------------------------------------------------------
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b333333-3333-4333-8333-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.kyc_review_queue()), 2,
   'the officer sees both submitted steps');
@@ -188,7 +197,7 @@ RESET ROLE;
 -- directly, because nothing can: the schema is unreachable even to the role running this file,
 -- which is the property it exists for. Everything goes through the published functions.
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b333333-3333-4333-8333-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 SELECT public.submit_kyc_step('key-ky-step-o-000000001', 'government_id',
   ARRAY['6b333333-3333-4333-8333-ffffffffffff/officer-id.jpg']);
@@ -200,7 +209,7 @@ RESET ROLE;
 -- A second officer can see it, which is how it gets reviewed at all — and how this test gets
 -- an id to try the forbidden thing with.
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b555555-5555-4555-8555-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b555555-5555-4555-8555-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 INSERT INTO ky VALUES ('own_step', (SELECT step_id FROM public.kyc_review_queue()
                                     WHERE user_id = '6b333333-3333-4333-8333-ffffffffffff'));
@@ -209,7 +218,7 @@ SELECT ok((SELECT id FROM ky WHERE name = 'own_step') IS NOT NULL,
 RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b333333-3333-4333-8333-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT public.decide_kyc_step('key-ky-dec-self-00000001', %L, 'approved')$$,
@@ -219,7 +228,7 @@ RESET ROLE;
 
 -- Support sees status, never documents (RLS matrix §4).
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b444444-4444-4444-8444-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b444444-4444-4444-8444-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 SELECT ok((SELECT count(*) FROM public.verification_summary(
             '6b111111-1111-4111-8111-ffffffffffff')) >= 3,
@@ -246,7 +255,7 @@ SELECT is(public.submit_police_clearance('key-ky-pc-a-0000000004', 'PC-2',
 RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
-  '{"sub": "6b333333-3333-4333-8333-ffffffffffff", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('6b333333-3333-4333-8333-ffffffffffff'), true);
 SET LOCAL ROLE authenticated;
 SELECT is(public.decide_kyc_step('key-ky-dec-pc-000000001',
             (SELECT step_id FROM public.kyc_review_queue() WHERE kind = 'police_clearance'),

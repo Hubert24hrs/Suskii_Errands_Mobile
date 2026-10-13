@@ -149,6 +149,11 @@ String vehicleTypeLabel(AppLocalizations l10n, VehicleType type) =>
 String kycRejectionReasonLabel(AppLocalizations l10n, String? key) =>
     switch (key) {
       'kycRejectPoliceClearanceExpired' => l10n.kycRejectPoliceClearanceExpired,
+      'kycRejectDocUnreadable' => l10n.kycRejectDocUnreadable,
+      'kycRejectDocExpired' => l10n.kycRejectDocExpired,
+      'kycRejectMismatch' => l10n.kycRejectMismatch,
+      'kycRejectFailedLiveness' => l10n.kycRejectFailedLiveness,
+      'kycRejectOther' => l10n.kycRejectOther,
       _ => key ?? l10n.errUnknown,
     };
 
@@ -214,6 +219,16 @@ String disputeStatusLabel(AppLocalizations l10n, DisputeStatus status) =>
     };
 
 /// Dispute reasons are localization keys sent to the server, never free text.
+/// A dispute's outcome, from the key the admin console resolves it with.
+String disputeResolutionLabel(AppLocalizations l10n, String key) =>
+    switch (key) {
+      'disputeResolvedPartialRefund' => l10n.disputeResolvedPartialRefund,
+      'disputeResolvedFullRefund' => l10n.disputeResolvedFullRefund,
+      'disputeResolvedReleased' => l10n.disputeResolvedReleased,
+      'disputeResolvedRejected' => l10n.disputeResolvedRejected,
+      _ => key,
+    };
+
 String disputeReasonLabel(AppLocalizations l10n, String key) => switch (key) {
   'disputeReasonNotDelivered' => l10n.disputeReasonNotDelivered,
   'disputeReasonDamaged' => l10n.disputeReasonDamaged,

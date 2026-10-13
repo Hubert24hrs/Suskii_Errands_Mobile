@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { paymentsRepository } from '@/mocks/repositories';
+import { paymentsRepository } from '@/lib/repositories';
 import type { PaymentAdminView } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { ageDays, kindLabel, paymentStatusChip, TAB_KIND, type PaymentTab } from './_shared';
 import { PaymentDrawer } from './PaymentDrawer';
 
@@ -18,7 +24,7 @@ const TABS = Object.keys(TAB_KIND) as PaymentTab[];
 export function PaymentsClient() {
   const router = useRouter();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'payments.read');
 
   const [tab, setTab] = useState<PaymentTab>('holds');

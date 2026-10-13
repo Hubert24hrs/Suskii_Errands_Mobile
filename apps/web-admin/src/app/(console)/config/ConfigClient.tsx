@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { configRepository, isAppError } from '@/mocks/repositories';
+import { configRepository, isAppError } from '@/lib/repositories';
 import type {
   CommissionConfig,
   ConfigChange,
@@ -23,8 +23,18 @@ import { DataTable, type Column } from '@/components/DataTable';
 import { Modal } from '@/components/Modal';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { useSensitiveAction } from './useSensitiveAction';
+
+/** Reason keys the backend stores and the apps localise — never free text. */
+const REJECTION_REASONS = Object.keys(dict.config.rejectionReasons);
 
 type Tab = 'flags' | 'packs' | 'commissions';
 
@@ -59,7 +69,7 @@ export function ConfigClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'config.read');
   const mayPropose = role !== undefined && can(role, 'config.propose');
   const mayApprove = role !== undefined && can(role, 'config.approve');
@@ -69,7 +79,7 @@ export function ConfigClient() {
   const [sameAdminChangeId, setSameAdminChangeId] = useState<string | null>(null);
   const [commissionInputs, setCommissionInputs] = useState<Record<string, string>>({});
   const [rejectTarget, setRejectTarget] = useState<ConfigChange | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState<string>(REJECTION_REASONS[0]);
   const [busy, setBusy] = useState(false);
 
   // One key per intent (flag toggle / commission proposal / approve / reject);
@@ -190,7 +200,7 @@ export function ConfigClient() {
         onSuccess: () => {
           dropKey(keyName);
           setRejectTarget(null);
-          setRejectReason('');
+          setRejectReason(REJECTION_REASONS[0]);
         },
       },
     );
@@ -444,7 +454,13 @@ export function ConfigClient() {
                       {change.summary}
                     </span>
                     <span className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
-                      {change.target}/{change.targetKey}
+                      {(dict.config.targets as Record<string, string>)[change.target] ??
+                        change.target}
+                      {' · '}
+                      {change.targetKey}
+                      {change.approvalsRequired !== undefined
+                        ? ` · ${change.approvalsGiven ?? 0}/${change.approvalsRequired}`
+                        : null}
                     </span>
                   </div>
                   {changeStatusChip(change.status)}
@@ -477,7 +493,7 @@ export function ConfigClient() {
                       disabled={busy}
                       onClick={() => {
                         setRejectTarget(change);
-                        setRejectReason('');
+                        setRejectReason(REJECTION_REASONS[0]);
                       }}
                       className={dangerButton}
                     >
@@ -511,14 +527,18 @@ export function ConfigClient() {
             >
               {dict.common.reason}
             </label>
-            <textarea
+            <select
               id="reject-reason"
-              rows={3}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={dict.common.reasonPlaceholder}
               className={inputClasses}
-            />
+            >
+              {REJECTION_REASONS.map((key) => (
+                <option key={key} value={key}>
+                  {(dict.config.rejectionReasons as Record<string, string>)[key]}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-wrap gap-md">
             <button

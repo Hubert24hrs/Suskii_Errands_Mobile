@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { referralRepository } from '@/mocks/repositories';
+import { changesNeedSecondApproval, referralRepository } from '@/lib/repositories';
 import type {
   ReferralAttribution,
   ReferralCampaign,
@@ -14,7 +14,14 @@ import type {
 import { DataTable, type Column } from '@/components/DataTable';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
-import { can, errorText, formatDateTime, isSessionError, useAdminSession } from '../_shared';
+import {
+  adminRoles,
+  can,
+  errorText,
+  formatDateTime,
+  isSessionError,
+  useAdminSession,
+} from '../_shared';
 import { campaignStatusChip, countryLabel, flagStatusChip } from './_shared';
 import { CreateCampaignModal } from './CreateCampaignModal';
 
@@ -30,13 +37,16 @@ export function ReferralsClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const mayRead = role !== undefined && can(role, 'referrals.read');
   const mayManage = role !== undefined && can(role, 'referrals.manage');
 
   const [tab, setTab] = useState<Tab>('attributions');
   const [createOpen, setCreateOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Against the real backend a campaign change waits for a second super admin; say so.
+  const [notice, setNotice] = useState<string | null>(null);
+  const announce = () => setNotice(changesNeedSecondApproval ? dict.common.sentForApproval : null);
 
   // One idempotency key per (action, target) intent; deleted after success.
   const intentKeys = useRef<Record<string, string>>({});
@@ -74,6 +84,7 @@ export function ReferralsClient() {
     try {
       await fn(keyFor(keyName));
       delete intentKeys.current[keyName];
+      if (keyName.startsWith('campaign-')) announce();
       refresh();
     } catch (e) {
       if (isSessionError(e)) {
@@ -183,24 +194,19 @@ export function ReferralsClient() {
       render: (c) => countryLabel(c.country),
     },
     {
-      key: 'referrerReward',
-      label: `${dict.referrals.columns.referrer} — ${dict.referrals.campaign.rewardAmountLabel}`,
-      render: (c) => (
-        <MoneyText
-          amountMinor={c.referrerReward.amountMinor}
-          currency={c.referrerReward.currency}
-        />
-      ),
+      key: 'rate',
+      label: dict.referrals.campaign.rateColumn,
+      render: (c) => `${(c.rateBps / 100).toLocaleString('en-GB', { maximumFractionDigits: 2 })}%`,
     },
     {
-      key: 'refereeReward',
-      label: `${dict.referrals.columns.referee} — ${dict.referrals.campaign.rewardAmountLabel}`,
-      render: (c) => (
-        <MoneyText
-          amountMinor={c.refereeReward.amountMinor}
-          currency={c.refereeReward.currency}
-        />
-      ),
+      key: 'budget',
+      label: dict.referrals.campaign.budgetLabel,
+      render: (c) =>
+        c.budget ? (
+          <MoneyText amountMinor={c.budget.amountMinor} currency={c.budget.currency} />
+        ) : (
+          dict.referrals.campaign.noBudget
+        ),
     },
     {
       key: 'status',
@@ -306,6 +312,14 @@ export function ReferralsClient() {
         ))}
       </div>
 
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-md border border-outline bg-surface-raised px-lg py-md text-body-medium text-ink-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary"
+        >
+          {notice}
+        </p>
+      ) : null}
       {actionError ? (
         <p role="alert" className="text-body-small text-error dark:text-error-dark">
           {actionError}
@@ -344,7 +358,11 @@ export function ReferralsClient() {
         />
       )}
 
-      <CreateCampaignModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateCampaignModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={announce}
+      />
     </div>
   );
 }

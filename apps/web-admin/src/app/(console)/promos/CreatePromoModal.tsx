@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { promoRepository } from '@/mocks/repositories';
+import { promoRepository } from '@/lib/repositories';
 import { Modal } from '@/components/Modal';
 import { errorText, isSessionError } from '../_shared';
 
@@ -23,12 +23,13 @@ const COUNTRY_CURRENCY: Record<string, string> = {
 };
 const COUNTRIES = Object.keys(COUNTRY_CURRENCY);
 
+// A real <label>, so the text names its control for screen readers.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-xs">
+    <label className="flex flex-col gap-xs">
       <span className={labelClass}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 
@@ -63,7 +64,16 @@ function MinorUnitsInput({
   );
 }
 
-export function CreatePromoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreatePromoModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Called after a successful create (the screen says whether it awaits approval). */
+  onCreated?: () => void;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -139,6 +149,7 @@ export function CreatePromoModal({ open, onClose }: { open: boolean; onClose: ()
       );
       setCreateKey(newIdempotencyKey());
       void queryClient.invalidateQueries({ queryKey: ['promos'] });
+      onCreated?.();
       onClose();
     } catch (e) {
       if (isSessionError(e)) {

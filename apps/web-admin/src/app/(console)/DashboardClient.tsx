@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { metricsRepository } from '@/mocks/repositories';
+import { metricsRepository } from '@/lib/repositories';
 import type { CountryMetrics } from '@/mocks/types';
 import { KpiCard } from '@/components/KpiCard';
 import { StateBlock } from '@/components/StateBlock';
@@ -32,12 +32,15 @@ function KpiGrid({ metrics }: { metrics: CountryMetrics }) {
     },
     {
       label: dict.dashboard.metrics.gmv,
-      value: formatMoney(metrics.gmv.amountMinor, metrics.gmv.currency),
+      // Absent for a role that may not read money: a dash, never a zero.
+      value: metrics.gmv ? formatMoney(metrics.gmv.amountMinor, metrics.gmv.currency) : '—',
       href: '/payments',
     },
     {
       label: dict.dashboard.metrics.fundsHeld,
-      value: formatMoney(metrics.holdBalance.amountMinor, metrics.holdBalance.currency),
+      value: metrics.holdBalance
+        ? formatMoney(metrics.holdBalance.amountMinor, metrics.holdBalance.currency)
+        : '—',
       href: '/payments',
     },
     {

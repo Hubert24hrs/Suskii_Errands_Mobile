@@ -4,18 +4,24 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { directoryRepository, type DirectoryKind } from '@/mocks/repositories';
+import { directoryRepository, type DirectoryKind } from '@/lib/repositories';
 import { Drawer } from '@/components/Drawer';
 import { Modal } from '@/components/Modal';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
 import {
+  adminRoles,
   can,
   errorText,
   formatDateTime,
   useAdminSession,
 } from '../_shared';
 import type { AnyEntity } from './DirectoryClient';
+
+const SUSPENSION_REASONS = Object.keys(dict.directory.suspensionReasons);
+const SUSPENSION_DAYS = [7, 30, 90] as const;
+const selectClasses =
+  'rounded-md border border-outline bg-surface-raised px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard focus:border-brand-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary';
 
 async function getEntity(kind: DirectoryKind, id: string): Promise<AnyEntity> {
   switch (kind) {
@@ -60,7 +66,7 @@ function EntityDetails({ entity }: { entity: AnyEntity }) {
           ] ?? entity.verificationStatus
         }
       />
-      {'trustLevel' in entity ? (
+      {'trustLevel' in entity && entity.trustLevel ? (
         <DetailRow
           label={dict.directory.detail.trustLevel}
           value={
@@ -78,16 +84,16 @@ function EntityDetails({ entity }: { entity: AnyEntity }) {
           }
         />
       ) : null}
-      {'jobsCount' in entity ? (
+      {'jobsCount' in entity && entity.jobsCount !== undefined ? (
         <DetailRow label={dict.directory.detail.jobsCompleted} value={String(entity.jobsCount)} />
       ) : null}
-      {'completedJobs' in entity ? (
+      {'completedJobs' in entity && entity.completedJobs !== undefined ? (
         <DetailRow
           label={dict.directory.detail.jobsCompleted}
           value={String(entity.completedJobs)}
         />
       ) : null}
-      {'rating' in entity ? (
+      {'rating' in entity && entity.rating !== undefined ? (
         <DetailRow label={dict.directory.detail.rating} value={`★ ${entity.rating}`} />
       ) : null}
       {'joinedAt' in entity ? (
@@ -96,7 +102,14 @@ function EntityDetails({ entity }: { entity: AnyEntity }) {
       {entity.suspension ? (
         <DetailRow
           label={dict.common.reason}
-          value={`${entity.suspension.reason} (${formatDateTime(entity.suspension.at)})`}
+          value={`${
+            (dict.directory.suspensionReasons as Record<string, string>)[entity.suspension.reason] ??
+            entity.suspension.reason
+          } (${
+            entity.suspension.until
+              ? formatDateTime(entity.suspension.until)
+              : formatDateTime(entity.suspension.at)
+          })`}
         />
       ) : null}
     </div>
@@ -112,7 +125,7 @@ export function EntityDrawer({
 }) {
   const queryClient = useQueryClient();
   const sessionQuery = useAdminSession();
-  const role = sessionQuery.data?.admin.role;
+  const role = adminRoles(sessionQuery.data);
   const maySuspend = role !== undefined && can(role, 'directory.suspend');
 
   const entityQuery = useQuery({
@@ -122,7 +135,10 @@ export function EntityDrawer({
   });
 
   const [suspendOpen, setSuspendOpen] = useState(false);
-  const [reason, setReason] = useState('');
+  // A reason key and an end date: the backend refuses a suspension with neither, so a
+  // permanent ban is never one click.
+  const [reason, setReason] = useState<string>(SUSPENSION_REASONS[0]);
+  const [days, setDays] = useState<number>(30);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // One key per suspend/unsuspend intent; regenerated on success or when the
@@ -143,19 +159,21 @@ export function EntityDrawer({
   };
 
   const suspend = async () => {
-    if (!selection || reason.trim() === '') return;
+    if (!selection) return;
     setBusy(true);
     setActionError(null);
     try {
       await directoryRepository.suspendEntity(
         selection.kind,
         selection.id,
-        reason.trim(),
-        keyFor(`suspend:${reason.trim()}`),
+        reason,
+        keyFor(`suspend:${reason}:${days}`),
+        days,
       );
       setIntent(null);
       setSuspendOpen(false);
-      setReason('');
+      setReason(SUSPENSION_REASONS[0]);
+      setDays(30);
       refresh();
     } catch (e) {
       setActionError(errorText(e));
@@ -263,14 +281,38 @@ export function EntityDrawer({
             >
               {dict.directory.suspendReasonLabel}
             </label>
-            <textarea
+            <select
               id="suspend-reason"
-              rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={dict.common.reasonPlaceholder}
-              className="rounded-md border border-outline bg-surface-raised px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard focus:border-brand-primary placeholder:text-ink-secondary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary dark:placeholder:text-ink-dark-secondary"
-            />
+              className={selectClasses}
+            >
+              {SUSPENSION_REASONS.map((key) => (
+                <option key={key} value={key}>
+                  {(dict.directory.suspensionReasons as Record<string, string>)[key]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label
+              htmlFor="suspend-days"
+              className="text-label-large text-ink-primary dark:text-ink-dark-primary"
+            >
+              {dict.directory.suspendDurationLabel}
+            </label>
+            <select
+              id="suspend-days"
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+              className={selectClasses}
+            >
+              {SUSPENSION_DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {(dict.directory.suspendDurations as Record<string, string>)[String(d)]}
+                </option>
+              ))}
+            </select>
           </div>
           {actionError ? (
             <p role="alert" className="text-body-small text-error dark:text-error-dark">
@@ -280,7 +322,7 @@ export function EntityDrawer({
           <div className="flex gap-md">
             <button
               type="button"
-              disabled={busy || reason.trim() === ''}
+              disabled={busy}
               onClick={() => void suspend()}
               className="rounded-md bg-error px-xl py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:opacity-90 disabled:opacity-50 dark:bg-error-dark"
             >

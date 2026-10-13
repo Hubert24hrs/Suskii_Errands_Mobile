@@ -497,11 +497,6 @@ class _DisputeSection extends ConsumerWidget {
     JobStatus.confirmed,
   };
 
-  String _resolutionLabel(AppLocalizations l10n, String key) => switch (key) {
-    'disputeResolvedPartialRefund' => l10n.disputeResolvedPartialRefund,
-    _ => key,
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
@@ -562,7 +557,10 @@ class _DisputeSection extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: SSpacing.xs),
                       child: Text(
-                        _resolutionLabel(l10n, existing.resolutionNoteKey!),
+                        disputeResolutionLabel(
+                          l10n,
+                          existing.resolutionNoteKey!,
+                        ),
                         style: theme.textTheme.bodyMedium,
                       ),
                     ),

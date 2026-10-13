@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { directoryRepository, type DirectoryKind } from '@/mocks/repositories';
+import { directoryRepository, usingRealBackend, type DirectoryKind } from '@/lib/repositories';
 import type {
   ManagedBusiness,
   ManagedProvider,
@@ -56,18 +56,20 @@ async function listFor(tab: DirectoryTab, query: string): Promise<AnyEntity[]> {
 
 function entityName(e: AnyEntity): string {
   if ('name' in e) return e.name;
-  return `${e.make} ${e.model}`;
+  const label = [e.make, e.model].filter(Boolean).join(' ');
+  if (label) return label;
+  return (dict.directory.vehicleTypes as Record<string, string>)[e.type ?? ''] ?? e.type ?? '—';
 }
 
 function entityContact(e: AnyEntity): string {
-  if ('phone' in e) return e.phone;
   if ('plate' in e) return e.plate;
   if ('registrationNumber' in e) return e.registrationNumber;
-  return e.role;
+  if ('role' in e) return e.role;
+  return e.phone ?? '—';
 }
 
 function entityTrust(e: AnyEntity): string {
-  if (!('trustLevel' in e)) return '—';
+  if (!('trustLevel' in e) || !e.trustLevel) return '—';
   return (dict.directory.trustLevels as Record<string, string>)[e.trustLevel] ?? e.trustLevel;
 }
 
@@ -146,6 +148,12 @@ export function DirectoryClient() {
         searchValue={search}
         onSearchChange={setSearch}
       />
+      {usingRealBackend && (tab === 'users' || tab === 'providers') ? (
+        // People are found, not browsed: the backend lists nobody without a search.
+        <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+          {dict.directory.searchHint}
+        </p>
+      ) : null}
 
       {query.isPending ? (
         <StateBlock variant="loading" />

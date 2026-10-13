@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { adminUsersRepository } from '@/mocks/repositories';
+import { adminUsersRepository, changesNeedSecondApproval } from '@/lib/repositories';
 import type { AdminRole, AdminUser } from '@/mocks/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Drawer } from '@/components/Drawer';
@@ -64,6 +64,8 @@ export function AdminUsersClient() {
   const [inviteRole, setInviteRole] = useState<AdminRole>('support_agent');
   const [drawerRole, setDrawerRole] = useState<AdminRole | ''>('');
   const [actionError, setActionError] = useState<string | null>(null);
+  // Against the real backend every access change waits for a second super admin.
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // One key per intent; the fingerprint (inputs) is part of the key name so
@@ -98,6 +100,7 @@ export function AdminUsersClient() {
     const result = await runSensitive('adminUsers.manage', fn);
     if (result.ok) {
       onSuccess?.();
+      setNotice(changesNeedSecondApproval ? dict.common.sentForApproval : null);
       refresh();
     } else if (result.error != null) {
       // Includes the mock's self-change / self-deactivate ERR_INVALID_STATE.
@@ -212,6 +215,16 @@ export function AdminUsersClient() {
         {dict.adminUsers.mfa.enforceNote}
       </p>
 
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-md border border-outline bg-surface-raised px-lg py-md text-body-medium text-ink-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary"
+        >
+          {notice}
+        </p>
+      ) : null}
+
+
       <DataTable
         columns={columns}
         rows={adminsQuery.data}
@@ -279,7 +292,7 @@ export function AdminUsersClient() {
               </div>
             </div>
 
-            {!selected.mfaEnrolled ? (
+            {!selected.mfaEnrolled && !changesNeedSecondApproval ? (
               <button
                 type="button"
                 disabled={busy}
@@ -367,6 +380,11 @@ export function AdminUsersClient() {
             sendInvite();
           }}
         >
+          {changesNeedSecondApproval ? (
+            <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+              {dict.adminUsers.mfa.liveInviteNote}
+            </p>
+          ) : null}
           <div className="flex flex-col gap-xs">
             <label htmlFor="invite-name" className={labelClasses}>
               {dict.adminUsers.invite.nameLabel}

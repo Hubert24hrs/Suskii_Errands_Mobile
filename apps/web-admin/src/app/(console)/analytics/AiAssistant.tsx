@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { dict } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { aiAdminRepository } from '@/mocks/repositories';
+import { aiAdminRepository } from '@/lib/repositories';
 import type { AiAdminMessage } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { errorText, isSessionError } from '../_shared';

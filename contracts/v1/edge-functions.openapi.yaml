@@ -3,11 +3,11 @@ openapi: 3.1.0
 # Authored, not generated: a Deno handler's routing is code, and inferring an HTTP contract from
 # it would be guesswork dressed as a fact. What IS mechanical lives in rpc-catalog/index.json.
 #
-# The headline for a client developer: of the six Edge Functions deployed, exactly ONE is called
-# by an app (`device-integrity`). Two are called by Supabase Auth and by payment gateways with
-# their own signatures, and three are workers invoked on a schedule with a named secret. An app
-# that finds itself wanting to call a worker has found a bug in its own design, not a missing
-# endpoint.
+# The headline for a client developer: of the eight Edge Functions deployed, exactly ONE is
+# called by an app (`device-integrity`) and ONE by the admin console (`kyc-document-url`). Two
+# are called by Supabase Auth and by payment gateways with their own signatures, three are
+# workers invoked on a schedule with a named secret, and `health` answers monitoring. An app that
+# finds itself wanting to call a worker has found a bug in its own design, not a missing endpoint.
 
 info:
   title: Suskii Errands — Edge Functions
@@ -27,6 +27,8 @@ servers:
 tags:
   - name: app
     description: Callable by a signed-in app.
+  - name: admin
+    description: Callable by the admin console, as a staff member signed in with a second factor (aal2).
   - name: platform
     description: Called by Supabase Auth or a payment gateway, authenticated by a signature over the raw body.
   - name: worker
@@ -116,6 +118,51 @@ paths:
                   passed: { type: boolean }
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
+
+  /kyc-document-url:
+    post:
+      tags: [admin]
+      operationId: kycDocumentUrl
+      security:
+        - supabaseJwt: []
+      summary: A sixty-second link to one KYC document, for a verification officer.
+      description: >
+        `kyc-docs` is write-only for every client role, so an officer cannot sign a URL with their
+        own token. The function first calls `request_document_access` **as the officer** — the
+        database checks aal2, a TOTP code entered in the last five minutes, the role and that the
+        folder is not the officer's own, and writes `audit.kyc_access` — and only then signs that
+        one path with the service role. The answer is `no-store`: the URL is a capability, and a
+        cached copy would outlive its minute. A stale code is `401 ERR_REAUTH_REQUIRED`: verify a
+        fresh one on the same session and call again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [upload_ref, reason_code]
+              properties:
+                upload_ref:
+                  type: string
+                  description: '`<subject user id>/<file name>` inside `kyc-docs`, as the review queue lists it.'
+                  pattern: '^[0-9a-f-]{36}/[A-Za-z0-9._-]{1,200}$'
+                reason_code:
+                  type: string
+                  pattern: '^[a-z0-9_]{3,60}$'
+      responses:
+        '200':
+          description: The signed URL and when it stops working.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_at]
+                properties:
+                  url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
 
   /auth-send-sms:
     post:

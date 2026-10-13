@@ -5,6 +5,112 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-13 (part 2) — Claude Code — the admin console on the real backend; the last mock repositories; contracts 2.1.0
+
+Same owner instruction as the entry below, which the owner did not accept as finished while
+`web-admin` had no backend (Z.8) and four app repositories were mock-only (Z.9). Audit:
+`docs/audit/AUDIT-2026-10-13.md`, part 2 (Z.10–Z.20). **Still not standing licence.** Contracts
+2.1.0 is additive (`contracts/CHANGELOG.md`), so there is no migration note.
+
+### What I changed in your code
+
+**`apps/web-admin` (Z.8): the console runs on Supabase when it is configured, on your mocks when
+it is not.**
+- `src/lib/repositories.ts` is the switch (it reads `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`), and every page now imports from `@/lib/repositories` instead
+  of `@/mocks/repositories`. With no env the build is exactly your mock console, which is what
+  the web smoke tests.
+- `src/lib/supabase/` implements your repository interfaces one file per area: session (password
+  plus TOTP; enrolment shows the QR and the secret), metrics, directory, verification, jobs,
+  payments, trust (disputes, support, SOS, risk), growth (referrals, promos), config (config,
+  analytics, audit, AI) and admin users. Writes that need two people go through
+  `propose_config_change`; `proposals.ts` shows the pending ones as rows with a
+  `pending_approval` status.
+- **Types, widened rather than replaced** (`src/mocks/types.ts`):
+  - `AdminUser.roles`; `CountryMetrics.gmv`/`holdBalance` optional (only super admin and
+    finance get money);
+  - fuller job, trust-level and verification enums; `SuspensionRecord.until`;
+  - `VerificationKind` adds `provider_details`;
+  - dispute status `withdrawn`;
+  - risk kinds use the backend's rule keys;
+  - config targets with approval counts;
+  - `ReferralCampaign` is a rate in basis points plus a budget (Z.19);
+  - promos gain `budget`, `maxRedemptions`, `endsAt` and `pending_approval`.
+- **Your mocks were adjusted to match:** `errors.ts` adds `notFound`, `featureUnavailable` and
+  any `ERR_*`; the permissions in `repos/base.ts` match the backend's;
+  `session.reauth(purpose, code)`; `directory.suspend(…, days)`; campaigns use `rateBps`.
+- **Screens:**
+  - `can()` takes all of a person's roles (`adminRoles`);
+  - re-auth passes the code;
+  - suspensions ask for a reason and a duration (7/30/90 days);
+  - rejections of payments and config changes pick a reason from a list;
+  - a dispute resolution needs a note;
+  - the dashboard shows "—" for money a role may not see;
+  - promos and campaigns say a second person must apply them;
+  - the sign-in page shows the enrolment QR and secret.
+  
+  New strings are in `src/lib/i18n.ts`.
+- `package.json` adds `@supabase/supabase-js`. `next.config.ts` lets the page reach the functions
+  URL.
+
+**`packages/web-config/securityHeaders.ts` (Z.18):** the Realtime socket follows the API's scheme,
+and `upgrade-insecure-requests` is skipped only for a plain-`http` Supabase (a local stack).
+Deployed headers are unchanged.
+
+**Dart:**
+- **Dispute codes (Z.13):** `supabase_mappers.dart` and `supabase_dispute_repository.dart` map
+  your sheet's keys to the wire codes (`disputeReasonNotDelivered` ↔ `not_delivered` …) and the
+  resolution keys back (`full_refund` → `disputeResolvedFullRefund` …). Every dispute opened from
+  the app had been refused.
+- **`labels.dart`:**
+  - `disputeResolutionLabel` replaces the private `_resolutionLabel` in `disputes_page.dart` and
+    `request_detail_page.dart`;
+  - `kycRejectionReasonLabel` knows the console's five rejection keys (Z.10).
+- **Real-backend repositories:**
+  - **Organization:** `supabase_organization_repository.dart`.
+  - **ProviderTools:** `supabase_provider_tools_repository.dart`. The heatmap and instant payout
+    are `featureUnavailable`.
+  - **Promo and Concierge:** `supabase_unavailable_repositories.dart`. Promo is an empty wallet,
+    because codes apply at payment (CR-04); Concierge is `featureUnavailable`.
+  - `providers.dart` returns all four when a gateway is configured (Z.15).
+- **Domain (Z.16):** `OrganizationRepository` gains:
+  - `registerOrganization`;
+  - `getMyInvitations`, with a new `OrgInvitation` entity;
+  - `acceptInvitation`.
+
+  The mock implements all three: it uses a new `orgInvitations` map and registers an
+  organization with `pending` status.
+- **`organization_page.dart`:** with no business, it shows invitations to accept and a "Register
+  a business" sheet (legal name, registration number). It is keyed per number and per
+  organization. This replaces the "individual providers only" dead end. `provider_org` goldens
+  re-recorded, both themes.
+- **Strings, English and Pidgin:**
+  - five `kycReject*` keys;
+  - three `disputeResolved*` keys;
+  - eleven `org*` keys;
+  - `errOrganizationAlreadyRegistered` and `errOrgNotFound`, mapped in `error_l10n.dart`.
+- **Tests:**
+  - mappers +7;
+  - mock business console +2;
+  - two journeys (registering a business, accepting an invitation; 21 in all);
+  - two end-to-end flows against the real stack (19 in all).
+
+### Worth knowing
+
+- **The admin console has its own end-to-end suite**, `tests/web-admin-e2e`, in `backend-db.yaml`
+  (it needs the stack). It signs in six staff accounts with real TOTP codes and checks the database
+  after each flow. Build the console with the env first; the header of `playwright.config.ts`
+  has the commands.
+- **Step-up is enforced by the server (Z.11).** Approving a withdrawal, resolving a dispute,
+  opening a KYC document and proposing or signing a config change refuse a TOTP code older than
+  five minutes with `ERR_REAUTH_REQUIRED`. The console already asks first and lands a server
+  refusal in the same modal; any other admin client should do the same: `challengeAndVerify` on
+  the same session, then retry with the same idempotency key.
+- **Invite by phone needs the person to have signed up with that number**
+  (`ERR_PROFILE_NOT_FOUND` otherwise).
+
+---
+
 ## 2026-10-13 — Claude Code — whole-platform audit; your change requests closed; contracts 2.0.0
 
 At the owner's request ("audit, edit and modify the code of both Kimi and Claude, merge the best

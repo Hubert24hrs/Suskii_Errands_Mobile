@@ -1,12 +1,15 @@
 name: backend-db
 
 # Database CI (docs/plan/infra-cicd.md §5). Path-filtered so it never runs for frontend-only
-# changes and never overlaps frontend-ci.yaml, which belongs to Kimi Code.
+# changes and never overlaps frontend-ci.yaml, which belongs to Kimi Code. The exceptions are
+# the two data layers that talk to this database, whose end-to-end runs live here because they
+# need the stack: the app's Supabase repositories and the admin console (audit Z.8).
 # On main it runs as the first stage of pipeline-main.yaml, which deploys only if it passes.
 on:
   pull_request:
     paths: ['supabase/**', '.github/workflows/backend-db.yaml',
-            'packages/suskii_data/lib/src/supabase/**', 'packages/suskii_data/test/integration/**']
+            'packages/suskii_data/lib/src/supabase/**', 'packages/suskii_data/test/integration/**',
+            'apps/web-admin/**', 'packages/web-config/**', 'tests/web-admin-e2e/**']
   workflow_call:
 
 permissions:
@@ -19,7 +22,7 @@ concurrency:
 jobs:
   database:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       # CI-only placeholder so config.toml's send_sms hook validates; not a real secret.
       SEND_SMS_HOOK_SECRETS: v1,whsec_Y2ktb25seS1wbGFjZWhvbGRlci1ub3QtYS1zZWNyZXQ=
@@ -45,8 +48,9 @@ jobs:
       - name: RLS matrix coverage
         run: python supabase/tools/check_rls_matrix.py .
 
+      # Realtime stays up for the admin console's SOS feed (`ops:sos`).
       - name: Start local stack
-        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,realtime,postgres-meta
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,postgres-meta
 
       - name: Apply every migration and the seed from zero
         run: supabase db reset --local
@@ -87,6 +91,35 @@ jobs:
           done
           (cd packages/suskii_domain && dart run build_runner build)
           cd packages/suskii_data && dart test --tags integration
+
+      # The admin console against the same stack (audit Z.8): staff sign in with a password and
+      # a TOTP code they enrol on first use, and each flow checks the database afterwards.
+      # kyc-document-url is served by Deno from the playwright config, not by edge-runtime.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Admin console end to end (Playwright)
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
+          npm ci
+          NEXT_PUBLIC_SUPABASE_URL="$API_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
+            NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL=http://127.0.0.1:54390 \
+            npm run build -w apps/web-admin
+          npx playwright install --with-deps chromium
+          SUPABASE_URL="$API_URL" SUPABASE_ANON_KEY="$ANON_KEY" \
+            SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+            npx playwright test -c tests/web-admin-e2e
+
+      - name: Upload admin console traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: admin-e2e-results
+          path: tests/web-admin-e2e/test-results/
+          if-no-files-found: ignore
 
       - name: Security and performance advisors
         run: supabase db advisors --local --type all --level warn --fail-on warn

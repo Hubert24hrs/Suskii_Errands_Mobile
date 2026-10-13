@@ -8,6 +8,15 @@ CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
 SELECT plan(44);
 
+-- An admin session that entered its TOTP code just now: `aal2`, and the step-up the sensitive
+-- verbs ask for (audit Z.11).
+CREATE FUNCTION pg_temp.admin_claims(p_user text) RETURNS text LANGUAGE sql STABLE AS $fn$
+  SELECT jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2',
+    'amr', jsonb_build_array(jsonb_build_object(
+      'method', 'totp', 'timestamp', extract(epoch FROM now())::bigint)))::text;
+$fn$;
+
+
 INSERT INTO auth.users (id, phone) VALUES
   ('c9111111-1111-4111-8111-222222222222', '2348000000271'),   -- customer
   ('c9222222-2222-4222-8222-222222222222', '2348000000272'),   -- provider
@@ -194,7 +203,7 @@ SELECT throws_ok(
 RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
-  '{"sub": "c9333333-3333-4333-8333-222222222222", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('c9333333-3333-4333-8333-222222222222'), true);
 SET LOCAL ROLE authenticated;
 SELECT is(public.approve_withdrawal('key-po-appr-f1-000001', (SELECT id FROM po WHERE name = 'wd'),
             true), 'approved'::public.withdrawal_status, 'one finance officer signs it off');

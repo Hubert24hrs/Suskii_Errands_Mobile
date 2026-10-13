@@ -7,6 +7,8 @@ import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 import 'package:suskii_mobile/app/device_location.dart';
+import 'package:suskii_mobile/app/labels.dart';
+import 'package:suskii_mobile/app/providers.dart';
 import 'package:suskii_mobile/app/router.dart';
 
 import '../support/harness.dart';
@@ -44,6 +46,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'referral code is shown and copied': _referrals,
   'SOS from an active job': _sos,
   'account deletion, then keep the account': _accountDeletion,
+  'a provider registers a business': _registerBusiness,
+  'an invited provider accepts and joins the business': _acceptInvitation,
 };
 
 // ---------------------------------------------------------------------------
@@ -495,5 +499,52 @@ Future<void> _accountDeletion(WidgetTester tester) async {
     app.container.read(routerProvider).state.uri.path,
     startsWith('/customer'),
   );
+  await app.dispose(tester);
+}
+
+Future<void> _registerBusiness(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _switchToProvider(tester, app);
+  await _go(tester, app, AppRoutes.providerOrg);
+  expect(find.text(l10n.orgNoneTitle), findsOneWidget);
+  await _tapText(tester, l10n.orgRegister);
+  await _enter(tester, l10n.orgRegisterLegalName, 'Ada Errands Ltd');
+  await _enter(tester, l10n.orgRegisterNumber, 'RC 778899');
+  await _tapText(tester, l10n.orgRegisterSubmit);
+  await settle(tester, timeout: const Duration(seconds: 5));
+  _expectToast(l10n.orgRegistered);
+  expect(find.text('Ada Errands Ltd'), findsOneWidget);
+  expect(find.text(l10n.orgMembers), findsOneWidget);
+  await app.dispose(tester);
+}
+
+Future<void> _acceptInvitation(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  final db = app.container.read(mockDatabaseProvider);
+  final me = app.container.read(mockBehaviorProvider).currentUserId;
+  db.orgInvitations[me] = <OrgInvitation>[
+    OrgInvitation(
+      organizationId: 'org-swift',
+      organizationName: 'SwiftErrands Ltd',
+      role: BusinessRole.worker,
+      invitedAt: DateTime.utc(2026, 10, 2),
+    ),
+  ];
+  await _switchToProvider(tester, app);
+  await _go(tester, app, AppRoutes.providerOrg);
+  expect(
+    find.text(
+      l10n.orgInvitationBody(
+        'SwiftErrands Ltd',
+        businessRoleLabel(l10n, BusinessRole.worker),
+      ),
+    ),
+    findsOneWidget,
+  );
+  await _tapText(tester, l10n.orgInvitationAccept);
+  await settle(tester, timeout: const Duration(seconds: 5));
+  _expectToast(l10n.orgInvitationAccepted('SwiftErrands Ltd'));
+  expect(find.text('SwiftErrands Ltd'), findsWidgets);
+  expect(find.text(l10n.orgNoneTitle), findsNothing);
   await app.dispose(tester);
 }

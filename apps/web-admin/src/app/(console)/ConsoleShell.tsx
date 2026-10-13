@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { dict } from '@/lib/i18n';
-import { sessionRepository, type AdminAction } from '@/mocks/repositories';
+import { sessionRepository, type AdminAction } from '@/lib/repositories';
 import { AppShell, type NavItem } from '@/components/AppShell';
 import { StateBlock } from '@/components/StateBlock';
 import { can, errorText, isSessionError, roleLabel, useAdminSession } from './_shared';
@@ -81,7 +81,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   }
 
   const navItems: NavItem[] = NAV.filter((item) =>
-    can(session.admin.role, item.action),
+    can(session.admin.roles ?? session.admin.role, item.action),
   ).map(({ href, label, group }) => ({ href, label, group }));
 
   const signOut = async () => {
