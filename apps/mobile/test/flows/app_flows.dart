@@ -35,6 +35,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'create and publish a request': _createRequest,
   'offers arrive ranked and one is accepted': _acceptOffer,
   'pay into held funds': _payHeld,
+  'a promo code takes the server-quoted discount off the payment':
+      _payWithPromo,
   'track the provider on the way': _tracking,
   'chat and a masked call': _chatAndCall,
   'provider journey: start, manual arrival, pickup PIN': _providerArrival,
@@ -296,6 +298,37 @@ Future<void> _payHeld(WidgetTester tester) async {
     app.container.read(routerProvider).state.uri.path,
     AppRoutes.customerRequestDetailPath('req-6'),
   );
+  await app.dispose(tester);
+}
+
+Future<void> _payWithPromo(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _go(tester, app, AppRoutes.customerRequestPayPath('req-6'));
+  final agreed = app.database.requests['req-6']!.agreedPrice!;
+  await _enter(tester, l10n.payPromoTitle, 'welcome10');
+  await _tapText(tester, l10n.payPromoApply);
+  await settle(tester, timeout: const Duration(seconds: 5));
+  // WELCOME10: 10% off, capped at 2,000.00.
+  var off = agreed.minorUnits ~/ 10;
+  if (off > 200000) off = 200000;
+  final discount = Money(off, agreed.currencyCode);
+  final due = Money(agreed.minorUnits - off, agreed.currencyCode);
+  expect(
+    find.text(l10n.payPromoApplied('welcome10', discount.format())),
+    findsOneWidget,
+  );
+  final pay = find.byWidgetPredicate(
+    (Widget w) => w is SButton && w.label == l10n.payNow(due.format()),
+  );
+  await _reveal(tester, pay);
+  await tester.tap(pay.first);
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  final paymentId = app.database.paymentByJob['req-6']!;
+  expect(app.database.payments[paymentId]!.amount, due);
+  await tester.pump(const Duration(seconds: 3));
+  await settle(tester);
   await app.dispose(tester);
 }
 

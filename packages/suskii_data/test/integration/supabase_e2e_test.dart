@@ -435,16 +435,39 @@ void main() {
       expect(insights.acceptanceRate, 1.0);
       expect(insights.periodDays, 30);
 
-      await expectLater(
-        tools.getDemandHeatmap(),
-        throwsA(
-          isA<AppError>().having(
-            (e) => e.code,
-            'code',
-            ErrorCodes.featureUnavailable,
-          ),
-        ),
+      // Demand: five open requests in one cell of a category this provider
+      // serves. The heatmap shows the cell, never the pickups.
+      final category = await service
+          .from('service_categories')
+          .select('id')
+          .eq('key', 'errands_delivery')
+          .single();
+      await service.from('provider_services').upsert(<String, dynamic>{
+        'provider_id': providerId,
+        'category_id': category['id'],
+      });
+      await service.from('requests').insert(<Map<String, dynamic>>[
+        for (var i = 0; i < 5; i++)
+          <String, dynamic>{
+            'customer_id': customerId,
+            'country_code': 'NG',
+            'category_id': category['id'],
+            'description': 'E2E heatmap $i',
+            'pickup_label': 'Lekki',
+            'currency': 'NGN',
+            'status': 'published',
+            'pickup_point': 'SRID=4326;POINT(${3.4711 + i * 0.001} 6.4411)',
+          },
+      ]);
+      final heatmap = await tools.getDemandHeatmap();
+      final lekki = heatmap.where(
+        (z) =>
+            (z.center.latitude - 6.45).abs() < 1e-6 &&
+            (z.center.longitude - 3.47).abs() < 1e-6,
       );
+      expect(lekki, hasLength(1));
+      expect(lekki.single.openRequests, greaterThanOrEqualTo(5));
+      expect(lekki.single.intensity, inInclusiveRange(0.0, 1.0));
     });
 
     test(
@@ -501,9 +524,33 @@ void main() {
           role: BusinessRole.worker,
           idempotencyKey: newIdempotencyKey(),
         );
-        expect(invited.userId, workerId);
-        // Not a member yet: the owner sees the number masked, not a name.
+        // Not a member yet: the owner sees the number masked, not a name, and
+        // an invitation id rather than the account's (Z.20).
+        expect(invited.userId, isNot(workerId));
         expect(invited.displayName, isNot(contains(digits)));
+        // A number with no account gets the same answer, in the same shape.
+        final strangerDigits = ((run + 7) % 100000000).toString().padLeft(
+          8,
+          '0',
+        );
+        final stranger = await owner.inviteMember(
+          phoneE164: '+23481$strangerDigits',
+          role: BusinessRole.worker,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(stranger.role, invited.role);
+        expect(stranger.verificationStatus, invited.verificationStatus);
+        expect(stranger.jobsCompleted, invited.jobsCompleted);
+        expect(stranger.earningsToDate, invited.earningsToDate);
+        expect(stranger.displayName, isNot(contains(strangerDigits)));
+        await owner.removeMember(
+          stranger.userId,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(
+          (await owner.getMembers()).map((m) => m.userId),
+          isNot(contains(stranger.userId)),
+        );
 
         final invitations = await worker.getMyInvitations();
         expect(invitations.single.organizationName, 'E2E Logistics $run');
@@ -568,12 +615,41 @@ void main() {
             );
         await SupabaseOfferRepository(customer)
             .acceptOffer(offer.id, idempotencyKey: newIdempotencyKey());
-        final session = await SupabasePaymentRepository(customer)
-            .initializePayment(
-              jobId: published.id,
-              method: PaymentMethod.card,
-              idempotencyKey: newIdempotencyKey(),
-            );
+        // A promo the admin console created (four-eyes, applied by a second
+        // super admin); here inserted directly, as that apply step does.
+        final promoCode = 'E2E${run % 100000000}';
+        await service.from('promo_codes').insert(<String, dynamic>{
+          'code': promoCode,
+          'country_code': 'NG',
+          'currency': 'NGN',
+          'discount_kind': 'percent',
+          'discount_value': 1000,
+          'max_discount_minor': 20000,
+        });
+        final payments = SupabasePaymentRepository(customer);
+        await expectLater(
+          payments.previewPromo(jobId: published.id, code: 'NOPE1234'),
+          throwsA(
+            isA<AppError>().having(
+              (e) => e.code,
+              'code',
+              ErrorCodes.promoInvalid,
+            ),
+          ),
+        );
+        // 10% of 3,000.00 is 300.00, capped at 200.00; typed in lower case.
+        final discount = await payments.previewPromo(
+          jobId: published.id,
+          code: promoCode.toLowerCase(),
+        );
+        expect(discount, const Money(20000, 'NGN'));
+        final session = await payments.initializePayment(
+          jobId: published.id,
+          method: PaymentMethod.card,
+          idempotencyKey: newIdempotencyKey(),
+          promoCode: promoCode.toLowerCase(),
+        );
+        expect(session.payment.amount, const Money(280000, 'NGN'));
         final reference = 'e2e-org-$run';
         await service.rpc<dynamic>(
           'gateway_record_checkout',

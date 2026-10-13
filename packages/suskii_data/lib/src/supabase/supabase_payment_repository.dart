@@ -1,3 +1,4 @@
+import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
 import 'supabase_gateway.dart';
@@ -53,15 +54,36 @@ class SupabasePaymentRepository implements PaymentRepository {
       });
 
   @override
+  Future<Money> previewPromo({
+    required String jobId,
+    required String code,
+  }) async {
+    final rows = List<Map<String, dynamic>>.from(
+      await _gateway.rpc('preview_promo', <String, Object?>{
+        'p_code': code.trim(),
+        'p_request_id': jobId,
+      }) as List<dynamic>,
+    );
+    if (rows.isEmpty) throw const AppError(ErrorCodes.promoInvalid);
+    return Money(
+      SupabaseGateway.asMinorUnits(rows.first['discount_minor']),
+      rows.first['currency'] as String,
+    );
+  }
+
+  @override
   Future<PaymentSession> initializePayment({
     required String jobId,
     required PaymentMethod method,
     required String idempotencyKey,
+    String? promoCode,
   }) async {
+    final code = promoCode?.trim();
     final rows = await _gateway.rpc('start_payment', <String, Object?>{
       'p_idempotency_key': idempotencyKey,
       'p_request_id': jobId,
       'p_method': paymentMethodToWire(method),
+      'p_promo_code': code == null || code.isEmpty ? null : code,
     });
     final list = List<Map<String, dynamic>>.from(rows as List<dynamic>);
     final paymentId = SupabaseGateway.asId(list.first['payment_id']);

@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Ops (safety desk) — engineering supports, ops leads |
 | Severity | **SEV1, always.** There is no triage step. A false alarm costs a phone call; the other mistake does not have a price |
-| Last rehearsed | **Not yet.** Rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
+| Last rehearsed | **2026-10-13, locally**, the system half only: an SOS raised through the app's own repository was escalated by the `sos-escalate` cron 233 s later (six clean runs, `sos.escalated` in the outbox), and acknowledge → resolve in the console runs on every CI build in the admin end-to-end suite. **The human half is not rehearsed** and cannot be until there is a desk and a phone tree: rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
 | Related | Spec SH-24, AD-21; OD-25; `docs/plan/threat-model.md`; RB-01, RB-07, RB-13 |
 
 ## Read this first
@@ -22,7 +22,9 @@ procedure right now, and it needs to be written down before somebody needs it.
 2. The safety desk sees it. Status is `open`.
 3. If nobody acknowledges within the configured window — **three minutes**, per AD-21 — the
    `sos-escalate` cron (running **every minute**) stamps `escalated_at`, broadcasts `sos.escalated`
-   and raises the alarm louder.
+   and raises the alarm louder. Because the job runs on the minute, escalation lands **between three
+   and four minutes** after the SOS, not at three exactly (2026-10-13 rehearsal: 233 seconds). Train
+   the desk on three; do not promise anybody three.
 4. Status moves `open → acknowledged → dispatched → resolved`, with `false_alarm` as the other end.
 
 The three-minute clock is the only automatic thing here. Everything after it is people.

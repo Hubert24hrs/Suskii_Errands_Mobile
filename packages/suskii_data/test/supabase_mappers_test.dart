@@ -1345,6 +1345,34 @@ void chatMapperTests() {
       expect(goal.period, GoalPeriod.weekly);
     });
 
+    test(
+      'demandZoneFromRow keeps the cell centre and labels a nameless cell',
+      () {
+        final named = demandZoneFromRow(<String, dynamic>{
+          'cell_id': '325:168',
+          'center_lat': 6.51,
+          'center_lng': 3.37,
+          'open_requests': 6,
+          'intensity': '1.00',
+          'label': 'Yaba',
+        });
+        expect(named.id, '325:168');
+        expect(named.center, const GeoPoint(latitude: 6.51, longitude: 3.37));
+        expect(named.openRequests, 6);
+        expect(named.intensity, 1.0);
+        expect(named.label, 'Yaba');
+        final nameless = demandZoneFromRow(<String, dynamic>{
+          'cell_id': '330:167',
+          'center_lat': 6.61,
+          'center_lng': 3.35,
+          'open_requests': 2,
+          'intensity': '0.33',
+          'label': '',
+        });
+        expect(nameless.label, '6.61, 3.35');
+      },
+    );
+
     test('providerInsightsFromRow reads numeric rates', () {
       final insights = providerInsightsFromRow(<String, dynamic>{
         'acceptance_rate': '0.75',

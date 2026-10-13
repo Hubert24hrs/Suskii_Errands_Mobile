@@ -59,6 +59,28 @@ void main() {
       );
     });
 
+    test('a promo is previewed, then charged at the server price', () async {
+      agreeReq1();
+      final repo = MockPaymentRepository(db, behavior);
+      await expectThrows(
+        () => repo.previewPromo(jobId: 'req-1', code: 'NOPE'),
+        ErrorCodes.promoInvalid,
+      );
+      // WELCOME10: 10% of 5,000.00 is 500.00, capped at 2,000.00.
+      final discount = await repo.previewPromo(
+        jobId: 'req-1',
+        code: 'welcome10',
+      );
+      expect(discount, const Money(50000, 'NGN'));
+      final session = await repo.initializePayment(
+        jobId: 'req-1',
+        method: PaymentMethod.card,
+        idempotencyKey: newIdempotencyKey(),
+        promoCode: 'welcome10',
+      );
+      expect(session.payment.amount, const Money(450000, 'NGN'));
+    });
+
     test('only the customer pays', () async {
       behavior.currentUserId = 'user-kofi';
       agreeReq1();

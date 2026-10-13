@@ -81,21 +81,21 @@ SELECT throws_ok(
   format($$SELECT public.invite_member_by_phone('key-bc-inv-own-000001', %L, '+2348000005403',
            'owner')$$, (SELECT val FROM bc WHERE name = 'org')),
   '22023', 'ERR_INVALID_ARGUMENT', 'a business has one owner');
-SELECT throws_ok(
-  format($$SELECT public.invite_member_by_phone('key-bc-inv-none-00001', %L, '+2348000009999',
-           'worker')$$, (SELECT val FROM bc WHERE name = 'org')),
-  'P0001', 'ERR_PROFILE_NOT_FOUND', 'the person signs up with the number first');
+SELECT ok(public.invite_member_by_phone('key-bc-inv-none-00001',
+  (SELECT val FROM bc WHERE name = 'org')::uuid, '+2348000009999', 'worker') IS NOT NULL,
+  'a number with no account is invited all the same (Z.20: the answer says nothing about it)');
+INSERT INTO bc VALUES ('inv_wrk', public.invite_member_by_phone('key-bc-inv-wrk-000001',
+  (SELECT val FROM bc WHERE name = 'org')::uuid, '+234 800 000 5403', 'worker')::text);
+SELECT isnt((SELECT val FROM bc WHERE name = 'inv_wrk'), 'c3333333-3333-4333-8333-545454545454',
+  'the owner invites a worker by the number they have, and gets an invitation id, not theirs');
 SELECT is(public.invite_member_by_phone('key-bc-inv-wrk-000001',
   (SELECT val FROM bc WHERE name = 'org')::uuid, '+234 800 000 5403', 'worker')::text,
-  'c3333333-3333-4333-8333-545454545454', 'the owner invites a worker by the number they have');
-SELECT is(public.invite_member_by_phone('key-bc-inv-wrk-000001',
-  (SELECT val FROM bc WHERE name = 'org')::uuid, '+234 800 000 5403', 'worker')::text,
-  'c3333333-3333-4333-8333-545454545454', 'and a retry is the same invitation');
+  (SELECT val FROM bc WHERE name = 'inv_wrk'), 'and a retry is the same invitation');
 SELECT ok(public.invite_member_by_phone('key-bc-inv-dsp-000001',
   (SELECT val FROM bc WHERE name = 'org')::uuid, '+2348000005404', 'dispatcher') IS NOT NULL,
   'and a dispatcher');
 SELECT is((SELECT display_name FROM public.my_organization_members()
-           WHERE user_id = 'c3333333-3333-4333-8333-545454545454'),
+           WHERE user_id = (SELECT val FROM bc WHERE name = 'inv_wrk')::uuid),
   (SELECT val FROM bc WHERE name = 'masked'),
   'before accepting, the worker shows as the masked number, not their name');
 RESET ROLE;
@@ -124,8 +124,8 @@ SET LOCAL ROLE authenticated;
 SELECT is((SELECT display_name FROM public.my_organization_members()
            WHERE user_id = 'c3333333-3333-4333-8333-545454545454'), 'Wale Worker',
   'once a member, the owner sees their name: profiles alone never showed it');
-SELECT is((SELECT count(*)::int FROM public.my_organization_members()), 3,
-  'three people in the business');
+SELECT is((SELECT count(*)::int FROM public.my_organization_members()), 4,
+  'three people in the business and the invitation still waiting for a number to sign up');
 SELECT ok((SELECT bool_and(earnings_minor IS NOT NULL) FROM public.my_organization_members()),
   'the owner sees earnings to date');
 RESET ROLE;

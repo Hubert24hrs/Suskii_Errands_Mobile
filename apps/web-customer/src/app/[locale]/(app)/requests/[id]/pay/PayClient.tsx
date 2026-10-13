@@ -11,12 +11,13 @@ import { isAppError, paymentRepository, requestRepository } from '@/lib/reposito
 import type {
   JobRequest,
   JobStatus,
+  Money,
   Payment,
   PaymentMethod,
   PaymentSession,
 } from '@/mocks/types';
 import { CountdownTimer } from '@/components/CountdownTimer';
-import { MoneyText } from '@/components/MoneyText';
+import { MoneyText, formatMoney } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
 import { errorText, statusLabel, statusTone } from '../../_shared';
@@ -106,6 +107,33 @@ export function PayClient({
   const [error, setError] = useState<string | null>(null);
   const [verificationRequired, setVerificationRequired] = useState(false);
 
+  // A promo the server accepted, and what it takes off (the server's number).
+  const [promoInput, setPromoInput] = useState('');
+  const [promo, setPromo] = useState<{ code: string; discount: Money } | null>(null);
+
+  const applyPromo = async () => {
+    const code = promoInput.trim();
+    if (!code) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const discount = await paymentRepository.previewPromo({ jobId, code });
+      setPromo({ code, discount });
+      // A different charge is a different intent.
+      setPayKey(newIdempotencyKey());
+    } catch (e) {
+      setError(errorText(dict, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removePromo = () => {
+    setPromo(null);
+    setPromoInput('');
+    setPayKey(newIdempotencyKey());
+  };
+
   const pickMethod = (m: PaymentMethod) => {
     if (m !== method) {
       setMethod(m);
@@ -121,6 +149,7 @@ export function PayClient({
         jobId,
         method,
         idempotencyKey: payKey,
+        promoCode: promo?.code,
       });
       setSession(result);
       setPayKey(newIdempotencyKey());
@@ -174,8 +203,14 @@ export function PayClient({
     );
   }
 
-  // Server-computed amount only — the agreed breakdown/quote, never derived here.
-  const amount = payment?.amount ?? job.agreedBreakdown?.gross ?? job.agreedPrice;
+  // Server-computed amounts only: the agreed breakdown/quote, less the discount the server
+  // quoted for an applied promo, until a payment exists and says what was charged.
+  const quoted = job.agreedBreakdown?.gross ?? job.agreedPrice;
+  const amount =
+    payment?.amount ??
+    (quoted && promo && promo.discount.currency === quoted.currency
+      ? { amountMinor: quoted.amountMinor - promo.discount.amountMinor, currency: quoted.currency }
+      : quoted);
   const backLink = (
     <Link
       href={`/${locale}/requests/${job.id}`}
@@ -368,9 +403,66 @@ export function PayClient({
             />
           </div>
         ) : null}
+        {promo && amount ? (
+          <div className="mb-lg flex flex-wrap items-center justify-between gap-md">
+            <span className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
+              {dict.payment.promoDiscountLabel}
+            </span>
+            <MoneyText
+              amountMinor={-promo.discount.amountMinor}
+              currency={promo.discount.currency}
+              className="text-title-medium text-ink-primary dark:text-ink-dark-primary"
+            />
+          </div>
+        ) : null}
         <p className="mb-lg text-body-small text-ink-secondary dark:text-ink-dark-secondary">
           {dict.payment.heldNote}
         </p>
+        {verificationRequired ? null : promo ? (
+          <div className="mb-lg flex flex-wrap items-center justify-between gap-md rounded-md border border-outline p-md dark:border-outline-dark">
+            <span className="text-body-medium text-ink-primary dark:text-ink-dark-primary">
+              {dict.payment.promoApplied
+                .replace('{code}', promo.code)
+                .replace('{amount}', formatMoney(promo.discount.amountMinor, promo.discount.currency))}
+            </span>
+            <button
+              type="button"
+              onClick={removePromo}
+              disabled={busy}
+              className="text-label-large text-brand-primary hover:underline disabled:opacity-50 dark:text-brand-secondary"
+            >
+              {dict.payment.promoRemove}
+            </button>
+          </div>
+        ) : (
+          <form
+            className="mb-lg flex flex-wrap items-end gap-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void applyPromo();
+            }}
+          >
+            <label className="flex min-w-0 flex-1 flex-col gap-xs">
+              <span className="text-label-medium text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.payment.promoLabel}
+              </span>
+              <input
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value)}
+                placeholder={dict.payment.promoPlaceholder}
+                autoCapitalize="characters"
+                className="rounded-md border border-outline bg-surface px-md py-sm text-body-medium text-ink-primary dark:border-outline-dark dark:bg-surface-dark dark:text-ink-dark-primary"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={busy || promoInput.trim() === ''}
+              className="rounded-md border border-brand-primary px-lg py-sm text-label-large text-brand-primary transition-colors duration-normal ease-standard hover:bg-brand-primary/10 disabled:opacity-50 dark:border-brand-secondary dark:text-brand-secondary"
+            >
+              {dict.payment.promoApply}
+            </button>
+          </form>
+        )}
         {verificationRequired ? (
           <div className="rounded-md border border-warning bg-warning/10 p-lg dark:border-warning-dark dark:bg-warning-dark/20">
             <p className="text-body-medium text-ink-primary dark:text-ink-dark-primary">

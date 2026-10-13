@@ -112,7 +112,7 @@ SELECT is(
        'public.my_organization', 'public.my_organization_members',
        'public.my_organization_invitations', 'public.invite_member_by_phone', 'public.assign_vehicle', 'public.org_assignable_jobs',
        'public.set_availability', 'public.set_earnings_goal', 'public.my_earnings_goal',
-       'public.my_provider_insights',
+       'public.my_provider_insights', 'public.provider_demand_heatmap',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',

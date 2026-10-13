@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | SEV1 for production data loss or corruption (RB-01) |
-| Last rehearsed | Not yet — quarterly drill on staging, first one before launch |
+| Last rehearsed | **2026-10-13, locally**: the logical-backup path (dump, verify, damage, restore) against the CLI's local stack, with the real worker. PITR, Storage restore and every console step are **not** rehearsed: they need staging (client actions 1 and 8). Quarterly drill on staging, first one before launch |
 | Related | [infra-cicd.md](../plan/infra-cicd.md) §8 (targets); RB-01, RB-07, RB-13, RB-14; `infra/terraform` (backup bucket) |
 
 ## What exists, and what does not yet
@@ -71,7 +71,16 @@ Restoring the whole database **rewinds everyone's data** to the chosen point: pa
 1. Pick the newest backup with a passing `.verify-*.json` next to its manifest in the backup bucket (`db/prod/…`). Never use a backup that has no manifest.
 2. Download the `.dump` and check its sha256 against the manifest.
 3. Create the replacement project and deploy schema-independent configuration through the pipeline (RB-14) **without** running migrations; the dump carries the schema.
-4. Restore with `pg_restore --no-owner --no-privileges --exit-on-error --single-transaction` into the new project's database, then apply any migrations newer than the dump through the pipeline.
+4. Prepare the empty database the way `suskii-backup verify` does, or the restore stops at its first statement (found by the 2026-10-13 rehearsal): the dump recreates `public` itself, and our schemas need the platform's roles and extensions to exist.
+   ```sql
+   DROP SCHEMA public;
+   CREATE SCHEMA IF NOT EXISTS extensions;
+   CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+   CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
+   -- and, on a server that is not a Supabase project: CREATE ROLE anon, authenticated,
+   -- service_role, supabase_auth_admin NOLOGIN (a Supabase project already has them)
+   ```
+   Then restore with `pg_restore --no-owner --no-privileges --exit-on-error --single-transaction` into it, and apply any migrations newer than the dump through the pipeline.
 5. Run the same checks as `suskii-backup verify` (row counts, audit chain, ledger) and the health endpoint before reopening traffic.
 
 ### Restore Storage objects
@@ -97,7 +106,8 @@ Restoring the whole database **rewinds everyone's data** to the chosen point: pa
 
 | Date | Environment | Method | Time to restore | RTO met? | Findings |
 |---|---|---|---|---|---|
-| — | — | — | — | — | First drill before launch |
+| 2026-10-13 | Local (CLI stack, PostgreSQL 17.6; restore server PostGIS 17.5 in a container) | Logical: `suskii-backup dump` → `verify` → sentinel deleted from the source → manual restore by the steps above | Dump 2 s, verify 2 s (119 tables, exact row counts, audit chain, ledger zero-sum), manual restore 2 s for a 1.4 MB dump | Not measured against a target: a local database is not a production-sized one | Step 4 failed as written (`CREATE SCHEMA public` on a fresh database); fixed above. The sentinel came back; sha256 matched the manifest |
+| — | Staging | PITR and logical | — | — | First staging drill before launch (needs client actions 1 and 8) |
 
 ## Backout
 

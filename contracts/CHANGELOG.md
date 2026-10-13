@@ -8,6 +8,42 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.2.0] - 2026-10-13
+
+The last provider tool, promo codes that can actually be redeemed, and invite-by-phone without the
+account oracle (audit 2026-10-13, part 3). **MINOR**: one function added; the rest are behaviour
+changes under the same signatures, and a client built against 2.1.0 keeps working (the app looks
+an invitation up in the member list by the id the invite returned, and both now carry the same
+opaque id).
+
+### Added
+
+- **`provider_demand_heatmap()`** → up to 50 cells `{cell_id, center_lat, center_lng,
+  open_requests, intensity, label}`: open requests in the caller's country and categories, on a
+  0.02-degree grid (`demand_heatmap_cell_deg`), each cell reporting its centre, never a pickup.
+  Cells with fewer than `demand_heatmap_min_requests` (5, never below 2) are not returned.
+  `intensity` is relative to the busiest cell. Active, verified providers only.
+
+### Changed (behaviour, no signature change)
+
+- **`invite_member_by_phone`** no longer raises `ERR_PROFILE_NOT_FOUND` and no longer returns the
+  invitee's user id (Z.20). A number without an account becomes a pending invitation, kept as a
+  blind index and the masked number, and claimed when that number signs up and opens
+  `my_organization_invitations`. The return value is the invitation's id: a keyed hash, the same
+  shape for both kinds, under which `my_organization_members` lists it.
+- **`my_organization_members`** lists every invitation not yet accepted, with or without an account,
+  as the same row: the masked number, `invited`, `pending`, no jobs, nothing earned, and the
+  opaque id. A member's real id and name appear once they accept.
+- **`my_organization.member_count`** includes pending invitations.
+- **`remove_member`** takes an invitation's id as well as a member's.
+- **`my_organization_invitations`** claims any pending invitation to the caller's number before
+  answering, so it now writes (it was `STABLE`).
+
+### Clients
+
+- Both apps now send `start_payment`'s `p_promo_code` and preview it with `preview_promo` on the
+  pay screen. Neither did before, so no promo code could ever be redeemed (Z.21).
+
 ## [2.1.0] - 2026-10-13
 
 The admin console's backend (audit 2026-10-13 Z.8) and the four mobile repositories that drew

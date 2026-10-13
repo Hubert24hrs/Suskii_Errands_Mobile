@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | Used inside SEV1–SEV3 incidents (RB-01) |
-| Last rehearsed | Not yet — rehearse each switch below on staging before launch |
+| Last rehearsed | **2026-10-13, locally**: the break-glass SQL below (a flag off globally and per country, a forced update) verified through `get_bootstrap()` and `audit.log`; the console's four-eyes path is exercised on every CI run by the admin console end-to-end suite. Not rehearsed: a real device picking the change up at its next bootstrap, which needs a build pointed at staging. Rehearse each switch on staging before launch |
 | Related | ERD §1 (`feature_flags`, `remote_config`); `get_bootstrap()`; PRD SH-35, AD-22; ai-design §6.5; RB-01, RB-10, RB-14 |
 
 ## How the switches work
@@ -42,7 +42,7 @@ Add a row here whenever a feature ships with a new switch. Features in Phases 3�
 ## Immediate actions
 
 1. Open or join the incident (RB-01). Name the switch you are about to flip in the incident channel **before** flipping it.
-2. Flip it using the SQL below in the Supabase SQL editor for the right project (production changes need the IC's go-ahead). Until the admin dashboard exists (PRD AD-22, four-eyes), this is the only path.
+2. Flip it. **Two people available:** the admin console (Configuration → propose; a second super admin signs, and the change applies on that signature; a feature flag needs one signature, a country going live two). **One person, and it cannot wait:** the break-glass SQL below in the Supabase SQL editor for the right project, with the IC's go-ahead and the second person's approval recorded in the incident log afterwards. Both paths write `audit.log`.
 3. Verify with `get_bootstrap()` as below, then on a real device after a cold start.
 4. Note the time; the app's next bootstrap is when users see it.
 
@@ -91,7 +91,7 @@ Stop new users in a country (existing users and in-flight jobs continue):
 UPDATE public.countries SET status = 'disabled' WHERE code = 'KE';
 ```
 
-Changing a country's status is also a four-eyes action once the admin dashboard exists (PRD AD-22). In an emergency before then, record the second person's approval in the incident log.
+Changing a country's status is a four-eyes action in the admin console (target `country`). The SQL above is the break-glass path: record the second person's approval in the incident log.
 
 Verify:
 
@@ -104,6 +104,12 @@ ORDER BY id DESC LIMIT 5;
 ```
 
 Expected: the flag shows the new value, and an audit row records the change.
+
+### Rehearsal record
+
+| Date | Environment | What ran | Result |
+|---|---|---|---|
+| 2026-10-13 | Local CLI stack | The four commands above for `concierge.voice` (global and NG) and `min_supported_app_version`, then the three verify queries; values restored afterwards | `get_bootstrap('NG', 'android')` showed `concierge.voice: false` and `1.4.2`; `audit.log` had one `update` row per statement. The step-2 text above was out of date (it predated the admin console) and is corrected |
 
 ## Backout
 

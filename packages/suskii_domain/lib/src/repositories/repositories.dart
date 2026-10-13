@@ -341,13 +341,21 @@ abstract interface class PaymentRepository {
   Future<Payment?> getPaymentForJob(String jobId);
   Stream<Payment?> watchPaymentForJob(String jobId);
 
+  /// What [code] would take off this job's price, before paying. The server
+  /// computes it; throws AppError(ERR_PROMO_INVALID) for a code that is
+  /// unknown, expired, used up or not for this country.
+  Future<Money> previewPromo({required String jobId, required String code});
+
   /// Throws AppError(ERR_INVALID_STATE) unless the job is AGREED (first
   /// attempt) or PAYMENT_PENDING (retry within the TTL); verification-gated
-  /// like publishing.
+  /// like publishing. [promoCode] is applied by the server, which charges the
+  /// discounted amount; the provider's earnings do not change (the platform
+  /// funds the discount).
   Future<PaymentSession> initializePayment({
     required String jobId,
     required PaymentMethod method,
     required String idempotencyKey,
+    String? promoCode,
   });
 }
 

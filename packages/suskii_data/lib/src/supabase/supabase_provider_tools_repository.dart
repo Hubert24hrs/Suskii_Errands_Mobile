@@ -8,9 +8,10 @@ import 'supabase_gateway.dart';
 /// earnings goal (`set_earnings_goal` / `my_earnings_goal`, progress computed
 /// server-side) and the insights card (`my_provider_insights`).
 ///
-/// Two tools have no backend and say so rather than inventing numbers: the
-/// demand heatmap (aggregating customers' pickup points needs its own privacy
-/// design) and instant payout (a payment gateway, client action 4).
+/// The demand heatmap is `provider_demand_heatmap`: coarse grid cells, never
+/// pickups, and none below the k-anonymity floor. Instant payout has no
+/// backend (a payment gateway, client action 4) and says so rather than
+/// inventing numbers.
 class SupabaseProviderToolsRepository implements ProviderToolsRepository {
   SupabaseProviderToolsRepository(this._gateway);
 
@@ -67,8 +68,12 @@ class SupabaseProviderToolsRepository implements ProviderToolsRepository {
   }
 
   @override
-  Future<List<DemandZone>> getDemandHeatmap() async =>
-      throw const AppError(ErrorCodes.featureUnavailable);
+  Future<List<DemandZone>> getDemandHeatmap() async {
+    final rows = List<Map<String, dynamic>>.from(
+      await _gateway.rpc('provider_demand_heatmap') as List<dynamic>,
+    );
+    return rows.map(demandZoneFromRow).toList(growable: false);
+  }
 
   @override
   Future<ProviderInsights> getInsights() async {
@@ -137,3 +142,20 @@ ProviderInsights providerInsightsFromRow(Map<String, dynamic> row) =>
           (row['avg_response_time_seconds'] as num?)?.toInt() ?? 0,
       periodDays: (row['period_days'] as num?)?.toInt() ?? 30,
     );
+
+/// A `provider_demand_heatmap` cell. A cell outside any zone or city has no
+/// name, so it is labelled by its centre (two decimals, about a kilometre).
+DemandZone demandZoneFromRow(Map<String, dynamic> row) {
+  final lat = (row['center_lat'] as num).toDouble();
+  final lng = (row['center_lng'] as num).toDouble();
+  final label = row['label'] as String? ?? '';
+  return DemandZone(
+    id: row['cell_id'] as String,
+    label: label.isEmpty
+        ? '${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)}'
+        : label,
+    center: GeoPoint(latitude: lat, longitude: lng),
+    intensity: SupabaseGateway.asDecimal(row['intensity']),
+    openRequests: (row['open_requests'] as num).toInt(),
+  );
+}
