@@ -101,9 +101,11 @@ Deployed headers are unchanged.
   (it needs the stack). It signs in six staff accounts with real TOTP codes and checks the database
   after each flow. Build the console with the env first; the header of `playwright.config.ts`
   has the commands.
-- **Step-up is still client-side (Z.11, open).** The console asks for a fresh code before
-  sensitive actions, but the server only checks `aal2`. Do not treat the re-auth dialog as a
-  control until the server enforces recency.
+- **Step-up is enforced by the server (Z.11).** Approving a withdrawal, resolving a dispute,
+  opening a KYC document and proposing or signing a config change refuse a TOTP code older than
+  five minutes with `ERR_REAUTH_REQUIRED`. The console already asks first and lands a server
+  refusal in the same modal; any other admin client should do the same: `challengeAndVerify` on
+  the same session, then retry with the same idempotency key.
 - **Invite by phone needs the person to have signed up with that number**
   (`ERR_PROFILE_NOT_FOUND` otherwise).
 

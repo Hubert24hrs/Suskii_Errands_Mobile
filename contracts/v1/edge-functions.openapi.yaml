@@ -129,9 +129,11 @@ paths:
       description: >
         `kyc-docs` is write-only for every client role, so an officer cannot sign a URL with their
         own token. The function first calls `request_document_access` **as the officer** — the
-        database checks aal2, the role and that the folder is not the officer's own, and writes
-        `audit.kyc_access` — and only then signs that one path with the service role. The answer
-        is `no-store`: the URL is a capability, and a cached copy would outlive its minute.
+        database checks aal2, a TOTP code entered in the last five minutes, the role and that the
+        folder is not the officer's own, and writes `audit.kyc_access` — and only then signs that
+        one path with the service role. The answer is `no-store`: the URL is a capability, and a
+        cached copy would outlive its minute. A stale code is `401 ERR_REAUTH_REQUIRED`: verify a
+        fresh one on the same session and call again.
       requestBody:
         required: true
         content:

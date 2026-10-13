@@ -7,6 +7,15 @@ CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
 SELECT plan(39);
 
+-- An admin session that entered its TOTP code just now: `aal2`, and the step-up the sensitive
+-- verbs ask for (audit Z.11).
+CREATE FUNCTION pg_temp.admin_claims(p_user text) RETURNS text LANGUAGE sql STABLE AS $fn$
+  SELECT jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2',
+    'amr', jsonb_build_array(jsonb_build_object(
+      'method', 'totp', 'timestamp', extract(epoch FROM now())::bigint)))::text;
+$fn$;
+
+
 INSERT INTO auth.users (id, phone) VALUES
   ('b1111111-1111-4111-8111-333333333333', '2348000000261'),   -- customer
   ('b2222222-2222-4222-8222-333333333333', '2348000000262'),   -- provider
@@ -141,7 +150,7 @@ RESET ROLE;
 -- The officer's desk, and the scope it opens.
 -- ---------------------------------------------------------------------------
 SELECT set_config('request.jwt.claims',
-  '{"sub": "b5555555-5555-4555-8555-333333333333", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('b5555555-5555-4555-8555-333333333333'), true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok($$SELECT public.dispute_queue()$$,
   '42501', 'ERR_PERMISSION_DENIED', 'support does not work the dispute queue');
@@ -150,7 +159,7 @@ SELECT is((SELECT count(*)::int FROM public.disputes), 1,
 RESET ROLE;
 
 SELECT set_config('request.jwt.claims',
-  '{"sub": "b3333333-3333-4333-8333-333333333333", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('b3333333-3333-4333-8333-333333333333'), true);
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.dispute_queue()), 1, 'the officer sees the case');
 SELECT is((SELECT count(*)::int FROM public.dispute_evidence), 2,
@@ -175,7 +184,7 @@ RESET ROLE;
 
 -- The provider is an officer too, and still cannot decide their own case.
 SELECT set_config('request.jwt.claims',
-  '{"sub": "b2222222-2222-4222-8222-333333333333", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('b2222222-2222-4222-8222-333333333333'), true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT public.resolve_dispute('key-dp-res-self-0001', %L, 'in_favour_of_provider',
@@ -187,7 +196,7 @@ RESET ROLE;
 -- 6a: resolved with a partial refund.
 -- ---------------------------------------------------------------------------
 SELECT set_config('request.jwt.claims',
-  '{"sub": "b3333333-3333-4333-8333-333333333333", "role": "authenticated", "aal": "aal2"}', true);
+  pg_temp.admin_claims('b3333333-3333-4333-8333-333333333333'), true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT public.resolve_dispute('key-dp-res-note-0001', %L, 'partial_refund', 4000, '  ')$$,

@@ -1456,6 +1456,7 @@
       "errors": [
         "ERR_ILLEGAL_TRANSITION",
         "ERR_PERMISSION_DENIED",
+        "ERR_REAUTH_REQUIRED",
         "ERR_WITHDRAWAL_NOT_FOUND"
       ],
       "idempotency_key": "p_idempotency_key",
@@ -1469,9 +1470,10 @@
           "finance_officer",
           "super_admin"
         ],
-        "mfa": "aal2"
+        "mfa": "aal2",
+        "recent_mfa": "totp within 5 minutes"
       },
-      "defined_in": "20260921121500_payouts_and_withdrawals.sql"
+      "defined_in": "20261013120200_admin_step_up.sql"
     },
     {
       "name": "assign_dispute",
@@ -6919,7 +6921,8 @@
       },
       "errors": [
         "ERR_INVALID_ARGUMENT",
-        "ERR_PERMISSION_DENIED"
+        "ERR_PERMISSION_DENIED",
+        "ERR_REAUTH_REQUIRED"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -6927,7 +6930,8 @@
         "authenticated"
       ],
       "requires": {
-        "authenticated": true
+        "authenticated": true,
+        "recent_mfa": "totp within 5 minutes"
       },
       "defined_in": "20261013120000_admin_console.sql"
     },
@@ -8233,7 +8237,8 @@
       },
       "errors": [
         "ERR_INVALID_ARGUMENT",
-        "ERR_PERMISSION_DENIED"
+        "ERR_PERMISSION_DENIED",
+        "ERR_REAUTH_REQUIRED"
       ],
       "idempotency_key": null,
       "security_definer": true,
@@ -8246,9 +8251,10 @@
           "super_admin",
           "verification_officer"
         ],
-        "mfa": "aal2"
+        "mfa": "aal2",
+        "recent_mfa": "totp within 5 minutes"
       },
-      "defined_in": "20260921120100_kyc.sql"
+      "defined_in": "20261013120200_admin_step_up.sql"
     },
     {
       "name": "request_float_top_up",
@@ -8538,6 +8544,7 @@
         "ERR_INVALID_ARGUMENT",
         "ERR_PAYMENT_NOT_FOUND",
         "ERR_PERMISSION_DENIED",
+        "ERR_REAUTH_REQUIRED",
         "ERR_REFUND_EXCEEDS_PAYMENT"
       ],
       "idempotency_key": "p_idempotency_key",
@@ -8551,9 +8558,10 @@
           "dispute_officer",
           "super_admin"
         ],
-        "mfa": "aal2"
+        "mfa": "aal2",
+        "recent_mfa": "totp within 5 minutes"
       },
-      "defined_in": "20260922120100_referrals.sql"
+      "defined_in": "20261013120200_admin_step_up.sql"
     },
     {
       "name": "respond_float_top_up",
@@ -8742,7 +8750,8 @@
       "errors": [
         "ERR_CONFIG_CHANGE_NOT_FOUND",
         "ERR_ILLEGAL_TRANSITION",
-        "ERR_PERMISSION_DENIED"
+        "ERR_PERMISSION_DENIED",
+        "ERR_REAUTH_REQUIRED"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -8754,7 +8763,8 @@
         "admin_roles": [
           "super_admin"
         ],
-        "mfa": "aal2"
+        "mfa": "aal2",
+        "recent_mfa": "totp within 5 minutes"
       },
       "defined_in": "20261013120000_admin_console.sql"
     },

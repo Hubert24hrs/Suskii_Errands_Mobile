@@ -174,6 +174,16 @@ class RequirementsTest(unittest.TestCase):
         self.assertEqual(req["admin_roles"], ["support_agent"])
         self.assertEqual(req["mfa"], "aal2")
 
+    def test_the_step_up_helper_is_a_requirement_and_an_error(self):
+        body = (
+            "BEGIN IF NOT private.has_admin_role(ARRAY['finance_officer']::public.admin_role[]) "
+            "THEN RAISE EXCEPTION 'ERR_PERMISSION_DENIED'; END IF;\n"
+            "PERFORM private.require_recent_mfa(); END"
+        )
+        fn = pgparse.Function("public", "approve", [], "void", "plpgsql", True, body, "x.sql")
+        self.assertEqual(generate_v1.requirements(fn)["recent_mfa"], "totp within 5 minutes")
+        self.assertIn("ERR_REAUTH_REQUIRED", generate_v1.describe(fn, {})["errors"])
+
 
 class EnumTest(unittest.TestCase):
     """Moved from test_check_preview.py when enums.json moved to this generator."""

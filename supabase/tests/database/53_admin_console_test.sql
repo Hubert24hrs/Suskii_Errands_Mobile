@@ -40,7 +40,11 @@ GRANT ALL ON ac TO authenticated, service_role;
 CREATE FUNCTION pg_temp.act(p_user text, p_aal text DEFAULT 'aal2') RETURNS void
 LANGUAGE sql AS $fn$
   SELECT set_config('request.jwt.claims',
-    jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', p_aal)::text, true);
+    (jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', p_aal)
+     -- A session that has passed MFA entered its code just now (the step-up, Z.11).
+     || CASE WHEN p_aal = 'aal2' THEN jsonb_build_object('amr', jsonb_build_array(
+          jsonb_build_object('method', 'totp', 'timestamp', extract(epoch FROM now())::bigint)))
+        ELSE '{}'::jsonb END)::text, true);
   SELECT NULL::void;
 $fn$;
 

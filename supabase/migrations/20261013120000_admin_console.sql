@@ -526,6 +526,8 @@ BEGIN
             ELSE ARRAY['super_admin']::public.admin_role[] END) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  -- Step-up (Z.11): private.require_recent_mfa is defined in 20261013120200.
+  PERFORM private.require_recent_mfa();
 
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'propose_config_change',
     jsonb_build_object('target', p_target, 'target_key', p_target_key,
@@ -640,6 +642,8 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  -- Step-up (Z.11): private.require_recent_mfa is defined in 20261013120200.
+  PERFORM private.require_recent_mfa();
 
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'review_config_change',
     jsonb_build_object('change_id', p_change_id, 'approve', p_approve));

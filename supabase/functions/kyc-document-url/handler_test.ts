@@ -54,6 +54,16 @@ Deno.test("a refusal from the database signs nothing and keeps its code", async 
   assertEquals(calls.filter((c) => c.startsWith("sign")), []);
 });
 
+Deno.test("a stale second factor is a 401 the console answers with a fresh code", async () => {
+  const { d, calls } = deps({
+    requestAccess: () => Promise.reject(new AccessRefusedError("ERR_REAUTH_REQUIRED")),
+  });
+  const res = await createDocumentUrlHandler(d)(post({ upload_ref: REF, reason_code: "kyc_review" }));
+  assertEquals(res.status, 401);
+  assertEquals(await res.json(), { error: { code: "ERR_REAUTH_REQUIRED" } });
+  assertEquals(calls.filter((c) => c.startsWith("sign")), []);
+});
+
 Deno.test("a path that is not one file in one user's folder is refused before the database", async () => {
   const bad = [
     { upload_ref: "../a1111111-1111-4111-8111-111111111111/x.jpg", reason_code: "kyc_review" },

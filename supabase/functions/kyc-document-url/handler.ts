@@ -2,7 +2,7 @@
 //
 // `kyc-docs` is write-only for every client role, so an officer cannot sign a URL with their own
 // token. The order is the point: `request_document_access` runs first, **as the officer**, so the
-// database decides (aal2, role, not their own folder) and writes `audit.kyc_access` before any
+// database decides (aal2, a TOTP code in the last five minutes, role, not their own folder) and writes `audit.kyc_access` before any
 // URL exists. Only then does the service role sign, for that one path, for sixty seconds.
 
 import { errorResponse, json } from "../_shared/http.ts";
@@ -31,6 +31,8 @@ const REASON = /^[a-z0-9_]{3,60}$/;
 
 const STATUS_FOR: Record<string, number> = {
   ERR_UNAUTHENTICATED: 401,
+  // The officer's code is older than five minutes: verify a fresh one and ask again (Z.11).
+  ERR_REAUTH_REQUIRED: 401,
   ERR_PERMISSION_DENIED: 403,
   ERR_INVALID_ARGUMENT: 400,
 };

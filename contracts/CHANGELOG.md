@@ -63,6 +63,13 @@ an unnamed failure before; no signature changes.
 
 ### Changed (behaviour, no signature change)
 
+- **Step-up for the sensitive admin verbs (Z.11).** `approve_withdrawal`, `resolve_dispute`,
+  `request_document_access`, `propose_config_change` and `review_config_change` now also need a
+  TOTP code entered in the last five minutes, read from the JWT's `amr`
+  (`{"method": "totp", "timestamp": …}`); `aal2` alone is refused with **`ERR_REAUTH_REQUIRED`**
+  (new). Verify a fresh code on the same session (`mfa.challengeAndVerify`) and retry with the same
+  idempotency key. `kyc-document-url` answers it as `401`. The catalogue marks these five with
+  `requires.recent_mfa`.
 - `register_organization` raises `ERR_ORGANIZATION_ALREADY_REGISTERED` for a registration number
   already on the platform in that country, where it failed on the UNIQUE constraint (`23505`).
 - `analytics_report` honours the caller's country scope; a scoped caller asking for a view without

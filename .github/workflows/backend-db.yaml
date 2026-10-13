@@ -95,7 +95,7 @@ jobs:
       # The admin console against the same stack (audit Z.8): staff sign in with a password and
       # a TOTP code they enrol on first use, and each flow checks the database afterwards.
       # kyc-document-url is served by Deno from the playwright config, not by edge-runtime.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
           cache: npm

@@ -405,6 +405,17 @@
       "client_action": "Show a neutral message; do not retry."
     },
     {
+      "code": "ERR_REAUTH_REQUIRED",
+      "status": "implemented",
+      "category": "auth",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 401,
+      "retryable": true,
+      "description": "A sensitive admin action (approving a withdrawal, resolving a dispute, opening a KYC document, proposing or signing a configuration change) needs a TOTP code entered in the last five minutes. Read from the session's `amr`; `aal2` alone is not enough.",
+      "client_action": "Ask for a fresh code (`mfa.challengeAndVerify` on the same session), then retry with the same idempotency key."
+    },
+    {
       "code": "ERR_PRICE_OUT_OF_RANGE",
       "status": "implemented",
       "category": "marketplace",

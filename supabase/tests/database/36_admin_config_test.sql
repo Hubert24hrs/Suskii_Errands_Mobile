@@ -34,7 +34,10 @@ GRANT ALL ON cc TO authenticated, service_role;
 -- MFA is exactly what `has_admin_role` refuses.
 CREATE FUNCTION pg_temp.act(p_user text) RETURNS void LANGUAGE sql AS $fn$
   SELECT set_config('request.jwt.claims',
-    jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+    jsonb_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2',
+      -- A TOTP code entered just now: the step-up the sensitive verbs ask for (Z.11).
+      'amr', jsonb_build_array(jsonb_build_object(
+        'method', 'totp', 'timestamp', extract(epoch FROM now())::bigint)))::text, true);
   SELECT NULL::void;
 $fn$;
 

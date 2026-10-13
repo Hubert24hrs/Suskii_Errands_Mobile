@@ -2,11 +2,10 @@
 // step-up window for sensitive actions, and name lookups.
 //
 // Authorisation is the server's: every admin function re-reads `admin_users` and
-// requires aal2. The step-up check here is the console's own UX (the design asks
-// for a fresh authenticator code before approvals and resolutions); it reads the
-// TOTP timestamp GoTrue signs into the session, so it cannot be satisfied without
-// actually verifying a code — but it is not a server control. The server does not
-// enforce step-up today (audit 2026-10-13, Z.11).
+// requires aal2, and the five sensitive ones also refuse a TOTP code older than five
+// minutes (`private.require_recent_mfa`, audit Z.11). The check here asks first, so
+// the code is requested before the call rather than after a refusal; a refusal from
+// the server lands in the same modal either way.
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
 import type { AdminRole, Money } from '@/mocks/types';
