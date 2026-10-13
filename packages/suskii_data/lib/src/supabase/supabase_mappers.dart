@@ -566,8 +566,10 @@ WalletTransaction withdrawalTransactionFromRow(
       'failed' || 'rejected' => WalletTransactionStatus.failed,
       _ => WalletTransactionStatus.pending,
     },
+    // A withdrawal is money going out: negative, as the screens draw it and
+    // as `my_wallet_transactions` returns it.
     amount: Money(
-      SupabaseGateway.asMinorUnits(row['amount_minor']),
+      -SupabaseGateway.asMinorUnits(row['amount_minor']),
       row['currency'] as String? ?? 'NGN',
     ),
     createdAt: SupabaseGateway.asTimestamp(row['created_at']),
@@ -755,11 +757,13 @@ SupportMessage supportMessageFromRow(
 /// A `trusted_contacts` row. The phone number is stored encrypted
 /// (`phone_ciphertext` + blind index) and never returned in plaintext, so the
 /// domain `phoneE164` cannot be populated — tracked as CR-20260923-06.
+/// The number arrives masked (`+234••••••4567`): the server seals it and no
+/// client reads it back, so `phoneE164` carries the display form here.
 TrustedContact trustedContactFromRow(Map<String, dynamic> row) =>
     TrustedContact(
       id: SupabaseGateway.asId(row['id']),
       name: (row['name'] as String?) ?? '',
-      phoneE164: '',
+      phoneE164: (row['phone_masked'] as String?) ?? '',
     );
 
 /// Postgres `time` column → minutes since midnight ('HH:MM:SS').
@@ -910,8 +914,108 @@ KycStep kycStepFromProfileRow(Map<String, dynamic> row) => KycStep(
   kind: kycStepKindFromWire(row['kind']),
   status: kycStepStatusFromWire(row['status']),
   attemptCount: (row['attempt_count'] as num?)?.toInt() ?? 0,
+  submittedAt: row['submitted_at'] == null
+      ? null
+      : SupabaseGateway.asTimestamp(row['submitted_at']),
+  reviewedAt: row['reviewed_at'] == null
+      ? null
+      : SupabaseGateway.asTimestamp(row['reviewed_at']),
   rejectionReasonKey: row['rejection_reason_key'] as String?,
 );
+
+/// The profile's overall status as the server states it (`overall_status`,
+/// a `verification_status`, contracts 2.0.0), in the domain's step vocabulary.
+/// `pending` means some steps are in and the person has not asked for review
+/// yet; once they have, it reads as in review. Rows from an older server
+/// without the column fall back to [kycOverallRollup].
+KycStepStatus kycOverallFromProfileRows(
+  List<Map<String, dynamic>> rows,
+  List<KycStep> steps,
+) {
+  final first = rows.isEmpty ? null : rows.first;
+  final overall = first?['overall_status'] as String?;
+  final submitted = first?['submitted_for_review_at'];
+  if (overall == null) return kycOverallRollup(steps);
+  return switch (overall) {
+    'verified' => KycStepStatus.verified,
+    'rejected' => KycStepStatus.rejected,
+    'expired' => KycStepStatus.expired,
+    'in_review' => KycStepStatus.inReview,
+    'pending' =>
+      submitted != null ? KycStepStatus.inReview : KycStepStatus.inProgress,
+    _ =>
+      steps.every((s) => s.status == KycStepStatus.notStarted)
+          ? KycStepStatus.notStarted
+          : KycStepStatus.inProgress,
+  };
+}
+
+/// A `my_wallet_transactions` row (contracts 2.0.0). Amounts arrive signed:
+/// money in is positive.
+WalletTransaction walletTransactionFromFeedRow(Map<String, dynamic> row) =>
+    WalletTransaction(
+      id: row['id'] as String,
+      kind: switch (row['kind'] as String?) {
+        'debit' => WalletTransactionKind.debit,
+        'hold' => WalletTransactionKind.hold,
+        'release' => WalletTransactionKind.release,
+        'refund' => WalletTransactionKind.refund,
+        'payout' => WalletTransactionKind.payout,
+        'referral' => WalletTransactionKind.referral,
+        'tip' => WalletTransactionKind.tip,
+        'item_float' => WalletTransactionKind.itemFloat,
+        _ => WalletTransactionKind.credit,
+      },
+      status: switch (row['status'] as String?) {
+        'pending' => WalletTransactionStatus.pending,
+        'failed' => WalletTransactionStatus.failed,
+        'reversed' => WalletTransactionStatus.reversed,
+        _ => WalletTransactionStatus.completed,
+      },
+      amount: Money(
+        SupabaseGateway.asMinorUnits(row['amount_minor']),
+        row['currency'] as String? ?? 'NGN',
+      ),
+      createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+      referenceId: row['reference_id'] as String?,
+      descriptionKey: row['description_key'] as String?,
+    );
+
+/// A `provider_home_summary` row (contracts 2.0.0).
+ProviderHomeSummary providerHomeSummaryFromRow(Map<String, dynamic> row) {
+  final currency = row['currency'] as String? ?? 'NGN';
+  final warnings = row['document_warnings'];
+  return ProviderHomeSummary(
+    online: row['online'] as bool? ?? false,
+    verificationStatus: verificationFromWire(row['verification_status']),
+    todayEarnings: Money(
+      SupabaseGateway.asMinorUnits(row['today_earnings_minor'] ?? 0),
+      currency,
+    ),
+    completedToday: (row['completed_today'] as num?)?.toInt() ?? 0,
+    nearbyOpenRequests: (row['nearby_open_requests'] as num?)?.toInt() ?? 0,
+    documentWarnings: <DocumentExpiryWarning>[
+      if (warnings is List)
+        for (final w in warnings.whereType<Map<dynamic, dynamic>>())
+          DocumentExpiryWarning(
+            documentTypeKey: w['document_type_key'] as String? ?? '',
+            daysRemaining: (w['days_remaining'] as num?)?.toInt() ?? 0,
+          ),
+    ],
+  );
+}
+
+/// When the person last asked for review, from any profile row.
+DateTime? kycSubmittedForReviewAt(List<Map<String, dynamic>> rows) {
+  final value = rows.isEmpty ? null : rows.first['submitted_for_review_at'];
+  return value == null ? null : SupabaseGateway.asTimestamp(value);
+}
+
+/// `YYYY-MM-DD` for a Postgres `date` argument.
+String dateToWire(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
 
 /// Display-only rollup replicating the mock's priority (rejected →
 /// submitted → all-not-started → any-in-review → all-verified → in-progress).

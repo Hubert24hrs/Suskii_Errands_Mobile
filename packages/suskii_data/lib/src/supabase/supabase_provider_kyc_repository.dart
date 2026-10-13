@@ -6,25 +6,26 @@ import 'supabase_mappers.dart';
 
 /// ProviderKycRepository over Supabase.
 ///
-/// Profile reads combine `get_my_kyc_profile` (step state — the source of
-/// truth) with `provider_profiles` (kind, vehicle type), `provider_services`
-/// and `provider_service_areas`; the uuid foreign keys are translated back
-/// to the category keys / city codes the domain model carries. The overall
-/// rollup is display-only ([kycOverallRollup]) until the server exposes one
-/// (CR-20260923-10).
+/// Profile reads combine `get_my_kyc_profile` (step state, dates and the
+/// server's overall status, contracts 2.0.0) with `provider_profiles` (kind,
+/// vehicle type, business name), `provider_services` and
+/// `provider_service_areas`; the uuid foreign keys are translated back to the
+/// category keys / city codes the domain model carries.
 ///
 /// Writes: onboarding goes to `update_provider_services` /
-/// `update_provider_service_areas` / a `provider_profiles` vehicle-type
-/// update (no idempotency keys on those RPCs — client-side dedupe only;
-/// `kind` is server-defaulted and `businessName` has no column). Upload-ref
-/// steps (`idDocumentCapture`, `vehicleDocuments`, `credentials`) go through
-/// `submit_kyc_step`.
+/// `update_provider_service_areas` and a `provider_profiles` update of
+/// vehicle type and business name (`kind` is server-set: a provider becomes a
+/// business by registering an organisation). Upload steps go through
+/// `submit_kyc_step`; the answer steps (address, guarantor, credentials) send
+/// their answer as `p_payload`, which the server validates and seals. The ID
+/// number and the police certificate number go in as plaintext over TLS and
+/// are sealed server-side (CR-20260923-08). `submitForReview` is the server's
+/// `submit_kyc_for_review`, which refuses an incomplete profile and decides
+/// nothing.
 ///
-/// Blocked (feature-unavailable, never weakened): anything needing
-/// client-produced ciphertext (government id, police clearance, payout
-/// account — CR-20260923-08), the provider-facial liveness result
-/// (CR-20260923-09), structured address/guarantor/credentials payloads and
-/// submit-for-review / payout name enquiry (CR-20260923-10).
+/// Still blocked, never weakened: the provider-facial liveness result needs the
+/// identity vendor (CR-20260923-09), and the payout account needs the gateway's
+/// name check and its KMS-sealed account number (CR-20260923-10 c).
 class SupabaseProviderKycRepository implements ProviderKycRepository {
   SupabaseProviderKycRepository(this._gateway);
 
@@ -73,7 +74,8 @@ class SupabaseProviderKycRepository implements ProviderKycRepository {
           .whereType<String>()
           .toList(),
       steps: steps,
-      overallStatus: kycOverallRollup(steps),
+      overallStatus: kycOverallFromProfileRows(stepRows, steps),
+      submittedForReviewAt: kycSubmittedForReviewAt(stepRows),
       vehicleType: profile?['vehicle_type'] == null
           ? null
           : vehicleTypeFromWire(profile!['vehicle_type']),
@@ -96,19 +98,24 @@ class SupabaseProviderKycRepository implements ProviderKycRepository {
     await _gateway.rpc('update_provider_service_areas', <String, Object?>{
       'p_city_codes': input.serviceAreaIds,
     });
-    if (input.vehicleType != null) {
+    final businessName = input.businessName?.trim();
+    final changes = <String, Object?>{
+      if (input.vehicleType != null)
+        'vehicle_type': vehicleTypeToWire(input.vehicleType!),
+      if (businessName != null && businessName.isNotEmpty)
+        'business_name': businessName,
+    };
+    if (changes.isNotEmpty) {
       await _gateway.updateRows(
         'provider_profiles',
-        <String, Object?>{
-          'vehicle_type': vehicleTypeToWire(input.vehicleType!),
-        },
+        changes,
         column: 'user_id',
         value: userId,
         columns: 'user_id',
       );
     }
-    // input.kind is server-defaulted (not client-updatable); input.businessName
-    // has no column (CR-20260923-10).
+    // input.kind is server-set: `business` comes from registering an
+    // organisation, where the check lives.
     return getKycProfile();
   }
 
@@ -138,19 +145,62 @@ class SupabaseProviderKycRepository implements ProviderKycRepository {
         if (input is! CredentialsInput) {
           throw const AppError(ErrorCodes.kycStepInvalid);
         }
-        // input.description has nowhere to go (CR-20260923-10).
-        await _submitUploadRefs(kind, input.uploadRefs, idempotencyKey);
+        await _submitPayload(
+          kind,
+          <String, Object?>{'description': input.description},
+          idempotencyKey,
+          uploadRefs: input.uploadRefs,
+        );
+      case KycStepKind.address:
+        if (input is! AddressInput) {
+          throw const AppError(ErrorCodes.kycStepInvalid);
+        }
+        await _submitPayload(kind, <String, Object?>{
+          'line1': input.line1,
+          'line2': input.line2,
+          'city': input.city,
+          'state': input.state,
+          'landmark': input.landmarkNote,
+        }, idempotencyKey);
+      case KycStepKind.guarantor:
+        if (input is! GuarantorInput) {
+          throw const AppError(ErrorCodes.kycStepInvalid);
+        }
+        await _submitPayload(kind, <String, Object?>{
+          'name': input.fullName,
+          'phone_e164': input.phoneE164,
+          'relationship': input.relationship,
+        }, idempotencyKey);
       case KycStepKind.governmentId:
+        if (input is! IdDocumentInput) {
+          throw const AppError(ErrorCodes.kycStepInvalid);
+        }
+        // Recorded and sealed server-side; the verdict is the identity
+        // vendor's lookup (CR-20260923-09), never the client's.
+        await _gateway.rpc('submit_identity_document', <String, Object?>{
+          'p_idempotency_key': idempotencyKey,
+          'p_id_type': input.idType,
+          'p_id_number': input.idNumber,
+        });
       case KycStepKind.policeClearance:
+        if (input is! PoliceClearanceInput) {
+          throw const AppError(ErrorCodes.kycStepInvalid);
+        }
+        await _gateway.rpc('submit_police_clearance', <String, Object?>{
+          'p_idempotency_key': idempotencyKey,
+          'p_certificate_number': input.certificateNumber,
+          'p_issued_on': dateToWire(input.issueDate),
+          'p_expires_on': dateToWire(input.expiryDate),
+          'p_upload_ref': input.uploadRef,
+        });
       case KycStepKind.payoutAccount:
-        // Client-produced ciphertext required — no key story (CR-20260923-08).
+        // The account number is sealed under the payments worker's KMS key
+        // and its holder name comes from the gateway's name check
+        // (CR-20260923-10 c): both wait on the gateway.
         throw const AppError(ErrorCodes.featureUnavailable);
       case KycStepKind.providerFacial:
-        // No RPC accepts the liveness result (CR-20260923-09).
-        throw const AppError(ErrorCodes.featureUnavailable);
-      case KycStepKind.address:
-      case KycStepKind.guarantor:
-        // No structured payload parameter exists (CR-20260923-10).
+        // No RPC accepts the liveness result until the identity vendor is
+        // contracted (CR-20260923-09).
         throw const AppError(ErrorCodes.featureUnavailable);
       case KycStepKind.customerFacial:
         // Customer-side step; not submittable through this repository.
@@ -170,10 +220,35 @@ class SupabaseProviderKycRepository implements ProviderKycRepository {
   @override
   Future<ProviderKycProfile> submitForReview({
     required String idempotencyKey,
-  }) async =>
-      // No submit-for-review RPC; the client must not self-declare the
-      // profile in-review (CR-20260923-10).
-      throw const AppError(ErrorCodes.featureUnavailable);
+  }) async {
+    // Refused with ERR_KYC_INCOMPLETE while a required step is missing; the
+    // officer still decides every step.
+    await _gateway.rpc('submit_kyc_for_review', <String, Object?>{
+      'p_idempotency_key': idempotencyKey,
+    });
+    return getKycProfile();
+  }
+
+  Future<void> _submitPayload(
+    KycStepKind kind,
+    Map<String, Object?> payload,
+    String idempotencyKey, {
+    List<String>? uploadRefs,
+  }) async {
+    await _gateway.rpc('submit_kyc_step', <String, Object?>{
+      'p_idempotency_key': idempotencyKey,
+      'p_kind': kycStepKindToWire(kind),
+      'p_upload_refs': uploadRefs == null || uploadRefs.isEmpty
+          ? null
+          : uploadRefs,
+      'p_payload': <String, Object?>{
+        for (final entry in payload.entries)
+          if (entry.value is String &&
+              (entry.value! as String).trim().isNotEmpty)
+            entry.key: (entry.value! as String).trim(),
+      },
+    });
+  }
 
   Future<void> _submitUploadRefs(
     KycStepKind kind,

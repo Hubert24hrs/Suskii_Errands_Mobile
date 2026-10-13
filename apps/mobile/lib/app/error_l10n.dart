@@ -80,6 +80,9 @@ String? _specific(AppLocalizations l10n, String code) => switch (code) {
   'ERR_TICKET_CLOSED' => l10n.errTicketClosed,
   'ERR_ORG_ROLE_REQUIRED' => l10n.errOrgRoleRequired,
   'ERR_WORKER_NOT_ELIGIBLE' => l10n.errWorkerNotEligible,
+  'ERR_SAVED_PLACE_LIMIT' => l10n.errSavedPlaceLimit,
+  'ERR_FLOAT_TOP_UP_EXISTS' => l10n.errFloatTopUpExists,
+  'ERR_FLOAT_TOP_UP_TOO_LARGE' => l10n.errFloatTopUpTooLarge,
   _ => null,
 };
 

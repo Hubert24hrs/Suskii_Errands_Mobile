@@ -99,6 +99,9 @@
   "errVerificationRejected": "Verification was rejected. Review the details and try again.",
   "errKycStepInvalid": "This step cannot be submitted right now.",
   "errKycIncomplete": "Complete all required steps before submitting for review.",
+  "errSavedPlaceLimit": "You've reached the limit of saved places. Remove one to add another.",
+  "errFloatTopUpExists": "A top-up for this job has already been requested.",
+  "errFloatTopUpTooLarge": "That is more than a top-up can cover. File the receipt for the float and open a dispute for the rest.",
 
   "onboardingTitle1": "Request anything",
   "onboardingBody1": "Describe any need in plain words — errands, shopping, repairs, documents, and more.",
@@ -182,6 +185,10 @@
   "txnWithdrawal": "Withdrawal",
   "txnWithdrawalAwaitingApproval": "Withdrawal (awaiting approval)",
   "txnReferralWithdrawal": "Referral withdrawal",
+  "txnJobEarnings": "Job earnings",
+  "txnFloatReimbursed": "Item float reimbursed",
+  "txnAdjustment": "Adjustment",
+  "txnChargeback": "Chargeback",
 
   "welcomeTitle": "Welcome to Suskii",
   "welcomeBody": "One app for errands, deliveries and services — as a customer or a provider.",

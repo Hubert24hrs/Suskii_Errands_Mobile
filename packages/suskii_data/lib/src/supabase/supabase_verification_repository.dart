@@ -1,4 +1,3 @@
-import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
 import 'supabase_gateway.dart';
@@ -8,16 +7,15 @@ import 'supabase_mappers.dart';
 ///
 /// Supported: biometric consent via `record_consent`, session start via
 /// `start_verification_session`, state via `get_my_kyc_profile` (the
-/// `customer_facial` row). Blocked (CR-20260923-08/09): `submitIdLookup`
-/// needs client-side ID-number encryption the contract has no key story for,
-/// and there is no RPC to submit the liveness result — the client must never
-/// decide the verification verdict, so both stay feature-unavailable rather
-/// than sending plaintext or self-declaring an outcome.
+/// `customer_facial` row), and the ID number via `submit_identity_document`,
+/// which seals it server-side (CR-20260923-08). The verdict is not the
+/// client's to give: no RPC accepts a liveness result until the identity
+/// vendor is contracted (CR-20260923-09), so after the number goes in the
+/// session reads back as the vendor check leaves it.
 ///
-/// Wire gaps mapped defensively: the profile row has no session id (the
-/// step kind wire value stands in) and no `updated_at` (`expires_at` stands
-/// in, epoch when absent). Watching polls — KYC step state is RPC-only with
-/// no realtime topic.
+/// The profile row carries no session id (the step kind wire value stands in);
+/// `updatedAt` is the step's review time, else its submission time. Watching
+/// polls: KYC step state is RPC-only with no realtime topic.
 class SupabaseVerificationRepository implements VerificationRepository {
   SupabaseVerificationRepository(this._gateway);
 
@@ -69,12 +67,15 @@ class SupabaseVerificationRepository implements VerificationRepository {
     String idType,
     String idNumber, {
     required String idempotencyKey,
-  }) async =>
-      // submit_identity_document expects id-number ciphertext + blind index;
-      // the client has no encryption story (CR-20260923-08) and no RPC
-      // accepts the liveness result (CR-20260923-09). Sending plaintext or
-      // a client-decided outcome would weaken the security model.
-      throw const AppError(ErrorCodes.featureUnavailable);
+  }) async {
+    await _gateway.rpc('submit_identity_document', <String, Object?>{
+      'p_idempotency_key': idempotencyKey,
+      'p_id_type': idType,
+      'p_id_number': idNumber,
+    });
+    return await getCustomerVerification() ??
+        _fallback(KycStepStatus.inProgress);
+  }
 
   Future<List<Map<String, dynamic>>> _profileRows() => _gateway
       .rpc('get_my_kyc_profile')
@@ -90,7 +91,9 @@ class SupabaseVerificationRepository implements VerificationRepository {
       kind: step.kind,
       status: step.status,
       updatedAt:
-          expiresAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+          step.reviewedAt ??
+          step.submittedAt ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       rejectionReasonKey: step.rejectionReasonKey,
       expiresAt: expiresAt,
     );

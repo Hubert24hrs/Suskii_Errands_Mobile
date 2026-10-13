@@ -24,7 +24,7 @@ class SupabaseSettingsRepository implements SettingsRepository {
 
   static const String _prefColumns =
       'channel, category, enabled, quiet_start, quiet_end';
-  static const String _contactColumns = 'id, name, created_at';
+  static const String _contactColumns = 'id, name, phone_masked, created_at';
 
   @override
   Future<NotificationPreferences> getNotificationPreferences() async {
@@ -66,11 +66,23 @@ class SupabaseSettingsRepository implements SettingsRepository {
     required String name,
     required String phoneE164,
     required String idempotencyKey,
-  }) async =>
-      // add_trusted_contact expects phone_ciphertext + blind index; the
-      // client has no encryption story (CR-20260923-06) and sending
-      // plaintext as "ciphertext" would weaken the security model.
-      throw const AppError(ErrorCodes.featureUnavailable);
+  }) async {
+    // The server seals the number (CR-20260923-06, contracts 2.0.0); the
+    // list reads it back masked.
+    final id = await _gateway.rpc('add_trusted_contact', <String, Object?>{
+      'p_idempotency_key': idempotencyKey,
+      'p_name': name,
+      'p_phone_e164': phoneE164,
+    });
+    final row = await _gateway.selectSingle(
+      'trusted_contacts',
+      _contactColumns,
+      column: 'id',
+      value: SupabaseGateway.asId(id),
+    );
+    if (row == null) throw const AppError(ErrorCodes.unknown);
+    return trustedContactFromRow(row);
+  }
 
   @override
   Future<void> removeTrustedContact(

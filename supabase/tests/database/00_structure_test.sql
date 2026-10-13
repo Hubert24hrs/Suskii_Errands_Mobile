@@ -101,6 +101,10 @@ SELECT is(
        'public.submit_float_receipt', 'public.approve_float_receipt',
        -- OD-04 float top-up (20261012120000): the provider asks, the customer answers.
        'public.request_float_top_up', 'public.respond_float_top_up',
+       -- Kimi's change requests (20261012130100, -130200): KYC completeness and the three reads.
+       'public.get_kyc_step_payload', 'public.submit_kyc_for_review',
+       'public.my_wallet_transactions', 'public.my_pending_balance',
+       'public.provider_home_summary',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',
@@ -189,8 +193,8 @@ SELECT set_eq(
     WHERE attrelid = 'public.provider_profiles'::regclass AND attnum > 0 AND NOT attisdropped
       AND has_column_privilege('authenticated', 'public.provider_profiles'::regclass, attnum,
                                'UPDATE')$$,
-  ARRAY['bio', 'vehicle_type'],
-  'provider_profiles: never online, never suspended_until, never a reputation aggregate');
+  ARRAY['bio', 'vehicle_type', 'business_name'],
+  'provider_profiles: never online, never suspended_until, never a reputation aggregate, never kind');
 SELECT set_eq(
   $$SELECT attname::text FROM pg_attribute
     WHERE attrelid = 'public.organizations'::regclass AND attnum > 0 AND NOT attisdropped

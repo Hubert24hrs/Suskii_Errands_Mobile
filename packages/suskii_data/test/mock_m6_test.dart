@@ -85,7 +85,10 @@ void main() {
           amount,
           idempotencyKey: newIdempotencyKey(),
         );
-        expect(txn.amount, quote.net);
+        expect(
+          txn.amount,
+          Money(-quote.net.minorUnits, quote.net.currencyCode),
+        );
         expect(txn.status, WalletTransactionStatus.completed);
         expect(
           db.wallets['user-ada']!.available.minorUnits,

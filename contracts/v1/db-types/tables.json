@@ -3354,6 +3354,14 @@
           },
           "nullable": true,
           "server_default": false
+        },
+        {
+          "name": "registration_masked",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {
@@ -4648,6 +4656,14 @@
           },
           "nullable": true,
           "server_default": false
+        },
+        {
+          "name": "business_name",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {
@@ -4659,6 +4675,7 @@
         "UPDATE": {
           "authenticated": [
             "bio",
+            "business_name",
             "vehicle_type"
           ]
         }
@@ -6905,6 +6922,14 @@
           },
           "nullable": false,
           "server_default": true
+        },
+        {
+          "name": "phone_masked",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {
@@ -7152,6 +7177,14 @@
           },
           "nullable": false,
           "server_default": true
+        },
+        {
+          "name": "plate_masked",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {

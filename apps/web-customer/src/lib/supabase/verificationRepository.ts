@@ -3,11 +3,11 @@
 //
 // Supported: biometric consent via `record_consent`, session start via
 // `start_verification_session`, state via `get_my_kyc_profile` (the
-// `customer_facial` row). Blocked (CR-20260923-08/09/10): `submitIdLookup`
-// needs client-side ID-number encryption the contract has no key story for,
-// and there is no RPC to submit the liveness result — the client must never
-// decide the verification verdict, so it stays feature-unavailable rather
-// than sending plaintext or self-declaring an outcome.
+// `customer_facial` row), and the ID number via `submit_identity_document`,
+// which seals it server-side (CR-20260923-08). No RPC accepts a liveness
+// result until the identity vendor is contracted (CR-20260923-09), so after
+// the number goes in the session reads back as the vendor check leaves it;
+// the client never decides the verdict.
 //
 // Wire gaps mapped defensively: the profile row has no session id (the
 // step kind wire value stands in) and no `updated_at` (`expires_at` stands
@@ -103,15 +103,16 @@ export class SupabaseVerificationRepository {
 
   async submitIdLookup(
     _sessionId: string,
-    _idType: string,
-    _idNumber: string,
-    _idempotencyKey: string,
+    idType: string,
+    idNumber: string,
+    idempotencyKey: string,
   ): Promise<VerificationSession> {
-    // submit_identity_document expects id-number ciphertext + blind index;
-    // the client has no encryption story (CR-20260923-08) and no RPC
-    // accepts the liveness result (CR-20260923-09). Sending plaintext or
-    // a client-decided outcome would weaken the security model.
-    throw new AppError(ErrorCodes.featureUnavailable);
+    await this.gateway.rpc('submit_identity_document', {
+      p_idempotency_key: idempotencyKey,
+      p_id_type: idType,
+      p_id_number: idNumber,
+    });
+    return (await this.getCustomerVerification()) ?? this.fallback('in_progress');
   }
 
   private async profileRows(): Promise<Row[]> {

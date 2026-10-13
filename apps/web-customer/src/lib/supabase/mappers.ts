@@ -625,10 +625,43 @@ export function disputeFromRow(row: Row, evidencePaths: string[] = []): Dispute 
   };
 }
 
-/** A `withdrawals` row rendered as a wallet transaction. PROVISIONAL until
- * CR-20260923-03 lands a client-readable ledger: the private double-entry
- * ledger is deliberately not exposed, so withdrawals are the only real
- * wallet-history rows the contract offers today.
+/** A `my_wallet_transactions` row (CR-20260923-03, contracts 2.0.0). The
+ * server signs amounts (money in positive); this app draws direction from the
+ * kind (`signedAmountMinor`), so the entity keeps the absolute amount. The
+ * feed's kinds are chosen to read the same either way: earnings are `credit`,
+ * withdrawals `payout`. */
+export function walletTransactionFromFeedRow(row: Row): WalletTransaction {
+  const kinds: readonly WalletTransactionKind[] = [
+    'credit', 'debit', 'hold', 'release', 'refund', 'payout', 'referral', 'tip', 'item_float',
+  ];
+  const kind = (row['kind'] as string | null) ?? 'credit';
+  const wireStatus = (row['status'] as string | null) ?? 'completed';
+  const descriptionKey = (row['description_key'] as string | null) ?? undefined;
+  return {
+    id: String(row['id']),
+    kind: kinds.includes(kind as WalletTransactionKind)
+      ? (kind as WalletTransactionKind)
+      : 'credit',
+    status:
+      descriptionKey === 'txnWithdrawalAwaitingApproval' && wireStatus === 'pending'
+        ? 'awaiting_approval'
+        : (['pending', 'completed', 'failed', 'reversed'] as const).includes(
+              wireStatus as 'pending',
+            )
+          ? (wireStatus as WalletTransactionStatus)
+          : 'completed',
+    amount: {
+      amountMinor: Math.abs(SupabaseGateway.asMinorUnits(row['amount_minor'])),
+      currency: (row['currency'] as string | null) ?? 'NGN',
+    },
+    createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+    referenceId: (row['reference_id'] as string | null) ?? undefined,
+    descriptionKey,
+  };
+}
+
+/** A `withdrawals` row rendered as a wallet transaction: what
+ * `requestWithdrawal` returns for the row it just created.
  * Divergence from Dart: the web enum has a native `awaiting_approval` status
  * (M8.6), so the wire value maps to it directly instead of folding to
  * pending + a description key. */
@@ -809,14 +842,14 @@ export function supportMessageFromRow(row: Row, myId: string): SupportMessage {
   };
 }
 
-/** A `trusted_contacts` row. The phone number is stored encrypted
- * (`phone_ciphertext` + blind index) and never returned in plaintext, so
- * the entity's `phoneE164` cannot be populated — tracked as CR-20260923-06. */
+/** A `trusted_contacts` row. The number arrives masked (`+234••••••4567`):
+ * the server seals it and no client reads it back, so `phoneE164` carries the
+ * display form here. */
 export function trustedContactFromRow(row: Row): TrustedContact {
   return {
     id: SupabaseGateway.asId(row['id']),
     name: (row['name'] as string | null) ?? '',
-    phoneE164: '',
+    phoneE164: (row['phone_masked'] as string | null) ?? '',
   };
 }
 

@@ -216,6 +216,50 @@ void main() {
     });
 
     test(
+      'the trip is shared as a real link that a stranger can follow',
+      () async {
+        // The share base is per environment (RB-08); this stack sets one.
+        const base = 'http://localhost:3000/t/';
+        await service
+            .from('remote_config')
+            .update(<String, dynamic>{'value': base})
+            .eq('key', 'trip_share_base_url');
+        final share = await SupabaseSafetyRepository(
+          customer,
+        ).createTripShareLink(requestId, idempotencyKey: newIdempotencyKey());
+        expect(share.url, startsWith(base));
+        expect(share.expiresAt.isAfter(DateTime.now()), isTrue);
+
+        final stranger = client(anonKey);
+        addTearDown(stranger.dispose);
+        final rows = await stranger.rpc<dynamic>(
+          'get_shared_trip',
+          params: <String, dynamic>{
+            'p_token': share.url.substring(base.length),
+          },
+        );
+        expect(rows as List<dynamic>, hasLength(1));
+      },
+    );
+
+    test('the provider sees the funded job as money on its way', () async {
+      final job = await provider.selectSingle(
+        'jobs',
+        'net_minor, actual_gateway_fee_minor',
+        column: 'request_id',
+        value: requestId,
+      );
+      final owed =
+          (job!['net_minor'] as num).toInt() -
+          ((job['actual_gateway_fee_minor'] as num?)?.toInt() ?? 0);
+      final summary = await SupabaseWalletRepository(provider).getSummary();
+      expect(summary.pending.minorUnits, owed);
+      // Nothing recognised yet, so the feed has nothing posted to show.
+      final feed = await SupabaseWalletRepository(provider).getTransactions();
+      expect(feed.where((t) => t.amount.minorUnits > 0), isEmpty);
+    });
+
+    test(
       'provider travels, the pickup PIN starts the work, SOS is raised',
       () async {
         final jobs = SupabaseJobProgressRepository(provider);
@@ -354,6 +398,13 @@ void main() {
       );
     });
 
+    test('the provider home card counts the finished job', () async {
+      final card = await SupabaseProviderRepository(provider).getHomeSummary();
+      expect(card.completedToday, greaterThanOrEqualTo(1));
+      expect(card.todayEarnings.minorUnits, greaterThan(0));
+      expect(card.todayEarnings.currencyCode, 'NGN');
+    });
+
     test('a dispute freezes the job', () async {
       final dispute = await SupabaseDisputeRepository(customer).openDispute(
         jobId: requestId,
@@ -383,6 +434,121 @@ void main() {
           contentType: 'image/jpeg',
         );
         expect(kycPath, startsWith('$providerId/'));
+      },
+    );
+
+    test('a trusted contact goes in as typed and comes back masked', () async {
+      final settings = SupabaseSettingsRepository(customer);
+      final contact = await settings.addTrustedContact(
+        name: 'Mama',
+        phoneE164: '+234 803 123 4567',
+        idempotencyKey: newIdempotencyKey(),
+      );
+      expect(contact.phoneE164, '+234••••••4567');
+      final list = await settings.getTrustedContacts();
+      expect(list.map((c) => c.id), contains(contact.id));
+      // What is stored is not the number.
+      final raw = await service
+          .from('trusted_contacts')
+          .select('phone_ciphertext')
+          .eq('id', contact.id)
+          .single();
+      expect(
+        raw['phone_ciphertext'].toString(),
+        isNot(contains('2348031234567')),
+      );
+    });
+
+    test(
+      'provider KYC: answers and numbers go in, review is not self-declared',
+      () async {
+        final kyc = SupabaseProviderKycRepository(provider);
+        final afterAddress = await kyc.submitStep(
+          KycStepKind.address,
+          const AddressInput(
+            line1: '12 Allen Avenue',
+            city: 'Ikeja',
+            state: 'Lagos',
+            landmarkNote: 'Opposite the bank',
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        final address = afterAddress.steps.firstWhere(
+          (s) => s.kind == KycStepKind.address,
+        );
+        expect(address.status, KycStepStatus.inReview);
+        expect(address.submittedAt, isNotNull);
+
+        await kyc.submitStep(
+          KycStepKind.governmentId,
+          IdDocumentInput(idType: 'nin', idNumber: '9${run % 10000000000}'),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        await provider.rpc('record_consent', <String, Object?>{
+          'p_idempotency_key': newIdempotencyKey(),
+          'p_kind': 'criminal_record_check',
+          'p_granted': true,
+        });
+        final afterPolice = await kyc.submitStep(
+          KycStepKind.policeClearance,
+          PoliceClearanceInput(
+            certificateNumber: 'PC/2026/$run',
+            issueDate: DateTime.now().subtract(const Duration(days: 30)),
+            expiryDate: DateTime.now().add(const Duration(days: 150)),
+            uploadRef: '$providerId/police.pdf',
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(
+          afterPolice.steps
+              .firstWhere((s) => s.kind == KycStepKind.policeClearance)
+              .status,
+          KycStepStatus.inReview,
+        );
+        // The liveness check waits on the identity vendor, so the profile is
+        // incomplete and the server says so.
+        await expectLater(
+          kyc.submitForReview(idempotencyKey: newIdempotencyKey()),
+          throwsA(
+            isA<AppError>().having(
+              (e) => e.code,
+              'code',
+              ErrorCodes.kycIncomplete,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'a customer ID lookup records the number and decides nothing',
+      () async {
+        final number = '8${run % 10000000000}';
+        final session = await SupabaseVerificationRepository(customer)
+            .submitIdLookup(
+              'customer_facial',
+              'nin',
+              number,
+              idempotencyKey: newIdempotencyKey(),
+            );
+        expect(session.kind, KycStepKind.customerFacial);
+        expect(session.status, isNot(KycStepStatus.verified));
+        // Recorded and indexed: the same number on a second account is refused,
+        // matched without anybody reading it.
+        await expectLater(
+          SupabaseProviderKycRepository(provider).submitStep(
+            KycStepKind.governmentId,
+            IdDocumentInput(idType: 'nin', idNumber: number),
+            idempotencyKey: newIdempotencyKey(),
+          ),
+          throwsA(
+            isA<AppError>().having(
+              (e) => e.code,
+              'code',
+              'ERR_IDENTITY_ALREADY_REGISTERED',
+            ),
+          ),
+        );
       },
     );
 

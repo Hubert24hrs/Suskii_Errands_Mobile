@@ -6,7 +6,6 @@ import 'package:suskii_domain/suskii_domain.dart';
 import 'supabase_gateway.dart';
 import 'supabase_mappers.dart';
 import 'supabase_request_repository.dart';
-import 'supabase_wallet_repository.dart';
 
 /// ProviderRepository over Supabase: the open-requests feed comes from
 /// `provider_feed` (approximate locations — the customer's exact pickup is
@@ -20,32 +19,13 @@ class SupabaseProviderRepository implements ProviderRepository {
 
   @override
   Future<ProviderHomeSummary> getHomeSummary() async {
-    final myId = _gateway.currentAuthUserId;
-    final profile = await _gateway.selectSingle(
-      'provider_profiles',
-      'online',
-      column: 'user_id',
-      value: myId!,
-    );
-    final user = await _gateway.selectSingle(
-      'profiles',
-      'provider_verification',
-      column: 'user_id',
-      value: myId,
-    );
-    final feed = await _feed();
-    final currency = await myCurrencyCode(_gateway);
-    // todayEarnings / completedToday / documentWarnings have no contract
-    // source (CR-20260923-05) — they report zero/empty rather than
-    // fabricating numbers.
-    return ProviderHomeSummary(
-      online: profile?['online'] as bool? ?? false,
-      verificationStatus: verificationFromWire(user?['provider_verification']),
-      todayEarnings: Money(0, currency),
-      completedToday: 0,
-      nearbyOpenRequests: feed.length,
-      documentWarnings: const <DocumentExpiryWarning>[],
-    );
+    // One call (CR-20260923-05, contracts 2.0.0): online, standing, today's
+    // earnings and completed jobs in the provider's time zone, open requests
+    // nearby, and documents within thirty days of expiry.
+    final rows = await _gateway.rpc('provider_home_summary');
+    final list = List<Map<String, dynamic>>.from(rows as List<dynamic>);
+    if (list.isEmpty) throw const AppError(ErrorCodes.unknown);
+    return providerHomeSummaryFromRow(list.first);
   }
 
   @override

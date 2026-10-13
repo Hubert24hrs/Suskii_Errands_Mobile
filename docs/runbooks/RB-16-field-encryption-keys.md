@@ -12,8 +12,9 @@
 | Thing | Where | Notes |
 |---|---|---|
 | KEK `suskii_field_kek_v<n>` | Supabase Vault (`vault.secrets`), encrypted under Vault's root key outside the database | 64 hex characters (32 bytes). `private.field_keks` names the current one |
-| Data keys | `private.field_data_keys`, wrapped by the KEK | One per `(class, version)`. Classes today: `access_note` |
-| Sealed fields | `saved_places.access_note_ciphertext`, `private.request_access_notes.ciphertext` | Each blob names its data-key version |
+| Data keys | `private.field_data_keys`, wrapped by the KEK | One per `(class, version)`. Classes today: `access_note`, `trusted_contact_phone`, `identity_number`, `police_certificate`, `organization_registration`, `vehicle_plate`, `kyc_payload` (2026-10-12), and a `bidx_<class>` index key for the five that need a lookup |
+| Sealed fields | `saved_places.access_note_ciphertext`, `private.request_access_notes.ciphertext`, `trusted_contacts.phone_ciphertext`, `kyc.identity_documents.id_number_ciphertext`, `kyc.police_clearances.certificate_number_ciphertext`, `organizations.registration_number_ciphertext`, `vehicles.plate_ciphertext`, `kyc.kyc_step_payloads.payload_ciphertext` | Each blob names its data-key version |
+| Blind indexes | the `*_blind_index` columns beside them | HMAC-SHA-256 under the class's `bidx_` key at **version 1, always**. See §3 |
 
 Nothing outside the database needs a key, and no client role can execute `private.seal` or `private.open`.
 
@@ -54,6 +55,8 @@ Then:
 ```sql
 select private.create_field_data_key('access_note');   -- new version for new seals
 ```
+
+**Never rotate a `bidx_` key.** `private.blind_index` always uses version 1, because a new index key would stop every existing row from matching (two accounts with one identity would both be accepted). Rotating the KEK re-wraps the index keys and leaves their bytes unchanged, which is all an exposure of the KEK needs. If an index key itself is believed exposed, the fix is a migration that recomputes every index under a new class name, written and rehearsed for the purpose.
 
 Old blobs keep opening under their version. To retire an old version completely, re-seal its rows (open, seal) in a migration written for that purpose, then delete the old row from `private.field_data_keys`. That is rarely worth doing: a data key is only ever usable together with the KEK that wraps it.
 

@@ -659,7 +659,8 @@ void walletDisputeMapperTests() {
       expect(awaiting.status, WalletTransactionStatus.pending);
       expect(awaiting.descriptionKey, 'txnWithdrawalAwaitingApproval');
       expect(awaiting.kind, WalletTransactionKind.referral);
-      expect(awaiting.amount, const Money(700000, 'NGN'));
+      // Money going out reads negative, the way the screens draw it.
+      expect(awaiting.amount, const Money(-700000, 'NGN'));
     });
 
     test('failed and rejected both read as failed', () {
@@ -1061,5 +1062,166 @@ void chatMapperTests() {
         KycStepStatus.inProgress,
       );
     });
+  });
+
+  // Contracts 2.0.0: the reads Kimi's change requests asked for.
+  group('walletTransactionFromFeedRow', () {
+    test('keeps the server sign: money in positive, money out negative', () {
+      final credit = walletTransactionFromFeedRow(<String, dynamic>{
+        'id': 'ledger:41',
+        'kind': 'credit',
+        'status': 'completed',
+        'amount_minor': 168000,
+        'currency': 'NGN',
+        'reference_id': '3f2a91c4-0000-4000-8000-0000000000aa',
+        'description_key': 'txnJobEarnings',
+        'created_at': '2026-10-12T09:00:00.000Z',
+      });
+      expect(credit.kind, WalletTransactionKind.credit);
+      expect(credit.status, WalletTransactionStatus.completed);
+      expect(credit.amount, const Money(168000, 'NGN'));
+      expect(credit.referenceId, '3f2a91c4-0000-4000-8000-0000000000aa');
+      expect(credit.descriptionKey, 'txnJobEarnings');
+
+      final out = walletTransactionFromFeedRow(<String, dynamic>{
+        'id': 'withdrawal:9',
+        'kind': 'payout',
+        'status': 'pending',
+        'amount_minor': -500,
+        'currency': 'NGN',
+        'reference_id': null,
+        'description_key': 'txnWithdrawalAwaitingApproval',
+        'created_at': '2026-10-12T09:01:00.000Z',
+      });
+      expect(out.kind, WalletTransactionKind.payout);
+      expect(out.status, WalletTransactionStatus.pending);
+      expect(out.amount.isNegative, isTrue);
+    });
+
+    test('maps every kind the feed can send', () {
+      const kinds = <String, WalletTransactionKind>{
+        'credit': WalletTransactionKind.credit,
+        'debit': WalletTransactionKind.debit,
+        'refund': WalletTransactionKind.refund,
+        'payout': WalletTransactionKind.payout,
+        'referral': WalletTransactionKind.referral,
+        'tip': WalletTransactionKind.tip,
+        'item_float': WalletTransactionKind.itemFloat,
+      };
+      for (final entry in kinds.entries) {
+        final txn = walletTransactionFromFeedRow(<String, dynamic>{
+          'id': 'ledger:1',
+          'kind': entry.key,
+          'status': 'completed',
+          'amount_minor': 1,
+          'currency': 'NGN',
+          'created_at': '2026-10-12T09:00:00.000Z',
+        });
+        expect(txn.kind, entry.value, reason: entry.key);
+      }
+    });
+  });
+
+  group('providerHomeSummaryFromRow', () {
+    test('maps the card, warnings included', () {
+      final summary = providerHomeSummaryFromRow(<String, dynamic>{
+        'online': true,
+        'verification_status': 'verified',
+        'today_earnings_minor': 168000,
+        'currency': 'NGN',
+        'completed_today': 2,
+        'nearby_open_requests': 5,
+        'document_warnings': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'document_type_key': 'docPoliceClearance',
+            'days_remaining': 10,
+          },
+        ],
+      });
+      expect(summary.online, isTrue);
+      expect(summary.verificationStatus, VerificationStatus.verified);
+      expect(summary.todayEarnings, const Money(168000, 'NGN'));
+      expect(summary.completedToday, 2);
+      expect(summary.nearbyOpenRequests, 5);
+      expect(
+        summary.documentWarnings.single.documentTypeKey,
+        'docPoliceClearance',
+      );
+      expect(summary.documentWarnings.single.daysRemaining, 10);
+    });
+  });
+
+  group('kycOverallFromProfileRows', () {
+    const steps = <KycStep>[
+      KycStep(
+        kind: KycStepKind.policeClearance,
+        status: KycStepStatus.inReview,
+        attemptCount: 1,
+      ),
+    ];
+    Map<String, dynamic> row(String overall, {String? submitted}) =>
+        <String, dynamic>{
+          'overall_status': overall,
+          'submitted_for_review_at': submitted,
+        };
+
+    test('reads the server status, not a client rollup', () {
+      expect(
+        kycOverallFromProfileRows([row('verified')], steps),
+        KycStepStatus.verified,
+      );
+      expect(
+        kycOverallFromProfileRows([row('in_review')], steps),
+        KycStepStatus.inReview,
+      );
+      expect(
+        kycOverallFromProfileRows([row('expired')], steps),
+        KycStepStatus.expired,
+      );
+    });
+
+    test('pending reads as in review once the person has asked', () {
+      expect(
+        kycOverallFromProfileRows([row('pending')], steps),
+        KycStepStatus.inProgress,
+      );
+      expect(
+        kycOverallFromProfileRows([
+          row('pending', submitted: '2026-10-12T09:00:00.000Z'),
+        ], steps),
+        KycStepStatus.inReview,
+      );
+      expect(
+        kycSubmittedForReviewAt([
+          row('pending', submitted: '2026-10-12T09:00:00.000Z'),
+        ]),
+        DateTime.utc(2026, 10, 12, 9),
+      );
+    });
+
+    test('step rows carry their dates', () {
+      final step = kycStepFromProfileRow(<String, dynamic>{
+        'kind': 'police_clearance',
+        'status': 'in_review',
+        'attempt_count': 1,
+        'submitted_at': '2026-10-12T09:00:00.000Z',
+        'reviewed_at': null,
+      });
+      expect(step.submittedAt, DateTime.utc(2026, 10, 12, 9));
+      expect(step.reviewedAt, isNull);
+    });
+  });
+
+  test('trustedContactFromRow carries the masked number for display', () {
+    final contact = trustedContactFromRow(<String, dynamic>{
+      'id': '3f2a91c4-0000-4000-8000-0000000000bb',
+      'name': 'Mama',
+      'phone_masked': '+234••••••4567',
+    });
+    expect(contact.phoneE164, '+234••••••4567');
+  });
+
+  test('dateToWire is a Postgres date', () {
+    expect(dateToWire(DateTime(2026, 3, 7, 23, 59)), '2026-03-07');
   });
 }

@@ -29,8 +29,7 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-2222-4222-8222-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 INSERT INTO bz VALUES ('org', public.register_organization(
-  'key-bz-register-000000001', 'Lekki Logistics Ltd',
-  '\x0102030405'::bytea, sha256('RC123456'::bytea)));
+  'key-bz-register-000000001', 'Lekki Logistics Ltd', 'RC123456'));
 SELECT ok((SELECT id FROM bz WHERE name = 'org') IS NOT NULL, 'an owner registers a business');
 SELECT is((SELECT role FROM public.organization_members
            WHERE organization_id = (SELECT id FROM bz WHERE name = 'org')
@@ -41,7 +40,7 @@ SELECT is((SELECT organization_id FROM public.provider_profiles
   (SELECT id FROM bz WHERE name = 'org'), 'their provider profile belongs to it');
 SELECT throws_ok(
   $$SELECT public.register_organization('key-bz-register-000000002', 'Copycat Ltd',
-      '\x0908'::bytea, sha256('RC123456'::bytea))$$,
+      'rc-123 456')$$,
   '23505', NULL, 'one registration number cannot back two businesses in a country');
 RESET ROLE;
 -- Read as the test role: `org_can_bid` is internal, and `authenticated` has no execute on it.
@@ -106,13 +105,13 @@ SELECT set_config('request.jwt.claims',
   '{"sub": "aaaaaaaa-2222-4222-8222-bbbbbbbbbbbb", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 INSERT INTO bz VALUES ('veh', public.register_vehicle(
-  'key-bz-vehicle-0000000001', 'motorcycle', '\x1122'::bytea, sha256('LAG-123-XY'::bytea),
+  'key-bz-vehicle-0000000001', 'motorcycle', 'LAG-123-XY',
   (SELECT id FROM bz WHERE name = 'org'), 'aaaaaaaa-4444-4444-8444-bbbbbbbbbbbb',
   (now() + interval '90 days')::date));
 SELECT ok((SELECT id FROM bz WHERE name = 'veh') IS NOT NULL, 'the owner registers a motorcycle');
 SELECT throws_ok(
-  format($$SELECT public.register_vehicle('key-bz-vehicle-0000000002', 'car', '\x33'::bytea,
-            %L::bytea, %L)$$, sha256('LAG-123-XY'::bytea), (SELECT id FROM bz WHERE name = 'org')),
+  format($$SELECT public.register_vehicle('key-bz-vehicle-0000000002', 'car', 'lag 123 xy',
+            %L)$$, (SELECT id FROM bz WHERE name = 'org')),
   '23505', NULL, 'and the same plate cannot be registered twice');
 RESET ROLE;
 

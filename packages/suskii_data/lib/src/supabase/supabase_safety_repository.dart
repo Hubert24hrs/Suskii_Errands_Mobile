@@ -62,18 +62,22 @@ class SupabaseSafetyRepository implements SafetyRepository {
     String jobId, {
     required String idempotencyKey,
   }) async {
-    // The RPC returns the raw share TOKEN only — the URL base and the
-    // server-config TTL are server-side knowledge the contract does not hand
-    // out yet (CR-20260923-01). Provisional: the token rides in `url` and the
-    // expiry assumes the documented default TTL (60 min, remote_config
-    // trip_share_ttl_minutes) until the CR lands.
-    final token = await _gateway.rpc('create_trip_share', <String, Object?>{
+    // `{share_id, token, url, expires_at}` (CR-20260923-01, contracts 2.0.0).
+    // `url` is null when the server has no share base configured, and on a
+    // replay, which never returns the token again: either way there is no
+    // link to hand somebody, so say so rather than share a broken one.
+    final result = await _gateway.rpc('create_trip_share', <String, Object?>{
       'p_idempotency_key': idempotencyKey,
       'p_request_id': jobId,
     });
+    final share = Map<String, dynamic>.from(result as Map);
+    final url = share['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw const AppError(ErrorCodes.featureUnavailable);
+    }
     return TripShare(
-      url: token as String,
-      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 60)),
+      url: url,
+      expiresAt: SupabaseGateway.asTimestamp(share['expires_at']),
     );
   }
 }

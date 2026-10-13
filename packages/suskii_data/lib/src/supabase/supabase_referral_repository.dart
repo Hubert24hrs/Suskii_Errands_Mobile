@@ -60,9 +60,11 @@ class SupabaseReferralRepository implements ReferralRepository {
       limit: 1,
     );
     if (rows.isEmpty) throw const AppError(ErrorCodes.unknown);
+    // A withdrawal is a payout whichever balance it draws on; `referral` is
+    // the commission coming in (as `my_wallet_transactions` labels them).
     return withdrawalTransactionFromRow(
       rows.first,
-      kind: WalletTransactionKind.referral,
+      kind: WalletTransactionKind.payout,
     );
   }
 }
