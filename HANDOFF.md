@@ -7,6 +7,10 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ## 2026-10-24 (part 2) — Claude Code — the nearest providers first, a Google Map for the pickup, Nigeria's 37 states; contracts 2.4.0
 
+**Merged 2026-10-24 as `c4e61bb` (PR #53)**, all 16 checks green, including the first Android and iOS
+builds with the Maps SDK. Open on the owner: the Maps key with billing (RB-15 action 31, timeline §5
+actions 29–31); until it exists both apps show the "use my location" card, and matching still works.
+
 This is again the owner's explicit request ("all the states in Nigeria", "integrate Google Maps so
 the customer gets the provider closest to them"); it is not standing licence. ADR-0022 records the
 decisions. Contracts 2.4.0 is additive.
