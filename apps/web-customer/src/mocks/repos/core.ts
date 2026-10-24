@@ -57,6 +57,7 @@ export class MockBootstrapRepository extends MockRepo {
       voiceLanguages: { ...kMockVoiceLanguages },
       minSupportedAppVersion: '0.1.0',
       serverTime: this.now(),
+      accountDeletionScheduledFor: user ? this.db.accountDeletions[user.id] : undefined,
       unreadNotifications: this.db.notifications.filter((n) => !n.read).length,
       activeJobBanner:
         activeJob == null

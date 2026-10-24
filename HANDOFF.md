@@ -36,6 +36,20 @@ licence.
 | AA.6 | The website's PIN field took 4 digits; server PINs are 6. Hints said "4-digit" | Website field; `pinEntryHint` / `pinHint` in English and Pidgin; mocks issue `428135` |
 | AA.7 | Publishing from the website's form sent one idempotency key to two operations and was refused | `NewRequestClient`: a key per step |
 | AA.8 | The website's rating form errored for an unrated job (`undefined` query data) | `RatingSheet`: `?? null` |
+| AA.9 | "Read" under a chat message could never show: each person could read only their own marker | Backend `20261024140100`: participants read each other's marker (matrix `R:part`) |
+| AA.10 | A feature in one app only, twice: keeping an account scheduled for deletion (app only), marking chat read (website only) | `DeletionPendingNotice` on the website; `markMessagesRead` in the app |
+| AA.11 | The website's delete-account dialog stayed open after the deletion was scheduled | It closes on success |
+
+### Proving the two apps match
+
+`contracts/tools/check_screen_parity.py` (in `contracts.yaml`) compares the repository methods
+the app's screens call with the website's and fails on a feature one has and the other lacks. Its
+first run found two, both closed here (AA.10): the website now offers **Keep my account** to an
+account scheduled for deletion (`components/DeletionPendingNotice.tsx`, from
+`get_bootstrap.user.deletion_scheduled_for`), and the app's chat now **marks messages read**
+(`ChatRepository.markMessagesRead`, new in the domain). Read receipts needed the backend too
+(AA.9, `20261024140100`): the "Read" label could never show in either app, because each person
+could read only their own marker. 0 gaps now.
 
 ### For Kimi: what changed under you
 
@@ -48,8 +62,11 @@ licence.
 - **Mocks now scope idempotency keys like the server** in both apps: one store across repositories,
   keyed by user and key, one operation per key. A screen that reuses a key for a second call now fails
   on mocks too, which is the point.
-- `TrackingRepository.reportPosition(LiveFix)` is new in the domain; `MockDatabase.reportedPositions`
-  records it.
+- `TrackingRepository.reportPosition(LiveFix)` and `ChatRepository.markMessagesRead(jobId)` are new
+  in the domain; `MockDatabase.reportedPositions` records the first. The website's `AppBootstrap`
+  gains `accountDeletionScheduledFor` and its settings repository `cancelAccountDeletion`.
+- A feature added to one app now fails `check_screen_parity.py` until the other has it, or until
+  the difference is listed as a platform one in that file.
 
 ### Tests added
 

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n';
 import { Providers } from '@/components/Providers';
 import { AppHeader } from '@/components/AppHeader';
+import { DeletionPendingNotice } from '@/components/DeletionPendingNotice';
 
 export default async function AppLayout({
   children,
@@ -18,6 +19,7 @@ export default async function AppLayout({
   return (
     <Providers>
       <AppHeader locale={locale as Locale} dict={dict} />
+      <DeletionPendingNotice locale={locale as Locale} dict={dict} />
       <main>{children}</main>
     </Providers>
   );

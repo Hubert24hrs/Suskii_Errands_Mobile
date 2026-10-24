@@ -512,7 +512,19 @@ export class MockSettingsRepository extends MockRepo {
   async requestAccountDeletion(idempotencyKey: string): Promise<Date> {
     await this.gate();
     return this.idempotent('requestAccountDeletion', idempotencyKey, '', () => {
-      return new Date(this.now().getTime() + ACCOUNT_DELETION_GRACE_MS);
+      const when = new Date(this.now().getTime() + ACCOUNT_DELETION_GRACE_MS);
+      this.db.accountDeletions[this.currentUser.id] = when;
+      return when;
+    });
+  }
+
+  /** Keeps an account scheduled for erasure; false when nothing was scheduled. */
+  async cancelAccountDeletion(idempotencyKey: string): Promise<boolean> {
+    await this.gate();
+    return this.idempotent('cancelAccountDeletion', idempotencyKey, '', () => {
+      const scheduled = this.currentUser.id in this.db.accountDeletions;
+      delete this.db.accountDeletions[this.currentUser.id];
+      return scheduled;
     });
   }
 

@@ -65,6 +65,10 @@ export class SupabaseBootstrapRepository {
       }),
       serverTime,
       user: userMap == null ? undefined : appUserFromProfileRow(userMap),
+      accountDeletionScheduledFor:
+        userMap?.['deletion_scheduled_for'] == null
+          ? undefined
+          : SupabaseGateway.asTimestamp(userMap['deletion_scheduled_for']),
       // No server source yet for the active-job banner without an N+1 over
       // requests (HANDOFF M9.1 follow-up: candidate change request for an
       // active_job_banner field in get_bootstrap) — the banner stays absent.

@@ -147,3 +147,22 @@ test('the customer confirms completion and rates the provider', async () => {
   }).toEqual([5]);
   expect(page.errors).toEqual([]);
 });
+
+test('an account scheduled for deletion is offered back on the next sign-in, and kept', async ({ browser }) => {
+  const email = `e2e-web-del-${run}@suskii.test`;
+  const id = await createUser(email, `Kemi Web ${run}`);
+  // Scheduling revokes every session, so the request goes first and the page signs in after.
+  const before = await signedIn(email);
+  await must('delete', before.rpc('request_account_deletion', { p_idempotency_key: key() }));
+
+  const kept = await signedInPage(browser, email);
+  await kept.goto('/en');
+  await expect(kept.getByTestId('deletion-pending')).toContainText('Your account is scheduled for deletion');
+  await kept.getByTestId('deletion-keep').click();
+  await expect(kept.getByTestId('deletion-kept')).toBeVisible();
+  const row = (await must('deletion', service.from('account_deletion_requests').select('status')
+    .eq('user_id', id).single())) as { status: string };
+  expect(row.status).toBe('cancelled');
+  expect(kept.errors).toEqual([]);
+  await kept.context().close();
+});

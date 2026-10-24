@@ -22,11 +22,6 @@
       "action": "Correct the matrix, or widen deliberately if support genuinely needs it."
     },
     {
-      "id": "part:message_reads",
-      "reason": "Narrower than specified. The matrix gives `R:part`, which would make read receipts possible; the policy gives own-only, so a 'seen' indicator has no backend. Fail-closed and harmless, but it is a product gap rather than a security one and the contract should not imply the feature works.",
-      "action": "Decide whether read receipts ship. If they do, widen to participants; if not, correct the matrix."
-    },
-    {
       "id": "part:dispute_evidence",
       "reason": "Not a divergence. The matrix cell is `R:part (own submissions)` and the policy tests `submitted_by = auth.uid()`, which is exactly that. The heuristic looks for participation helpers and does not recognise an ownership column as satisfying a narrowed R:part.",
       "action": "None."

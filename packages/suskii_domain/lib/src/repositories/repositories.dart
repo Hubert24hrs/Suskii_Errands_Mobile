@@ -346,6 +346,11 @@ abstract interface class ChatRepository {
     String? mediaPath,
     GeoPoint? location,
   });
+
+  /// Tells the other side the caller has read up to the newest message, which
+  /// is what draws their "Read". Moving the pointer to the same place twice
+  /// changes nothing, so it takes no idempotency key.
+  Future<void> markMessagesRead(String jobId);
 }
 
 /// ---------------------------------------------------------------------------

@@ -328,6 +328,27 @@ void main() {
       expect(points.last.longitude, greaterThan(points.first.longitude));
     });
 
+    test('reading a chat marks the other side\'s messages read', () async {
+      final repo = MockChatRepository(db, behavior);
+      final jobId = db.chats.keys.first;
+      final me = behavior.currentUserId;
+      bool unreadFromOthers() =>
+          db.chats[jobId]!.any((m) => m.senderId != me && m.readAt == null);
+      db.chats[jobId]!.add(
+        ChatMessage(
+          id: 'msg-unread',
+          jobId: jobId,
+          senderId: 'someone-else',
+          type: ChatMessageType.text,
+          text: 'Here now',
+          createdAt: DateTime.now(),
+        ),
+      );
+      expect(unreadFromOthers(), isTrue);
+      await repo.markMessagesRead(jobId);
+      expect(unreadFromOthers(), isFalse);
+    });
+
     test('an online provider reports position with no job', () async {
       final repo = MockTrackingRepository(db, behavior);
       const fix = LiveFix(point: GeoPoint(latitude: 6.45, longitude: 3.39));

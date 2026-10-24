@@ -436,6 +436,13 @@ const pcm = {
       paymentTtlExpired: 'Payment time don pass — the job don go back to negotiation.',
     },
   },
+  deletionPending: {
+    title: 'We don plan to delete your account',
+    body: 'E go delete for {date}. If you keep am, nothing go change. If you continue, you go dey signed out till that time.',
+    keep: 'Keep my account',
+    continue: 'Continue make e delete',
+    kept: 'We no go delete your account again.',
+  },
   sos: {
     cta: 'SOS',
     title: 'Emergency SOS',
@@ -645,7 +652,7 @@ const pcm = {
     deleteAccount: 'Delete account',
     deleteConfirmTitle: 'Delete your account?',
     deleteConfirmBody:
-      'Dem go schedule the deletion for 30 days time. If you sign in back before then, e go cancel am.',
+      'Dem go schedule the deletion for 30 days time. If you sign in back before then, you fit keep the account.',
     deleteConfirmCta: 'Delete my account',
     deleteScheduledNote: 'Account deletion don set for:',
     languageNote: 'You fit still change language for the switcher wey dey top of every page.',

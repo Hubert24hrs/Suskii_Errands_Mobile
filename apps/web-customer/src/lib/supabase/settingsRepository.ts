@@ -105,6 +105,14 @@ export class SupabaseSettingsRepository {
     return new Date(result);
   }
 
+  /** Keeps an account scheduled for erasure; false when nothing was scheduled. */
+  async cancelAccountDeletion(idempotencyKey: string): Promise<boolean> {
+    const result = await this.gateway.rpc('cancel_account_deletion', {
+      p_idempotency_key: idempotencyKey,
+    });
+    return result === true;
+  }
+
   /** Queues an export of the caller's data and returns its reference. */
   async requestDataExport(idempotencyKey: string): Promise<string> {
     const result = await this.gateway.rpc('request_data_export', {

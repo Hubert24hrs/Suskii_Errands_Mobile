@@ -435,6 +435,13 @@ const en = {
       paymentTtlExpired: 'Payment window expired — the job returned to negotiation.',
     },
   },
+  deletionPending: {
+    title: 'Your account is scheduled for deletion',
+    body: 'It will be deleted on {date}. Keep it, and nothing changes. Continue, and you will be signed out until then.',
+    keep: 'Keep my account',
+    continue: 'Continue with deletion',
+    kept: 'Your account is no longer scheduled for deletion.',
+  },
   sos: {
     cta: 'SOS',
     title: 'Emergency SOS',
@@ -644,7 +651,7 @@ const en = {
     deleteAccount: 'Delete account',
     deleteConfirmTitle: 'Delete your account?',
     deleteConfirmBody:
-      'Deletion is scheduled 30 days out. Signing back in before then cancels it.',
+      'Deletion is scheduled 30 days out. Signing back in before then lets you keep the account.',
     deleteConfirmCta: 'Delete my account',
     deleteScheduledNote: 'Account deletion scheduled for:',
     languageNote: 'Language also changes in the switcher at the top of every page.',
