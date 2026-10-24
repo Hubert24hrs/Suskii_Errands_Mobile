@@ -105,60 +105,35 @@ class CustomerHomePage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: SSpacing.xl),
-                SPressable(
-                  child: SGlass(
-                    padding: EdgeInsets.zero,
-                    child: InkWell(
-                      onTap: () => context.push(AppRoutes.customerConcierge),
-                      child: Padding(
-                        padding: const EdgeInsets.all(SSpacing.xl),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const SIconOrb(
-                              icon: Icons.auto_awesome_rounded,
-                              size: 52,
-                            ),
-                            const SizedBox(height: SSpacing.lg),
-                            Text(
-                              l10n.conciergeTitle,
-                              style: theme.textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: SSpacing.xs),
-                            Text(
-                              l10n.conciergeHint,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: SSpacing.lg),
-                            SButton(
-                              label: l10n.homeAskConcierge,
-                              icon: Icons.auto_awesome_rounded,
-                              onPressed: () =>
-                                  context.push(AppRoutes.customerConcierge),
-                            ),
-                            const SizedBox(height: SSpacing.sm),
-                            SButton(
-                              key: const ValueKey<String>('home.suskiiMeet'),
-                              label: l10n.homeSuskiiMeet,
-                              icon: Icons.groups_rounded,
-                              variant: SButtonVariant.secondary,
-                              onPressed: () => context.push(AppRoutes.meet),
-                            ),
-                            const SizedBox(height: SSpacing.sm),
-                            SButton(
-                              key: const ValueKey<String>('home.newRequest'),
-                              label: l10n.createTitle,
-                              icon: Icons.add_rounded,
-                              variant: SButtonVariant.secondary,
-                              onPressed: () =>
-                                  context.push(AppRoutes.customerRequestsNew),
-                            ),
-                          ],
-                        ),
+                SGlass(
+                  padding: const EdgeInsets.all(SSpacing.xl),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      SButton(
+                        label: l10n.homeAskConcierge,
+                        icon: Icons.auto_awesome_rounded,
+                        onPressed: () =>
+                            context.push(AppRoutes.customerConcierge),
                       ),
-                    ),
+                      const SizedBox(height: SSpacing.sm),
+                      SButton(
+                        key: const ValueKey<String>('home.suskiiMeet'),
+                        label: l10n.homeSuskiiMeet,
+                        icon: Icons.groups_rounded,
+                        variant: SButtonVariant.secondary,
+                        onPressed: () => context.push(AppRoutes.meet),
+                      ),
+                      const SizedBox(height: SSpacing.sm),
+                      SButton(
+                        key: const ValueKey<String>('home.newRequest'),
+                        label: l10n.createTitle,
+                        icon: Icons.add_rounded,
+                        variant: SButtonVariant.secondary,
+                        onPressed: () =>
+                            context.push(AppRoutes.customerRequestsNew),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: SSpacing.xxl),
@@ -284,12 +259,16 @@ class _CategoryTile extends StatelessWidget {
               children: <Widget>[
                 SIconOrb(icon: icon, size: 44),
                 const SizedBox(height: SSpacing.sm),
-                Text(
-                  label,
-                  style: theme.textTheme.labelMedium,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                // At large text sizes two lines do not fit the fixed tile;
+                // Flexible lets the label ellipsize instead of overflowing.
+                Flexible(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelMedium,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

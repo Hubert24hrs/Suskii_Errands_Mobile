@@ -5,6 +5,22 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 3) — Claude Code — home card without the concierge header
+
+At the owner's request (screenshot from the installed test APK), the customer home card no longer
+shows the sparkle orb, "Suskii concierge" and "Ask Suskii anything…": it is the three buttons
+("Ask Suskii for any service", "Suskii Meet", "New request") on the glass card. The card itself is
+no longer one big tap target, since every action in it is a button. `conciergeTitle` stays: the
+concierge page uses it. The website's dashboard never had that header.
+
+Found on the way: with the shorter card the category grid enters the first screen, and at 2x text
+size a two-line label overflowed its fixed-ratio tile by 13 px (`screen_catalog_test`, "render @2.0x").
+The label is `Flexible` now and ellipsizes instead. Four goldens re-recorded (`home_*`,
+`catalog/*/customer_home`); app suite 39 passing, analyzer clean.
+
+The pickup map still shows the location card on the test APK because no Maps key exists yet
+(RB-15 action 31); nothing in the code is missing for it.
+
 ## 2026-10-24 (part 2) — Claude Code — the nearest providers first, a Google Map for the pickup, Nigeria's 37 states; contracts 2.4.0
 
 **Merged 2026-10-24 as `c4e61bb` (PR #53)**, all 16 checks green, including the first Android and iOS
