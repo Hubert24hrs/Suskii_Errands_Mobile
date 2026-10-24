@@ -5,6 +5,29 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 12) — Claude Code — GCP billing on, Terraform applied (go-live Phase 2 begins)
+
+- **Client action 1 is done.** Billing account "Suskii Errands" is open and linked to
+  `suskii-dev`, `suskii-staging`, `suskii-prod` and `suskii-ops`.
+- **Terraform applied** from the owner's machine, with the owner's approval:
+  - the bootstrap state bucket;
+  - all three environments, 54 resources each.
+
+  Details are in `infra/terraform/README.md`. Budgets are $20, $20 and $50 a month (alerts only).
+- **The GitHub environments have their GCP values** (Workload Identity provider and service
+  accounts).
+- **Fix in this PR**: `infra-deploy.yaml` never passed the budget. The first CI run would have
+  reset the budgets to the env defaults of $150 and $2,000. It now reads `MONTHLY_BUDGET_USD`
+  (set on every `infra-*` environment) and refuses a non-integer.
+- **Phase 2 still needs**:
+  1. Supabase Pro, which the owner approved, and a `suskii-staging` project.
+     `deploy-production` requires a successful staging deploy of the same SHA.
+  2. The owner's decision on wiping `suskii-prod`, which is still the test sandbox.
+  3. Secret values in Secret Manager: `send-sms-hook-secrets`, `supabase-db-password` and the rest,
+     added by the owner.
+  4. The RB-16 KEK escrow.
+  5. `DEPLOY_DEV_ENABLED` and `DEPLOY_STAGING_ENABLED`, set only after the above.
+
 ## 2026-10-24 (part 11) — Claude Code — the domain: suskiierrand.com (action 18)
 
 - The owner bought **`suskiierrand.com`** through Cloudflare Registrar:

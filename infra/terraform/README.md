@@ -2,7 +2,19 @@
 
 Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, §3, §4, §7, §8, §9. CI: `.github/workflows/infra.yaml` (fmt, validate against the provider schemas, tflint).
 
-**Nothing here has been applied.** It needs the client's GCP organisation, projects and an open billing account (timeline client actions 1 and 8).
+**Applied on 2026-10-24** by the owner's account (`iheanachohubert@gmail.com`), no GCP organisation:
+
+- Billing account `0196B4-E425AB-3D0960` ("Suskii Errands"), linked to all four projects.
+- `bootstrap`: state bucket `suskii-ops-tfstate` (London) in `suskii-ops`. `state_admins` are the owner and the three `terraform-runner` accounts.
+- `envs/dev`, `envs/staging`, `envs/prod`: 54 resources each.
+  - Budgets: $20, $20 and $50 a month. These are alerts at 50, 80 and 100% to the owner's Gmail, not caps.
+  - The Supabase uptime check is not created yet: no `supabase_project_ref` was passed, because no `health` function is deployed.
+  - No backup jobs or AI service yet (no images).
+- GitHub variables set from the outputs:
+  - `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_DEPLOYER_SA` on `dev`, `staging` and `production`;
+  - `GCP_TERRAFORM_SA`, `ALERT_EMAILS`, `BILLING_ACCOUNT_ID` and `MONTHLY_BUDGET_USD` on `infra-*`;
+  - `TF_STATE_BUCKET` on the repository.
+- Secret Manager holds the secret **names** only; the values are still to be added (RB-14 checklist, RB-16).
 
 ## Layout
 
