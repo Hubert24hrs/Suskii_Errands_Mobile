@@ -914,5 +914,19 @@
   "nearbyNone": "No providers online near you right now. Publish anyway: we'll widen the search.",
   "offersSortClosest": "Closest first",
   "offersSortBest": "Best match",
-  "offersClosestHint": "Sorted by how far each provider is from your pickup."
+  "offersClosestHint": "Sorted by how far each provider is from your pickup.",
+
+  "providerDashTrustTier": "Trust tier: {tier} · {level}",
+  "@providerDashTrustTier": {"placeholders": {"tier": {"type": "String"}, "level": {"type": "String"}}},
+  "providerDashGoalProgress": "{progress} of your {target} goal",
+  "@providerDashGoalProgress": {"placeholders": {"progress": {"type": "String"}, "target": {"type": "String"}}},
+  "providerDashGoalResets": "Resets {date}",
+  "@providerDashGoalResets": {"placeholders": {"date": {"type": "String"}}},
+  "providerDashNoGoal": "Set an earnings goal",
+  "providerDashTotalBalance": "Total balance",
+  "providerDashShowBalance": "Show balance",
+  "providerDashHideBalance": "Hide balance",
+  "providerDashBalanceSplit": "{available} available · {pending} on its way",
+  "@providerDashBalanceSplit": {"placeholders": {"available": {"type": "String"}, "pending": {"type": "String"}}},
+  "providerDashAccount": "Your profile"
 }

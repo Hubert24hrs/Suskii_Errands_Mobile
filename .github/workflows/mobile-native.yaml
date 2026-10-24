@@ -147,5 +147,5 @@ jobs:
           # so it stays the same: /releases/download/dev-latest/suskii-dev.apk
           gh release delete dev-latest --cleanup-tag --yes || true
           gh release create dev-latest suskii-dev.apk --prerelease --target "$GITHUB_SHA" \
-            --title "Suskii Dev (latest main build)" \
+            --title "Suskii Errands test APK (latest main build)" \
             --notes "Built from ${GITHUB_SHA::7} by run ${GITHUB_RUN_ID}. Demo data, no backend: sign in with any phone number and any 6-digit code. Signed with a test key, not the Play key: Android asks to allow the install, and this is not the Play build. Replaced on every build of main."

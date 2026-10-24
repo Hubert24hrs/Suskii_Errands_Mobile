@@ -10,6 +10,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
+import '../../app/secure_screen.dart';
 
 /// Provider tools (M6): availability schedule, earnings goal, demand heatmap,
 /// performance insights and instant payout. Stats, progress, zone intensity
@@ -396,6 +397,26 @@ class _GoalSheetState extends ConsumerState<_GoalSheet> {
       ),
     );
   }
+}
+
+/// The instant payout card in a sheet, for the dashboard header's button.
+Future<void> showInstantPayoutSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (BuildContext context) => SecureScreen(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          SSpacing.lg,
+          0,
+          SSpacing.lg,
+          MediaQuery.viewInsetsOf(context).bottom + SSpacing.lg,
+        ),
+        child: const _InstantPayoutCard(),
+      ),
+    ),
+  );
 }
 
 /// Instant payout: amount → server quote (fee + net) → confirm.

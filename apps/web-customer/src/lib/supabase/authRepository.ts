@@ -14,6 +14,20 @@ import { fetchMyProfile } from './userRepository';
 
 const PENDING_COUNTRY_KEY = 'suskii.pendingCountry';
 
+/** Sign-up metadata `private.handle_new_user` reads: the new profile's
+ * country and language. An existing account ignores it. */
+export interface SignUpOptions {
+  countryCode?: string;
+  language?: string;
+}
+
+function signUpMetadata(options?: SignUpOptions): Record<string, string> {
+  const data: Record<string, string> = {};
+  if (options?.countryCode) data['country_code'] = options.countryCode.toUpperCase();
+  if (options?.language) data['language'] = options.language;
+  return data;
+}
+
 export class SupabaseAuthRepository {
   constructor(private readonly gateway: SupabaseGateway) {}
 
@@ -50,10 +64,11 @@ export class SupabaseAuthRepository {
     return fetchMyProfile(this.gateway);
   }
 
-  async requestPhoneOtp(phoneE164: string): Promise<void> {
+  async requestPhoneOtp(phoneE164: string, options?: SignUpOptions): Promise<void> {
     try {
       const { error } = await this.gateway.auth.signInWithOtp({
         phone: phoneE164,
+        options: { data: signUpMetadata(options) },
       });
       if (error) throw error;
     } catch (error) {
@@ -75,9 +90,14 @@ export class SupabaseAuthRepository {
     return fetchMyProfile(this.gateway);
   }
 
-  async requestEmailOtp(email: string): Promise<void> {
+  /** Without a country an email sign-up has no profile country at all (there
+   * is no phone for the server to read one from), and could never post. */
+  async requestEmailOtp(email: string, options?: SignUpOptions): Promise<void> {
     try {
-      const { error } = await this.gateway.auth.signInWithOtp({ email });
+      const { error } = await this.gateway.auth.signInWithOtp({
+        email,
+        options: { data: signUpMetadata(options) },
+      });
       if (error) throw error;
     } catch (error) {
       throw mapSupabaseError(error);
@@ -99,7 +119,7 @@ export class SupabaseAuthRepository {
   }
 
   /** Leaves the page for Google or Apple; the session arrives when the
-   * provider redirects back and supabase-js reads it from the URL. The chosen
+   * provider redirects back and supabase-js reads it from the URL. The
    * country waits in sessionStorage, because an OAuth sign-up carries no
    * metadata and the new profile has none until `set_initial_country`. */
   async signInWithProvider(

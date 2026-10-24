@@ -58,7 +58,7 @@ misleading-claims policy).
 | | Android | iOS |
 |---|---|---|
 | Identifier | `com.suskiierrands.app`; `.dev` / `.staging` suffixes | same |
-| Name | `Suskii Errands` (prod), `Suskii Staging`, `Suskii Dev` | same |
+| Name | `Suskii Errands` (prod and dev: the test APK carries the real name, at the owner's request 2026-10-24), `Suskii Staging` | same |
 | Environment | `--dart-define-from-file=config/env/<env>.json` (ADR-0015); release builds use `build/env/<env>.json` with the backend values merged in by `tool/write_release_env.sh`, which refuses a staging or prod build without a backend | same, plus `tool/write_ios_defines.sh` for the bundle id, name and link host |
 | Version | `pubspec.yaml` `version: 1.0.0+N` — the name is semver; the build number comes from the workflow (`run_number × 10`) and only ever goes up | same |
 | SDK levels | min 24, target and compile **36** (Play requires 36 for new apps and updates since 31 Aug 2026 [V] developer.android.com/google/play/requirements/target-sdk) | min iOS 15.0; built with **Xcode 26** (required for uploads since 28 Apr 2026 [V] developer.apple.com/news/upcoming-requirements) |

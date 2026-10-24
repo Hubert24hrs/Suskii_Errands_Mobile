@@ -18,6 +18,7 @@ import { MoneyField } from '@/components/MoneyField';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
+import { DashboardHeader } from './DashboardHeader';
 import {
   ProviderPage,
   Notice,
@@ -70,6 +71,7 @@ export function ProviderFeedClient({ locale, dict }: { locale: Locale; dict: Dic
   return (
     <ProviderPage locale={locale} dict={dict}>
       <h1 className={pageTitle}>{t.feed.title}</h1>
+      <DashboardHeader locale={locale} dict={dict} />
 
       {summary.isPending ? (
         <StateBlock variant="loading" />

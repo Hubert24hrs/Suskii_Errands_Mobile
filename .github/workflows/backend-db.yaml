@@ -52,9 +52,11 @@ jobs:
       - name: RLS matrix coverage
         run: python supabase/tools/check_rls_matrix.py .
 
-      # Realtime stays up for the admin console's SOS feed (`ops:sos`).
+      # Realtime stays up for the admin console's SOS feed (`ops:sos`); mailpit for the website's
+      # email sign-up (tests/web-customer-e2e/signup.spec.ts), which GoTrue rolls back when it
+      # cannot send the code.
       - name: Start local stack
-        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,edge-runtime,postgres-meta
+        run: supabase start -x studio,imgproxy,logflare,vector,supavisor,edge-runtime,postgres-meta
 
       - name: Apply every migration and the seed from zero
         run: supabase db reset --local

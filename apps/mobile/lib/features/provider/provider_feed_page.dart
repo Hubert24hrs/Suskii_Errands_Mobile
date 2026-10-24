@@ -14,9 +14,11 @@ import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../shared/job_card.dart';
 import 'feed_request_sheet.dart';
+import 'provider_dashboard_header.dart';
 
-/// Provider feed: online toggle, today's earnings, document reminders and
-/// open requests nearby.
+/// Provider dashboard: the account header (tier, goal, balance, withdraw),
+/// online toggle, today's earnings, document reminders and open requests
+/// nearby.
 class ProviderFeedPage extends ConsumerStatefulWidget {
   const ProviderFeedPage({super.key});
 
@@ -78,12 +80,17 @@ class _ProviderFeedPageState extends ConsumerState<ProviderFeedPage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(providerHomeProvider);
+          ref
+            ..invalidate(providerHomeProvider)
+            ..invalidate(walletSummaryProvider)
+            ..invalidate(earningsGoalProvider);
           await ref.read(providerHomeProvider.future);
         },
         child: ListView(
           padding: const EdgeInsets.all(SSpacing.lg),
           children: <Widget>[
+            const ProviderDashboardHeader(),
+            const SizedBox(height: SSpacing.lg),
             summary.when(
               loading: () => const Column(
                 children: <Widget>[SSkeletonListTile(), SSkeletonListTile()],

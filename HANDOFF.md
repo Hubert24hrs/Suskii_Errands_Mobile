@@ -5,6 +5,47 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 7) — Claude Code — the real app name, no country picker, a sportsbook-style provider dashboard
+
+At the owner's request, in both apps (Kimi's paths; same standing as the 2026-10-24 exception in
+`CLAUDE.md`):
+
+- **Name.** The test APK and the iOS dev default are called `Suskii Errands`, not `Suskii Dev`
+  (`config/env/dev.json`, `ios/Flutter/Environment.xcconfig`, the `dev-latest` release title,
+  RB-15 §2). Staging keeps `Suskii Staging`.
+- **No country to pick.** The welcome screen keeps only the language; the website's sign-in drops
+  its country dropdown. A customer uses the country they are in:
+  - App: `lib/app/device_country.dart`, read once at launch into `deviceCountryProvider`, which
+    now feeds `selectedCountryProvider`. Android answers with the network the phone is registered
+    on, then the SIM (`MainActivity`, channel `suskii/device_region`, no permission); iOS with the
+    time zone and region (`AppDelegate`), because it no longer exposes a carrier. Then the locale
+    region. Only the five countries with a pack count; otherwise NG.
+  - Website: `src/lib/deviceCountry.ts`, from the time zone and the language tags.
+  - The server keeps the last word. The app signs up in the country the bootstrap actually
+    served, which is the live one when the detected country is not open. The website asks
+    `get_bootstrap` for the detected pack first, and its send button waits for that answer.
+- **Found on the way (AA.12, website, real backend only).** The website's phone and email OTP
+  sent **no sign-up metadata**, so an email sign-up got a profile with no country and could never
+  post a request (`create_request` refuses). Both now send `country_code` and `language`, as the
+  app always did. New website E2E `signup.spec.ts` checks this from a browser in Nairobi: the new
+  profile is Kenyan.
+- **Provider dashboard header**, laid out like the sportsbook account panel the owner sent:
+  - the avatar with a trust-tier badge (I–IV from `trust_level`);
+  - the phone masked as `80*******8`, a chevron to the profile, and a settings gear;
+  - "Trust tier: III · Trusted";
+  - the earnings-goal bar with "Resets 26 Oct" (Monday or the 1st, as `my_earnings_goal` counts);
+  - "Total balance" (available + on its way), hidden as `NGN *****` until the eye is tapped;
+  - a green **Withdraw** button (the existing withdrawal sheet) and a green outlined **Instant
+    payout** button. The instant-payout card now also opens as a sheet or modal.
+
+  A revealed balance and both sheets are behind `SecureScreen` (Y.16). Built from existing reads
+  only: no contract change. Files: `provider_dashboard_header.dart` and `DashboardHeader.tsx`.
+  Screen parity is still 0 gaps.
+- Tests:
+  - app: 27 journeys, the 4 changed goldens (welcome and provider home, both themes) re-recorded and inspected, and unit tests for detection, masking
+    and the reset date;
+  - website: smoke 162, plus `signup.spec.ts` on real Supabase.
+
 ## 2026-10-24 (part 6) — Claude Code — a fixed signing key for the test APK
 
 At the owner's request. Each `dev-latest` APK was signed with the throwaway debug key of the runner

@@ -10,6 +10,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
+import '../../app/secure_screen.dart';
 
 /// Customer wallet (M5): server-computed balances, transaction history and a
 /// withdrawal request. Withdrawals are server-decided (KYC + name-matched
@@ -167,8 +168,11 @@ Future<void> showWithdrawSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (BuildContext context) =>
-        WithdrawSheet(currencyCode: currencyCode, onSubmit: onSubmit),
+    // Also opened from the provider dashboard, which is not itself a secure
+    // screen (audit Y.16).
+    builder: (BuildContext context) => SecureScreen(
+      child: WithdrawSheet(currencyCode: currencyCode, onSubmit: onSubmit),
+    ),
   );
 }
 

@@ -3,13 +3,14 @@
 // Sign-in (W9.2). Phone or email OTP, or Google / Apple, via authRepository —
 // Supabase GoTrue when the gateway is configured, the mock persona otherwise
 // (demo hint is shown only in the mock case). No passwords. Google and Apple
-// leave the page and come back here signed in; a new account takes the
-// country chosen below, once.
+// leave the page and come back here signed in. A new account takes the
+// country the browser is in (owner, 2026-10-24: nobody picks one), once.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
+import { resolveSignUpCountry } from '@/lib/deviceCountry';
 import { authRepository, supabaseGateway } from '@/lib/repositories';
 import type { AuthState, SocialProvider } from '@/mocks/types';
 import { errorText } from '../requests/_shared';
@@ -21,15 +22,6 @@ const primaryButton =
   'w-full rounded-md bg-brand-primary px-lg py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50';
 
 type Method = 'phone' | 'email';
-
-/** The launch countries, as the app's own picker lists them. */
-const COUNTRIES = [
-  ['NG', 'Nigeria'],
-  ['KE', 'Kenya'],
-  ['GH', 'Ghana'],
-  ['ZA', 'South Africa'],
-  ['UG', 'Uganda'],
-] as const;
 
 const secondaryButton =
   'flex w-full items-center justify-center gap-sm rounded-md border border-outline px-lg py-sm text-label-large text-ink-primary transition-colors duration-normal ease-standard hover:bg-surface-muted disabled:opacity-50 dark:border-outline-dark dark:text-ink-dark-primary dark:hover:bg-surface-dark-muted';
@@ -49,18 +41,24 @@ export function AuthClient({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [country, setCountry] = useState<string>('NG');
+  const country = useRef<Promise<string> | null>(null);
+  // Started on load and awaited on send, so a quick tap cannot beat it.
+  const signUpCountry = () => (country.current ??= resolveSignUpCountry());
 
   useEffect(() => authRepository.authStateChanges(setAuth), []);
+  useEffect(() => {
+    void signUpCountry();
+  }, []);
 
   async function sendCode() {
     setBusy(true);
     setError(null);
     try {
+      const signUp = { countryCode: await signUpCountry(), language: locale };
       if (method === 'phone') {
-        await authRepository.requestPhoneOtp(destination.trim());
+        await authRepository.requestPhoneOtp(destination.trim(), signUp);
       } else {
-        await authRepository.requestEmailOtp(destination.trim());
+        await authRepository.requestEmailOtp(destination.trim(), signUp);
       }
       setCodeSent(true);
     } catch (e) {
@@ -93,7 +91,7 @@ export function AuthClient({
     setError(null);
     try {
       await authRepository.signInWithProvider(provider, {
-        countryCode: country,
+        countryCode: await signUpCountry(),
         redirectTo: `${window.location.origin}/${locale}/auth`,
       });
       // With Supabase the browser is on its way to the provider; the mock
@@ -250,21 +248,6 @@ export function AuthClient({
             {dict.auth.orContinueWith}
             <span className="h-px flex-1 bg-outline dark:bg-outline-dark" />
           </div>
-          <label className="flex flex-col gap-xs text-label-large text-ink-primary dark:text-ink-dark-primary">
-            {dict.auth.countryLabel}
-            <select
-              className={inputClasses}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              disabled={busy}
-            >
-              {COUNTRIES.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
           <button
             type="button"
             className={secondaryButton}

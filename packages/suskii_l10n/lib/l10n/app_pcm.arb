@@ -908,5 +908,15 @@
   "nearbyNone": "No provider dey online near you now. Publish am anyway: we go search further.",
   "offersSortClosest": "Closest first",
   "offersSortBest": "Best match",
-  "offersClosestHint": "We arrange am by how far each provider dey from your pickup."
+  "offersClosestHint": "We arrange am by how far each provider dey from your pickup.",
+
+  "providerDashTrustTier": "Trust level: {tier} · {level}",
+  "providerDashGoalProgress": "{progress} out of your {target} target",
+  "providerDashGoalResets": "E go restart {date}",
+  "providerDashNoGoal": "Set target for wetin you wan make",
+  "providerDashTotalBalance": "Total balance",
+  "providerDashShowBalance": "Show balance",
+  "providerDashHideBalance": "Hide balance",
+  "providerDashBalanceSplit": "{available} wey you fit collect · {pending} dey come",
+  "providerDashAccount": "Your profile"
 }

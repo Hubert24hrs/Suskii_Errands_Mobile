@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Device preferences that survive a restart: the first-run flag, the
-/// country and language chosen before sign-in, and the theme. None of it is
+/// country and language before sign-in, and the theme. None of it is
 /// sensitive — the session lives in secure storage (`secure_session_storage`)
 /// — so plain SharedPreferences is the right tool (audit 2026-09-27 Y.14).
 ///
@@ -41,11 +41,20 @@ final welcomeSeenProvider = NotifierProvider<WelcomeSeenController, bool>(
   WelcomeSeenController.new,
 );
 
-/// The country chosen on the welcome screen (ISO 3166-1 alpha-2), sent as
-/// the bootstrap hint and as sign-up metadata. Null until chosen.
+/// The country the device is in, detected once per launch
+/// (`detectDeviceCountry`); null when no signal names a served country.
+/// Overridden in `main()`.
+final deviceCountryProvider = Provider<String?>((ref) => null);
+
+/// The country sent as the bootstrap hint and as sign-up metadata (ISO 3166-1
+/// alpha-2): the one the device is in, else one stored by an older build's
+/// country picker, else null. Nobody chooses it any more (owner, 2026-10-24),
+/// and the server still has the last word: `get_bootstrap` serves a country
+/// only while it is open.
 class SelectedCountryController extends Notifier<String?> {
   @override
   String? build() =>
+      ref.watch(deviceCountryProvider) ??
       ref.watch(sharedPreferencesProvider).getString(_Keys.country);
 
   void set(String countryCode) {
