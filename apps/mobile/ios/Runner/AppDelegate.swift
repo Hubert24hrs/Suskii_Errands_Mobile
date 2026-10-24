@@ -32,6 +32,27 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // The country the phone is in (lib/app/device_country.dart). iOS no longer exposes the
+    // carrier's country, so the time zone (set from the network by default) and the region
+    // setting are what it can tell.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SuskiiDeviceRegion") {
+      FlutterMethodChannel(name: "suskii/device_region", binaryMessenger: registrar.messenger())
+        .setMethodCallHandler { call, result in
+          guard call.method == "signals" else {
+            result(FlutterMethodNotImplemented)
+            return
+          }
+          var signals = ["timeZone": TimeZone.current.identifier]
+          let region: String?
+          if #available(iOS 16, *) {
+            region = Locale.current.region?.identifier
+          } else {
+            region = Locale.current.regionCode
+          }
+          if let region { signals["region"] = region }
+          result(signals)
+        }
+    }
   }
 
   /// iOS cannot block a screenshot, but it can keep balances, KYC details and handover PINs

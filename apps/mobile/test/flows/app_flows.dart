@@ -55,6 +55,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'an online provider reports where they are until they go offline':
       _onlineHeartbeat,
   'Suskii Meet: join a meet-up, then host one': _suskiiMeet,
+  'the provider dashboard hides the balance until asked, then pays out':
+      _providerDashboard,
 };
 
 // ---------------------------------------------------------------------------
@@ -702,5 +704,39 @@ Future<void> _onlineHeartbeat(WidgetTester tester) async {
   await settle(tester);
   await tester.pump(const Duration(seconds: 90));
   expect(app.database.reportedPositions, hasLength(2));
+  await app.dispose(tester);
+}
+
+Future<void> _providerDashboard(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _switchToProvider(tester, app);
+  final wallet = await app.container.read(walletSummaryProvider.future);
+  final total = wallet.available + wallet.pending;
+  final balance = find.byKey(const ValueKey<String>('providerDash.balance'));
+  // The fixture's +234 801 234 5678, as the sportsbook panels show a number.
+  expect(find.text('80*******8'), findsOneWidget);
+  expect(
+    find.text(l10n.providerDashTrustTier('III', l10n.trustLevelTrusted)),
+    findsOneWidget,
+  );
+  expect(tester.widget<Text>(balance).data, '${total.currencyCode} *****');
+  await _tap(
+    tester,
+    find.byKey(const ValueKey<String>('providerDash.toggleBalance')),
+  );
+  expect(tester.widget<Text>(balance).data, total.format());
+  await _tap(
+    tester,
+    find.byKey(const ValueKey<String>('providerDash.withdraw')),
+  );
+  await _enter(tester, '${l10n.walletWithdrawAmount} (NGN)', '1000');
+  await _tapText(tester, l10n.walletWithdrawCta);
+  await settle(tester, timeout: const Duration(seconds: 5));
+  _expectToast(l10n.walletWithdrawDone);
+  await _tap(
+    tester,
+    find.byKey(const ValueKey<String>('providerDash.instantPayout')),
+  );
+  expect(find.text(l10n.toolsInstantPayoutBody), findsOneWidget);
   await app.dispose(tester);
 }

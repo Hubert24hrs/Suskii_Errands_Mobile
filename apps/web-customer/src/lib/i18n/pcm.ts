@@ -173,7 +173,6 @@ const pcm = {
     orContinueWith: 'or continue with',
     continueWithGoogle: 'Continue with Google',
     continueWithApple: 'Continue with Apple',
-    countryLabel: 'Country',
   },
   requests: {
     listTitle: 'My request-dem',

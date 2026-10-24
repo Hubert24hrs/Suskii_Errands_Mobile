@@ -310,8 +310,10 @@ function Availability({ dict }: { dict: Dictionary }) {
   );
 }
 
-function InstantPayout({ dict }: { dict: Dictionary }) {
+/** Also opened from the dashboard header, in a modal that carries the title (`bare`). */
+export function InstantPayout({ dict, bare = false }: { dict: Dictionary; bare?: boolean }) {
   const t = dict.provider.tools;
+  const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ['wallet', 'summary'], queryFn: () => walletRepository.getSummary() });
   const currency = summary.data?.available.currency ?? 'NGN';
   const [amount, setAmount] = useState<number | null>(null);
@@ -343,6 +345,7 @@ function InstantPayout({ dict }: { dict: Dictionary }) {
       key.current = undefined;
       setQuote(undefined);
       setNotice({ text: t.instantPayoutDone, tone: 'success' });
+      await queryClient.invalidateQueries({ queryKey: ['wallet'] });
     } catch (error) {
       setNotice({ text: errorText(dict, error), tone: 'error' });
     } finally {
@@ -351,8 +354,8 @@ function InstantPayout({ dict }: { dict: Dictionary }) {
   }
 
   return (
-    <section className={`${card} flex flex-col gap-md`} data-testid="tools-instant-payout">
-      <h2 className={sectionTitle}>{t.instantPayout}</h2>
+    <section className={`${bare ? '' : card} flex flex-col gap-md`} data-testid="tools-instant-payout">
+      {bare ? null : <h2 className={sectionTitle}>{t.instantPayout}</h2>}
       <p className={mutedText}>{t.instantPayoutBody}</p>
       <MoneyField
         label={t.instantPayoutAmount}

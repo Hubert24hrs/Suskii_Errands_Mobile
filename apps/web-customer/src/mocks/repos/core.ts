@@ -98,7 +98,7 @@ export class MockAuthRepository extends MockRepo {
     this.stateEvents.emit(state);
   }
 
-  async requestPhoneOtp(phoneE164: string): Promise<void> {
+  async requestPhoneOtp(phoneE164: string, _options?: { countryCode?: string; language?: string }): Promise<void> {
     await this.gate();
   }
 
@@ -110,7 +110,7 @@ export class MockAuthRepository extends MockRepo {
     return user;
   }
 
-  async requestEmailOtp(email: string): Promise<void> {
+  async requestEmailOtp(email: string, _options?: { countryCode?: string; language?: string }): Promise<void> {
     await this.gate();
   }
 

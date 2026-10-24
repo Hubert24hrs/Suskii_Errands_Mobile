@@ -11,6 +11,7 @@ import 'package:suskii_design/suskii_design.dart';
 
 import 'app/app.dart';
 import 'app/crash_reporting.dart';
+import 'app/device_country.dart';
 import 'app/providers.dart';
 import 'app/secure_session_storage.dart';
 
@@ -24,6 +25,7 @@ Future<void> main() async {
   final config = AppConfig.fromEnvironment();
   final info = await PackageInfo.fromPlatform();
   final prefs = await SharedPreferences.getInstance();
+  final deviceCountry = await detectDeviceCountry();
   registerDesignLicenses();
 
   await runWithCrashReporting(
@@ -47,6 +49,7 @@ Future<void> main() async {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            deviceCountryProvider.overrideWithValue(deviceCountry),
             appVersionProvider.overrideWithValue(
               '${info.version} (${info.buildNumber})',
             ),

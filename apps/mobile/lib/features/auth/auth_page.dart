@@ -8,6 +8,7 @@ import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
+import '../../app/device_country.dart';
 import '../../app/error_l10n.dart';
 import '../../app/external_links.dart';
 import '../../app/providers.dart';
@@ -15,22 +16,13 @@ import '../../app/social_sign_in.dart';
 
 enum _AuthMethod { phone, email }
 
-/// International dialling codes of the launch countries (ITU-T E.164).
-const Map<String, String> _dialCodes = <String, String>{
-  'NG': '234',
-  'KE': '254',
-  'GH': '233',
-  'ZA': '27',
-  'UG': '256',
-};
-
 /// Normalises what a person types into E.164: a leading `+` is taken as
 /// international, a leading trunk `0` is replaced by the country's code, and
 /// anything else is assumed to be a national number. Null when it cannot be
 /// a phone number.
 String? normalizePhone(String raw, String countryCode) {
   final digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
-  final dial = _dialCodes[countryCode] ?? '';
+  final dial = countryDialCodes[countryCode] ?? '';
   String candidate;
   if (digits.startsWith('+')) {
     candidate = digits;
@@ -83,7 +75,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     super.dispose();
   }
 
-  String get _country => ref.read(selectedCountryProvider) ?? 'NG';
+  /// The country a new account is created in: the one the server serves for
+  /// this device (the detected country while it is open, else the live one),
+  /// so the profile and the screens before sign-in agree.
+  String get _country =>
+      ref.read(bootstrapProvider).value?.countryPack.countryCode ??
+      ref.read(selectedCountryProvider) ??
+      fallbackCountryCode;
 
   /// The identity to send a code to, or null when the input is not valid.
   String? _identity() {
@@ -169,7 +167,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   }
 
   /// Google or Apple: the device's SDK issues an ID token and the backend
-  /// turns it into a session, taking the chosen country for a new account.
+  /// turns it into a session, taking the device's country for a new account.
   Future<void> _social(SocialProvider provider) async {
     setState(() {
       _busy = true;
@@ -222,7 +220,14 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final theme = Theme.of(context);
     final config = ref.watch(appConfigProvider);
     final error = _error;
-    final dial = _dialCodes[ref.watch(selectedCountryProvider) ?? 'NG'];
+    final dial =
+        countryDialCodes[ref
+                .watch(bootstrapProvider)
+                .value
+                ?.countryPack
+                .countryCode ??
+            ref.watch(selectedCountryProvider) ??
+            fallbackCountryCode];
 
     return Scaffold(
       body: SAuroraBackground(

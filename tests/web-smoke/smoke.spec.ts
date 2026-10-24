@@ -311,6 +311,24 @@ test.describe('provider mode', () => {
     await expect(page.getByTestId('kyc-steps')).toBeVisible();
     expect(errors).toEqual([]);
   });
+
+  // 2026-10-24 (part 6): the account header the owner asked for, after the sportsbook panels.
+  test('the dashboard header hides the balance until asked, then pays out', async ({ page }) => {
+    const errors = watchErrors(page);
+    await signIn(page);
+    await go(page, '/en/provider');
+    await expect(page.getByTestId('dashboard-account-label')).toHaveText('80*******8');
+    await expect(page.getByTestId('dashboard-tier')).toHaveText('Trust tier: III · Trusted');
+    await expect(page.getByTestId('dashboard-balance')).toHaveText('NGN *****');
+    await page.getByTestId('dashboard-toggle-balance').click();
+    await expect(page.getByTestId('dashboard-balance')).toHaveText(/^₦[\d,]+\.\d{2}$/);
+    await page.getByTestId('dashboard-withdraw').click();
+    await expect(page.getByRole('dialog')).toContainText('Withdraw funds');
+    await page.keyboard.press('Escape');
+    await page.getByTestId('dashboard-instant-payout').click();
+    await expect(page.getByRole('dialog').getByTestId('tools-instant-payout')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 });
 
 // 2026-10-24 (part 4): what the app had and the website did not, on the customer side.
