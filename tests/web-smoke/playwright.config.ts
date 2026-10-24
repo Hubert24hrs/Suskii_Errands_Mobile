@@ -19,6 +19,9 @@ const root = path.resolve(__dirname, '../..');
 
 export default defineConfig({
   testDir: '.',
+  // Next to this file, where frontend-ci uploads traces from; the default is the
+  // package.json directory, so failures left nothing to download.
+  outputDir: path.join(__dirname, 'test-results'),
   timeout: 30_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
