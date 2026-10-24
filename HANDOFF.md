@@ -5,6 +5,18 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 10) — Claude Code — web hosting decided: Cloudflare (ADR-0023)
+
+- The owner chose **Cloudflare** for the three websites (infra I-2):
+  - OpenNext on Workers;
+  - the admin console behind Cloudflare Access.
+- Nothing is deployed. Deployment waits on three things:
+  - the domain (action 18);
+  - a Cloudflare account;
+  - the production backend (go-live Phase 2, still blocked on GCP billing).
+- For Kimi: the deploy workflow and the per-site build changes for OpenNext are frontend paths.
+  ADR-0023 lists what to verify first: OpenNext's supported features, and the Workers limits.
+
 ## 2026-10-24 (part 9) — Claude Code — go-live Phases 0 and 1: what is actually on Play and behind it
 
 Ran `docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md` Phases 0 and 1 with the owner. No code changed.

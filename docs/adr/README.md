@@ -44,5 +44,6 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0020](0020-suskii-meet.md) | Suskii Meet: social meet-ups designed around who can see what | Accepted | Owner request (2026-10-24) | Client: attendee chat, paid events, age limits |
 | [0021](0021-verification-for-providers-only.md) | Identity verification is for service providers; Google and Apple sign-in, with the country set once | Accepted | Owner decision (2026-10-24) | OAuth clients per platform (client action 9) |
 | [0022](0022-nearest-providers-first.md) | The nearest providers first, a Google Map for the pickup, and Nigeria's 37 states as service areas | Accepted | Owner request (2026-10-24) | Maps key and billing (RB-15) |
+| [0023](0023-web-hosting-on-cloudflare.md) | Host the three websites on Cloudflare (OpenNext on Workers), the admin console behind Cloudflare Access | Accepted | Owner decision (2026-10-24), infra I-2 | Domain (action 18), Cloudflare account, production backend |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).
