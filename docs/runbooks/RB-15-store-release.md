@@ -44,6 +44,7 @@ Numbers continue the client action list in [timeline.md §5](../plan/timeline.md
 | 29 | **Google sign-in** (built 2026-10-24, ADR-0021): in Google Cloud, OAuth clients for **web**, **Android** (package `com.suskiierrands.app` with the Play app-signing SHA-1 and the upload-key SHA-1) and **iOS** (bundle id) | The Google button in a real build | The client IDs (public identifiers) into `config/env/<env>.json` as `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_REVERSED_CLIENT_ID`, and into the deploy environment as `GOOGLE_CLIENT_IDS` (web first) with `GOOGLE_SKIP_NONCE_CHECK=true`; the web client secret as `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` for the website |
 | 30 | **Sign in with Apple**: a **Services ID** and a **Sign in with Apple key** in the Apple developer account (the App ID capability is action 22) | The Apple button (iOS and website) | `APPLE_CLIENT_IDS` (bundle id, plus the Services ID for the website) and `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in the deploy environment |
 | 31 | **Google Maps** (built 2026-10-24, ADR-0022): a Google Cloud project with the **Maps SDK for Android**, **Maps SDK for iOS** and **Maps JavaScript API** enabled and **billing** on; one key per platform, restricted (Android: package + SHA-1s; iOS: bundle id; web: the site's domains) | The pickup map in the app and on the website (without a key both show a "use my location" card instead) | `GOOGLE_MAPS_API_KEY` as a GitHub Actions secret (the app builds read it), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in the website's hosting environment. Never in the repository: the secret scanner fails on a Google key |
+| 32 | **Test-APK signing key** (2026-10-24, owner's request): run `apps/mobile/tool/new_test_key.ps1` once on your own computer. It creates a PKCS12 key in `%USERPROFILE%\suskii-test-key` (keep that folder; it is not the Play upload key of action 20) and prints four values and the key's SHA-1 | The `dev-latest` test APK installs over the previous one instead of needing an uninstall, and the Maps key (action 31) can be restricted to the test app: package `com.suskiierrands.app.dev` plus that SHA-1 | Four GitHub Actions secrets: `ANDROID_DEV_KEYSTORE_BASE64`, `ANDROID_DEV_KEYSTORE_PASSWORD`, `ANDROID_DEV_KEY_ALIAS`, `ANDROID_DEV_KEY_PASSWORD`. `mobile-native` uses them for builds of `main` only; until they exist it signs with the runner's throwaway debug key |
 | 28 | Optional: a **Sentry** project | Crash reports from release builds | `SENTRY_DSN` secret (a public client key) |
 | 4, 7, 11 | Merchant accounts, identity vendor, LiveKit and telephony — already on the list | Payments, KYC, calls | As listed there |
 
@@ -160,8 +161,12 @@ republishes after every build of `main`:
 It is the `dev-latest` pre-release, published at the owner's request (2026-09-30). Because the
 repository is public, anyone with the link can install it. That is acceptable only because the
 dev build carries no backend address and no key. It runs on demo data, and any 6-digit code
-signs in. It is debug-signed, so Android asks to allow the install. If `dev.json` ever gains a
-backend, decide again whether this link should stay public.
+signs in. Android asks to allow the install, because it is not from a store. It is signed with
+the fixed test key of action 32 once those secrets exist; before that, with the throwaway debug key
+of whichever runner built it, which changes every build, so Android refuses to install a new one
+over the old one ("app not installed") until the old one is uninstalled. With the test key, each
+new APK installs over the last; the one switch from the debug key to the test key needs a last
+uninstall. If `dev.json` ever gains a backend, decide again whether this link should stay public.
 
 ## 6. Not built yet, and what each needs
 

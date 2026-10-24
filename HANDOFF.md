@@ -5,6 +5,24 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 6) — Claude Code — a fixed signing key for the test APK
+
+At the owner's request. Each `dev-latest` APK was signed with the throwaway debug key of the runner
+that built it, so every new one refused to install over the last ("app not installed") and the
+Google Maps key could not be restricted to the app. Now:
+
+- `mobile-native.yaml` signs the test APK with a fixed key from four repository secrets
+  (`ANDROID_DEV_KEYSTORE_BASE64`, `…_PASSWORD`, `ANDROID_DEV_KEY_ALIAS`, `ANDROID_DEV_KEY_PASSWORD`),
+  for builds of `main` only; pull requests and the store bundle are unchanged, and without the
+  secrets it falls back to the debug key, so nothing breaks before they exist. The keystore is
+  written outside the checkout and removed in an `always()` step.
+- `apps/mobile/tool/new_test_key.ps1` creates that key on the owner's own computer (PKCS12, one
+  password, keytool from Android Studio or a JDK) and prints the four values and the SHA-1 for the
+  Maps key restriction (package `com.suskiierrands.app.dev`). The key never passes through anyone
+  else. It is the test key only, not the Play upload key.
+- RB-15 action 32 and the test-APK note describe it. Tested here with the same keytool arguments:
+  the PKCS12 store signs and verifies, and the base64 survives the round trip CI decodes.
+
 ## 2026-10-24 (part 5) — Claude Code — the website as a replica of the app; both apps on a real backend
 
 At the owner's request ("make sure the website and mobile app has same features (replica), audit/debug
