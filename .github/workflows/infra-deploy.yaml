@@ -7,7 +7,8 @@ name: infra-deploy
 # Repository variable: TF_STATE_BUCKET
 # Environment `infra-<env>` variables: GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER,
 #   GCP_TERRAFORM_SA, ALERT_EMAILS (JSON list), BILLING_ACCOUNT_ID (optional),
-#   SUPABASE_PROJECT_REF (optional)
+#   SUPABASE_PROJECT_REF (optional), MONTHLY_BUDGET_USD (optional; without it the env root's
+#   default applies, so set it wherever the budget was chosen by hand)
 # Environment secret: HEALTH_CHECK_API_KEY (optional until the Supabase project exists)
 on:
   workflow_dispatch:
@@ -67,11 +68,16 @@ jobs:
         env:
           BILLING_ACCOUNT_ID: ${{ vars.BILLING_ACCOUNT_ID }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          MONTHLY_BUDGET_USD: ${{ vars.MONTHLY_BUDGET_USD }}
           HEALTH_CHECK_API_KEY: ${{ secrets.HEALTH_CHECK_API_KEY }}
         run: |
           set -euo pipefail
           if [ -n "$BILLING_ACCOUNT_ID" ]; then echo "TF_VAR_billing_account_id=$BILLING_ACCOUNT_ID" >> "$GITHUB_ENV"; fi
           if [ -n "$SUPABASE_PROJECT_REF" ]; then echo "TF_VAR_supabase_project_ref=$SUPABASE_PROJECT_REF" >> "$GITHUB_ENV"; fi
+          if [ -n "$MONTHLY_BUDGET_USD" ]; then
+            [[ "$MONTHLY_BUDGET_USD" =~ ^[0-9]+$ ]] || { echo "::error::MONTHLY_BUDGET_USD must be a whole number of dollars, got '$MONTHLY_BUDGET_USD'"; exit 1; }
+            echo "TF_VAR_monthly_budget_usd=$MONTHLY_BUDGET_USD" >> "$GITHUB_ENV"
+          fi
           if [ -n "$HEALTH_CHECK_API_KEY" ]; then echo "TF_VAR_health_check_api_key=$HEALTH_CHECK_API_KEY" >> "$GITHUB_ENV"; fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
