@@ -328,7 +328,7 @@ void main() {
       expect(points.last.longitude, greaterThan(points.first.longitude));
     });
 
-    test('reading a chat marks the other side\'s messages read', () async {
+    test("reading a chat marks the other side's messages read", () async {
       final repo = MockChatRepository(db, behavior);
       final jobId = db.chats.keys.first;
       final me = behavior.currentUserId;
