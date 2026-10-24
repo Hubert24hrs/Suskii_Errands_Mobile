@@ -140,7 +140,8 @@ npx playwright test -c tests/web-smoke                         # web smoke, afte
 npx playwright test -c tests/web-admin-e2e                     # admin console on real Supabase; build with env first (see its config)
 npx playwright test -c tests/web-customer-e2e                  # the website on real Supabase; build web-customer with NEXT_PUBLIC_SUPABASE_* first
 (cd apps/mobile && bundle exec fastlane lanes)                 # store lanes (RB-15)
-# Test APK for the owner's phone: every push to main republishes the dev-latest pre-release
+# Test APK for the owner's phone: every push to main republishes the dev-latest pre-release,
+# signed with the fixed test key once RB-15 action 32's secrets exist (apps/mobile/tool/new_test_key.ps1)
 # https://github.com/Hubert24hrs/Suskii_Errands_Mobile/releases/download/dev-latest/suskii-dev.apk (RB-15)
 ```
 

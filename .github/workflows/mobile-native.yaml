@@ -2,8 +2,10 @@ name: mobile-native
 
 # The Android store build, compiled on every change that could break it (RB-15). frontend-ci
 # runs the Dart suites; this proves the release bundle (R8 and resource shrinking included)
-# still compiles. Nothing is signed or uploaded: pull requests never see the upload key, so the
-# bundle is debug-signed. mobile-ios.yaml is the iOS half; mobile-release.yaml signs.
+# still compiles. Nothing is uploaded to a store and the bundle is debug-signed: this workflow
+# never sees the Play upload key. mobile-ios.yaml is the iOS half; mobile-release.yaml signs.
+# The test APK built on main is signed with a fixed test key when the ANDROID_DEV_* secrets
+# exist (RB-15 action 32), so each new one installs over the last; pull requests never get it.
 on:
   pull_request:
     paths: ['apps/mobile/**', 'packages/**', '.github/workflows/mobile-native.yaml']
@@ -72,11 +74,33 @@ jobs:
       - name: Release APK (dev defines, for installing on a test device)
         working-directory: apps/mobile
         # The Maps key comes from a secret; without it the APK shows the location fallback.
+        # The test key is handed over only for a build of main: a pull request signs with the
+        # runner's throwaway debug key, as before.
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          DEV_KEYSTORE_BASE64: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.ANDROID_DEV_KEYSTORE_BASE64 || '' }}
+          DEV_KEYSTORE_PASSWORD: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.ANDROID_DEV_KEYSTORE_PASSWORD || '' }}
+          DEV_KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.ANDROID_DEV_KEY_ALIAS || '' }}
+          DEV_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.ANDROID_DEV_KEY_PASSWORD || '' }}
         run: |
           set -euo pipefail
           tool/write_release_env.sh dev
+          if [ -n "$DEV_KEYSTORE_BASE64" ]; then
+            for v in DEV_KEYSTORE_PASSWORD DEV_KEY_ALIAS DEV_KEY_PASSWORD; do
+              test -n "${!v}" || { echo "ANDROID_DEV_KEYSTORE_BASE64 is set but the secret for $v is not (RB-15 action 32)"; exit 1; }
+            done
+            # Outside the checkout, so nothing can stage it; removed by the last step.
+            printf '%s' "$DEV_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/dev.jks"
+            {
+              echo "storeFile=$RUNNER_TEMP/dev.jks"
+              echo "storePassword=$DEV_KEYSTORE_PASSWORD"
+              echo "keyAlias=$DEV_KEY_ALIAS"
+              echo "keyPassword=$DEV_KEY_PASSWORD"
+            } > android/key.properties
+            echo "Signing the test APK with the fixed test key."
+          else
+            echo "No test key for this build: the APK is signed with the runner's debug key."
+          fi
           flutter build apk --release --dart-define-from-file=build/env/dev.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -85,12 +109,16 @@ jobs:
             apps/mobile/build/app/outputs/bundle/release/app-release.aab
             apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/dev.jks" apps/mobile/android/key.properties
 
   # A fixed download link for testing on a phone, published at the owner's request (2026-09-30):
   # the dev APK from the latest main build, as the `dev-latest` pre-release. The repository is
   # public, so the link needs no GitHub login, and it never changes, so a QR code of it keeps
-  # working (RB-15). Demo data only, because dev.json has no backend, and debug-signed: for a test
-  # device, never for Play. Pull requests never publish, and the build job keeps its read-only token.
+  # working (RB-15). Demo data only, because dev.json has no backend, and signed with the test key
+  # (or the runner's debug key before that exists): for a test device, never for Play. Pull
+  # requests never publish, and the build job keeps its read-only token.
   publish-dev-apk:
     needs: android
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -120,4 +148,4 @@ jobs:
           gh release delete dev-latest --cleanup-tag --yes || true
           gh release create dev-latest suskii-dev.apk --prerelease --target "$GITHUB_SHA" \
             --title "Suskii Dev (latest main build)" \
-            --notes "Built from ${GITHUB_SHA::7} by run ${GITHUB_RUN_ID}. Demo data, no backend: sign in with any phone number and any 6-digit code. Debug-signed, so Android asks to allow the install; not the Play build. Replaced on every build of main."
+            --notes "Built from ${GITHUB_SHA::7} by run ${GITHUB_RUN_ID}. Demo data, no backend: sign in with any phone number and any 6-digit code. Signed with a test key, not the Play key: Android asks to allow the install, and this is not the Play build. Replaced on every build of main."
