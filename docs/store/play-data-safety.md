@@ -38,7 +38,8 @@ the user asked for it to be sent (which Play also excludes):
 | Personal info → Other info | Yes (government ID number, for identity verification) | Required for providers; for customers only when a limit requires it | Fraud prevention, security and compliance | `submit_id_lookup`, `kyc` schema |
 | Financial info → Purchase history | Yes (jobs, payments, refunds, tips) | Required | App functionality | `payments`, ledger |
 | Financial info → Other financial info | Yes (payout bank account, for providers) | Required for providers to be paid | App functionality | `payout_accounts` (encrypted) |
-| Location → Precise location | Yes (provider's position when marking arrival; live trail during an active job) | Optional — a provider may refuse and confirm arrival manually | App functionality; Fraud prevention, security and compliance | `set_job_status`, `location_samples` |
+| Location → Precise location | Yes: a customer's pickup point when they tap "use my location"; an online provider's position every 45 s while the app is open (matching, `heartbeat`); the provider's position when marking arrival and the live trail during an active job; Suskii Meet's distance sort (not stored) | Optional — the pickup can be set on the map by hand, a provider may refuse and confirm arrival manually | App functionality; Fraud prevention, security and compliance | `create_request`, `heartbeat`, `set_job_status`, `location_samples` |
+| Location → Approximate location | Yes (2026-10-24): the **country** a new account is created in, inferred on the device from the mobile network, the SIM, the time zone or the region setting, with no permission, and sent once at sign-up. `VERIFY-IN-RESEARCH` whether a country-level inference counts as approximate location in Play's definition; declaring it is the conservative answer, and costs nothing because precise location is declared anyway | Required (it decides which country's rules apply) | App functionality | `lib/app/device_country.dart`, `profiles.country_code` |
 | Messages → Other in-app messages | Yes (job chat) | Optional | App functionality | `messages` |
 | Photos and videos → Photos | Yes (ID documents, receipts, proof of delivery, request photos) | Required for some steps (KYC, proof) | App functionality; Fraud prevention, security and compliance | storage buckets |
 | App activity → Other user-generated content | Yes (errand descriptions, ratings and reviews, support tickets, disputes) | Optional per feature | App functionality | various |
@@ -52,8 +53,9 @@ advertising ID, audio (until calls and the voice concierge exist), background lo
 
 ## Declarations elsewhere in App content
 
-- **Precise location** (enforced from 27 Jan 2027 [V] REPORT §10): transactional — checked when
-  a provider marks arrival; live tracking during an active job is the core function.
+- **Precise location** (enforced from 27 Jan 2027 [V] REPORT §10): core function, foreground
+  only — matching a request to the nearest online providers (their position while online), the
+  customer's pickup point, the arrival check and live tracking during an active job.
 - **Account deletion URL**: `https://<host>/en/delete-account`.
 - **Target audience and content**: adults; user-generated content with reporting and moderation
   (`reports`, `moderation_cases`).

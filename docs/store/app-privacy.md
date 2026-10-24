@@ -16,6 +16,7 @@ no tracking domains.
 | Contact Info → Phone Number | App Functionality | `NSPrivacyCollectedDataTypePhoneNumber` |
 | Contact Info → Physical Address | App Functionality | `NSPrivacyCollectedDataTypePhysicalAddress` |
 | Location → Precise Location | App Functionality | `NSPrivacyCollectedDataTypePreciseLocation` |
+| Location → Coarse Location (the country inferred from the time zone and region at sign-up, 2026-10-24; `VERIFY-IN-RESEARCH` whether a country counts) | App Functionality | `NSPrivacyCollectedDataTypeCoarseLocation` |
 | User Content → Photos or Videos | App Functionality | `NSPrivacyCollectedDataTypePhotosorVideos` |
 | User Content → Customer Support | App Functionality | `NSPrivacyCollectedDataTypeCustomerSupport` |
 | User Content → Other User Content | App Functionality | `NSPrivacyCollectedDataTypeOtherUserContent` |

@@ -5,6 +5,52 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 8) — Claude Code — production readiness: the app is on Play, the backend was not
+
+The owner says the app is **already live on Google Play**. The run history explains how, and
+what it means:
+
+- `mobile-release` run #1 (2026-10-13, `main` at `3fbf3ca`) built the signed **prod** AAB, version
+  code 10, with upload off; it was then uploaded by hand (RB-15 §3.3).
+- **No backend has ever been deployed**: zero `deploy-production` and `infra-deploy` runs, and
+  every dev/staging deploy skipped. Unless migrations were pushed to the `prod` project by hand,
+  the build on Play calls a database with no schema.
+
+Preparing the handover also found a launch blocker, now fixed:
+
+- **AA.13 (High)**: a production database had **no countries, states or service categories**.
+  They lived only in the dev seed, and nothing else can create them.
+  - Migration `20261024150000_production_reference_data` creates them in every environment. The
+    five countries are created `disabled`, so going live is still the four-eyes approval.
+  - `supabase/seed/01_reference.sql` now upserts the dev statuses; the duplicated cities,
+    categories and proof rules left the seed.
+  - CI builds the database the way production gets it (`db reset --no-seed`) and runs
+    `supabase/tools/check_production_reference.sql`. It fails on the old `main` and passes now.
+  - pgTAP is unchanged: 62 files, 1,835 assertions.
+- `mobile-release.yaml`: build number = `BUILD_NUMBER_FLOOR` (repository variable) + run × 10, or
+  the new `build_number` input. The first pipeline upload can then clear whatever version code
+  Play already holds. Validated with actionlint and against six input cases.
+- RB-08 step 0 for a new production project: the first two admins (the one insert outside
+  four-eyes), legal pages as a migration, and providers through a config change. Its stale
+  `propose_config_change` examples are fixed (idempotency key, target `country`).
+- RB-15:
+  - §3.4 covers taking over an app already on Play;
+  - the location permission row now reflects real use (pickup, the online heartbeat, Meet), and
+    it notes that the country is inferred without a permission;
+  - the Maps key restriction names the **app signing** SHA-1.
+- The store drafts and `ios/Runner/PrivacyInfo.xcprivacy` (Kimi's path, same standing as part 7)
+  declare location as it is now used, plus coarse location for the country (`VERIFY-IN-RESEARCH`
+  whether a country counts).
+- **`docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md`** is the prompt for an agent working with the
+  owner's credentials. It covers:
+  - Play takeover facts first;
+  - the production backend through RB-14 and RB-16;
+  - configuration-only integrations;
+  - the AAB through `mobile-release`, staged rollout;
+  - web hosting;
+  - the vendor adapters still stubbed (SMS, Flutterwave/Paystack, FCM/APNs, Smile ID, LiveKit,
+    AI, SOS).
+
 ## 2026-10-24 (part 7) — Claude Code — the real app name, no country picker, a sportsbook-style provider dashboard
 
 At the owner's request, in both apps (Kimi's paths; same standing as the 2026-10-24 exception in

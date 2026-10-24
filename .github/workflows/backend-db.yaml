@@ -58,6 +58,14 @@ jobs:
       - name: Start local stack
         run: supabase start -x studio,imgproxy,logflare,vector,supavisor,edge-runtime,postgres-meta
 
+      # Production is built from the migrations alone: no seed. It must still hold the
+      # countries, states and catalogue, every country disabled until the four-eyes go-live.
+      - name: Production-shaped database (migrations, no seed)
+        run: |
+          supabase db reset --local --no-seed
+          psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 \
+            -f supabase/tools/check_production_reference.sql
+
       - name: Apply every migration and the seed from zero
         run: supabase db reset --local
 

@@ -12,6 +12,8 @@ name: mobile-release
 #   ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEY_PASSWORD     Play upload key
 #   PLAY_SERVICE_ACCOUNT_JSON                            Play Developer API service account
 #   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8     App Store Connect API key
+# Variable (repository or environment): BUILD_NUMBER_FLOOR, the highest build number a store
+# already holds, when the app got there some other way (RB-15 §3.4).
 on:
   workflow_dispatch:
     inputs:
@@ -33,6 +35,10 @@ on:
         description: Upload to Play and TestFlight (off builds and keeps the artifacts only)
         type: boolean
         default: true
+      build_number:
+        description: Force this build number (versionCode / CFBundleVersion); empty for BUILD_NUMBER_FLOOR + run x 10
+        type: string
+        default: ''
   push:
     tags: ['mobile-v*']
 
@@ -45,9 +51,6 @@ concurrency:
 
 env:
   APP_ENV: ${{ inputs.environment || 'prod' }}
-  # Store build numbers only go up, and this workflow's run number does. Times ten leaves room
-  # for a build uploaded by hand between two runs (a hotfix) without a collision.
-  BUILD_NUMBER: ${{ github.run_number }}0
   UPLOAD: ${{ github.event_name == 'push' || inputs.upload }}
   PLAY_TRACK: ${{ inputs.play_track || 'internal' }}
 
@@ -59,6 +62,24 @@ jobs:
     environment: ${{ inputs.environment || 'prod' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Store build numbers only go up. Run number x 10 leaves room for a hotfix uploaded by hand
+      # between two runs; the repository variable BUILD_NUMBER_FLOOR lifts the series above what a
+      # store already holds (the app reached Play before this workflow uploaded anything, RB-15
+      # §3.4). Play's ceiling is 2100000000 [V] developer.android.com/studio/publish/versioning.
+      - name: Build number
+        env:
+          REQUESTED: ${{ inputs.build_number }}
+          FLOOR: ${{ vars.BUILD_NUMBER_FLOOR }}
+        run: |
+          set -euo pipefail
+          floor="${FLOOR:-0}"
+          [[ "$floor" =~ ^[0-9]+$ ]] || { echo "BUILD_NUMBER_FLOOR must be a whole number, got '$floor'"; exit 1; }
+          n="${REQUESTED:-$(( floor + GITHUB_RUN_NUMBER * 10 ))}"
+          [[ "$n" =~ ^[1-9][0-9]*$ ]] || { echo "build number must be a positive whole number, got '$n'"; exit 1; }
+          if [ "$n" -le "$floor" ]; then echo "build number $n is not above BUILD_NUMBER_FLOOR $floor"; exit 1; fi
+          if [ "$n" -gt 2100000000 ]; then echo "build number $n is above Play's ceiling"; exit 1; fi
+          echo "BUILD_NUMBER=$n" >> "$GITHUB_ENV"
+          echo "Build number $n"
       - name: Tag matches pubspec version
         if: github.event_name == 'push'
         run: |
@@ -137,6 +158,24 @@ jobs:
     environment: ${{ inputs.environment || 'prod' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Store build numbers only go up. Run number x 10 leaves room for a hotfix uploaded by hand
+      # between two runs; the repository variable BUILD_NUMBER_FLOOR lifts the series above what a
+      # store already holds (the app reached Play before this workflow uploaded anything, RB-15
+      # §3.4). Play's ceiling is 2100000000 [V] developer.android.com/studio/publish/versioning.
+      - name: Build number
+        env:
+          REQUESTED: ${{ inputs.build_number }}
+          FLOOR: ${{ vars.BUILD_NUMBER_FLOOR }}
+        run: |
+          set -euo pipefail
+          floor="${FLOOR:-0}"
+          [[ "$floor" =~ ^[0-9]+$ ]] || { echo "BUILD_NUMBER_FLOOR must be a whole number, got '$floor'"; exit 1; }
+          n="${REQUESTED:-$(( floor + GITHUB_RUN_NUMBER * 10 ))}"
+          [[ "$n" =~ ^[1-9][0-9]*$ ]] || { echo "build number must be a positive whole number, got '$n'"; exit 1; }
+          if [ "$n" -le "$floor" ]; then echo "build number $n is not above BUILD_NUMBER_FLOOR $floor"; exit 1; fi
+          if [ "$n" -gt 2100000000 ]; then echo "build number $n is above Play's ceiling"; exit 1; fi
+          echo "BUILD_NUMBER=$n" >> "$GITHUB_ENV"
+          echo "Build number $n"
       # Uploads must be built with Xcode 26 or later since 28 Apr 2026 [V]
       # developer.apple.com/news/upcoming-requirements. VERIFY-IN-RESEARCH: the runner image.
       - name: Select Xcode 26
