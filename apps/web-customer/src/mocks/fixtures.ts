@@ -737,7 +737,7 @@ export class MockDatabase {
         id: 'disp-1',
         jobId: 'req-3',
         openedBy: 'user-ada',
-        reasonKey: 'disputeReasonNotDelivered',
+        reasonKey: 'not_delivered',
         status: 'in_review',
         createdAt: hoursFrom(now, -2),
         slaDeadline: hoursFrom(now, 22),

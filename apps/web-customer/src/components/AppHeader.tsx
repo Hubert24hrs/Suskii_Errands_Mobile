@@ -24,13 +24,15 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
 
   return (
     <header className="border-b border-outline bg-surface-raised dark:border-outline-dark dark:bg-surface-dark-raised">
-      <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-lg">
+      <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-sm px-md sm:px-lg">
         <Link
           href={`/${locale}`}
-          className="flex items-center gap-sm text-title-large text-ink-primary dark:text-ink-dark-primary"
+          className="flex shrink-0 items-center gap-sm text-title-large text-ink-primary dark:text-ink-dark-primary"
+          aria-label={dict.header.appName}
         >
           <Image src="/brand/suskii_logo.png" alt="" width={28} height={32} priority />
-          {dict.header.appName}
+          {/* On a phone the logo stands alone, so the language links and sign-out fit on one line. */}
+          <span className="hidden sm:inline">{dict.header.appName}</span>
         </Link>
         <nav className="hidden items-center gap-lg md:flex">
           {(
@@ -51,7 +53,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-md">
+        <div className="flex items-center gap-sm sm:gap-md">
           <LocaleSwitcher locale={locale} />
           {auth.status === 'signed_in' && auth.user ? (
             <>
@@ -61,7 +63,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="rounded-md border border-outline px-lg py-sm text-label-large text-ink-secondary transition-colors duration-normal ease-standard hover:text-ink-primary dark:border-outline-dark dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary"
+                className="whitespace-nowrap rounded-md border border-outline px-md py-sm text-label-large sm:px-lg text-ink-secondary transition-colors duration-normal ease-standard hover:text-ink-primary dark:border-outline-dark dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary"
               >
                 {dict.auth.signOut}
               </button>
@@ -69,7 +71,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
           ) : auth.status === 'unknown' ? null : (
             <Link
               href={`/${locale}/auth`}
-              className="rounded-md bg-brand-primary px-lg py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong"
+              className="whitespace-nowrap rounded-md bg-brand-primary px-md py-sm text-label-large sm:px-lg text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong"
             >
               {dict.header.signIn}
             </Link>
