@@ -5,6 +5,28 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 4) — Claude Code — three customer-website fixes found by screenshotting every page
+
+At the owner's request, all 48 pages of the three sites were screenshotted on the mock build. Three
+defects in `web-customer` came out of it, fixed here:
+
+1. **`MoneyText` had its own formatter**, "intentionally duplicated" from `@/lib/money` while that file
+   was being written. It divided minor units by 10^exponent as a float and put the sign after the
+   symbol, so a debit read `₦-21,750.00`. It now delegates to `@/lib/money.formatMoney` (integer
+   math, `-₦21,750.00`); its `(amountMinor, currency)` signature is unchanged for the ten callers.
+2. **A mock dispute carried `reasonKey: 'disputeReasonNotDelivered'`**, an l10n key, where the wire code
+   is `not_delivered`; the list showed the raw key. Fixture only: the real backend sends the code.
+3. **The phone header overflowed in Pidgin**: "Suskii" ran into "English" and "Comot (sign out)"
+   wrapped. Below `sm` the brand is the logo alone (the link keeps its accessible name), and the
+   language links and the sign-in/out button no longer wrap.
+
+Web smoke 128/128 locally; the admin console and the marketing site showed nothing to fix.
+
+Also in this PR: GitHub's `ubuntu-latest` moved to Ubuntu 26.04 within the hour, and Playwright 1.56.1
+refuses to install Chromium's system dependencies there, so `web-smoke` failed before a test ran.
+The two jobs that install Playwright (`frontend-ci` `web-smoke`, `backend-db` `database`) are pinned to
+`ubuntu-24.04` until a Playwright upgrade supports the new image.
+
 ## 2026-10-24 (part 3) — Claude Code — home card without the concierge header
 
 At the owner's request (screenshot from the installed test APK), the customer home card no longer

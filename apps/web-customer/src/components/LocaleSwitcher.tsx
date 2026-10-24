@@ -19,8 +19,8 @@ export function LocaleSwitcher({ locale }: { locale: Locale }) {
             aria-current={active ? 'true' : undefined}
             className={
               active
-                ? 'rounded-sm px-sm py-xs font-semibold text-brand-primary dark:text-brand-secondary'
-                : 'rounded-sm px-sm py-xs text-ink-secondary hover:text-ink-primary dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary'
+                ? 'whitespace-nowrap rounded-sm px-sm py-xs font-semibold text-brand-primary dark:text-brand-secondary'
+                : 'whitespace-nowrap rounded-sm px-sm py-xs text-ink-secondary hover:text-ink-primary dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary'
             }
           >
             {localeNames[l]}
