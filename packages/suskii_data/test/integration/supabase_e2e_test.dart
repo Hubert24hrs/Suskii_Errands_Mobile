@@ -864,6 +864,118 @@ void main() {
       final after = await SupabaseBootstrapRepository(customer).getBootstrap();
       expect(after.accountDeletionScheduledFor, isNull);
     });
+
+    test('Suskii Meet: host, join, see who is going, cancel', () async {
+      Future<SupabaseGateway> signedIn(String email) async {
+        final c = client(anonKey);
+        addTearDown(c.dispose);
+        await c.auth.signInWithPassword(email: email, password: password);
+        return SupabaseGateway(c);
+      }
+
+      await createUser('e2e-host-$run@suskii.test', provider: false);
+      await createUser('e2e-guest-$run@suskii.test', provider: false);
+      final host = SupabaseMeetupRepository(
+        await signedIn('e2e-host-$run@suskii.test'),
+      );
+      final guest = SupabaseMeetupRepository(
+        await signedIn('e2e-guest-$run@suskii.test'),
+      );
+      final start = DateTime.now().add(const Duration(days: 2));
+      final id = await host.createMeetup(
+        MeetupDraft(
+          title: 'E2E picnic $run',
+          description: 'Bring something to share.',
+          topic: MeetupTopic.foodDrink,
+          venueName: 'Muri Okunola Park',
+          venue: const GeoPoint(latitude: 6.43, longitude: 3.42),
+          startsAt: start,
+          endsAt: start.add(const Duration(hours: 2)),
+          capacity: 2,
+        ),
+        idempotencyKey: newIdempotencyKey(),
+      );
+      final near = await guest.listMeetups(
+        near: const GeoPoint(latitude: 6.45, longitude: 3.40),
+      );
+      final found = near.singleWhere((Meetup m) => m.id == id);
+      expect(found.isHost, isFalse);
+      expect(found.distanceKm, isNotNull);
+      await expectLater(
+        guest.attendees(id),
+        throwsA(
+          isA<AppError>().having((e) => e.code, 'code', 'ERR_MEETUP_NOT_FOUND'),
+        ),
+      );
+      expect(
+        await guest.joinMeetup(id, idempotencyKey: newIdempotencyKey()),
+        1,
+      );
+      expect(
+        (await guest.attendees(id)).map((MeetupAttendee a) => a.isHost),
+        <bool>[true, false],
+      );
+      expect((await guest.myMeetups()).any((Meetup m) => m.id == id), isTrue);
+      await host.cancelMeetup(id, idempotencyKey: newIdempotencyKey());
+      expect((await guest.getMeetup(id)).isCancelled, isTrue);
+      expect(
+        (await guest.listMeetups()).any((Meetup m) => m.id == id),
+        isFalse,
+      );
+    });
+
+    test('a sign-up without a country chooses it once; customers publish unverified', () async {
+      final email = 'e2e-social-$run@suskii.test';
+      await service.auth.admin.createUser(
+        AdminUserAttributes(
+          email: email,
+          password: password,
+          emailConfirm: true,
+        ),
+      );
+      final c = client(anonKey);
+      addTearDown(c.dispose);
+      await c.auth.signInWithPassword(email: email, password: password);
+      final gateway = SupabaseGateway(c);
+      final users = SupabaseUserRepository(gateway);
+      expect((await users.getProfile()).countryCode, isEmpty);
+      await gateway.rpc('set_initial_country', <String, Object?>{
+        'p_country_code': 'NG',
+      });
+      final profile = await users.getProfile();
+      expect(profile.countryCode, 'NG');
+      expect(profile.customerVerification, VerificationStatus.unverified);
+      await expectLater(
+        gateway.rpc('set_initial_country', <String, Object?>{
+          'p_country_code': 'KE',
+        }),
+        throwsA(
+          isA<AppError>().having(
+            (e) => e.code,
+            'code',
+            'ERR_COUNTRY_ALREADY_SET',
+          ),
+        ),
+      );
+
+      final requests = SupabaseRequestRepository(gateway);
+      final draft = await requests.createRequest(
+        const CreateRequestInput(
+          categoryId: 'mechanics',
+          description: 'My car will not start; battery or starter.',
+          pickup: PlaceRef(
+            label: 'Allen Avenue, Ikeja',
+            point: GeoPoint(latitude: 6.6018, longitude: 3.3515),
+          ),
+        ),
+        idempotencyKey: newIdempotencyKey(),
+      );
+      final published = await requests.publishRequest(
+        draft.id,
+        idempotencyKey: newIdempotencyKey(),
+      );
+      expect(published.status, JobStatus.published);
+    });
   });
 }
 

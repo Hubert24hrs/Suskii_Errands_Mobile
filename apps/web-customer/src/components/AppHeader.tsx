@@ -8,6 +8,7 @@ import type { Locale } from '@/lib/i18n';
 import { authRepository } from '@/lib/repositories';
 import type { AuthState } from '@/mocks/types';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import Image from 'next/image';
 
 export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const router = useRouter();
@@ -28,9 +29,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
           href={`/${locale}`}
           className="flex items-center gap-sm text-title-large text-ink-primary dark:text-ink-dark-primary"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
-            S
-          </span>
+          <Image src="/brand/suskii_logo.png" alt="" width={28} height={32} priority />
           {dict.header.appName}
         </Link>
         <nav className="hidden items-center gap-lg md:flex">
@@ -38,6 +37,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
             [
               [dict.requests.listTitle, '/requests'],
               [dict.messages.title, '/messages'],
+              [dict.meet.title, '/meet'],
               [dict.wallet.title, '/wallet'],
               [dict.settings.title, '/settings'],
             ] as const

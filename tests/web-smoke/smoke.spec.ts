@@ -19,6 +19,8 @@ const routes: Record<keyof typeof apps, string[]> = {
     '/en/support',
     '/en/settings',
     '/en/verify',
+    '/en/meet',
+    '/en/meet/meet-1',
   ],
   marketing: [
     '/',
@@ -139,5 +141,44 @@ test.describe('marketing app-link files', () => {
       maxRedirects: 0,
     });
     expect([200, 404]).toContain(response.status());
+  });
+});
+
+// 2026-10-24: Google/Apple sign-in, the renamed concierge card and Suskii Meet, on the mock
+// backend (the build the smoke run serves has no Supabase env).
+test.describe('customer: sign-in, home and Suskii Meet', () => {
+  const base = `http://127.0.0.1:${apps.customer.port}`;
+
+  test('Google signs the demo user in; home names the new services', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/auth`);
+    await expect(page.getByTestId('auth-apple')).toBeVisible();
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+    await expect(page.getByText('Ask Suskii for any service')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Suskii Meet' })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('join a meet-up, then host one', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 6.455, longitude: 3.394 });
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/meet`);
+    await page.getByTestId('meet-card-meet-1').click();
+    await page.getByTestId('meet-join').click();
+    await expect(page.getByTestId('meet-leave')).toBeVisible();
+    await expect(page.getByText("Who's going")).toBeVisible();
+
+    await page.goto(`${base}/en/meet`);
+    await page.getByTestId('meet-create').click();
+    await page.getByTestId('meet-title').fill('Sunday picnic');
+    await page.getByTestId('meet-venue').fill('Muri Okunola Park');
+    await page.getByTestId('meet-locate').click();
+    await expect(page.getByText('Venue location set')).toBeVisible();
+    await page.getByTestId('meet-publish').click();
+    await expect(page.getByRole('heading', { name: 'Sunday picnic' })).toBeVisible();
+    await expect(page.getByTestId('meet-cancel')).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });

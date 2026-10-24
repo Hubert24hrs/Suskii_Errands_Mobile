@@ -63,8 +63,7 @@ export class MockPaymentRepository extends MockRepo {
   }
 
   /**
-   * Throws ERR_VERIFICATION_REQUIRED for unverified customers and
-   * ERR_INVALID_STATE unless the job is AGREED (first attempt) or
+   * Throws ERR_INVALID_STATE unless the job is AGREED (first attempt) or
    * PAYMENT_PENDING (retry within the TTL). The simulated webhook flips the
    * payment to HELD (or FAILED with failure injection) after
    * `paymentConfirmDelayMs`; a pending payment past its TTL fails with
@@ -99,9 +98,6 @@ export class MockPaymentRepository extends MockRepo {
     const { jobId, method, idempotencyKey, promoCode } = options;
     return this.idempotent(`initializePayment:${jobId}`, idempotencyKey, method, () => {
       const user = this.currentUser;
-      if (user.customerVerification !== 'verified') {
-        throw new AppError(ErrorCodes.verificationRequired);
-      }
       const job = this.db.requests[jobId];
       if (!job) throw new AppError(ErrorCodes.unknown);
       if (job.customerId !== user.id) {

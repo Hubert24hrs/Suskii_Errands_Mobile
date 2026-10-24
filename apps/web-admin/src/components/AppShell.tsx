@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 
 export type NavItem = { href: string; label: string; group: string };
 
@@ -42,9 +43,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r border-outline bg-surface-raised dark:border-outline-dark dark:bg-surface-dark-raised">
         <div className="flex h-16 items-center gap-sm border-b border-outline px-lg dark:border-outline-dark">
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
-            S
-          </span>
+          <Image src="/brand/suskii_logo.png" alt="" width={28} height={32} priority />
           <span className="text-title-large text-ink-primary dark:text-ink-dark-primary">
             {appName}
           </span>

@@ -145,6 +145,21 @@
       "rejected",
       "expired"
     ],
+    "meetup_status": [
+      "published",
+      "cancelled"
+    ],
+    "meetup_topic": [
+      "social",
+      "sports_fitness",
+      "business_networking",
+      "learning",
+      "faith",
+      "arts_culture",
+      "food_drink",
+      "outdoors",
+      "other"
+    ],
     "moderation_action": [
       "allow",
       "hold",

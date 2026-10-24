@@ -40,5 +40,8 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0016](0016-aurora-design-system.md) | "Aurora": a dark-first design system driven by one token set | Accepted | Store-readiness goal (redesign) | — |
 | [0017](0017-store-identity-and-release-signing.md) | Store identity, signing and the release pipeline | Accepted | Store-readiness goal | Client confirms the app id (OD-26) |
 | [0018](0018-field-encryption-in-the-database.md) | Field-level encryption inside the database: a Vault-held KEK and wrapped data keys (makes ADR-0007 concrete) | Accepted | Access notes; CR-06/CR-08; audit Y.19 | KMS once GCP billing exists (action 1) |
+| [0019](0019-brand-from-the-logo.md) | The brand comes from the Suskii Errands logo: icon, in-app logo, palette (supersedes ADR-0016's palette only) | Accepted | Owner supplied the logo (2026-10-24) | Store screenshots retaken (RB-15) |
+| [0020](0020-suskii-meet.md) | Suskii Meet: social meet-ups designed around who can see what | Accepted | Owner request (2026-10-24) | Client: attendee chat, paid events, age limits |
+| [0021](0021-verification-for-providers-only.md) | Identity verification is for service providers; Google and Apple sign-in, with the country set once | Accepted | Owner decision (2026-10-24) | OAuth clients per platform (client action 9) |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).

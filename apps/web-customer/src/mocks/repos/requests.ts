@@ -127,14 +127,14 @@ export class MockRequestRepository extends MockRepo {
   }
 
   /**
-   * DRAFT → PUBLISHED. Throws ERR_VERIFICATION_REQUIRED when the customer is
-   * not verified, so the UI routes to the verification flow.
+   * DRAFT → PUBLISHED. Throws ERR_VERIFICATION_REQUIRED only where a country
+   * requires customer verification (off by default), so the UI routes to it.
    */
   async publishRequest(jobId: string, idempotencyKey: string): Promise<JobRequest> {
     await this.gate();
     return this.idempotent(`publishRequest:${jobId}`, idempotencyKey, '', () => {
       const user = this.currentUser;
-      if (user.customerVerification !== 'verified') {
+      if (this.behavior.customerVerificationRequired && user.customerVerification !== 'verified') {
         throw new AppError(ErrorCodes.verificationRequired);
       }
       const request = this.db.requests[jobId];

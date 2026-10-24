@@ -14,6 +14,10 @@ class MockBehavior {
   });
 
   Duration latency;
+
+  /// Mirrors `customer_verification_required` (remote config, default off):
+  /// verification is for service providers only unless a country turns it on.
+  bool customerVerificationRequired = false;
   bool offline;
   int failNextCalls;
   String currentUserId;

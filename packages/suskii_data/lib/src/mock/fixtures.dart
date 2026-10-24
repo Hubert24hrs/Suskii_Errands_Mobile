@@ -98,6 +98,11 @@ class MockDatabase {
   /// Dispatch assignments: jobId → worker user id (M6 business console).
   late final Map<String, String> orgAssignments;
 
+  /// Suskii Meet: meet-ups by id, and who is going (user id → joined at).
+  late final Map<String, Meetup> meetups;
+  late final Map<String, String> meetupHosts;
+  late final Map<String, Map<String, DateTime>> meetupAttendees;
+
   /// Invitations waiting for a user: userId → invitations.
   late final Map<String, List<OrgInvitation>> orgInvitations;
 
@@ -128,6 +133,71 @@ class MockDatabase {
 
   void _seed() {
     final now = clock.now();
+    final meetDay = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(const Duration(days: 2, hours: 10));
+    meetupHosts = <String, String>{
+      'meet-1': 'user-chidi',
+      'meet-2': 'user-ada',
+      'meet-3': 'user-chidi',
+    };
+    meetups = <String, Meetup>{
+      'meet-1': Meetup(
+        id: 'meet-1',
+        title: 'Saturday book club',
+        description: 'We read one novel a month and talk about it over tea.',
+        topic: MeetupTopic.learning,
+        venueName: 'Terra Kulture, Victoria Island',
+        venue: const GeoPoint(latitude: 6.4300, longitude: 3.4200),
+        startsAt: meetDay,
+        endsAt: meetDay.add(const Duration(hours: 2)),
+        capacity: 20,
+        attendeeCount: 6,
+        status: MeetupStatus.published,
+        hostFirstName: 'Chidi',
+        isHost: false,
+        isAttending: false,
+      ),
+      'meet-2': Meetup(
+        id: 'meet-2',
+        title: 'Morning run, Ikoyi bridge',
+        description: 'An easy 5 km at conversation pace. All levels welcome.',
+        topic: MeetupTopic.sportsFitness,
+        venueName: 'Falomo roundabout, Ikoyi',
+        venue: const GeoPoint(latitude: 6.4446, longitude: 3.4256),
+        startsAt: meetDay.add(const Duration(days: 1, hours: -4)),
+        endsAt: meetDay.add(const Duration(days: 1, hours: -3)),
+        capacity: 15,
+        attendeeCount: 15,
+        status: MeetupStatus.published,
+        hostFirstName: 'Ada',
+        isHost: false,
+        isAttending: false,
+      ),
+      'meet-3': Meetup(
+        id: 'meet-3',
+        title: 'Tech founders networking',
+        description: 'Short intros, then open conversation. Bring a card.',
+        topic: MeetupTopic.businessNetworking,
+        venueName: 'Co-Creation Hub, Yaba',
+        venue: const GeoPoint(latitude: 6.5095, longitude: 3.3711),
+        startsAt: meetDay.add(const Duration(days: 4, hours: 7)),
+        endsAt: meetDay.add(const Duration(days: 4, hours: 10)),
+        capacity: 40,
+        attendeeCount: 12,
+        status: MeetupStatus.published,
+        hostFirstName: 'Chidi',
+        isHost: false,
+        isAttending: false,
+      ),
+    };
+    meetupAttendees = <String, Map<String, DateTime>>{
+      'meet-1': <String, DateTime>{},
+      'meet-2': <String, DateTime>{},
+      'meet-3': <String, DateTime>{},
+    };
 
     payments = <String, Payment>{};
     paymentByJob = <String, String>{};
@@ -638,6 +708,60 @@ class MockDatabase {
         iconKey: 'calendar',
         allowsCustom: false,
         proofRequirements: <String, int>{'photo': 1},
+      ),
+      const ServiceCategory(
+        id: 'mechanics',
+        labelKey: 'catMechanics',
+        iconKey: 'mechanic',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'fashion_design',
+        labelKey: 'catFashionDesign',
+        iconKey: 'fashion',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'beauty_hair',
+        labelKey: 'catBeautyHair',
+        iconKey: 'beauty',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'plumbing',
+        labelKey: 'catPlumbing',
+        iconKey: 'plumbing',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'electrical',
+        labelKey: 'catElectrical',
+        iconKey: 'electric',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'carpentry',
+        labelKey: 'catCarpentry',
+        iconKey: 'carpentry',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'catering',
+        labelKey: 'catCatering',
+        iconKey: 'catering',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'photography',
+        labelKey: 'catPhotography',
+        iconKey: 'camera',
+        allowsCustom: false,
+      ),
+      const ServiceCategory(
+        id: 'tutoring',
+        labelKey: 'catTutoring',
+        iconKey: 'school',
+        allowsCustom: false,
       ),
       const ServiceCategory(
         id: 'custom',

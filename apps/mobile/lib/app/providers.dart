@@ -5,6 +5,7 @@ import 'package:suskii_data/suskii_data.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
 import 'preferences.dart';
+import 'social_sign_in.dart';
 
 export 'preferences.dart';
 
@@ -57,6 +58,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),
   );
+});
+
+/// Google/Apple on the device. With the mock backend, a stand-in that needs
+/// no provider account.
+final socialSignInProvider = Provider<SocialSignIn>((ref) {
+  if (ref.watch(supabaseGatewayProvider) == null)
+    return const MockSocialSignIn();
+  return NativeSocialSignIn(ref.watch(appConfigProvider));
 });
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -591,3 +600,38 @@ final orgVehiclesProvider = FutureProvider<List<Vehicle>>(
 final orgAssignableJobsProvider = FutureProvider<List<JobRequest>>(
   (ref) => ref.watch(organizationRepositoryProvider).getAssignableJobs(),
 );
+
+/// ---------------------------------------------------------------------------
+/// Suskii Meet
+/// ---------------------------------------------------------------------------
+
+final meetupRepositoryProvider = Provider<MeetupRepository>((ref) {
+  ref.watch(sessionUserIdProvider);
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseMeetupRepository(gateway);
+  return MockMeetupRepository(
+    ref.watch(mockDatabaseProvider),
+    ref.watch(mockBehaviorProvider),
+  );
+});
+
+/// Upcoming meet-ups, optionally near where the person is. The position is
+/// sent to sort and filter, and never stored.
+final nearbyMeetupsProvider = FutureProvider.autoDispose
+    .family<List<Meetup>, GeoPoint?>(
+      (ref, near) =>
+          ref.watch(meetupRepositoryProvider).listMeetups(near: near),
+    );
+
+final myMeetupsProvider = FutureProvider.autoDispose<List<Meetup>>(
+  (ref) => ref.watch(meetupRepositoryProvider).myMeetups(),
+);
+
+final meetupProvider = FutureProvider.autoDispose.family<Meetup, String>(
+  (ref, id) => ref.watch(meetupRepositoryProvider).getMeetup(id),
+);
+
+final meetupAttendeesProvider = FutureProvider.autoDispose
+    .family<List<MeetupAttendee>, String>(
+      (ref, id) => ref.watch(meetupRepositoryProvider).attendees(id),
+    );

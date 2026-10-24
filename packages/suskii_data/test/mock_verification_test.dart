@@ -415,16 +415,31 @@ void main() {
       );
     });
 
-    test('social sign-in placeholders throw featureUnavailable', () async {
+    test('Google and Apple sign in with an ID token', () async {
       final repo = MockAuthRepository(db, behavior);
-      expect(
-        repo.signInWithGoogle,
-        throwsA(expectCode(ErrorCodes.featureUnavailable)),
+      final user = await repo.signInWithIdToken(
+        SocialProvider.google,
+        idToken: 'header.payload.signature',
       );
+      expect(user.id, behavior.currentUserId);
+      final state = await repo.authStateChanges().first;
+      expect(state.status, AuthStatus.signedIn);
       expect(
-        repo.signInWithApple,
-        throwsA(expectCode(ErrorCodes.featureUnavailable)),
+        () => repo.signInWithIdToken(SocialProvider.apple, idToken: ''),
+        throwsA(expectCode(ErrorCodes.unauthenticated)),
       );
+    });
+
+    test('a social sign-up without a country takes the chosen one', () async {
+      db.users[behavior.currentUserId] = db.users[behavior.currentUserId]!
+          .copyWith(countryCode: '');
+      final repo = MockAuthRepository(db, behavior);
+      final user = await repo.signInWithIdToken(
+        SocialProvider.apple,
+        idToken: 'token',
+        countryCode: 'ke',
+      );
+      expect(user.countryCode, 'KE');
     });
   });
 }

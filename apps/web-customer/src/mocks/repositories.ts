@@ -28,6 +28,7 @@ import {
   MockSettingsRepository,
 } from './repos/account';
 import { MockConciergeRepository, MockVerificationRepository } from './repos/concierge';
+import { MockMeetupRepository } from './repos/meet';
 
 export { mockBehavior } from './behavior';
 export { db, createMockDatabase, MockDatabase } from './fixtures';
@@ -80,3 +81,4 @@ export const supportRepository = new MockSupportRepository(db, mockBehavior);
 export const settingsRepository = new MockSettingsRepository(db, mockBehavior);
 export const conciergeRepository = new MockConciergeRepository(db, mockBehavior);
 export const verificationRepository = new MockVerificationRepository(db, mockBehavior);
+export const meetupRepository = new MockMeetupRepository(db, mockBehavior);

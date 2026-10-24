@@ -39,6 +39,15 @@ String categoryLabel(AppLocalizations l10n, String labelKey) =>
       'catTransportation' => l10n.catTransportation,
       'catTechBusiness' => l10n.catTechBusiness,
       'catEventAssistance' => l10n.catEventAssistance,
+      'catMechanics' => l10n.catMechanics,
+      'catFashionDesign' => l10n.catFashionDesign,
+      'catBeautyHair' => l10n.catBeautyHair,
+      'catPlumbing' => l10n.catPlumbing,
+      'catElectrical' => l10n.catElectrical,
+      'catCarpentry' => l10n.catCarpentry,
+      'catCatering' => l10n.catCatering,
+      'catPhotography' => l10n.catPhotography,
+      'catTutoring' => l10n.catTutoring,
       _ => l10n.catCustom,
     };
 

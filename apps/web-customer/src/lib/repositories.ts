@@ -25,6 +25,7 @@ import {
   supportRepository as mockSupportRepository,
   trackingRepository as mockTrackingRepository,
   verificationRepository as mockVerificationRepository,
+  meetupRepository as mockMeetupRepository,
   walletRepository as mockWalletRepository,
   authRepository as mockAuthRepository,
   userRepository as mockUserRepository,
@@ -37,6 +38,7 @@ import { SupabaseChatRepository } from './supabase/chatRepository';
 import { SupabaseDisputeRepository } from './supabase/disputeRepository';
 import { SupabaseGateway } from './supabase/gateway';
 import { SupabaseJobProgressRepository } from './supabase/jobProgressRepository';
+import { SupabaseMeetupRepository } from './supabase/meetupRepository';
 import { SupabaseOfferRepository } from './supabase/offerRepository';
 import { SupabasePaymentRepository } from './supabase/paymentRepository';
 import {
@@ -136,3 +138,8 @@ export const promoRepository = supabaseGateway ? new SupabasePromoRepository() :
 export const conciergeRepository = supabaseGateway
   ? new SupabaseConciergeRepository()
   : mockConciergeRepository;
+
+// Suskii Meet (2026-10-24).
+export const meetupRepository = supabaseGateway
+  ? new SupabaseMeetupRepository(supabaseGateway)
+  : mockMeetupRepository;

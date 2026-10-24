@@ -30,5 +30,6 @@ flutter:
       fonts:
         - asset: assets/fonts/Manrope-Variable.ttf
   assets:
+    - assets/brand/suskii_logo.png
     - assets/fonts/OFL-Sora.txt
     - assets/fonts/OFL-Manrope.txt

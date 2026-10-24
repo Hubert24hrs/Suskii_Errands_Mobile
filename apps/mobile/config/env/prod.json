@@ -8,5 +8,8 @@
   "SENTRY_DSN": "",
   "PRIVACY_POLICY_URL": "https://suskii-errands.example/en/legal/privacy",
   "TERMS_URL": "https://suskii-errands.example/en/legal/terms",
-  "SUPPORT_EMAIL": "support@suskii-errands.example"
+  "SUPPORT_EMAIL": "support@suskii-errands.example",
+  "GOOGLE_WEB_CLIENT_ID": "",
+  "GOOGLE_IOS_CLIENT_ID": "",
+  "GOOGLE_REVERSED_CLIENT_ID": ""
 }

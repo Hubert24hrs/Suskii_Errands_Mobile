@@ -13,6 +13,8 @@ class AppConfig {
     required this.privacyPolicyUrl,
     required this.termsUrl,
     required this.supportEmail,
+    required this.googleWebClientId,
+    required this.googleIosClientId,
   });
 
   final AppFlavor flavor;
@@ -35,6 +37,13 @@ class AppConfig {
   final String termsUrl;
   final String supportEmail;
 
+  /// Google sign-in OAuth client IDs (public identifiers, not secrets). The
+  /// web client ID is the audience of the ID token Supabase verifies; the iOS
+  /// one is what the iOS SDK signs in with. Empty: Google sign-in is not set
+  /// up for this build.
+  final String googleWebClientId;
+  final String googleIosClientId;
+
   bool get isProd => flavor == AppFlavor.prod;
 
   /// True when no backend is configured and every repository is the mock:
@@ -56,6 +65,8 @@ class AppConfig {
       privacyPolicyUrl: const String.fromEnvironment('PRIVACY_POLICY_URL'),
       termsUrl: const String.fromEnvironment('TERMS_URL'),
       supportEmail: const String.fromEnvironment('SUPPORT_EMAIL'),
+      googleWebClientId: const String.fromEnvironment('GOOGLE_WEB_CLIENT_ID'),
+      googleIosClientId: const String.fromEnvironment('GOOGLE_IOS_CLIENT_ID'),
     );
   }
 }

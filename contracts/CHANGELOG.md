@@ -8,6 +8,44 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.3.0] - 2026-10-24
+
+Suskii Meet, the country step for Google and Apple sign-ups, and customer verification switched off
+by default (owner decisions; ADR-0020, ADR-0021). **MINOR**: functions added, one behaviour change
+under an unchanged signature.
+
+### Added
+
+- **`set_initial_country(p_country_code, p_language?)`** → `char(2)`. Sets the caller's country
+  once, while it is NULL (a `signInWithIdToken` sign-up has no metadata). The same answer again
+  returns it; a different one raises `ERR_COUNTRY_ALREADY_SET`; a country that is not open raises
+  `ERR_COUNTRY_NOT_SUPPORTED`.
+- **Suskii Meet.**
+  - `create_meetup(p_idempotency_key, p_title, p_description, p_topic, p_venue_name, p_venue_lat,
+    p_venue_lng, p_starts_at, p_ends_at, p_capacity)` → `uuid`.
+  - `list_meetups(p_lat?, p_lng?, p_radius_km?, p_topic?, p_limit?)`, `get_meetup(p_meetup_id)` and
+    `my_meetups()`. Each returns rows `{id, title, description, topic, venue_name, venue_lat,
+    venue_lng, starts_at, ends_at, capacity, attendee_count, status, host_first_name, is_host,
+    is_attending, distance_km}`.
+  - `join_meetup(p_idempotency_key, p_meetup_id)` → the number going.
+  - `leave_meetup(p_meetup_id)` → `boolean`.
+  - `cancel_meetup(p_idempotency_key, p_meetup_id)` → `meetup_status`.
+  - `meetup_attendees(p_meetup_id)` → `{first_name, is_host, joined_at}`, for the host and the
+    people going only.
+  - Enums `meetup_topic` and `meetup_status`. No client table grants.
+- **Error codes:** `ERR_COUNTRY_ALREADY_SET`, `ERR_COUNTRY_NOT_SET`, `ERR_MEETUP_NOT_FOUND`,
+  `ERR_MEETUP_FULL`, `ERR_MEETUP_CLOSED`, `ERR_MEETUP_LIMIT_REACHED`, `ERR_MEETUP_TIME_INVALID`.
+- **Remote config:**
+  - `customer_verification_required` (client-visible, default `false`);
+  - `meetup_max_active_hosted` (3).
+- **Moderation:** `moderation_cases.subject_kind` admits `meetup`.
+
+### Changed (behaviour, no signature change)
+
+- **`publish_request`** (and the scheduled publisher) no longer requires
+  `customer_verification = verified` unless `customer_verification_required` is `true` for the
+  request's country. Providers are unaffected.
+
 ## [2.2.0] - 2026-10-13
 
 The last provider tool, promo codes that can actually be redeemed, and invite-by-phone without the

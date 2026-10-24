@@ -33,19 +33,22 @@ void main() {
   }
 
   group('payments (M4)', () {
-    test('initialize requires a verified customer', () async {
-      behavior.currentUserId = 'user-chidi';
-      agreeReq1();
-      final repo = MockPaymentRepository(db, behavior);
-      await expectThrows(
-        () => repo.initializePayment(
+    test(
+      'an unverified customer can pay: verification is for providers',
+      () async {
+        db.users['user-ada'] = db.users['user-ada']!.copyWith(
+          customerVerification: VerificationStatus.unverified,
+        );
+        agreeReq1();
+        final repo = MockPaymentRepository(db, behavior);
+        final payment = await repo.initializePayment(
           jobId: 'req-1',
           method: PaymentMethod.card,
           idempotencyKey: newIdempotencyKey(),
-        ),
-        ErrorCodes.verificationRequired,
-      );
-    });
+        );
+        expect(payment, isNotNull);
+      },
+    );
 
     test('initialize requires an AGREED/PAYMENT_PENDING job', () async {
       final repo = MockPaymentRepository(db, behavior);

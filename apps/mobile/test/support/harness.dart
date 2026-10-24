@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,12 +117,38 @@ class TestApp {
     addTearDown(() {
       if (!app._disposed) container.dispose();
     });
+    await _precacheBrandLogo(tester);
     await tester.pumpWidget(
       UncontrolledProviderScope(container: container, child: const SuskiiApp()),
     );
     await settle(tester);
     return app;
   }
+}
+
+/// Decodes the logo into the image cache before the first frame. Image
+/// decoding is real asynchronous work that fake time does not advance, so
+/// without this a golden can be captured before the logo has painted.
+Future<void> _precacheBrandLogo(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    final done = Completer<void>();
+    final stream = const AssetImage(
+      'assets/brand/suskii_logo.png',
+      package: 'suskii_design',
+    ).resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (_, _) {
+        if (!done.isCompleted) done.complete();
+      },
+      onError: (Object error, _) {
+        if (!done.isCompleted) done.completeError(error);
+      },
+    );
+    stream.addListener(listener);
+    await done.future;
+    stream.removeListener(listener);
+  });
 }
 
 /// Pumps frames until nothing is scheduled or [timeout] of fake time has

@@ -16,6 +16,7 @@ import {
   type PriceBandBasis,
   type PriceBandConfidence,
   type ServiceCategory,
+  type SocialProvider,
   type Urgency,
   type UserMode,
 } from '../types';
@@ -120,14 +121,16 @@ export class MockAuthRepository extends MockRepo {
     return updated;
   }
 
-  async signInWithGoogle(): Promise<AppUser> {
+  /** The mock has no provider to leave for: it signs the demo user in. */
+  async signInWithProvider(
+    _provider: SocialProvider,
+    options: { countryCode: string; redirectTo: string },
+  ): Promise<void> {
     await this.gate();
-    throw new AppError(ErrorCodes.featureUnavailable);
-  }
-
-  async signInWithApple(): Promise<AppUser> {
-    await this.gate();
-    throw new AppError(ErrorCodes.featureUnavailable);
+    const user = this.currentUser;
+    const updated: AppUser = user.countryCode ? user : { ...user, countryCode: options.countryCode };
+    this.db.users[user.id] = updated;
+    this.setState({ status: 'signed_in', user: updated });
   }
 
   async signOut(): Promise<void> {

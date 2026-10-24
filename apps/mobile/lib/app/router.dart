@@ -25,6 +25,9 @@ import '../features/customer/support_ticket_page.dart';
 import '../features/customer/tracking_page.dart';
 import '../features/customer/voice_concierge_page.dart';
 import '../features/customer/wallet_page.dart';
+import '../features/meet/create_meet_page.dart';
+import '../features/meet/meet_detail_page.dart';
+import '../features/meet/meet_page.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/provider/earnings_page.dart';
 import '../features/provider/my_offers_page.dart';
@@ -90,6 +93,12 @@ abstract final class AppRoutes {
   static const String customerSupport = '/customer/support';
   static const String customerSupportTicket = '/customer/support/:id';
   static const String customerSettings = '/customer/settings';
+
+  // Suskii Meet: either mode, so not under /customer or /provider.
+  static const String meet = '/meet';
+  static const String meetNew = '/meet/new';
+  static const String meetDetail = '/meet/:id';
+  static String meetDetailPath(String id) => '/meet/$id';
 
   static String customerSupportTicketPath(String id) => '/customer/support/$id';
 
@@ -339,6 +348,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.customerRequestCall,
         builder: (context, state) =>
             CallPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.meet,
+        builder: (context, state) => const MeetPage(),
+      ),
+      // `new` before `:id`, or it would be read as an id.
+      GoRoute(
+        path: AppRoutes.meetNew,
+        builder: (context, state) => const CreateMeetPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.meetDetail,
+        builder: (context, state) =>
+            MeetDetailPage(meetupId: state.pathParameters['id']!),
       ),
       // M5 routes — declared before the shells like the M3/M4 routes.
       GoRoute(

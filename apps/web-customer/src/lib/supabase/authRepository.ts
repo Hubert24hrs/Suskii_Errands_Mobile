@@ -1,15 +1,18 @@
 // AuthRepository over Supabase Auth (GoTrue) + the `profiles` row (own row
-// only — RLS). Phone/email OTP are GoTrue's; social providers stay
-// unavailable until vendor accounts exist. Mirrors
+// only — RLS). Phone/email OTP are GoTrue's; Google and Apple are GoTrue's
+// OAuth redirect flow (the provider must be enabled with the web client and
+// its secret, supabase/deploy/write-remote-config.sh). Mirrors
 // packages/suskii_data/lib/src/supabase/supabase_auth_repository.dart.
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
-import type { AppUser, AuthState } from '@/mocks/types';
+import type { AppUser, AuthState, SocialProvider } from '@/mocks/types';
 import type { Unsubscribe } from '@/mocks/repos/base';
 
 import { mapSupabaseError } from './errors';
 import type { SupabaseGateway } from './gateway';
 import { fetchMyProfile } from './userRepository';
+
+const PENDING_COUNTRY_KEY = 'suskii.pendingCountry';
 
 export class SupabaseAuthRepository {
   constructor(private readonly gateway: SupabaseGateway) {}
@@ -25,6 +28,7 @@ export class SupabaseAuthRepository {
         return;
       }
       void fetchMyProfile(this.gateway)
+        .then((user) => this.applyPendingCountry(user))
         .then((user) => onChange({ status: 'signed_in', user }))
         .catch(() => {
           // Profile unreadable (e.g. mid-signup before the row exists): the
@@ -33,6 +37,17 @@ export class SupabaseAuthRepository {
         });
     });
     return () => subscription.unsubscribe();
+  }
+
+  /** A Google or Apple sign-up has no country yet: set the one chosen before
+   * the redirect, once. Anything else passes through untouched. */
+  private async applyPendingCountry(user: AppUser): Promise<AppUser> {
+    if (user.countryCode || typeof window === 'undefined') return user;
+    const pending = window.sessionStorage.getItem(PENDING_COUNTRY_KEY);
+    if (!pending) return user;
+    window.sessionStorage.removeItem(PENDING_COUNTRY_KEY);
+    await this.gateway.rpc('set_initial_country', { p_country_code: pending });
+    return fetchMyProfile(this.gateway);
   }
 
   async requestPhoneOtp(phoneE164: string): Promise<void> {
@@ -83,12 +98,24 @@ export class SupabaseAuthRepository {
     return fetchMyProfile(this.gateway);
   }
 
-  async signInWithGoogle(): Promise<AppUser> {
-    throw new AppError(ErrorCodes.featureUnavailable);
-  }
-
-  async signInWithApple(): Promise<AppUser> {
-    throw new AppError(ErrorCodes.featureUnavailable);
+  /** Leaves the page for Google or Apple; the session arrives when the
+   * provider redirects back and supabase-js reads it from the URL. The chosen
+   * country waits in sessionStorage, because an OAuth sign-up carries no
+   * metadata and the new profile has none until `set_initial_country`. */
+  async signInWithProvider(
+    provider: SocialProvider,
+    options: { countryCode: string; redirectTo: string },
+  ): Promise<void> {
+    try {
+      window.sessionStorage.setItem(PENDING_COUNTRY_KEY, options.countryCode);
+      const { error } = await this.gateway.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: options.redirectTo },
+      });
+      if (error) throw error;
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
   }
 
   async signOut(): Promise<void> {

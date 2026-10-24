@@ -4,4 +4,7 @@
 APP_DISPLAY_NAME = Suskii Dev
 APP_ID_SUFFIX = .dev
 APP_LINK_HOST = dev.suskii-errands.example
+// Google sign-in's callback URL scheme: the iOS OAuth client ID reversed. A placeholder until
+// the define file carries the real one (it is a public identifier, not a secret).
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.not-configured
 #include? "DartDefines.xcconfig"

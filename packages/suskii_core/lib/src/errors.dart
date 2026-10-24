@@ -55,6 +55,13 @@ abstract final class ErrorCodes {
   static const String otpRateLimited = 'ERR_OTP_RATE_LIMITED';
   static const String verificationFailed = 'ERR_VERIFICATION_FAILED';
   static const String verificationRequired = 'ERR_VERIFICATION_REQUIRED';
+  static const String countryNotSet = 'ERR_COUNTRY_NOT_SET';
+  static const String countryAlreadySet = 'ERR_COUNTRY_ALREADY_SET';
+  static const String meetupNotFound = 'ERR_MEETUP_NOT_FOUND';
+  static const String meetupFull = 'ERR_MEETUP_FULL';
+  static const String meetupClosed = 'ERR_MEETUP_CLOSED';
+  static const String meetupLimitReached = 'ERR_MEETUP_LIMIT_REACHED';
+  static const String meetupTimeInvalid = 'ERR_MEETUP_TIME_INVALID';
   static const String consentRequired = 'ERR_CONSENT_REQUIRED';
   static const String verificationRejected = 'ERR_VERIFICATION_REJECTED';
   static const String kycStepInvalid = 'ERR_KYC_STEP_INVALID';

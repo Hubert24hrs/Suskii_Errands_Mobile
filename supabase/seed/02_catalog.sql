@@ -16,6 +16,15 @@ VALUES
   ('transportation',      'catTransportation',     'car',       true,  false,  900, 5,  90),
   ('tech_business',       'catTechBusiness',       'laptop',    false, false, 1800, 5, 100),
   ('event_assistance',    'catEventAssistance',    'calendar',  false, false, 1800, 5, 110),
+  ('mechanics',           'catMechanics',          'mechanic',  false, false, 1800, 5, 120),
+  ('fashion_design',      'catFashionDesign',      'fashion',   false, false, 1800, 5, 130),
+  ('beauty_hair',         'catBeautyHair',         'beauty',    false, false, 1800, 5, 140),
+  ('plumbing',            'catPlumbing',           'plumbing',  false, false, 1800, 5, 150),
+  ('electrical',          'catElectrical',         'electric',  false, false, 1800, 5, 160),
+  ('carpentry',           'catCarpentry',          'carpentry', false, false, 1800, 5, 170),
+  ('catering',            'catCatering',           'catering',  false, false, 1800, 5, 180),
+  ('photography',         'catPhotography',        'camera',    false, false, 1800, 5, 190),
+  ('tutoring',            'catTutoring',           'school',    false, false, 1800, 5, 200),
   ('custom',              'catCustom',             'magic',     false, true,   900, 5, 900)
 ON CONFLICT (key) DO NOTHING;
 
