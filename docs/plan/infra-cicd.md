@@ -216,7 +216,7 @@ Retention of backups follows the DPIA: backups older than the longest retention 
 | # | Item | Owner | Needed by |
 |---|---|---|---|
 | I-1 | **GitHub plan** for production approval gates on a private repo (§6.1) | Client | Phase 2 |
-| I-2 | ~~**Web hosting** for the three Next.js apps: e.g. Vercel, or Cloudflare (already in the stack for WAF and Access) via OpenNext [S]~~ **Decided 2026-10-24 by the owner: Cloudflare**, OpenNext on Workers, the admin console behind Cloudflare Access ([ADR-0023](../adr/0023-web-hosting-on-cloudflare.md)). The domain (action 18) is still open | Kimi + client | Before M9 |
+| I-2 | ~~**Web hosting** for the three Next.js apps: e.g. Vercel, or Cloudflare (already in the stack for WAF and Access) via OpenNext [S]~~ **Decided 2026-10-24 by the owner: Cloudflare**, OpenNext on Workers, the admin console behind Cloudflare Access ([ADR-0023](../adr/0023-web-hosting-on-cloudflare.md)). The domain (action 18) is `suskiierrand.com`, bought 2026-10-24 through Cloudflare Registrar, DNS on Cloudflare | Kimi + client | Before M9 |
 | I-3 | Supabase plan per environment and whether Branching and log drains are included [VERIFY-IN-RESEARCH] | Claude | Phase 2 |
 | I-4 | Voice agent hosting: Cloud Run vs LiveKit-hosted agents | Claude, via S-08 | Phase 7 |
 | I-5 | How the Supabase CLI wraps migrations in transactions (affects `CREATE INDEX CONCURRENTLY`) [VERIFY-IN-RESEARCH] | Claude | Phase 2 |

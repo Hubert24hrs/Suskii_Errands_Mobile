@@ -5,6 +5,25 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 11) — Claude Code — the domain: suskiierrand.com (action 18)
+
+- The owner bought **`suskiierrand.com`** through Cloudflare Registrar:
+  - active, auto-renew on, expires 2027-10-24;
+  - WHOIS redacted;
+  - DNS on Cloudflare's Free plan, universal TLS certificate issued;
+  - no DNS records yet.
+- **Spelling**: there is no final "s", unlike the app name ("Suskii Errands") and the package
+  (`com.suskiierrands.app`). `suskiierrands.com` was registered on 2026-06-02 at Host Africa,
+  owner unconfirmed.
+- **Not done yet, on purpose**: the placeholder `suskii-errands.example` stays in the code until
+  the sites deploy (ADR-0023), so nothing points at a host that does not serve. For Kimi:
+  - `apps/mobile/config/env/*.json`;
+  - `fastlane/metadata`;
+  - the three web apps' URLs.
+
+  App Links (`assetlinks.json` with the fingerprints in RB-15 §3.4), the legal-page URLs and a
+  `no-reply@` sending address for Auth email follow from the same change.
+
 ## 2026-10-24 (part 10) — Claude Code — web hosting decided: Cloudflare (ADR-0023)
 
 - The owner chose **Cloudflare** for the three websites (infra I-2):
