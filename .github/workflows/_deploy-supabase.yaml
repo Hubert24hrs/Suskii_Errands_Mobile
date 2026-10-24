@@ -13,7 +13,9 @@ name: _deploy-supabase
 #   secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, HEALTH_CHECK_API_KEY,
 #            SUPABASE_AUTH_CAPTCHA_SECRET, SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET,
 #            SUPABASE_AUTH_EXTERNAL_APPLE_SECRET (all optional)
-# Runtime secrets for functions come from GCP Secret Manager through Workload Identity (§4).
+# Runtime secrets for functions come from GCP Secret Manager through Workload Identity (§4):
+# send-sms-hook-secrets is required; sentry-dsn-edge-functions and
+# google-play-integrity-service-account are optional and may have no version yet.
 
 on:
   workflow_call:
@@ -92,13 +94,13 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
 
+      # Required runtime secret only: this action fails on a secret with no version, which is
+      # right here and wrong for the two optional ones read in "Function secrets".
       - id: runtime
         uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
         with:
           secrets: |-
             send_sms_hook_secrets:${{ vars.GCP_PROJECT_ID }}/send-sms-hook-secrets
-            play_integrity_sa:${{ vars.GCP_PROJECT_ID }}/google-play-integrity-service-account
-            sentry_dsn:${{ vars.GCP_PROJECT_ID }}/sentry-dsn-edge-functions
 
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
@@ -116,8 +118,7 @@ jobs:
       - name: Function secrets
         env:
           SEND_SMS_HOOK_SECRETS: ${{ steps.runtime.outputs.send_sms_hook_secrets }}
-          PLAY_INTEGRITY_SA: ${{ steps.runtime.outputs.play_integrity_sa }}
-          SENTRY_DSN: ${{ steps.runtime.outputs.sentry_dsn }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           SUSKII_ENV: ${{ vars.SUSKII_ENV }}
           ANDROID_PACKAGE_NAME: ${{ vars.ANDROID_PACKAGE_NAME }}
           IOS_APP_ID: ${{ vars.IOS_APP_ID }}
@@ -128,15 +129,34 @@ jobs:
           set -euo pipefail
           umask 077
           env_file="$RUNNER_TEMP/functions.env"
+          # Optional per RB-14: a secret with no version leaves Sentry or Play Integrity off, which
+          # both functions treat as not configured. NOT_FOUND is the only failure tolerated; a
+          # permission error must stop the deploy rather than quietly switch integrity off.
+          optional_secret() {
+            local value
+            if value="$(gcloud secrets versions access latest --secret "$1" --project "$GCP_PROJECT_ID" 2>"$RUNNER_TEMP/gcloud.err")"; then
+              printf '%s' "$value"
+            elif grep -q 'NOT_FOUND' "$RUNNER_TEMP/gcloud.err"; then
+              echo "::notice::$1 has no version in $GCP_PROJECT_ID; deploying without it" >&2
+            else
+              cat "$RUNNER_TEMP/gcloud.err" >&2
+              return 1
+            fi
+          }
+          sentry_dsn="$(optional_secret sentry-dsn-edge-functions)"
+          play_sa_raw="$(optional_secret google-play-integrity-service-account)"
           # Service account JSON is compacted to one line; values are single-quoted for the
           # dotenv parser and contain no single quotes.
           play_sa=""
-          if [ -n "$PLAY_INTEGRITY_SA" ]; then play_sa="$(printf '%s' "$PLAY_INTEGRITY_SA" | jq -c .)"; fi
+          if [ -n "$play_sa_raw" ]; then play_sa="$(printf '%s' "$play_sa_raw" | jq -c .)"; fi
+          for value in "$sentry_dsn" "$play_sa"; do
+            if [ -n "$value" ]; then echo "::add-mask::$value"; fi
+          done
           {
             printf "SEND_SMS_HOOK_SECRETS='%s'\n" "$SEND_SMS_HOOK_SECRETS"
             printf "SUSKII_ENV='%s'\n" "$SUSKII_ENV"
             printf "SUSKII_RELEASE='%s'\n" "$SHA"
-            printf "SENTRY_DSN='%s'\n" "$SENTRY_DSN"
+            printf "SENTRY_DSN='%s'\n" "$sentry_dsn"
             printf "ANDROID_PACKAGE_NAME='%s'\n" "$ANDROID_PACKAGE_NAME"
             printf "GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT='%s'\n" "$play_sa"
             printf "IOS_APP_ID='%s'\n" "$IOS_APP_ID"

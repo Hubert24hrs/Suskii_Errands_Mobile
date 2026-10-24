@@ -109,7 +109,7 @@ Depends on the failed step:
 | Item | Where |
 |---|---|
 | GCP project + billing; `terraform apply` of `infra/terraform/envs/<env>` by a named admin (creates WIF, deployer and terraform-runner identities, secret names) | `infra/terraform/README.md` |
-| Secret values added: `send-sms-hook-secrets`, `sentry-dsn-edge-functions`, `google-play-integrity-service-account` (optional), `supabase-db-password` | GCP Secret Manager |
+| Secret values added: `send-sms-hook-secrets` and `supabase-db-password` (required); `sentry-dsn-edge-functions` and `google-play-integrity-service-account` (optional: with no version the deploy logs a notice and the function runs with that feature off) | GCP Secret Manager |
 | Supabase project in the client organisation; named secret API key `monitoring` | Supabase dashboard |
 | GitHub environment `<env>` (`dev`, `staging`, `production`) with the variables and secrets listed at the top of `_deploy-supabase.yaml`; required reviewers on `production` (needs a paid GitHub plan on a private repo, infra-cicd I-1) | GitHub → Settings → Environments |
 | App Attest capability on the iOS App ID; `IOS_APP_ID` = `<team id>.<bundle id>`; `APP_ATTEST_ENVIRONMENT` matching the build the environment serves (`development` for Xcode builds; `production` for TestFlight and App Store, with `APP_ATTEST_VALIDATION_CATEGORIES=2,4` where TestFlight builds must pass). A mismatch shows as verdict reason `environment_mismatch` | Apple Developer account; GitHub environment variables |
