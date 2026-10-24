@@ -92,6 +92,17 @@ The client must create:
 Until then the Google button says it is not set up. Store screenshots need retaking for the new
 brand (RB-15).
 
+**Dependency fix.** The PR's osv-scanner run found three advisories published after `main`'s last
+clean scan on 19 Oct:
+- `next` 15.5.27: GHSA-2464-fhr4-w9xw (critical 9.5) and GHSA-p3m5-59mp-jv5r (high 8.2). All
+  three web apps now ask for `next@^15.5.28`.
+- `zod` 3.25.76: GHSA-mrhx-c7xc-m3w5 (high 8.2). `zod` was declared in `web-admin` and
+  `web-customer` and imported nowhere, so it is removed rather than upgraded to 4.x.
+
+I reinstalled from the root so the existing `next → postcss ^8.5.28` override still applies; an
+install scoped to the workspaces nested `postcss` 8.4.31 again. `npm audit` is back to the three
+dev-only Tailwind items already waived in `osv-scanner.toml`.
+
 ## 2026-10-13 (part 3) — Claude Code — promo codes that work, the heatmap, invitations without an oracle; contracts 2.2.0
 
 Same owner instruction. Audit: `docs/audit/AUDIT-2026-10-13.md`, part 3 (Z.20–Z.25). **Still not
