@@ -108,7 +108,9 @@ jobs:
   # viewport: HTTP status, no console error (a CSP violation or a hydration error surfaces
   # there), the security headers, and the token background in both colour schemes.
   web-smoke:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04 (2026-10-24), which Playwright 1.56.1
+    # cannot install Chromium's system dependencies for. Unpin with a Playwright upgrade.
+    runs-on: ubuntu-24.04
     needs: web
     steps:
       - uses: actions/checkout@v4

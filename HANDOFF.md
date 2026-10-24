@@ -22,6 +22,11 @@ defects in `web-customer` came out of it, fixed here:
 
 Web smoke 128/128 locally; the admin console and the marketing site showed nothing to fix.
 
+Also in this PR: GitHub's `ubuntu-latest` moved to Ubuntu 26.04 within the hour, and Playwright 1.56.1
+refuses to install Chromium's system dependencies there, so `web-smoke` failed before a test ran.
+The two jobs that install Playwright (`frontend-ci` `web-smoke`, `backend-db` `database`) are pinned to
+`ubuntu-24.04` until a Playwright upgrade supports the new image.
+
 ## 2026-10-24 (part 3) — Claude Code — home card without the concierge header
 
 At the owner's request (screenshot from the installed test APK), the customer home card no longer
