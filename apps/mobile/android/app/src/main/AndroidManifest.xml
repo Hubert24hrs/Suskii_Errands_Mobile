@@ -31,6 +31,11 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="${networkSecurityConfig}"
         android:enableOnBackInvokedCallback="true">
+        <!-- Google Maps SDK key, from the build (GOOGLE_MAPS_API_KEY). The app draws no map while
+             it is empty (AppConfig.hasMaps), so the SDK never starts without one. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${googleMapsApiKey}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

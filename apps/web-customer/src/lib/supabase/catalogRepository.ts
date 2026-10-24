@@ -7,6 +7,8 @@
 import { AppError, ErrorCodes } from '@/mocks/errors';
 import type {
   CountryPack,
+  GeoPoint,
+  NearbyProviders,
   PriceBand,
   ServiceCategory,
   Urgency,
@@ -15,6 +17,7 @@ import type {
 import { SupabaseGateway, type Row } from './gateway';
 import {
   countryPackFromBootstrap,
+  nearbyProvidersFromRow,
   priceBandFromRow,
   serviceCategoryFromRow,
 } from './mappers';
@@ -94,5 +97,19 @@ export class SupabaseCatalogRepository {
   private async resolveUuid(categoryKey: string): Promise<string | undefined> {
     await this.getCategories();
     return this.categoryUuids.get(categoryKey);
+  }
+
+  /** Providers online near a point (`nearby_providers`): a count and blurred
+   * areas, never a position. `categoryId` is the category key. */
+  async getNearbyProviders(options: {
+    at: GeoPoint;
+    categoryId?: string;
+  }): Promise<NearbyProviders> {
+    const rows = (await this.gateway.rpc('nearby_providers', {
+      p_lat: options.at.latitude,
+      p_lng: options.at.longitude,
+      p_category_key: options.categoryId,
+    })) as Row[];
+    return rows[0] ? nearbyProvidersFromRow(rows[0]) : { total: 0, radiusMeters: 5000, areas: [] };
   }
 }

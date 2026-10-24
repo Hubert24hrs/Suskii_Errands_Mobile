@@ -141,6 +141,14 @@ function OfferCard({
           {rank.factors.newProvider ? (
             <StatusChip label={dict.offers.factorNewProvider} tone="info" />
           ) : null}
+          {rank.distanceKm !== undefined ? (
+            <span
+              data-testid={`offer-distance-${offer.id}`}
+              className="text-body-small text-ink-primary dark:text-ink-dark-primary"
+            >
+              📍 {dict.offers.distanceKm.replace('{km}', rank.distanceKm.toFixed(1))}
+            </span>
+          ) : null}
           <span className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
             {countLabel(
               dict.offers.comparedAgainstOne,
@@ -311,6 +319,11 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
   // back to the watched list order with no badges.
   const ranked = rankedQuery.data;
 
+  // Closest first by default (ADR-0022); "best match" is the server's score.
+  // Closest first is a stable sort of the score order, so equally near offers
+  // keep the server's ranking.
+  const [closestFirst, setClosestFirst] = useState(true);
+
   const orderedOffers = useMemo(() => {
     if (offers === undefined || ranked === undefined || ranked.length === 0) {
       return offers;
@@ -318,7 +331,12 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
     const byId = new Map(offers.map((o) => [o.id, o]));
     const rankedIds = new Set<string>();
     const ordered: Offer[] = [];
-    for (const r of ranked) {
+    const byChoice = closestFirst
+      ? [...ranked].sort(
+          (a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY),
+        )
+      : ranked;
+    for (const r of byChoice) {
       const offer = byId.get(r.offerId);
       if (offer !== undefined && !rankedIds.has(offer.id)) {
         rankedIds.add(offer.id);
@@ -331,7 +349,7 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
       if (!rankedIds.has(offer.id)) ordered.push(offer);
     }
     return ordered;
-  }, [offers, ranked]);
+  }, [offers, ranked, closestFirst]);
 
   const rankByOfferId = useMemo(
     () => new Map((ranked ?? []).map((r) => [r.offerId, r])),
@@ -352,9 +370,30 @@ export function OffersBoard({ job, dict }: { job: JobRequest; dict: Dictionary }
         {dict.offers.title}
       </h2>
       {ranked !== undefined && ranked.length > 0 ? (
-        <p className="mt-sm text-body-small text-ink-secondary dark:text-ink-dark-secondary">
-          {dict.offers.rankedNote}
-        </p>
+        <>
+          <div className="mt-md flex w-fit rounded-md border border-outline p-xs dark:border-outline-dark" role="tablist">
+            {([true, false] as const).map((closest) => (
+              <button
+                key={String(closest)}
+                type="button"
+                role="tab"
+                aria-selected={closestFirst === closest}
+                data-testid={closest ? 'offers-sort-closest' : 'offers-sort-best'}
+                onClick={() => setClosestFirst(closest)}
+                className={`rounded-sm px-md py-xs text-label-large ${
+                  closestFirst === closest
+                    ? 'bg-brand-primary text-brand-on-primary'
+                    : 'text-ink-secondary hover:text-ink-primary dark:text-ink-dark-secondary dark:hover:text-ink-dark-primary'
+                }`}
+              >
+                {closest ? dict.offers.sortClosest : dict.offers.sortBest}
+              </button>
+            ))}
+          </div>
+          <p className="mt-sm text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+            {closestFirst ? dict.offers.closestNote : dict.offers.rankedNote}
+          </p>
+        </>
       ) : null}
       <div className="mt-lg">
         {orderedOffers === undefined ? (

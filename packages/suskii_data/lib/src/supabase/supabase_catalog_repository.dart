@@ -54,7 +54,7 @@ class SupabaseCatalogRepository implements CatalogRepository {
     }
     final cities = await _gateway.selectList(
       'cities',
-      'name',
+      'code, name',
       column: 'country_code',
       value: countryCode,
     );
@@ -63,6 +63,7 @@ class SupabaseCatalogRepository implements CatalogRepository {
       launchCities: cities
           .map((row) => row['name'] as String)
           .toList(growable: false),
+      serviceAreas: serviceAreasFromRows(cities),
     );
   }
 
@@ -89,5 +90,26 @@ class SupabaseCatalogRepository implements CatalogRepository {
   Future<String?> _resolveUuid(String categoryKey) async {
     await getCategories();
     return _categoryUuids[categoryKey];
+  }
+
+  @override
+  Future<NearbyProviders> getNearbyProviders({
+    required GeoPoint at,
+    String? categoryId,
+  }) async {
+    final rows = List<Map<String, dynamic>>.from(
+      await _gateway.rpc('nearby_providers', <String, Object?>{
+        'p_lat': at.latitude,
+        'p_lng': at.longitude,
+        'p_category_key': categoryId,
+      }) as List<dynamic>,
+    );
+    return rows.isEmpty
+        ? const NearbyProviders(
+            total: 0,
+            radiusMeters: 5000,
+            areas: <NearbyArea>[],
+          )
+        : nearbyProvidersFromRow(rows.first);
   }
 }

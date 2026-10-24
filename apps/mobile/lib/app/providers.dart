@@ -635,3 +635,16 @@ final meetupAttendeesProvider = FutureProvider.autoDispose
     .family<List<MeetupAttendee>, String>(
       (ref, id) => ref.watch(meetupRepositoryProvider).attendees(id),
     );
+
+/// Providers online near a point, for one service or any (ADR-0022): a count
+/// and blurred areas, never a position. Keyed by the rounded point so small
+/// map drags do not refetch.
+final nearbyProvidersProvider = FutureProvider.autoDispose
+    .family<NearbyProviders, (double, double, String?)>(
+      (ref, args) => ref
+          .watch(catalogRepositoryProvider)
+          .getNearbyProviders(
+            at: GeoPoint(latitude: args.$1, longitude: args.$2),
+            categoryId: args.$3,
+          ),
+    );

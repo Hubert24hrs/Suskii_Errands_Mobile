@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes build/env/<env>.json for a release: config/env/<env>.json with the environment's
-# public client values (SUPABASE_URL, SUPABASE_ANON_KEY, SENTRY_DSN) from the workflow's
+# public client values (SUPABASE_URL, SUPABASE_ANON_KEY, SENTRY_DSN, GOOGLE_MAPS_API_KEY) from the workflow's
 # secrets. The Fastfile prefers this file over the committed one.
 #
 # A staging or prod build without a backend would be the mock app (AppConfig.usesMockBackend)
@@ -28,7 +28,7 @@ python3 - "$src" "$out" <<'PY'
 import json, os, sys
 src, out = sys.argv[1], sys.argv[2]
 defines = json.load(open(src))
-for key in ("SUPABASE_URL", "SUPABASE_ANON_KEY", "SENTRY_DSN"):
+for key in ("SUPABASE_URL", "SUPABASE_ANON_KEY", "SENTRY_DSN", "GOOGLE_MAPS_API_KEY"):
     value = os.environ.get(key, "")
     if value:
         defines[key] = value

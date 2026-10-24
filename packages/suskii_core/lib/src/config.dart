@@ -15,6 +15,7 @@ class AppConfig {
     required this.supportEmail,
     required this.googleWebClientId,
     required this.googleIosClientId,
+    required this.googleMapsApiKey,
   });
 
   final AppFlavor flavor;
@@ -44,6 +45,14 @@ class AppConfig {
   final String googleWebClientId;
   final String googleIosClientId;
 
+  /// Google Maps SDK key (a restricted client key; it ships in the binary).
+  /// Injected at build time from a CI secret, never committed (it would trip
+  /// the secret scanner). Empty: screens show a location fallback, because
+  /// the native SDK refuses to draw a map without one.
+  final String googleMapsApiKey;
+
+  bool get hasMaps => googleMapsApiKey.isNotEmpty;
+
   bool get isProd => flavor == AppFlavor.prod;
 
   /// True when no backend is configured and every repository is the mock:
@@ -67,6 +76,7 @@ class AppConfig {
       supportEmail: const String.fromEnvironment('SUPPORT_EMAIL'),
       googleWebClientId: const String.fromEnvironment('GOOGLE_WEB_CLIENT_ID'),
       googleIosClientId: const String.fromEnvironment('GOOGLE_IOS_CLIENT_ID'),
+      googleMapsApiKey: const String.fromEnvironment('GOOGLE_MAPS_API_KEY'),
     );
   }
 }

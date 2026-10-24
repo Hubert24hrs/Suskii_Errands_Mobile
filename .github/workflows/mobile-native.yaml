@@ -71,7 +71,13 @@ jobs:
           fi
       - name: Release APK (dev defines, for installing on a test device)
         working-directory: apps/mobile
-        run: flutter build apk --release --dart-define-from-file=config/env/dev.json
+        # The Maps key comes from a secret; without it the APK shows the location fallback.
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          set -euo pipefail
+          tool/write_release_env.sh dev
+          flutter build apk --release --dart-define-from-file=build/env/dev.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-unsigned-builds

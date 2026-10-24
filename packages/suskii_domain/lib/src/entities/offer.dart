@@ -63,6 +63,11 @@ abstract class RankedOffer with _$RankedOffer {
     /// the wire's basis points.
     required double completionRate,
     required RankedOfferFactors factors,
+
+    /// How far the provider is from the pickup, in half-kilometre steps
+    /// (never below 0.5). Null when the request has no map point or the
+    /// provider has not shared a location in the last 30 minutes.
+    double? distanceKm,
   }) = _RankedOffer;
 
   factory RankedOffer.fromJson(Map<String, dynamic> json) =>

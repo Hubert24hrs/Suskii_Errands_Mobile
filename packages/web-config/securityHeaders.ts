@@ -17,6 +17,11 @@ export function securityHeaders(options: {
   connectSrc?: string[];
   /** Browser APIs this app may use; everything else is denied. */
   allowGeolocation?: boolean;
+  /** Allow the Google Maps JavaScript API: the origins Google's CSP guide for
+   * Maps lists (developers.google.com/maps/documentation/javascript/content-security-policy).
+   * Only when a Maps key is configured, so a build without maps keeps the
+   * tighter policy. */
+  googleMaps?: boolean;
 }): Header[] {
   const supabase = options.supabaseUrl ? new URL(options.supabaseUrl) : undefined;
   // Realtime's socket follows the API's scheme: wss in every deployed environment, ws
@@ -24,13 +29,23 @@ export function securityHeaders(options: {
   const supabaseOrigins = supabase
     ? [supabase.origin, `${supabase.protocol === 'https:' ? 'wss' : 'ws'}://${supabase.host}`]
     : [];
+  const maps = options.googleMaps
+    ? {
+        script: ' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:',
+        img: ' https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com',
+        connect: ['https://*.googleapis.com', '*.google.com', 'https://*.gstatic.com', 'data:', 'blob:'],
+        font: ' https://fonts.gstatic.com',
+        style: ' https://fonts.googleapis.com',
+      }
+    : { script: '', img: '', connect: [] as string[], font: '', style: '' };
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${options.production ? '' : " 'unsafe-eval'"}`,
-    "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob:${supabase ? ` ${supabase.origin}` : ''}`,
-    "font-src 'self' data:",
-    `connect-src 'self' ${[...supabaseOrigins, ...(options.connectSrc ?? [])].join(' ')}`.trim(),
+    `script-src 'self' 'unsafe-inline'${options.production ? '' : " 'unsafe-eval'"}${maps.script}`,
+    `style-src 'self' 'unsafe-inline'${maps.style}`,
+    `img-src 'self' data: blob:${supabase ? ` ${supabase.origin}` : ''}${maps.img}`,
+    `font-src 'self' data:${maps.font}`,
+    `connect-src 'self' ${[...supabaseOrigins, ...(options.connectSrc ?? []), ...maps.connect].join(' ')}`.trim(),
+    ...(options.googleMaps ? ['frame-src *.google.com', 'worker-src blob:'] : []),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -182,3 +182,40 @@ test.describe('customer: sign-in, home and Suskii Meet', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// 2026-10-24: the map pickup, providers near you and closest-first offers (ADR-0022). The smoke
+// build has no Maps key, so the location fallback stands in for the map.
+test.describe('customer: nearest providers', () => {
+  const base = `http://127.0.0.1:${apps.customer.port}`;
+
+  test('the pickup point comes from the device and the nearby count follows', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 6.455, longitude: 3.394 });
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/auth`);
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+    await page.goto(`${base}/en/requests/new`);
+    await expect(page.getByTestId('map-fallback')).toBeVisible();
+    await page.getByTestId('map-use-my-location').click();
+    await expect(page.getByText('Pickup point set')).toBeVisible();
+    await expect(page.getByTestId('create-nearby')).toContainText('providers near you');
+    expect(errors).toEqual([]);
+  });
+
+  test('offers are closest first, each saying how far', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/auth`);
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+    await page.goto(`${base}/en/requests/req-1`);
+    await expect(page.getByTestId('offers-sort-closest')).toHaveAttribute('aria-selected', 'true');
+    const distances = await page.locator('[data-testid^="offer-distance-"]').allTextContents();
+    expect(distances.length).toBeGreaterThan(0);
+    const km = distances.map((t) => Number.parseFloat(t.replace(/[^0-9.]/g, '')));
+    expect([...km].sort((a, b) => a - b)).toEqual(km);
+    await page.getByTestId('offers-sort-best').click();
+    await expect(page.getByText('Ranked by price and reputation together')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});

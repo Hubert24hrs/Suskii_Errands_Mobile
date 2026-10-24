@@ -1390,4 +1390,48 @@ void chatMapperTests() {
       expect(insights.avgResponseTimeSeconds, 95);
     });
   });
+
+  group('nearest first (ADR-0022)', () {
+    test('rank_offers carries distance_km, and null when unknown', () {
+      final row = <String, dynamic>{
+        'offer_id': 'o-1',
+        'provider_id': 'p-1',
+        'display_name': 'Musa',
+        'amount_minor': 500000,
+        'currency': 'NGN',
+        'score': '0.8100',
+        'rating_avg_milli': 4500,
+        'rating_count': 3,
+        'completion_rate_bps': 9000,
+        'factors': <String, dynamic>{},
+        'distance_km': '1.5',
+      };
+      expect(rankedOfferFromRow(row).distanceKm, 1.5);
+      expect(
+        rankedOfferFromRow(row..['distance_km'] = null).distanceKm,
+        isNull,
+      );
+    });
+
+    test('nearby_providers maps the total and the blurred areas', () {
+      final nearby = nearbyProvidersFromRow(<String, dynamic>{
+        'total': 4,
+        'radius_m': 5000,
+        'areas': <dynamic>[
+          <String, dynamic>{'lat': 6.445, 'lng': 3.475, 'providers': 3},
+        ],
+      });
+      expect(nearby.total, 4);
+      expect(nearby.areas.single.providers, 3);
+      expect(nearby.areas.single.center.latitude, 6.445);
+    });
+
+    test('cities become service areas sorted by name', () {
+      final areas = serviceAreasFromRows(<Map<String, dynamic>>[
+        <String, dynamic>{'code': 'lagos', 'name': 'Lagos'},
+        <String, dynamic>{'code': 'abia', 'name': 'Abia'},
+      ]);
+      expect(areas.map((a) => a.code), <String>['abia', 'lagos']);
+    });
+  });
 }

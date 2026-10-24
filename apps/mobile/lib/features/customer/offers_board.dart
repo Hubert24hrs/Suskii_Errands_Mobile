@@ -24,6 +24,9 @@ class OffersBoard extends ConsumerStatefulWidget {
 }
 
 class _OffersBoardState extends ConsumerState<OffersBoard> {
+  /// Closest first by default (ADR-0022); "best match" is the server's score.
+  bool _closestFirst = true;
+
   /// One key per intent, kept across retries of the same tap.
   final Map<String, String> _actionKeys = <String, String>{};
   final Set<String> _busy = <String>{};
@@ -161,11 +164,19 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
           for (final RankedOffer r in rankedList) r.offerId: r,
         };
         final offersById = <String, Offer>{for (final Offer o in data) o.id: o};
-        // Server score order first (ranked live offers), then anything the
-        // ranking does not cover (terminal offers) in stream order. The
-        // ranking itself is never re-sorted — it is not a price sort.
+        // Live offers in the chosen order — closest first, or the server's
+        // score — then anything the ranking does not cover (terminal offers)
+        // in stream order. Closest first is a stable sort of the score order,
+        // so equally near offers keep the server's ranking.
+        final byChoice = _closestFirst
+            ? (List<RankedOffer>.of(rankedList)..sort(
+                (a, b) => (a.distanceKm ?? double.infinity).compareTo(
+                  b.distanceKm ?? double.infinity,
+                ),
+              ))
+            : rankedList;
         final ordered = <Offer>[
-          for (final RankedOffer r in rankedList)
+          for (final RankedOffer r in byChoice)
             if (offersById[r.offerId] case final Offer o) o,
           for (final Offer o in data)
             if (!rankedById.containsKey(o.id)) o,
@@ -197,17 +208,41 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                   ],
                 ),
               )
-            else if (rankedList.isNotEmpty)
+            else if (rankedList.isNotEmpty) ...<Widget>[
+              Padding(
+                padding: const EdgeInsets.only(bottom: SSpacing.sm),
+                child: SegmentedButton<bool>(
+                  key: const ValueKey<String>('offers.sort'),
+                  segments: <ButtonSegment<bool>>[
+                    ButtonSegment<bool>(
+                      value: true,
+                      label: Text(l10n.offersSortClosest),
+                      icon: const Icon(Icons.near_me_outlined),
+                    ),
+                    ButtonSegment<bool>(
+                      value: false,
+                      label: Text(l10n.offersSortBest),
+                      icon: const Icon(Icons.auto_awesome_outlined),
+                    ),
+                  ],
+                  selected: <bool>{_closestFirst},
+                  onSelectionChanged: (Set<bool> v) =>
+                      setState(() => _closestFirst = v.first),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(
                   left: SSpacing.md,
                   bottom: SSpacing.sm,
                 ),
                 child: Text(
-                  l10n.offersRankedHint,
+                  _closestFirst
+                      ? l10n.offersClosestHint
+                      : l10n.offersRankedHint,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
+            ],
             for (final Offer offer in ordered) ...<Widget>[
               SOfferCard(
                 offer: offer,
@@ -287,7 +322,13 @@ class _OffersBoardState extends ConsumerState<OffersBoard> {
                       l10n.offersRound(offer.round),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (offer.distanceMeters != null)
+                    if (rankedById[offer.id]?.distanceKm case final double km)
+                      Text(
+                        l10n.offersDistance(km.toStringAsFixed(1)),
+                        key: ValueKey<String>('offers.distance.${offer.id}'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    else if (offer.distanceMeters != null)
                       Text(
                         l10n.offersDistance(
                           (offer.distanceMeters! / 1000).toStringAsFixed(1),

@@ -240,7 +240,7 @@
   "providerKindBusiness": "Business",
   "providerBusinessName": "Business name",
   "providerServicesLabel": "Services you offer",
-  "providerAreasLabel": "Areas you cover",
+  "providerAreasLabel": "Your state",
   "providerVehicleLabel": "Vehicle",
   "vehicleWalking": "On foot",
   "vehicleBicycle": "Bicycle",
@@ -901,5 +901,18 @@
   "errMeetupLimit": "You can host up to 3 upcoming meet-ups at a time.",
   "errMeetupTime": "Start at least 30 minutes from now and within 90 days, for up to 24 hours.",
   "errCountryNotSet": "Choose your country first.",
-  "errCountryAlreadySet": "Your country is already set."
+  "errCountryAlreadySet": "Your country is already set.",
+  "providerStateHint": "Select your state",
+  "mapPickupTitle": "Pickup on the map",
+  "mapPickupHint": "Move the map so the pin sits on your pickup point.",
+  "mapUseMyLocation": "Use my location",
+  "mapPickupSet": "Pickup point set",
+  "mapPickupNeeded": "Set your pickup point so the nearest providers can find you.",
+  "mapUnavailable": "The map isn't set up in this build. Your current location works just as well.",
+  "nearbyProviders": "{count, plural, =1{1 provider near you right now} other{{count} providers near you right now}}",
+  "@nearbyProviders": {"placeholders": {"count": {"type": "int"}}},
+  "nearbyNone": "No providers online near you right now. Publish anyway: we'll widen the search.",
+  "offersSortClosest": "Closest first",
+  "offersSortBest": "Best match",
+  "offersClosestHint": "Sorted by how far each provider is from your pickup."
 }

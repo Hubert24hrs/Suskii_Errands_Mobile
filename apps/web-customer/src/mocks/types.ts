@@ -375,6 +375,9 @@ export interface RankedOffer {
   /** Completion rate from basis points (9850 → 0.985). */
   completionRate: number;
   factors: OfferRankFactors;
+  /** How far the provider is from the pickup, in half-kilometre steps (never
+   * below 0.5); undefined when unknown. ADR-0022. */
+  distanceKm?: number;
 }
 
 /** Why an offer ranked where it did — render these, a bare ranking with no
@@ -794,4 +797,20 @@ export interface MeetupDraft {
   startsAt: string;
   endsAt: string;
   capacity: number;
+}
+
+// ---------------------------------------------------------------------------
+// Providers near a point (nearby_providers; ADR-0022): a count and blurred
+// grid cells, never a provider's position.
+// ---------------------------------------------------------------------------
+
+export interface NearbyArea {
+  center: GeoPoint;
+  providers: number;
+}
+
+export interface NearbyProviders {
+  total: number;
+  radiusMeters: number;
+  areas: NearbyArea[];
 }

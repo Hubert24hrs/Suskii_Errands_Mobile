@@ -8,6 +8,31 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.4.0] - 2026-10-24
+
+The nearest providers first (ADR-0022). **MINOR**: one function added, and `rank_offers` gains a
+column. That column is appended, so a client reading rows by name keeps working.
+
+### Added
+
+- **`nearby_providers(p_lat, p_lng, p_category_key?, p_radius_m?)`** returns one row
+  `{total, radius_m, areas}`, where `areas` is a JSON array of `{lat, lng, providers}`:
+  - ~1 km grid-cell centres (`nearby_providers_cell_deg`);
+  - only cells with at least `nearby_providers_min_per_cell` (3) providers;
+  - online, active providers in the caller's country, excluding blocked pairs;
+  - never a provider's position.
+- **`rank_offers` → `distance_km numeric`**: from the provider's last location in the past 30 minutes
+  to the pickup, in 0.5 km steps, at least 0.5. NULL when either is unknown.
+- **Remote config:** `matching_radius_ladder_m` (`[5000, 15000, 30000]`),
+  `nearby_providers_min_per_cell` (3) and `nearby_providers_cell_deg` (0.01).
+- **Reference data (seed):** the 36 states of Nigeria plus the FCT as `cities`. `akwa-ibom` and
+  `cross-river` use hyphens, as the code check requires.
+
+### Changed (behaviour, no signature change)
+
+- **Matching** orders candidates in 500 m bands, then by score.
+- **The fan-out** widens the radius along the ladder when nobody is in range.
+
 ## [2.3.0] - 2026-10-24
 
 Suskii Meet, the country step for Google and Apple sign-ups, and customer verification switched off

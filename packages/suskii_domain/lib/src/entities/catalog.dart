@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../enums.dart';
+import '../geo_point.dart';
 import '../money.dart';
 
 part 'catalog.freezed.dart';
@@ -66,6 +67,17 @@ abstract class EmergencyNumber with _$EmergencyNumber {
 }
 
 /// Client-safe subset of a country pack. All country behaviour is data.
+/// One place a provider can serve (a `cities` row): a stable code for the
+/// server and a name for people.
+@freezed
+abstract class ServiceArea with _$ServiceArea {
+  const factory ServiceArea({required String code, required String name}) =
+      _ServiceArea;
+
+  factory ServiceArea.fromJson(Map<String, dynamic> json) =>
+      _$ServiceAreaFromJson(json);
+}
+
 @freezed
 abstract class CountryPack with _$CountryPack {
   const factory CountryPack({
@@ -79,8 +91,38 @@ abstract class CountryPack with _$CountryPack {
     required int offerTtlSeconds,
     required int maxNegotiationRounds,
     Money? minWithdrawal,
+
+    /// Where a provider can work: in Nigeria the 36 states and the FCT.
+    /// [ServiceArea.code] is what `update_provider_service_areas` takes.
+    @Default(<ServiceArea>[]) List<ServiceArea> serviceAreas,
   }) = _CountryPack;
 
   factory CountryPack.fromJson(Map<String, dynamic> json) =>
       _$CountryPackFromJson(json);
+}
+
+/// One blurred area on the "providers near you" map: the centre of a grid
+/// cell (about 1 km) and how many providers are in it. Never a provider's
+/// position; a cell with too few providers is not shown at all.
+@freezed
+abstract class NearbyArea with _$NearbyArea {
+  const factory NearbyArea({required GeoPoint center, required int providers}) =
+      _NearbyArea;
+
+  factory NearbyArea.fromJson(Map<String, dynamic> json) =>
+      _$NearbyAreaFromJson(json);
+}
+
+/// How many providers are online within [radiusMeters] of a point, and the
+/// areas dense enough to show (`nearby_providers`).
+@freezed
+abstract class NearbyProviders with _$NearbyProviders {
+  const factory NearbyProviders({
+    required int total,
+    required int radiusMeters,
+    required List<NearbyArea> areas,
+  }) = _NearbyProviders;
+
+  factory NearbyProviders.fromJson(Map<String, dynamic> json) =>
+      _$NearbyProvidersFromJson(json);
 }

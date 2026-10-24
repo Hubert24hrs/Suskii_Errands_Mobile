@@ -1,4 +1,5 @@
 import Flutter
+import GoogleMaps
 import UIKit
 
 @main
@@ -10,6 +11,11 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // The Maps SDK needs its key before any map exists. Without one the app shows no map
+    // (AppConfig.hasMaps), so the SDK is simply never configured.
+    if let key = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String, !key.isEmpty {
+      GMSServices.provideAPIKey(key)
+    }
     // Scene notifications rather than SceneDelegate overrides: FlutterSceneDelegate implements
     // the lifecycle methods without declaring them, so a Swift subclass cannot call super.
     let center = NotificationCenter.default
