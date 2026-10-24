@@ -1304,6 +1304,23 @@ class MockChatRepository extends _MockRepo implements ChatRepository {
       return message;
     }, argsHash: '$type|${text ?? ''}|${mediaPath ?? ''}');
   }
+
+  @override
+  Future<void> markMessagesRead(String jobId) async {
+    await gate();
+    final messages = db.chats[jobId];
+    if (messages == null) return;
+    final now = serverNow();
+    var changed = false;
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      if (message.senderId != currentUser.id && message.readAt == null) {
+        messages[i] = message.copyWith(readAt: now);
+        changed = true;
+      }
+    }
+    if (changed) _controllers[jobId]?.add(List.unmodifiable(messages));
+  }
 }
 
 class MockPaymentRepository extends _MockRepo implements PaymentRepository {

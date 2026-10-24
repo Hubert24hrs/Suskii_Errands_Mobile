@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(36);
+SELECT plan(38);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000101'),   -- customer
@@ -117,11 +117,21 @@ SELECT is(public.mark_read((SELECT id FROM ch WHERE name = 'r'), 0::bigint),
   'a later call with an older id does not move the marker backwards');
 RESET ROLE;
 
+-- Read receipts: the other participant's marker is what draws "Read" (audit 2026-10-24, AA.9).
+SELECT set_config('request.jwt.claims',
+  '{"sub": "f1111111-1111-4111-8111-111111111111", "role": "authenticated", "aal": "aal1"}', true);
+SET LOCAL ROLE authenticated;
+SELECT is((SELECT last_read_message_id FROM public.message_reads
+           WHERE user_id = 'f2222222-2222-4222-8222-222222222222'),
+  (SELECT id FROM chm WHERE name = 'm1'), 'the customer sees how far the provider has read');
+RESET ROLE;
+
 -- The provider who lost the job is not in the conversation.
 SELECT set_config('request.jwt.claims',
   '{"sub": "f3333333-3333-4333-8333-333333333333", "role": "authenticated", "aal": "aal1"}', true);
 SET LOCAL ROLE authenticated;
 SELECT is((SELECT count(*)::int FROM public.messages), 0, 'the rival provider reads nothing');
+SELECT is((SELECT count(*)::int FROM public.message_reads), 0, 'nor anyone''s read marker');
 SELECT is((SELECT count(*)::int FROM public.conversations), 0, 'and cannot see the conversation');
 SELECT throws_ok(
   format($$SELECT public.send_message('key-ch-msg-rival-000001', %L, 'Use me instead')$$,

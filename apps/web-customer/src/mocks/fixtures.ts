@@ -66,6 +66,8 @@ export class MockDatabase {
   walletTransactions: Record<string, WalletTransaction[]> = {};
   referrals: Record<string, ReferralSummary> = {};
   notifications: AppNotification[] = [];
+  /** Accounts scheduled for erasure, by user id. */
+  accountDeletions: Record<string, Date> = {};
 
   /** Payments by id, plus the jobId → paymentId index (one payment per job). */
   payments: Record<string, Payment> = {};

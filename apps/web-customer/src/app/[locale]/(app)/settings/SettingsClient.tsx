@@ -451,6 +451,7 @@ function DataSection({ dict }: { dict: Dictionary }) {
 }
 
 function DeleteAccountSection({ dict }: { dict: Dictionary }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [key, setKey] = useState<string | null>(null);
@@ -467,6 +468,9 @@ function DeleteAccountSection({ dict }: { dict: Dictionary }) {
       const date = await settingsRepository.requestAccountDeletion(current);
       setScheduledAt(date);
       setKey(null);
+      setOpen(false);
+      // The page-wide notice offers to keep the account from here on.
+      void queryClient.invalidateQueries({ queryKey: ['bootstrap'] });
     } catch (e) {
       setError(errorText(dict, e));
     } finally {

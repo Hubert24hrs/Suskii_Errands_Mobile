@@ -337,4 +337,19 @@ test.describe('customer: SOS, name and theme', () => {
     await expect(page.locator('html')).not.toHaveClass(/dark/);
     expect(errors).toEqual([]);
   });
+
+  test('delete the account, then keep it, as the app offers', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/auth`);
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+    await page.evaluate(() => (window as unknown as { next: { router: { push(u: string): void } } }).next.router.push('/en/settings'));
+    await page.getByRole('button', { name: 'Delete account' }).click();
+    await page.getByRole('button', { name: 'Delete my account' }).click();
+    await expect(page.getByTestId('deletion-pending')).toContainText('Your account is scheduled for deletion');
+    await page.getByTestId('deletion-keep').click();
+    await expect(page.getByTestId('deletion-kept')).toHaveText('Your account is no longer scheduled for deletion.');
+    await expect(page.getByTestId('deletion-pending')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
 });

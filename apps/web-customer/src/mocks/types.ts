@@ -661,6 +661,8 @@ export interface AppBootstrap {
   serverTime: Date;
   user?: AppUser;
   activeJobBanner?: ActiveJobBanner;
+  /** Set while the account is scheduled for erasure: signing back in offers to keep it. */
+  accountDeletionScheduledFor?: Date;
 }
 
 export interface AppNotification {

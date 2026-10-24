@@ -68,6 +68,27 @@ class SupabaseChatRepository implements ChatRepository {
     return chatMessageFromRow(rows.first, jobId: jobId);
   }
 
+  @override
+  Future<void> markMessagesRead(String jobId) async {
+    final conversation = await _conversationId(jobId);
+    if (conversation == null) return;
+    final rows = await _gateway.selectList(
+      'messages',
+      'id',
+      column: 'conversation_id',
+      value: conversation,
+      orderBy: 'id',
+      ascending: false,
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await _gateway.rpc('mark_read', <String, Object?>{
+      'p_request_id': jobId,
+      // Opaque: a bigint id can exceed what a JSON number holds exactly.
+      'p_last_message_id': SupabaseGateway.asId(rows.first['id']),
+    });
+  }
+
   Future<String?> _conversationId(String jobId) async {
     final row = await _gateway.selectSingle(
       'conversations',

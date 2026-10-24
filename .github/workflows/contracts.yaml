@@ -14,6 +14,8 @@ name: contracts
 #
 # check_frontend_calls.py checks the other direction: every RPC, argument, table and column the
 # apps' data layers use must exist in contracts/v1 and be granted. It runs when either side changes.
+# check_screen_parity.py holds the website to the app: every repository method one app's screens
+# call, the other's must too, unless the difference is a listed platform one.
 on:
   push:
     branches: [main]
@@ -25,6 +27,7 @@ on:
       - 'packages/suskii_core/lib/src/errors.dart'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
+      - 'apps/mobile/lib/**'
       - '.github/workflows/contracts.yaml'
   pull_request:
     paths:
@@ -35,6 +38,7 @@ on:
       - 'packages/suskii_core/lib/src/errors.dart'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
+      - 'apps/mobile/lib/**'
       - '.github/workflows/contracts.yaml'
 
 permissions:
@@ -57,5 +61,7 @@ jobs:
         run: python3 contracts/tools/check_preview.py .
       - name: Frontend calls against the contract
         run: python3 contracts/tools/check_frontend_calls.py .
+      - name: The website's screens against the app's (replica, 2026-10-24)
+        run: python3 contracts/tools/check_screen_parity.py .
       - name: contracts/v1 drift against supabase/migrations
         run: python3 contracts/tools/generate_v1.py .

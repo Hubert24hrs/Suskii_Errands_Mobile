@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suskii_core/suskii_core.dart';
@@ -69,11 +71,37 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.dispose();
   }
 
+  /// The newest message from the other side already marked read.
+  String? _markedThrough;
+
+  /// What the other person sees as "Read": the pointer moves when a message
+  /// of theirs is on this screen.
+  void _markRead(List<ChatMessage> messages, String? myId) {
+    final theirs = messages.where((m) => m.senderId != myId);
+    if (myId == null || theirs.isEmpty) return;
+    final newest = theirs.last.id;
+    if (newest == _markedThrough) return;
+    _markedThrough = newest;
+    unawaited(
+      ref
+          .read(chatRepositoryProvider)
+          .markMessagesRead(widget.jobId)
+          .catchError((Object _) {}),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final messages = ref.watch(chatMessagesProvider(widget.jobId));
     final myId = ref.watch(bootstrapProvider).value?.user?.id;
+    ref.listen<AsyncValue<List<ChatMessage>>>(
+      chatMessagesProvider(widget.jobId),
+      (_, next) {
+        final data = next.value;
+        if (data != null) _markRead(data, myId);
+      },
+    );
     return Scaffold(
       appBar: AppBar(title: Text(l10n.chatTitle)),
       body: SafeArea(

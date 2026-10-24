@@ -347,6 +347,12 @@ void main() {
           idempotencyKey: newIdempotencyKey(),
         );
         expect(chat.text, 'On my way down');
+        // The provider reads it; the customer's own message then says Read.
+        await SupabaseChatRepository(provider).markMessagesRead(requestId);
+        final seen = await SupabaseChatRepository(customer)
+            .watchMessages(requestId)
+            .first;
+        expect(seen.singleWhere((m) => m.id == chat.id).readAt, isNotNull);
 
         final sos = await SupabaseSafetyRepository(customer).triggerSos(
           jobId: requestId,
