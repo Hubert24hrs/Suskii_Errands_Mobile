@@ -7,6 +7,7 @@ export 'src/entities/catalog.dart';
 export 'src/entities/chat.dart';
 export 'src/entities/concierge.dart';
 export 'src/entities/dispute.dart';
+export 'src/entities/meetup.dart';
 export 'src/entities/notification.dart';
 export 'src/entities/offer.dart';
 export 'src/entities/organization.dart';

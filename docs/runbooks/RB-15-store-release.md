@@ -41,6 +41,8 @@ Numbers continue the client action list in [timeline.md §5](../plan/timeline.md
 | 25 | **A review account**: a phone number with a fixed one-time code in the **production** Supabase Auth settings (Auth → Phone → test OTP), so reviewers can sign in without an SMS | Apple guideline 2.1; Play "App access" | The number and code, entered in App Store Connect's review information and Play's App access — never committed |
 | 26 | **Store questionnaires**: Play Data safety and Apple App Privacy (drafts in `docs/store/`), Play content rating (IARC) and target audience, Apple age rating (the updated questions have been mandatory since 31 Jan 2026 [V]), Play's **precise-location declaration** (enforced from 27 Jan 2027 [V] REPORT §10) | Submission | Answers entered in the consoles |
 | 27 | **Firebase project** (FCM) and an **APNs key** uploaded to it | Push notifications — not in the app yet (§6) | Firebase config values |
+| 29 | **Google sign-in** (built 2026-10-24, ADR-0021): in Google Cloud, OAuth clients for **web**, **Android** (package `com.suskiierrands.app` with the Play app-signing SHA-1 and the upload-key SHA-1) and **iOS** (bundle id) | The Google button in a real build | The client IDs (public identifiers) into `config/env/<env>.json` as `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_REVERSED_CLIENT_ID`, and into the deploy environment as `GOOGLE_CLIENT_IDS` (web first) with `GOOGLE_SKIP_NONCE_CHECK=true`; the web client secret as `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` for the website |
+| 30 | **Sign in with Apple**: a **Services ID** and a **Sign in with Apple key** in the Apple developer account (the App ID capability is action 22) | The Apple button (iOS and website) | `APPLE_CLIENT_IDS` (bundle id, plus the Services ID for the website) and `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in the deploy environment |
 | 28 | Optional: a **Sentry** project | Crash reports from release builds | `SENTRY_DSN` secret (a public client key) |
 | 4, 7, 11 | Merchant accounts, identity vendor, LiveKit and telephony — already on the list | Payments, KYC, calls | As listed there |
 
@@ -166,8 +168,8 @@ backend, decide again whether this link should stay public.
 |---|---|---|
 | Push notifications (FCM, APNs) | Actions 27 and 22 | Add `firebase_messaging`, register the token with `register_device` (the RPC exists; the app does not call it yet), declare `POST_NOTIFICATIONS` and ask for it in context, add `remote-notification` background mode |
 | In-app calls and the voice concierge | Action 11 | Add the microphone permission and usage string with the feature, not before |
-| Sign in with Google | Supabase provider config | Guideline 4.8 then requires Sign in with Apple; the entitlement is already in place |
-| Store screenshots | Action 19, a simulator and an emulator | `fastlane/screenshots/README.md` |
+| Sign in with Google and Apple | **Built** 2026-10-24; needs actions 29 and 30 | Until then the Google button says it is not set up; Apple appears on iOS only |
+| Store screenshots (retake: the brand changed 2026-10-24, ADR-0019) | Action 19, a simulator and an emulator | `fastlane/screenshots/README.md` |
 | Crash symbol upload | Action 28 and a Sentry auth token | Upload `build/symbols/*` and `mapping.txt` from the release artifacts |
 
 ## 7. A release is broken in the field

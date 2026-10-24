@@ -110,6 +110,9 @@ SELECT is((SELECT count(*)::int FROM private.outbox
   'publishing announces itself exactly as a customer pressing the button would');
 
 -- One that cannot publish must not take the batch with it, and the customer has to be told.
+-- Customer verification is off by default (2026-10-24); a country can switch it back on.
+UPDATE public.remote_config SET value = 'true'
+WHERE key = 'customer_verification_required' AND country_code IS NULL;
 UPDATE public.profiles SET customer_verification = 'unverified'
 WHERE user_id = 'af111111-1111-4111-8111-aaaaaaaaaaaa';
 UPDATE public.requests SET scheduled_at = now() + interval '20 minutes'
@@ -124,6 +127,8 @@ SELECT is((SELECT params ->> 'reason_key' FROM public.notifications
            WHERE user_id = 'af111111-1111-4111-8111-aaaaaaaaaaaa' AND kind = 'system'
            ORDER BY id DESC LIMIT 1), 'ERR_VERIFICATION_REQUIRED',
   'with a reason key the screen can act on, and never a raw database message');
+UPDATE public.remote_config SET value = 'false'
+WHERE key = 'customer_verification_required' AND country_code IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- The hand-published path is the same code, with the caller's name on it.

@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(26);
+SELECT plan(27);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('f1111111-1111-4111-8111-111111111111', '2348000000041'),
@@ -98,14 +98,26 @@ SELECT throws_ok(
   format($$SELECT public.cancel_request(%L, 'key-cancel-0000000000000001')$$, (SELECT id FROM r)),
   'P0001', 'ERR_REQUEST_NOT_FOUND', 'another user cannot cancel it');
 
--- An unverified customer may draft, but not publish.
+-- Verification is for service providers only (2026-10-24): an unverified customer publishes,
+-- unless their country turns `customer_verification_required` back on.
 CREATE TEMP TABLE r2 (id uuid);
 GRANT ALL ON r2 TO authenticated, service_role;
 INSERT INTO r2 SELECT public.create_request(
   'key-create-0000000000000003', 'document_delivery', 'Take documents to Ikoyi', 'Home');
+RESET ROLE;
+UPDATE public.remote_config SET value = 'true'
+WHERE key = 'customer_verification_required' AND country_code IS NULL;
+SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   format($$SELECT public.publish_request(%L, 'key-publish-000000000000003')$$, (SELECT id FROM r2)),
-  'P0001', 'ERR_VERIFICATION_REQUIRED', 'an unverified customer cannot publish');
+  'P0001', 'ERR_VERIFICATION_REQUIRED',
+  'where customer verification is switched on, an unverified customer cannot publish');
+RESET ROLE;
+UPDATE public.remote_config SET value = 'false'
+WHERE key = 'customer_verification_required' AND country_code IS NULL;
+SET LOCAL ROLE authenticated;
+SELECT is(public.publish_request((SELECT id FROM r2), 'key-publish-000000000000004'),
+  'published'::public.job_status, 'by default an unverified customer publishes');
 RESET ROLE;
 
 -- Cancellation and expiry.

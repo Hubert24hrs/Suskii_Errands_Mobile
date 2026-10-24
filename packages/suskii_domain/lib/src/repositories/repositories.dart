@@ -3,6 +3,7 @@ import '../entities/catalog.dart';
 import '../entities/chat.dart';
 import '../entities/concierge.dart';
 import '../entities/dispute.dart';
+import '../entities/meetup.dart';
 import '../entities/notification.dart';
 import '../entities/offer.dart';
 import '../entities/organization.dart';
@@ -88,6 +89,8 @@ abstract interface class BootstrapRepository {
   Stream<AppNotification> watchNotifications();
 }
 
+enum SocialProvider { google, apple }
+
 abstract interface class AuthRepository {
   Stream<AuthState> authStateChanges();
 
@@ -107,10 +110,21 @@ abstract interface class AuthRepository {
   });
   Future<AppUser> verifyEmailOtp(String email, String code);
 
-  /// Social sign-in placeholders. Throw AppError(ERR_FEATURE_UNAVAILABLE)
-  /// until the providers are configured.
-  Future<AppUser> signInWithGoogle();
-  Future<AppUser> signInWithApple();
+  /// Exchanges an OpenID Connect ID token from Google or Apple for a session
+  /// (the native SDK on the device obtains it). [rawNonce] is the unhashed
+  /// nonce whose SHA-256 the provider embedded in the token (Apple).
+  ///
+  /// These tokens carry no sign-up metadata, so a new account has no country:
+  /// [countryCode] and [language] are applied once through
+  /// `set_initial_country` when the profile has none.
+  Future<AppUser> signInWithIdToken(
+    SocialProvider provider, {
+    required String idToken,
+    String? accessToken,
+    String? rawNonce,
+    String? countryCode,
+    String? language,
+  });
   Future<void> signOut();
 }
 
@@ -837,4 +851,31 @@ abstract interface class MediaUploadRepository {
     required String contentType,
     String? requestId,
   });
+}
+
+/// Suskii Meet: social meet-ups. Visible to signed-in people in the host's
+/// country who have not blocked each other; the attendee list only to the
+/// host and the people going.
+abstract interface class MeetupRepository {
+  /// Upcoming meet-ups, soonest first. With [near], only those within
+  /// [radiusKm] and with a distance on each.
+  Future<List<Meetup>> listMeetups({
+    GeoPoint? near,
+    int radiusKm = 50,
+    MeetupTopic? topic,
+  });
+
+  /// Hosted or joined, upcoming and from the last 30 days.
+  Future<List<Meetup>> myMeetups();
+  Future<Meetup> getMeetup(String meetupId);
+  Future<String> createMeetup(
+    MeetupDraft draft, {
+    required String idempotencyKey,
+  });
+
+  /// Returns the number going. Throws ERR_MEETUP_FULL or ERR_MEETUP_CLOSED.
+  Future<int> joinMeetup(String meetupId, {required String idempotencyKey});
+  Future<bool> leaveMeetup(String meetupId);
+  Future<void> cancelMeetup(String meetupId, {required String idempotencyKey});
+  Future<List<MeetupAttendee>> attendees(String meetupId);
 }

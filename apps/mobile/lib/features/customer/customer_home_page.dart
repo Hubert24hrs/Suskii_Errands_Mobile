@@ -29,10 +29,19 @@ class CustomerHomePage extends ConsumerWidget {
 
   IconData _categoryIcon(String iconKey) => switch (iconKey) {
     'package' => Icons.local_shipping_outlined,
-    'cart' => Icons.shopping_cart_outlined,
-    'sparkles' => Icons.auto_awesome_outlined,
+    'cart' || 'basket' => Icons.shopping_cart_outlined,
+    'sparkles' || 'sparkle' => Icons.auto_awesome_outlined,
     'truck' => Icons.local_shipping_outlined,
-    'wrench' => Icons.build_outlined,
+    'wrench' || 'tools' => Icons.build_outlined,
+    'mechanic' => Icons.car_repair_outlined,
+    'fashion' => Icons.checkroom_outlined,
+    'beauty' => Icons.content_cut_rounded,
+    'plumbing' => Icons.plumbing_outlined,
+    'electric' => Icons.electrical_services_outlined,
+    'carpentry' => Icons.carpenter_outlined,
+    'catering' => Icons.restaurant_menu_outlined,
+    'camera' => Icons.photo_camera_outlined,
+    'school' => Icons.school_outlined,
     'person' => Icons.person_outline,
     'document' => Icons.description_outlined,
     'food' => Icons.restaurant_outlined,
@@ -75,7 +84,7 @@ class CustomerHomePage extends ConsumerWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    const SBrandMark(size: 40, heroTag: null),
+                    const SBrandMark(size: 48, heroTag: null),
                     const SizedBox(width: SSpacing.md),
                     Expanded(
                       child: Text(
@@ -95,37 +104,6 @@ class CustomerHomePage extends ConsumerWidget {
                     style: theme.textTheme.displaySmall,
                   ),
                 ),
-                if (user != null &&
-                    user.customerVerification !=
-                        VerificationStatus.verified) ...<Widget>[
-                  const SizedBox(height: SSpacing.lg),
-                  SGlass(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: SSpacing.lg,
-                      vertical: SSpacing.sm,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(
-                          Icons.verified_user_outlined,
-                          color: context.sColors.warning,
-                        ),
-                        const SizedBox(width: SSpacing.md),
-                        Expanded(
-                          child: Text(
-                            l10n.verifyRequiredBanner,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              context.push(AppRoutes.verifyCustomer),
-                          child: Text(l10n.verifyRequiredAction),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: SSpacing.xl),
                 SPressable(
                   child: SGlass(
@@ -159,6 +137,14 @@ class CustomerHomePage extends ConsumerWidget {
                               icon: Icons.auto_awesome_rounded,
                               onPressed: () =>
                                   context.push(AppRoutes.customerConcierge),
+                            ),
+                            const SizedBox(height: SSpacing.sm),
+                            SButton(
+                              key: const ValueKey<String>('home.suskiiMeet'),
+                              label: l10n.homeSuskiiMeet,
+                              icon: Icons.groups_rounded,
+                              variant: SButtonVariant.secondary,
+                              onPressed: () => context.push(AppRoutes.meet),
                             ),
                             const SizedBox(height: SSpacing.sm),
                             SButton(

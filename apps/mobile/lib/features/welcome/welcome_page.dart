@@ -69,7 +69,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             ),
             children: <Widget>[
               const SizedBox(height: SSpacing.xl),
-              const Align(child: SBrandMark()),
+              const Align(child: SBrandMark(size: 88)),
               const SizedBox(height: SSpacing.xl),
               Text(
                 l10n.welcomeTitle,

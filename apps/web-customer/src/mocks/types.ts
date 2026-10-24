@@ -727,3 +727,71 @@ export interface LivenessResult {
   outcome: IdentityCheckOutcome;
   reasonKey?: string;
 }
+
+export type SocialProvider = 'google' | 'apple';
+
+// ---------------------------------------------------------------------------
+// Suskii Meet (public.meetup_topic / meetup_status; list_meetups row shape)
+// ---------------------------------------------------------------------------
+
+export type MeetupTopic =
+  | 'social'
+  | 'sports_fitness'
+  | 'business_networking'
+  | 'learning'
+  | 'faith'
+  | 'arts_culture'
+  | 'food_drink'
+  | 'outdoors'
+  | 'other';
+
+export const MEETUP_TOPICS: readonly MeetupTopic[] = [
+  'social',
+  'sports_fitness',
+  'business_networking',
+  'learning',
+  'faith',
+  'arts_culture',
+  'food_drink',
+  'outdoors',
+  'other',
+];
+
+export type MeetupStatus = 'published' | 'cancelled';
+
+export interface Meetup {
+  id: string;
+  title: string;
+  description: string;
+  topic: MeetupTopic;
+  venueName: string;
+  venue: GeoPoint;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  attendeeCount: number;
+  status: MeetupStatus;
+  /** First name only. */
+  hostFirstName: string;
+  isHost: boolean;
+  isAttending: boolean;
+  /** Only when the list was asked for near a point. */
+  distanceKm?: number;
+}
+
+export interface MeetupAttendee {
+  firstName: string;
+  isHost: boolean;
+  joinedAt: string;
+}
+
+export interface MeetupDraft {
+  title: string;
+  description: string;
+  topic: MeetupTopic;
+  venueName: string;
+  venue: GeoPoint;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+}

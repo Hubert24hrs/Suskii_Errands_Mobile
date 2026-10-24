@@ -13,6 +13,7 @@ emit() { # key value
   case "$1" in
     APP_NAME) echo "APP_DISPLAY_NAME = $2" ;;
     APP_LINK_HOST) echo "APP_LINK_HOST = $2" ;;
+    GOOGLE_REVERSED_CLIENT_ID) if [ -n "$2" ]; then echo "GOOGLE_REVERSED_CLIENT_ID = $2"; fi ;;
     APP_FLAVOR) if [ "$2" = prod ]; then echo "APP_ID_SUFFIX ="; else echo "APP_ID_SUFFIX = .$2"; fi ;;
   esac
 }

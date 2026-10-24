@@ -236,6 +236,15 @@ export class MockDatabase {
       category('transportation', 'catTransportation', 'car'),
       category('tech_business', 'catTechBusiness', 'laptop'),
       category('event_assistance', 'catEventAssistance', 'calendar'),
+      category('mechanics', 'catMechanics', 'mechanic'),
+      category('fashion_design', 'catFashionDesign', 'fashion'),
+      category('beauty_hair', 'catBeautyHair', 'beauty'),
+      category('plumbing', 'catPlumbing', 'plumbing'),
+      category('electrical', 'catElectrical', 'electric'),
+      category('carpentry', 'catCarpentry', 'carpentry'),
+      category('catering', 'catCatering', 'catering'),
+      category('photography', 'catPhotography', 'camera'),
+      category('tutoring', 'catTutoring', 'school'),
       category('custom', 'catCustom', 'magic', true),
     ];
 

@@ -1,16 +1,17 @@
 'use client';
 
-// Sign-in (W9.2). Phone or email OTP via authRepository — Supabase GoTrue
-// when the gateway is configured, the mock persona otherwise (demo hint is
-// shown only in the mock case). No passwords, no social buttons yet (they
-// stay ERR_FEATURE_UNAVAILABLE behind the scenes).
+// Sign-in (W9.2). Phone or email OTP, or Google / Apple, via authRepository —
+// Supabase GoTrue when the gateway is configured, the mock persona otherwise
+// (demo hint is shown only in the mock case). No passwords. Google and Apple
+// leave the page and come back here signed in; a new account takes the
+// country chosen below, once.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { authRepository, supabaseGateway } from '@/lib/repositories';
-import type { AuthState } from '@/mocks/types';
+import type { AuthState, SocialProvider } from '@/mocks/types';
 import { errorText } from '../requests/_shared';
 
 const inputClasses =
@@ -20,6 +21,18 @@ const primaryButton =
   'w-full rounded-md bg-brand-primary px-lg py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50';
 
 type Method = 'phone' | 'email';
+
+/** The launch countries, as the app's own picker lists them. */
+const COUNTRIES = [
+  ['NG', 'Nigeria'],
+  ['KE', 'Kenya'],
+  ['GH', 'Ghana'],
+  ['ZA', 'South Africa'],
+  ['UG', 'Uganda'],
+] as const;
+
+const secondaryButton =
+  'flex w-full items-center justify-center gap-sm rounded-md border border-outline px-lg py-sm text-label-large text-ink-primary transition-colors duration-normal ease-standard hover:bg-surface-muted disabled:opacity-50 dark:border-outline-dark dark:text-ink-dark-primary dark:hover:bg-surface-dark-muted';
 
 export function AuthClient({
   locale,
@@ -36,6 +49,7 @@ export function AuthClient({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [country, setCountry] = useState<string>('NG');
 
   useEffect(() => authRepository.authStateChanges(setAuth), []);
 
@@ -70,6 +84,26 @@ export function AuthClient({
     } catch (e) {
       setError(errorText(dict, e));
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function social(provider: SocialProvider) {
+    setBusy(true);
+    setError(null);
+    try {
+      await authRepository.signInWithProvider(provider, {
+        countryCode: country,
+        redirectTo: `${window.location.origin}/${locale}/auth`,
+      });
+      // With Supabase the browser is on its way to the provider; the mock
+      // signs in on the spot.
+      if (!supabaseGateway) {
+        router.push(`/${locale}`);
+        router.refresh();
+      }
+    } catch (e) {
+      setError(errorText(dict, e));
       setBusy(false);
     }
   }
@@ -208,6 +242,51 @@ export function AuthClient({
           </button>
         )}
       </form>
+
+      {!codeSent && (
+        <div className="mt-lg flex flex-col gap-sm">
+          <div className="flex items-center gap-md text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+            <span className="h-px flex-1 bg-outline dark:bg-outline-dark" />
+            {dict.auth.orContinueWith}
+            <span className="h-px flex-1 bg-outline dark:bg-outline-dark" />
+          </div>
+          <label className="flex flex-col gap-xs text-label-large text-ink-primary dark:text-ink-dark-primary">
+            {dict.auth.countryLabel}
+            <select
+              className={inputClasses}
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              disabled={busy}
+            >
+              {COUNTRIES.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => void social('google')}
+            disabled={busy}
+            data-testid="auth-google"
+          >
+            <span aria-hidden className="font-display font-bold">G</span>
+            {dict.auth.continueWithGoogle}
+          </button>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => void social('apple')}
+            disabled={busy}
+            data-testid="auth-apple"
+          >
+            <span aria-hidden></span>
+            {dict.auth.continueWithApple}
+          </button>
+        </div>
+      )}
 
       {!supabaseGateway && (
         <p className="mt-lg text-body-small text-ink-secondary dark:text-ink-dark-secondary">

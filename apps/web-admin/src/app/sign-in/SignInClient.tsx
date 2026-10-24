@@ -6,6 +6,7 @@ import { dict } from '@/lib/i18n';
 import { sessionRepository, usingRealBackend, type TotpEnrolment } from '@/lib/repositories';
 import { StateBlock } from '@/components/StateBlock';
 import { errorText } from '../(console)/_shared';
+import Image from 'next/image';
 
 const inputClasses =
   'w-full rounded-md border border-outline bg-surface-raised px-md py-sm text-body-large text-ink-primary outline-none transition-colors duration-normal ease-standard focus:border-brand-primary placeholder:text-ink-secondary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary dark:placeholder:text-ink-dark-secondary';
@@ -87,9 +88,7 @@ export function SignInClient() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-lg py-xxxl">
       <div className="flex items-center gap-sm">
-        <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
-          S
-        </span>
+        <Image src="/brand/suskii_logo.png" alt="" width={28} height={32} priority />
         <span className="text-title-large text-ink-primary dark:text-ink-dark-primary">
           {dict.meta.title}
         </span>

@@ -39,6 +39,9 @@ export interface MockBehavior {
    * currency (configurable per country, like the backend rule).
    */
   withdrawalApprovalThresholds: Record<string, number>;
+  /** Mirrors `customer_verification_required` (remote config, default off):
+   * verification is for service providers unless a country turns it on. */
+  customerVerificationRequired: boolean;
 }
 
 export const mockBehavior: MockBehavior = {
@@ -46,6 +49,7 @@ export const mockBehavior: MockBehavior = {
   offline: false,
   failNextCalls: 0,
   currentUserId: 'user-ada',
+  customerVerificationRequired: false,
   failLiveness: false,
   kycReviewDelayMs: 4000,
   serverClockSkewMs: 7000,

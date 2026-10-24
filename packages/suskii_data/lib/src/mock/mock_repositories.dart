@@ -197,16 +197,27 @@ class MockAuthRepository extends _MockRepo implements AuthRepository {
     return updated;
   }
 
+  /// Any non-empty token signs the demo user in: the mock has no provider to
+  /// verify it against. A profile without a country takes [countryCode].
   @override
-  Future<AppUser> signInWithGoogle() async {
+  Future<AppUser> signInWithIdToken(
+    SocialProvider provider, {
+    required String idToken,
+    String? accessToken,
+    String? rawNonce,
+    String? countryCode,
+    String? language,
+  }) async {
     await gate();
-    throw const AppError(ErrorCodes.featureUnavailable);
-  }
-
-  @override
-  Future<AppUser> signInWithApple() async {
-    await gate();
-    throw const AppError(ErrorCodes.featureUnavailable);
+    if (idToken.isEmpty) throw const AppError(ErrorCodes.unauthenticated);
+    var user = db.users[behavior.currentUserId]!;
+    if (user.countryCode.isEmpty && countryCode != null) {
+      user = user.copyWith(countryCode: countryCode.toUpperCase());
+      db.users[user.id] = user;
+    }
+    _state = AuthState(status: AuthStatus.signedIn, user: user);
+    _controller.add(_state);
+    return user;
   }
 
   @override
@@ -368,7 +379,8 @@ class MockRequestRepository extends _MockRepo implements RequestRepository {
     await gate();
     return idempotent('publishRequest:$jobId', idempotencyKey, () async {
       final user = currentUser;
-      if (user.customerVerification != VerificationStatus.verified) {
+      if (behavior.customerVerificationRequired &&
+          user.customerVerification != VerificationStatus.verified) {
         throw const AppError(ErrorCodes.verificationRequired);
       }
       final request = db.requests[jobId];
@@ -1348,9 +1360,6 @@ class MockPaymentRepository extends _MockRepo implements PaymentRepository {
     await gate();
     return idempotent('initializePayment:$jobId', idempotencyKey, () async {
       final user = currentUser;
-      if (user.customerVerification != VerificationStatus.verified) {
-        throw const AppError(ErrorCodes.verificationRequired);
-      }
       final job = db.requests[jobId];
       if (job == null) throw const AppError(ErrorCodes.unknown);
       if (job.customerId != user.id) {
@@ -3562,4 +3571,206 @@ double _metersBetween(GeoPoint a, GeoPoint b) {
           math.cos(rad(b.latitude)) *
           math.pow(math.sin(dLng / 2), 2);
   return 2 * earthRadius * math.asin(math.sqrt(h));
+}
+
+/// ---------------------------------------------------------------------------
+/// Suskii Meet
+/// ---------------------------------------------------------------------------
+
+class MockMeetupRepository extends _MockRepo implements MeetupRepository {
+  MockMeetupRepository(super.db, super.behavior);
+
+  /// The stored row seen by the current user: who hosts, who is going and
+  /// how many, as `private.meetup_rows` computes them.
+  Meetup _view(Meetup m, {GeoPoint? near}) {
+    final uid = currentUser.id;
+    final going = db.meetupAttendees[m.id] ?? const <String, DateTime>{};
+    final host = db.users[db.meetupHosts[m.id]];
+    return m.copyWith(
+      attendeeCount: m.attendeeCount + going.length,
+      hostFirstName: (host?.displayName ?? m.hostFirstName).split(' ').first,
+      isHost: db.meetupHosts[m.id] == uid,
+      isAttending: going.containsKey(uid),
+      distanceKm: near == null ? null : _km(near, m.venue),
+    );
+  }
+
+  static double _km(GeoPoint a, GeoPoint b) {
+    // Equirectangular is plenty at city scale.
+    const r = 6371.0;
+    final x =
+        (b.longitude - a.longitude) *
+        math.pi /
+        180 *
+        math.cos((a.latitude + b.latitude) / 2 * math.pi / 180);
+    final y = (b.latitude - a.latitude) * math.pi / 180;
+    return (math.sqrt(x * x + y * y) * r * 10).roundToDouble() / 10;
+  }
+
+  Meetup _find(String id) {
+    final m = db.meetups[id];
+    if (m == null) throw const AppError(ErrorCodes.meetupNotFound);
+    return m;
+  }
+
+  @override
+  Future<List<Meetup>> listMeetups({
+    GeoPoint? near,
+    int radiusKm = 50,
+    MeetupTopic? topic,
+  }) async {
+    await gate();
+    final now = serverNow();
+    final list =
+        <Meetup>[
+              for (final m in db.meetups.values)
+                if (!m.isCancelled &&
+                    m.endsAt.isAfter(now) &&
+                    (topic == null || m.topic == topic))
+                  _view(m, near: near),
+            ]
+            .where((m) => m.distanceKm == null || m.distanceKm! <= radiusKm)
+            .toList()
+          ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    return List<Meetup>.unmodifiable(list);
+  }
+
+  @override
+  Future<List<Meetup>> myMeetups() async {
+    await gate();
+    final list =
+        <Meetup>[for (final m in db.meetups.values) _view(m)]
+            .where((m) => m.isHost || m.isAttending)
+            .toList()
+          ..sort((a, b) => b.startsAt.compareTo(a.startsAt));
+    return List<Meetup>.unmodifiable(list);
+  }
+
+  @override
+  Future<Meetup> getMeetup(String meetupId) async {
+    await gate();
+    return _view(_find(meetupId));
+  }
+
+  @override
+  Future<String> createMeetup(
+    MeetupDraft draft, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('createMeetup', idempotencyKey, () async {
+      final now = serverNow();
+      final title = draft.title.trim();
+      final venue = draft.venueName.trim();
+      if (title.length < 3 ||
+          title.length > 80 ||
+          venue.length < 2 ||
+          venue.length > 120 ||
+          draft.description.length > 1000 ||
+          draft.capacity < 2 ||
+          draft.capacity > 500) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      if (draft.startsAt.isBefore(now.add(const Duration(minutes: 30))) ||
+          draft.startsAt.isAfter(now.add(const Duration(days: 90))) ||
+          !draft.endsAt.isAfter(draft.startsAt) ||
+          draft.endsAt.isAfter(draft.startsAt.add(const Duration(hours: 24)))) {
+        throw const AppError(ErrorCodes.meetupTimeInvalid);
+      }
+      final uid = currentUser.id;
+      final hosted = db.meetups.values.where(
+        (m) =>
+            db.meetupHosts[m.id] == uid &&
+            !m.isCancelled &&
+            m.endsAt.isAfter(now),
+      );
+      if (hosted.length >= 3) {
+        throw const AppError(ErrorCodes.meetupLimitReached);
+      }
+      final id = _mockId('meet');
+      db.meetups[id] = Meetup(
+        id: id,
+        title: title,
+        description: draft.description.trim(),
+        topic: draft.topic,
+        venueName: venue,
+        venue: draft.venue,
+        startsAt: draft.startsAt,
+        endsAt: draft.endsAt,
+        capacity: draft.capacity,
+        attendeeCount: 0,
+        status: MeetupStatus.published,
+        hostFirstName: currentUser.displayName,
+        isHost: true,
+        isAttending: false,
+      );
+      db.meetupHosts[id] = uid;
+      db.meetupAttendees[id] = <String, DateTime>{};
+      return id;
+    }, argsHash: '${draft.title}|${draft.startsAt.toIso8601String()}');
+  }
+
+  @override
+  Future<int> joinMeetup(
+    String meetupId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('joinMeetup', idempotencyKey, () async {
+      final m = _view(_find(meetupId));
+      if (m.isHost) throw const AppError(ErrorCodes.invalidState);
+      if (m.isAttending) return m.attendeeCount;
+      if (m.isCancelled || !m.startsAt.isAfter(serverNow())) {
+        throw const AppError(ErrorCodes.meetupClosed);
+      }
+      if (m.isFull) throw const AppError(ErrorCodes.meetupFull);
+      db.meetupAttendees[meetupId]![currentUser.id] = serverNow();
+      return m.attendeeCount + 1;
+    }, argsHash: meetupId);
+  }
+
+  @override
+  Future<bool> leaveMeetup(String meetupId) async {
+    await gate();
+    _find(meetupId);
+    return db.meetupAttendees[meetupId]?.remove(currentUser.id) != null;
+  }
+
+  @override
+  Future<void> cancelMeetup(
+    String meetupId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    await idempotent('cancelMeetup', idempotencyKey, () async {
+      final m = _find(meetupId);
+      if (db.meetupHosts[meetupId] != currentUser.id) {
+        throw const AppError(ErrorCodes.meetupNotFound);
+      }
+      db.meetups[meetupId] = m.copyWith(status: MeetupStatus.cancelled);
+      return true;
+    }, argsHash: meetupId);
+  }
+
+  @override
+  Future<List<MeetupAttendee>> attendees(String meetupId) async {
+    await gate();
+    final m = _view(_find(meetupId));
+    if (!m.isHost && !m.isAttending) {
+      throw const AppError(ErrorCodes.meetupNotFound);
+    }
+    return <MeetupAttendee>[
+      MeetupAttendee(
+        firstName: m.hostFirstName,
+        isHost: true,
+        joinedAt: m.startsAt,
+      ),
+      for (final entry in db.meetupAttendees[meetupId]!.entries)
+        MeetupAttendee(
+          firstName: (db.users[entry.key]?.displayName ?? '').split(' ').first,
+          isHost: false,
+          joinedAt: entry.value,
+        ),
+    ];
+  }
 }

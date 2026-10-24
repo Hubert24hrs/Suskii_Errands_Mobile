@@ -50,6 +50,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'account deletion, then keep the account': _accountDeletion,
   'a provider registers a business': _registerBusiness,
   'an invited provider accepts and joins the business': _acceptInvitation,
+  'sign in with Google': _googleSignIn,
+  'Suskii Meet: join a meet-up, then host one': _suskiiMeet,
 };
 
 // ---------------------------------------------------------------------------
@@ -579,5 +581,57 @@ Future<void> _acceptInvitation(WidgetTester tester) async {
   _expectToast(l10n.orgInvitationAccepted('SwiftErrands Ltd'));
   expect(find.text('SwiftErrands Ltd'), findsWidgets);
   expect(find.text(l10n.orgNoneTitle), findsNothing);
+  await app.dispose(tester);
+}
+
+Future<void> _googleSignIn(WidgetTester tester) async {
+  final app = await TestApp.pump(tester);
+  await tester.tap(find.byKey(const ValueKey<String>('welcome.continue')));
+  await settle(tester);
+  for (var i = 0; i < 3; i++) {
+    await tester.tap(find.byKey(const ValueKey<String>('onboarding.next')));
+    await settle(tester);
+  }
+  await _tap(tester, find.byKey(const ValueKey<String>('auth.google')));
+  await settle(tester, timeout: const Duration(seconds: 5));
+  expect(find.byKey(const ValueKey<String>('home.newRequest')), findsOneWidget);
+  // Verification is for providers: a customer's home asks for nothing.
+  expect(find.text(l10n.verifyRequiredBanner), findsNothing);
+  await app.dispose(tester);
+}
+
+class _FixedLocation extends _FakeLocation {
+  const _FixedLocation();
+
+  @override
+  Future<LocationReading> current() async =>
+      const LocationReading.fix(GeoPoint(latitude: 6.4550, longitude: 3.3940));
+}
+
+Future<void> _suskiiMeet(WidgetTester tester) async {
+  final app = await _signedInApp(
+    tester,
+    overrides: <Override>[
+      deviceLocationProvider.overrideWithValue(const _FixedLocation()),
+    ],
+  );
+  await _tap(tester, find.byKey(const ValueKey<String>('home.suskiiMeet')));
+  expect(find.text(l10n.meetSafetyTitle), findsOneWidget);
+  await _tap(tester, find.byKey(const ValueKey<String>('meet.card.meet-1')));
+  expect(find.text('Saturday book club'), findsOneWidget);
+  await _tap(tester, find.byKey(const ValueKey<String>('meet.join')));
+  expect(find.byKey(const ValueKey<String>('meet.leave')), findsOneWidget);
+  expect(find.text(l10n.meetAttendees), findsOneWidget);
+
+  await _go(tester, app, AppRoutes.meetNew);
+  await _enter(tester, l10n.meetFormTitle, 'Sunday picnic');
+  await _enter(tester, l10n.meetFormVenue, 'Muri Okunola Park');
+  await _tap(tester, find.byKey(const ValueKey<String>('meet.locate')));
+  expect(find.text(l10n.meetFormLocationSet), findsOneWidget);
+  await _tap(tester, find.byKey(const ValueKey<String>('meet.publish')));
+  await settle(tester, timeout: const Duration(seconds: 5));
+  expect(find.text('Sunday picnic'), findsOneWidget);
+  expect(find.text(l10n.meetHostedBy('Adaeze')), findsOneWidget);
+  expect(find.byKey(const ValueKey<String>('meet.cancel')), findsOneWidget);
   await app.dispose(tester);
 }

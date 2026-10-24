@@ -27,8 +27,8 @@ Map<String, dynamic>? signUpMetadata({String? countryCode, String? language}) {
 }
 
 /// AuthRepository over Supabase Auth (GoTrue) + the `profiles` row (own row
-/// only — RLS). Phone/email OTP are GoTrue's; social providers stay
-/// unavailable until vendor accounts exist (see the interface contract).
+/// only — RLS). Phone/email OTP are GoTrue's, and Google/Apple sign-in is
+/// GoTrue's `signInWithIdToken` with a token the device's native SDK issued.
 class SupabaseAuthRepository implements AuthRepository {
   SupabaseAuthRepository(this._gateway);
 
@@ -113,13 +113,40 @@ class SupabaseAuthRepository implements AuthRepository {
     return _fetchProfile();
   }
 
+  /// `signInWithIdToken` against GoTrue (the Google or Apple provider must
+  /// be enabled with the app's client IDs, `supabase/deploy/
+  /// write-remote-config.sh`). The token carries no sign-up metadata, so a
+  /// new account's country is set here, once, through `set_initial_country`.
   @override
-  Future<AppUser> signInWithGoogle() =>
-      throw const AppError(ErrorCodes.featureUnavailable);
-
-  @override
-  Future<AppUser> signInWithApple() =>
-      throw const AppError(ErrorCodes.featureUnavailable);
+  Future<AppUser> signInWithIdToken(
+    SocialProvider provider, {
+    required String idToken,
+    String? accessToken,
+    String? rawNonce,
+    String? countryCode,
+    String? language,
+  }) async {
+    try {
+      await _gateway.auth.signInWithIdToken(
+        provider: switch (provider) {
+          SocialProvider.google => OAuthProvider.google,
+          SocialProvider.apple => OAuthProvider.apple,
+        },
+        idToken: idToken,
+        accessToken: accessToken,
+        nonce: rawNonce,
+      );
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+    final user = await _fetchProfile();
+    if (user.countryCode.isNotEmpty || countryCode == null) return user;
+    await _gateway.rpc('set_initial_country', <String, Object?>{
+      'p_country_code': countryCode,
+      'p_language': language,
+    });
+    return _fetchProfile();
+  }
 
   @override
   Future<void> signOut() async {

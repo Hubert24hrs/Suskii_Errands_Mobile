@@ -5,6 +5,104 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 — Claude Code — the Suskii brand, Google/Apple sign-in, verification for providers only, Suskii Meet, new services; contracts 2.3.0
+
+On the **owner's explicit request** (logo, login, home screen and Suskii Meet, "for both the app and
+the website"), I changed `apps/` and `packages/` again. **Not standing licence.** ADRs 0019–0021
+record the decisions. Contracts 2.3.0 is additive: nothing you call changed signature, though the
+domain `AuthRepository` did (below).
+
+### What I changed in your code
+
+**Brand (ADR-0019).** The owner's logo is now:
+- the app icon: Android legacy icons plus an adaptive icon with a red background, and iOS full-bleed;
+- the in-app logo: `SBrandMark` now renders `packages/suskii_design/assets/brand/suskii_logo.png`;
+- the web apps' icon (`src/app/icon.png`, replacing `icon.svg`) and header mark
+  (`public/brand/suskii_logo.png`).
+
+The palette in `colors.dart` and `tokens.json` (with `tokens.css` regenerated) is red, orange and
+amber on navy, with royal blue as the secondary. Error moves to crimson so it stays distinct from
+the red brand. Every golden was re-recorded. `test/support/harness.dart` now decodes the logo
+before the first frame; without that, a golden could be captured before the logo painted.
+
+**Google and Apple sign-in (ADR-0021).**
+- Domain: `AuthRepository.signInWithGoogle/Apple` (placeholders) are replaced by
+  `signInWithIdToken(SocialProvider, {idToken, accessToken, rawNonce, countryCode, language})`.
+  Implemented in the mock and in `SupabaseAuthRepository`, which calls `set_initial_country` for a
+  new account.
+- `apps/mobile/lib/app/social_sign_in.dart`:
+  - native token acquisition with `google_sign_in` 7.2 and `sign_in_with_apple` 8.2, plus `crypto`
+    for the Apple nonce;
+  - a `MockSocialSignIn` for the mock backend;
+  - wired in through `socialSignInProvider`.
+- `auth_page.dart`: an "or continue with" divider, a Google button, and an Apple button on iOS only.
+- Configuration:
+  - `AppConfig.googleWebClientId` and `googleIosClientId`, from new define-file keys;
+  - the iOS URL scheme `$(GOOGLE_REVERSED_CLIENT_ID)` in `Info.plist`, fed by
+    `tool/write_ios_defines.sh`, with a placeholder default in `Environment.xcconfig`.
+- Web: `signInWithProvider(provider, {countryCode, redirectTo})` (GoTrue OAuth redirect). The
+  chosen country waits in `sessionStorage` and is applied after the redirect. `AuthClient.tsx` has
+  a country select and the two buttons.
+
+**Verification is for providers only (ADR-0021).**
+- Mobile: the customer home banner and the profile's customer-verification row are removed.
+- Mocks (Dart and web): customers no longer need verification to publish, unless
+  `MockBehavior.customerVerificationRequired` is set. Payment never needed it on the server, so
+  that check is gone from both mocks. Three Dart mock tests are updated to match.
+- The screens that react to `ERR_VERIFICATION_REQUIRED` stay, for a country that switches it back on.
+
+**Home screen.**
+- "Ask the concierge" is now "Ask Suskii for any service".
+- A "Suskii Meet" button sits under it (`home.suskiiMeet`).
+- The web dashboard has the renamed card, a new Suskii Meet card and a header link.
+
+**New services.** Mechanics, Fashion design, Beauty & hair, Plumbing, Electrical, Carpentry,
+Catering & cooking, Photography, and Tutoring & lessons:
+- in the seed, both mocks and `labels.dart`;
+- with icons on the home grid;
+- with English and Pidgin labels in the app and on the web.
+
+**Suskii Meet (ADR-0020).**
+- Domain: `Meetup`, `MeetupAttendee`, `MeetupDraft`, `MeetupTopic` and `MeetupRepository`.
+- Data: `MockMeetupRepository` (three seeded meet-ups) and `SupabaseMeetupRepository`.
+- Mobile screens in `lib/features/meet/`: list (Discover / My meet-ups), detail
+  (join / leave / cancel, attendees for the host and the people going) and create. Routes are
+  `/meet`, `/meet/new` and `/meet/:id`, reachable from either mode.
+- Web: `/[locale]/meet` and `/[locale]/meet/[id]`, `lib/supabase/meetupRepository.ts` and
+  `mocks/repos/meet.ts`.
+
+### Tests
+
+| Suite | Result |
+|---|---|
+| pgTAP | 60 files / 1,810 assertions (new: `58_social_sign_up_country_test`, `59_suskii_meet_test`) |
+| Dart, data package | 224 |
+| App | 38, including 24 journeys; new: "sign in with Google" and "Suskii Meet: join a meet-up, then host one" |
+| E2E against real Supabase | 21, including Suskii Meet and the country step with an unverified customer publishing |
+| Web smoke | 118 routes plus the Google and Meet journeys |
+| Contract check | 92 functions called, 0 mismatches |
+
+### Before Google and Apple work in a real build
+
+The client must create:
+- a Google OAuth client per platform: web, Android with the release SHA-1, and iOS;
+- an Apple Services ID and key;
+- the provider entries in each Supabase project (`write-remote-config.sh` already takes them).
+
+Until then the Google button says it is not set up. Store screenshots need retaking for the new
+brand (RB-15).
+
+**Dependency fix.** The PR's osv-scanner run found three advisories published after `main`'s last
+clean scan on 19 Oct:
+- `next` 15.5.27: GHSA-2464-fhr4-w9xw (critical 9.5) and GHSA-p3m5-59mp-jv5r (high 8.2). All
+  three web apps now ask for `next@^15.5.28`.
+- `zod` 3.25.76: GHSA-mrhx-c7xc-m3w5 (high 8.2). `zod` was declared in `web-admin` and
+  `web-customer` and imported nowhere, so it is removed rather than upgraded to 4.x.
+
+I reinstalled from the root so the existing `next → postcss ^8.5.28` override still applies; an
+install scoped to the workspaces nested `postcss` 8.4.31 again. `npm audit` is back to the three
+dev-only Tailwind items already waived in `osv-scanner.toml`.
+
 ## 2026-10-13 (part 3) — Claude Code — promo codes that work, the heatmap, invitations without an oracle; contracts 2.2.0
 
 Same owner instruction. Audit: `docs/audit/AUDIT-2026-10-13.md`, part 3 (Z.20–Z.25). **Still not

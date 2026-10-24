@@ -20,7 +20,7 @@ class SplashPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const SBrandMark(size: 96),
+                const SBrandMark(size: 160),
                 const SizedBox(height: SSpacing.xl),
                 Text(
                   l10n.appName,

@@ -112,9 +112,8 @@ class _AuroraPainter extends CustomPainter {
       old.dark != dark || old.intensity != intensity || old.colors != colors;
 }
 
-/// The placeholder brand mark: a rounded tile filled with the brand
-/// gradient. Wrapped in a [Hero] so it travels from splash to welcome to
-/// sign-in. Swap the glyph for the real logo when brand assets exist.
+/// The Suskii Errands logo. Wrapped in a [Hero] so it travels from splash
+/// to welcome to sign-in.
 class SBrandMark extends StatelessWidget {
   const SBrandMark({super.key, this.size = 72, this.heroTag = 'brand-mark'});
 
@@ -123,25 +122,13 @@ class SBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.sColors;
-    final mark = Container(
-      width: size,
+    // The logo is taller than it is wide (677 x 768); [size] is its height.
+    final mark = Image.asset(
+      'assets/brand/suskii_logo.png',
+      package: 'suskii_design',
       height: size,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: palette.gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(size * 0.3),
-        boxShadow: SElevation.glow(palette.glow),
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.bolt_rounded,
-        size: size * 0.56,
-        color: palette.onGradient,
-      ),
+      width: size * 677 / 768,
+      fit: BoxFit.contain,
     );
     return Semantics(
       excludeSemantics: true,

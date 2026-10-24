@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suskii_design/suskii_design.dart';
+import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/external_links.dart';
 import '../../app/providers.dart';
+import '../../app/social_sign_in.dart';
 
 enum _AuthMethod { phone, email }
 
@@ -44,7 +46,7 @@ String? normalizePhone(String raw, String countryCode) {
   return RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(candidate) ? candidate : null;
 }
 
-/// Phone/email + OTP sign-in. On success the router redirect takes over —
+/// Phone/email + OTP, Google and Apple sign-in. On success the router redirect takes over —
 /// this page never navigates itself.
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -166,6 +168,35 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
+  /// Google or Apple: the device's SDK issues an ID token and the backend
+  /// turns it into a session, taking the chosen country for a new account.
+  Future<void> _social(SocialProvider provider) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final credential = await ref.read(socialSignInProvider).obtain(provider);
+      if (!mounted) return;
+      await ref
+          .read(authRepositoryProvider)
+          .signInWithIdToken(
+            credential.provider,
+            idToken: credential.idToken,
+            rawNonce: credential.rawNonce,
+            countryCode: _country,
+            language: Localizations.localeOf(context).languageCode,
+          );
+      unawaited(HapticFeedback.mediumImpact());
+    } on SocialSignInCancelled {
+      // Closing the sheet is a choice, not a failure.
+    } on Object catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _changeIdentity() {
     _cooldownTimer?.cancel();
     setState(() {
@@ -207,7 +238,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 const SizedBox(height: SSpacing.lg),
                 const Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: SBrandMark(size: 56),
+                  child: SBrandMark(size: 96),
                 ),
                 const SizedBox(height: SSpacing.xl),
                 Text(l10n.authTitle, style: theme.textTheme.displaySmall),
@@ -355,6 +386,50 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                         ? _verify
                         : null,
                   ),
+                if (!_codeSent) ...<Widget>[
+                  const SizedBox(height: SSpacing.xl),
+                  Row(
+                    children: <Widget>[
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: SSpacing.md,
+                        ),
+                        child: Text(
+                          l10n.authOrContinueWith,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: SSpacing.lg),
+                  SButton(
+                    key: const ValueKey<String>('auth.google'),
+                    label: l10n.authContinueWithGoogle,
+                    icon: Icons.g_mobiledata_rounded,
+                    variant: SButtonVariant.secondary,
+                    onPressed: _busy
+                        ? null
+                        : () => _social(SocialProvider.google),
+                  ),
+                  if (ref
+                      .watch(socialSignInProvider)
+                      .appleAvailable) ...<Widget>[
+                    const SizedBox(height: SSpacing.sm),
+                    SButton(
+                      key: const ValueKey<String>('auth.apple'),
+                      label: l10n.authContinueWithApple,
+                      icon: Icons.apple_rounded,
+                      variant: SButtonVariant.secondary,
+                      onPressed: _busy
+                          ? null
+                          : () => _social(SocialProvider.apple),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: SSpacing.xl),
                 _LegalNotice(
                   privacyUrl: config.privacyPolicyUrl,

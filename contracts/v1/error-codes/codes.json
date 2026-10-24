@@ -1338,6 +1338,83 @@
       "retryable": false,
       "description": "No float top-up with that id belongs to one of the caller's requests.",
       "client_action": "Reload the job; the top-up may have been settled or withdrawn."
+    },
+    {
+      "code": "ERR_COUNTRY_ALREADY_SET",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "`set_initial_country` was asked for a different country than the one the profile already has. The country is chosen once.",
+      "client_action": "Do not offer the country step again; refresh the profile."
+    },
+    {
+      "code": "ERR_COUNTRY_NOT_SET",
+      "status": "implemented",
+      "category": "account",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The profile has no country yet (a Google or Apple sign-up that skipped the country step).",
+      "client_action": "Send the person to the country step, then retry."
+    },
+    {
+      "code": "ERR_MEETUP_NOT_FOUND",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No meet-up with that id is visible to the caller: missing, in another country, blocked, or not theirs to cancel.",
+      "client_action": "Show not found and return to the meet-up list."
+    },
+    {
+      "code": "ERR_MEETUP_FULL",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Every place on the meet-up is taken.",
+      "client_action": "Say it is full; the person can try again later if someone leaves."
+    },
+    {
+      "code": "ERR_MEETUP_CLOSED",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The meet-up has started, ended or been cancelled.",
+      "client_action": "Say it is closed and refresh it."
+    },
+    {
+      "code": "ERR_MEETUP_LIMIT_REACHED",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The host already has `meetup_max_active_hosted` upcoming meet-ups.",
+      "client_action": "Explain the limit; suggest cancelling one first."
+    },
+    {
+      "code": "ERR_MEETUP_TIME_INVALID",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Start less than 30 minutes or more than 90 days ahead, or longer than 24 hours.",
+      "client_action": "Point at the time fields with the rule."
     }
   ]
 }

@@ -228,18 +228,8 @@ class ProfilePage extends ConsumerWidget {
           ),
           const SizedBox(height: SSpacing.lg),
 
-          // Verification
+          // Verification is for service providers only (2026-10-24).
           if (user != null) ...<Widget>[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.badge_outlined),
-              title: Text(l10n.profileCustomerVerification),
-              trailing: Text(
-                _verificationLabel(l10n, user.customerVerification),
-                style: theme.textTheme.labelLarge,
-              ),
-              onTap: () => context.push(AppRoutes.verifyCustomer),
-            ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.verified_user_outlined),

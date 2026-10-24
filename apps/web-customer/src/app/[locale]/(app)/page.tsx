@@ -6,6 +6,7 @@ type Props = { params: Promise<{ locale: string }> };
 const cardHrefs = [
   '/requests/new',
   '/concierge',
+  '/meet',
   '/wallet',
   '/referrals',
   '/requests',

@@ -32,9 +32,11 @@ void main() {
     });
 
     test(
-      'publish is blocked with ERR_VERIFICATION_REQUIRED when unverified',
+      'where a country requires customer verification, publish is blocked',
       () async {
-        behavior.currentUserId = 'user-chidi';
+        behavior
+          ..currentUserId = 'user-chidi'
+          ..customerVerificationRequired = true;
         final repo = MockRequestRepository(db, behavior);
         final draft = await repo.createRequest(
           const CreateRequestInput(
@@ -546,8 +548,11 @@ void main() {
       },
     );
 
-    test('publishing a concierge draft is verification-gated', () async {
-      behavior.currentUserId = 'user-chidi';
+    test('publishing a concierge draft is gated where a country requires '
+        'customer verification', () async {
+      behavior
+        ..currentUserId = 'user-chidi'
+        ..customerVerificationRequired = true;
       final repo = MockConciergeRepository(db, behavior);
       final conversation = await startAndDescribe(
         repo,

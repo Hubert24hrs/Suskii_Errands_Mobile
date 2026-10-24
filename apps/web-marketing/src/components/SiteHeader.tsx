@@ -3,6 +3,7 @@ import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { Container } from './Container';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import Image from 'next/image';
 
 export function SiteHeader({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const base = `/${locale}`;
@@ -21,9 +22,7 @@ export function SiteHeader({ locale, dict }: { locale: Locale; dict: Dictionary 
           href={base}
           className="flex items-center gap-sm text-title-large text-ink-primary dark:text-ink-dark-primary"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm sk-gradient font-display font-bold">
-            S
-          </span>
+          <Image src="/brand/suskii_logo.png" alt="" width={28} height={32} priority />
           Suskii
         </Link>
         <nav className="hidden items-center gap-xl md:flex" aria-label={dict.nav.home}>
