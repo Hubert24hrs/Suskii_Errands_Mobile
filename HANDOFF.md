@@ -5,6 +5,35 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 9) — Claude Code — go-live Phases 0 and 1: what is actually on Play and behind it
+
+Ran `docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md` Phases 0 and 1 with the owner. No code changed.
+
+- **Phase 0, `main` at `9236540`.**
+  - Every workflow on the commit is green.
+  - Locally:
+    - contracts: 0 findings, 0 parity gaps;
+    - Deno: 120 passed;
+    - `flutter analyze`: clean;
+    - web-customer: builds.
+  - `flutter test`: 45 pass. The 6 failures are the catalog goldens (customer, provider and first
+    run, light and dark), which differ only in Windows font rendering. They pass in CI.
+  - The local Supabase stack and pgTAP need Docker, which this PC lacks; CI ran them on the
+    commit.
+- **Phase 1**: answers in RB-15 §3.4.
+  - The app is on the **internal track only**; version code 10 is the only bundle.
+  - Play App Signing is on; the upload key is the one in `prod`.
+  - **Correction to part 8**: the `prod` project is **not empty**. It was used as a test sandbox
+    from 2026-10-13:
+    - 70 migrations pushed by hand;
+    - the dev seed;
+    - Auth configured in the dashboard;
+    - about 24 internal testers signing in by email code.
+  - It has to be wiped or recreated before RB-14 deploys production. That is the owner's decision.
+- **Phase 2 is blocked on GCP billing** (client action 1): both of the owner's billing accounts
+  are "not in good standing", and a new one was refused with `OR_BACR2_59`. The deploy pipeline
+  needs Secret Manager through Workload Identity, so nothing past Phase 1 can start.
+
 ## 2026-10-24 (part 8) — Claude Code — production readiness: the app is on Play, the backend was not
 
 The owner says the app is **already live on Google Play**. The run history explains how, and

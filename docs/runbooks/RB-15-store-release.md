@@ -162,6 +162,18 @@ not match:
    `tool/write_release_env.sh prod` refuses to build without one, so the backend comes first
    (RB-14, then RB-08 for the country).
 
+**Answers, read in Play Console on 2026-10-24 [V]** (public certificate fingerprints only):
+
+| Fact | Answer |
+|---|---|
+| Package | `com.suskiierrands.app`, the Play app "Suskii Errands" on the personal developer account Hubert.dev (closed test of 12 testers × 14 days needed before production) |
+| Tracks | **Internal testing only**; nothing on production, so "live on Play" means the internal track |
+| Highest version code | **10** (1.0.0), the only bundle ever uploaded; `BUILD_NUMBER_FLOOR` is not needed |
+| Play App Signing | On. App signing key SHA-256 `43:10:2F:32:2B:BF:FB:B5:6C:86:1B:9C:F6:B6:DB:0A:E7:7A:B0:CD:2E:0A:F2:05:28:AC:F9:58:53:5E:DD:98`; its SHA-1 is shown only through the console's copy button and is still to be recorded |
+| Upload key | Created 2026-10-13 on the owner's PC (`C:\Users\HP\suskii-signing\upload.jks`, not in git); `CN=Suskii Errands, O=Suskii Errands, C=NG`, SHA-1 `1A:8F:D5:25:30:C3:5A:6B:6B:68:41:FD:A7:85:B8:D4:C5:D0:87:D7`, SHA-256 `1E:F8:10:8D:52:5C:A1:F7:4C:DB:6D:92:32:02:D6:35:3B:08:B4:7A:80:F3:98:E6:2F:0E:FE:A6:75:43:83:85` (read from the signed bundle of run #1). The four `ANDROID_UPLOAD_*` secrets in `prod` hold this key |
+| Play Developer API | Service account `play-publisher@suskii-prod.iam.gserviceaccount.com`, release and store-presence permissions on this app only; its key is `PLAY_SERVICE_ACCOUNT_JSON` in `prod` |
+| Backend behind the build | `prod` project ref `slfbtdwzoijgzqszfufp` (Supabase Free, London). **Not empty**: on 2026-10-13 the owner chose to use it as a test sandbox, so the 70 migrations up to `20261013120200` were pushed by hand (`supabase db push`, outside RB-14), **the dev seed was loaded**, and Auth was set in the dashboard (the two Postgres hooks, email OTP of 6 digits through the owner's Gmail SMTP, templates showing the code). The eight migrations from `20261013120300` are not applied. Internal testers have signed in to it. It must be wiped or recreated before production is deployed through RB-14 (owner's decision), because production is built from migrations only |
+
 The whole sequence, from those checks to an AAB on the internal track, is written as a prompt for
 an agent with the owner's credentials: [`docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md`](../prompts/PLAY-UPDATE-AND-GO-LIVE.md).
 
