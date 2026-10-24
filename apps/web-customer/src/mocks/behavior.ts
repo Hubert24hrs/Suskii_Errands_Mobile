@@ -96,34 +96,37 @@ export class Emitter<T> {
 }
 
 /**
- * Stored results of completed mutating calls, keyed `'$operation:$key'`,
- * together with the argument hash of the original call. Mirrors the
- * backend's idempotency layer (spike S-10): the same key with the SAME
- * payload replays the first result; the same key with a DIFFERENT payload
- * is refused with ERR_IDEMPOTENCY_KEY_REUSED. Only successes are stored.
+ * The backend's idempotency layer (`private.idempotency_claim`): a key belongs to one user and
+ * names one operation. The same key for the same operation and arguments replays the first
+ * result; for different arguments, or another operation, it is refused with
+ * ERR_IDEMPOTENCY_KEY_REUSED. Only successes are stored. One store for every repository, as on
+ * the server.
  */
 export class IdempotencyStore {
-  private readonly results = new Map<string, { argsHash: string; value: unknown }>();
+  private readonly results = new Map<string, { operation: string; argsHash: string; value: unknown }>();
 
   async run<T>(
+    userId: string,
     operation: string,
     key: string,
     argsHash: string,
     fn: () => Promise<T> | T,
   ): Promise<T> {
-    const storageKey = `${operation}:${key}`;
+    const storageKey = `${userId}:${key}`;
     const cached = this.results.get(storageKey);
     if (cached !== undefined) {
-      if (cached.argsHash !== argsHash) {
+      if (cached.operation !== operation || cached.argsHash !== argsHash) {
         throw new AppError(ErrorCodes.idempotencyKeyReused);
       }
       return cached.value as T;
     }
     const value = await fn();
-    this.results.set(storageKey, { argsHash, value });
+    this.results.set(storageKey, { operation, argsHash, value });
     return value;
   }
 }
+
+export const idempotencyStore = new IdempotencyStore();
 
 /**
  * Integer-math money rounding exactly as the server's ledger does it:

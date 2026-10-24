@@ -28,6 +28,7 @@ import {
 } from '../_shared';
 import { OffersBoard } from './OffersBoard';
 import { HandoverPinCard } from './HandoverPinCard';
+import { SosButton } from '@/components/SosButton';
 import { RatingSheet } from './RatingSheet';
 import { DisputeSection } from './DisputeSection';
 import { CancelRequestButton } from './CancelRequestButton';
@@ -499,6 +500,7 @@ export function RequestDetailClient({
           >
             {dict.tracking.title}
           </Link>
+          <SosButton jobId={job.id} dict={dict} />
         </section>
       ) : null}
 

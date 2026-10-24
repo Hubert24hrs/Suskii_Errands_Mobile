@@ -92,7 +92,11 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
 
   @override
   Stream<AppNotification> watchNotifications() => _gateway
-      .streamRows('notifications', primaryKey: const <String>['id'])
+      .streamRows(
+        'notifications',
+        topics: <String>['user:${_gateway.currentAuthUserId}'],
+        every: const Duration(seconds: 30),
+      )
       .asyncExpand(
         (rows) => Stream.fromIterable(rows.map(appNotificationFromRow)),
       );

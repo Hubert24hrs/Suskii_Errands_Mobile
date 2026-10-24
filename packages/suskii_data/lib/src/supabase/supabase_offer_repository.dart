@@ -27,9 +27,10 @@ class SupabaseOfferRepository implements OfferRepository {
   Stream<List<Offer>> watchOffers(String requestId) => _gateway
       .streamRows(
         'offers',
-        primaryKey: <String>['id'],
         filterColumn: 'request_id',
         filterValue: requestId,
+        topics: <String>['request:$requestId:customer'],
+        every: const Duration(seconds: 10),
       )
       .asyncMap(_mapOffers);
 

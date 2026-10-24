@@ -60,6 +60,8 @@ export class SupabasePaymentRepository {
         value: jobId,
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: [`request:${jobId}:customer`, `job:${jobId}`],
+        everyMs: 10_000,
       },
     );
   }

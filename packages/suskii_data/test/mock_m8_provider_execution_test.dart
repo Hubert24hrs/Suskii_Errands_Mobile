@@ -228,7 +228,7 @@ void main() {
       );
       await repo.verifyHandoverPin(
         'req-p2',
-        '4281',
+        '428135',
         kind: HandoverPinKind.delivery,
         idempotencyKey: newIdempotencyKey(),
       );
@@ -278,7 +278,7 @@ void main() {
       );
       await repo.verifyHandoverPin(
         'req-p1',
-        '4281',
+        '428135',
         kind: HandoverPinKind.delivery,
         idempotencyKey: newIdempotencyKey(),
       );
@@ -315,11 +315,11 @@ void main() {
       final repo = MockJobProgressRepository(db, behavior);
       expect(
         await repo.revealHandoverPin('req-p1', kind: HandoverPinKind.pickup),
-        '4281',
+        '428135',
       );
       expect(
         await repo.revealHandoverPin('req-p1', kind: HandoverPinKind.delivery),
-        '4281',
+        '428135',
       );
     });
 
@@ -330,7 +330,7 @@ void main() {
       );
       final result = await repo.verifyHandoverPin(
         'req-p1',
-        '4281',
+        '428135',
         kind: HandoverPinKind.pickup,
         idempotencyKey: newIdempotencyKey(),
       );

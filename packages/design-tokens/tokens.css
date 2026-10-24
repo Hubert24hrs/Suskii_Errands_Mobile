@@ -15,7 +15,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not(.dark) {
     --sk-brand-primary: 196 26 10;
     --sk-brand-primary-strong: 158 20 8;
     --sk-brand-on-primary: 255 255 255;
@@ -28,6 +28,25 @@
     --sk-glass-border: rgba(11, 22, 54, 0.10);
     --sk-blur-glass: 24px;
   }
+}
+
+:root.light {
+  color-scheme: light;
+  --sk-brand-primary: 196 26 10;
+  --sk-brand-primary-strong: 158 20 8;
+  --sk-brand-on-primary: 255 255 255;
+  --sk-brand-secondary: 9 48 149;
+  --sk-brand-on-secondary: 255 255 255;
+  --sk-gradient: linear-gradient(135deg, #B81506, #D02A06, #C24400);
+  --sk-on-gradient: #FFFFFF;
+  --sk-background: #FBF7F5;
+  --sk-glass: rgba(255, 255, 255, 0.80);
+  --sk-glass-border: rgba(11, 22, 54, 0.10);
+  --sk-blur-glass: 24px;
+}
+
+:root.dark {
+  color-scheme: dark;
 }
 
 .sk-glass {

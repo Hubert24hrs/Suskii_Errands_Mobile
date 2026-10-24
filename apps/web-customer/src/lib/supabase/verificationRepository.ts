@@ -116,7 +116,8 @@ export class SupabaseVerificationRepository {
   }
 
   private async profileRows(): Promise<Row[]> {
-    const rows = await this.gateway.rpc('get_my_kyc_profile');
+    // The customer list whatever mode the person is in: a provider has a customer identity too.
+    const rows = await this.gateway.rpc('get_my_kyc_profile', { p_mode: 'customer' });
     return (Array.isArray(rows) ? rows : []) as Row[];
   }
 

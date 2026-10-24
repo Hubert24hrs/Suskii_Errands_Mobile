@@ -32,7 +32,7 @@ class SupabaseSupportRepository implements SupportRepository {
 
   @override
   Stream<List<SupportTicket>> watchTickets() => _gateway
-      .streamRows('support_tickets', primaryKey: <String>['id'])
+      .streamRows('support_tickets', every: const Duration(seconds: 30))
       .asyncMap((rows) async {
         rows.sort(
           (a, b) =>

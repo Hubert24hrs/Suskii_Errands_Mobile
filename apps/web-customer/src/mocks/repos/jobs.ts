@@ -510,13 +510,13 @@ export class MockJobProgressRepository extends MockRepo {
   }
 
   /**
-   * Reveal-on-demand handover PIN (the mock's known PIN is 4281, for both
+   * Reveal-on-demand handover PIN (the mock's known PIN is 428135, for both
    * kinds). PINs are never carried on the job entity.
    */
   async revealHandoverPin(jobId: string, _kind: HandoverPinKind): Promise<string> {
     await this.gate();
     if (!this.db.requests[jobId]) throw new AppError(ErrorCodes.unknown);
-    return '4281';
+    return '428135';
   }
 
   /**

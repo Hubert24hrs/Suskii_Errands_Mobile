@@ -182,41 +182,152 @@ export class SupabaseGateway {
   }
 
   /**
-   * Emits the current rows immediately, then re-fetches on every
-   * postgres-changes event for the table (RLS scopes rows server-side).
-   * Follows the watch*(onChange) → Unsubscribe convention of the mock layer.
+   * Rows of a table, at once and again on every refresh (see `refreshes`):
+   * the project publishes no table changes, by design (ADR-0009, contracts
+   * rule 9), so a broadcast on one of `topics` says "look again" and the
+   * timer covers whatever no broadcast announces. `distinct` (the default)
+   * calls back only when the rows differ; a caller that uses the read as a
+   * trigger and reloads something else turns it off.
    */
   watchRows(
     table: string,
     columns: string,
     onChange: (rows: Row[]) => void,
-    options: SelectListOptions & { filterColumn?: string; filterValue?: unknown } = {},
+    options: SelectListOptions & {
+      filterColumn?: string;
+      filterValue?: unknown;
+      topics?: string[];
+      everyMs?: number;
+      distinct?: boolean;
+    } = {},
+  ): Unsubscribe {
+    let last: string | undefined;
+    const distinct = options.distinct ?? true;
+    return this.refreshes(async () => {
+      const rows = await this.selectList(table, columns, options);
+      const encoded = JSON.stringify(rows);
+      if (distinct && encoded === last) return;
+      last = encoded;
+      onChange(rows);
+    }, options);
+  }
+
+  /**
+   * Runs `read` at once, on any broadcast on `topics`, on each (re)join of
+   * one (what was missed while away), when the tab is shown again, and every
+   * `everyMs` regardless: a broadcast is a courtesy, never a guarantee. One
+   * read at a time; ticks during a read fold into one more. A failed read
+   * waits for the next tick. A topic the caller may not join is refused by
+   * `private.may_join_topic` and the timer still runs.
+   */
+  refreshes(
+    read: () => Promise<void>,
+    { topics = [], everyMs = 15_000 }: { topics?: string[]; everyMs?: number } = {},
   ): Unsubscribe {
     let active = true;
-    const load = async (): Promise<void> => {
+    let reading = false;
+    let again = false;
+    const run = async (): Promise<void> => {
+      if (!active) return;
+      if (reading) {
+        again = true;
+        return;
+      }
+      reading = true;
       try {
-        const rows = await this.selectList(table, columns, options);
-        if (active) onChange(rows);
-      } catch {
-        // Keep the subscription; the next event retries the fetch.
+        do {
+          again = false;
+          try {
+            await read();
+          } catch {
+            // The next tick retries.
+          }
+        } while (again && active);
+      } finally {
+        reading = false;
       }
     };
-    void load();
-    const filter =
-      options.filterColumn !== undefined
-        ? `${options.filterColumn}=eq.${String(options.filterValue)}`
-        : undefined;
-    const channel = this.client
-      .channel(`watch:${table}:${filter ?? 'all'}:${Math.random().toString(36).slice(2)}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) },
-        () => void load(),
-      )
-      .subscribe();
+    void run();
+    const timer = setInterval(() => void run(), everyMs);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void run();
+    };
+    const hasDocument = typeof document !== 'undefined';
+    if (hasDocument) document.addEventListener('visibilitychange', onVisible);
+    const leaves = topics.map((topic) =>
+      this.listen(topic, { onMessage: () => void run(), onJoined: () => void run() }),
+    );
     return () => {
       active = false;
-      void this.client.removeChannel(channel);
+      clearInterval(timer);
+      if (hasDocument) document.removeEventListener('visibilitychange', onVisible);
+      for (const leave of leaves) leave();
+    };
+  }
+
+  /**
+   * One channel per topic, shared by everything on this page that uses it:
+   * supabase-js hands back the existing channel for a topic, and a second
+   * `subscribe()` on it throws, so a job screen's refresh and its location
+   * broadcasts must share one join.
+   */
+  private readonly topics = new Map<
+    string,
+    {
+      channel: ReturnType<SupabaseClient['channel']>;
+      listeners: Set<(event: string, payload: Record<string, unknown>) => void>;
+      joined: Set<() => void>;
+      ready: Promise<void>;
+      refs: number;
+    }
+  >();
+
+  /** Joins `topic` (private, ADR-0009) or shares the join; returns the call that leaves. */
+  private listen(
+    topic: string,
+    handlers: {
+      onMessage?: (event: string, payload: Record<string, unknown>) => void;
+      onJoined?: () => void;
+    } = {},
+  ): Unsubscribe {
+    let entry = this.topics.get(topic);
+    if (!entry) {
+      const listeners = new Set<(event: string, payload: Record<string, unknown>) => void>();
+      const joined = new Set<() => void>();
+      let markReady: () => void = () => {};
+      const ready = new Promise<void>((resolve) => (markReady = resolve));
+      const channel = this.client
+        .channel(topic, { config: { private: true } })
+        .on('broadcast', { event: '*' }, (message: { event?: string; payload?: unknown }) => {
+          const payload = message.payload;
+          if (payload === null || typeof payload !== 'object') return;
+          for (const listener of [...listeners]) {
+            listener(message.event ?? '', payload as Record<string, unknown>);
+          }
+        })
+        .subscribe((status) => {
+          if (status !== 'SUBSCRIBED') return;
+          markReady();
+          for (const onJoined of [...joined]) onJoined();
+        });
+      entry = { channel, listeners, joined, ready, refs: 0 };
+      this.topics.set(topic, entry);
+    }
+    const current = entry;
+    current.refs += 1;
+    if (handlers.onMessage) current.listeners.add(handlers.onMessage);
+    if (handlers.onJoined) current.joined.add(handlers.onJoined);
+    let left = false;
+    return () => {
+      if (left) return;
+      left = true;
+      if (handlers.onMessage) current.listeners.delete(handlers.onMessage);
+      if (handlers.onJoined) current.joined.delete(handlers.onJoined);
+      current.refs -= 1;
+      if (current.refs === 0 && this.topics.get(topic) === current) {
+        this.topics.delete(topic);
+        void this.client.removeChannel(current.channel);
+      }
     };
   }
 
@@ -230,18 +341,54 @@ export class SupabaseGateway {
     event: string,
     onMessage: (payload: Record<string, unknown>) => void,
   ): Unsubscribe {
-    const channel = this.client
-      .channel(topic, { config: { private: true } })
-      .on('broadcast', { event }, (message: { payload?: unknown }) => {
-        const payload = message.payload;
-        if (payload !== null && typeof payload === 'object') {
-          onMessage(payload as Record<string, unknown>);
-        }
-      })
-      .subscribe();
-    return () => {
-      void this.client.removeChannel(channel);
-    };
+    return this.listen(topic, {
+      onMessage: (received, payload) => {
+        if (received === event) onMessage(payload);
+      },
+    });
+  }
+
+  /**
+   * Uploads into a private bucket at `path`. The bucket's policy checks the
+   * path's first folder, so callers build it the way the policy reads it.
+   */
+  async uploadBinary(bucket: string, path: string, body: Blob, contentType: string): Promise<void> {
+    try {
+      const { error } = await this.client.storage
+        .from(bucket)
+        .upload(path, body, { contentType, upsert: false });
+      if (error) throw error;
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
+  /** Topics joined to send on, held for the next send. */
+  private readonly sending = new Set<string>();
+
+  /**
+   * Sends one `event` on the private Realtime `topic` (ADR-0009), keeping the
+   * join for the next send; the realtime.messages policies authorise it.
+   */
+  async sendBroadcast(topic: string, event: string, payload: Record<string, unknown>): Promise<void> {
+    if (!this.sending.has(topic)) {
+      this.sending.add(topic);
+      this.listen(topic);
+    }
+    const entry = this.topics.get(topic)!;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      // A refused or unreachable join must not leave the caller waiting for ever.
+      await Promise.race([
+        entry.ready,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('TIMED_OUT')), 10_000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+    await entry.channel.send({ type: 'broadcast', event, payload });
   }
 
   /** Opaque id string — safe for 64-bit ids that exceed 2^53. */

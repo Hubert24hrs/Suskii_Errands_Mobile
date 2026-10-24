@@ -327,5 +327,12 @@ void main() {
       expect(points.length, 2);
       expect(points.last.longitude, greaterThan(points.first.longitude));
     });
+
+    test('an online provider reports position with no job', () async {
+      final repo = MockTrackingRepository(db, behavior);
+      const fix = LiveFix(point: GeoPoint(latitude: 6.45, longitude: 3.39));
+      await repo.reportPosition(fix);
+      expect(db.reportedPositions.single.point, fix.point);
+    });
   });
 }

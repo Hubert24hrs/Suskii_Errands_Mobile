@@ -19,7 +19,21 @@ import {
 
 const PAGE_SIZE = 20;
 
-export function WalletClient({ dict }: { dict: Dictionary }) {
+/**
+ * The wallet; provider mode shows the same money as its Earnings tab, inside
+ * its own frame (`embedded`) with lifetime earnings alongside.
+ */
+export function WalletClient({
+  dict,
+  title,
+  embedded = false,
+  lifetimeLabel,
+}: {
+  dict: Dictionary;
+  title?: string;
+  embedded?: boolean;
+  lifetimeLabel?: string;
+}) {
   const queryClient = useQueryClient();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
@@ -44,10 +58,10 @@ export function WalletClient({ dict }: { dict: Dictionary }) {
   const loadMoreLabel = (dict.common as Record<string, string>).loadMore ?? 'loadMore';
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-lg py-xxxl">
+    <div className={embedded ? '' : 'mx-auto w-full max-w-5xl px-lg py-xxxl'}>
       <div className="flex flex-wrap items-center justify-between gap-md">
         <h1 className="text-headline-medium text-ink-primary dark:text-ink-dark-primary">
-          {dict.wallet.title}
+          {title ?? dict.wallet.title}
         </h1>
         <button
           type="button"
@@ -91,6 +105,16 @@ export function WalletClient({ dict }: { dict: Dictionary }) {
                 className="mt-sm block text-headline-medium text-ink-primary dark:text-ink-dark-primary"
               />
             </div>
+            {lifetimeLabel && summary.lifetimeEarned ? (
+              <div className="rounded-lg border border-outline bg-surface-raised p-xl dark:border-outline-dark dark:bg-surface-dark-raised">
+                <p className="text-label-large text-ink-secondary dark:text-ink-dark-secondary">{lifetimeLabel}</p>
+                <MoneyText
+                  amountMinor={summary.lifetimeEarned.amountMinor}
+                  currency={summary.lifetimeEarned.currency}
+                  className="mt-sm block text-headline-medium text-ink-primary dark:text-ink-dark-primary"
+                />
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

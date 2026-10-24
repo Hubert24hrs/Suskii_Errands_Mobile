@@ -34,32 +34,30 @@ abstract class _MockRepo {
 
   Future<void> gate() => behavior.gate();
 
-  /// Stored results of completed mutating calls, keyed `'$operation:$key'`,
-  /// together with the argument hash of the original call.
-  /// Mirrors the backend's idempotency layer (spike S-10): presenting the
-  /// same key again for the same operation with the SAME payload replays the
-  /// first result without re-executing the side effect; the same key with a
-  /// DIFFERENT payload is refused with ERR_IDEMPOTENCY_KEY_REUSED. Only
-  /// successes are stored — a failed intent may be retried with the same key.
-  final Map<String, (String, Object)> _idempotentResults =
-      <String, (String, Object)>{};
-
+  /// Mirrors the backend's idempotency layer (spike S-10,
+  /// `private.idempotency_claim`): a key belongs to one user and names one
+  /// operation. The same key again for the same operation with the SAME
+  /// payload replays the first result without re-executing the side effect;
+  /// the same key with a different payload, or for a different operation, is
+  /// refused with ERR_IDEMPOTENCY_KEY_REUSED. Only successes are stored — a
+  /// failed intent may be retried with the same key. The store is the
+  /// database's, so it spans repositories as the server's does.
   Future<T> idempotent<T extends Object>(
     String operation,
     String key,
     Future<T> Function() run, {
     String argsHash = '',
   }) async {
-    final storageKey = '$operation:$key';
-    final cached = _idempotentResults[storageKey];
+    final storageKey = '${behavior.currentUserId}:$key';
+    final cached = db.idempotentResults[storageKey];
     if (cached != null) {
-      if (cached.$1 != argsHash) {
+      if (cached.$1 != operation || cached.$2 != argsHash) {
         throw const AppError(ErrorCodes.idempotencyKeyReused);
       }
-      return cached.$2 as T;
+      return cached.$3 as T;
     }
     final result = await run();
-    _idempotentResults[storageKey] = (argsHash, result);
+    db.idempotentResults[storageKey] = (operation, argsHash, result);
     return result;
   }
 
@@ -1170,7 +1168,7 @@ class MockJobProgressRepository extends _MockRepo
     final request = db.requests[jobId];
     if (request == null) throw const AppError(ErrorCodes.unknown);
     // The mock's known PIN for both kinds (mirrors verifyHandoverPin).
-    return '4281';
+    return '428135';
   }
 
   @override
@@ -1195,7 +1193,7 @@ class MockJobProgressRepository extends _MockRepo
         if (request == null) throw const AppError(ErrorCodes.unknown);
         // A wrong PIN spends an attempt; replaying the same intent key does
         // not.
-        final ok = pin == '4281';
+        final ok = pin == '428135';
         if (ok) {
           _verifiedPins.add(scope);
         } else {
@@ -1248,6 +1246,12 @@ class MockTrackingRepository extends _MockRepo implements TrackingRepository {
   Future<void> publishProviderLocation(String jobId, LiveFix fix) async {
     await gate();
     (db.liveFixes[jobId] ??= <LiveFix>[]).add(fix);
+  }
+
+  @override
+  Future<void> reportPosition(LiveFix fix) async {
+    await gate();
+    db.reportedPositions.add(fix);
   }
 }
 
@@ -1994,6 +1998,10 @@ class MockConciergeRepository extends _MockRepo implements ConciergeRepository {
 
   final Map<String, List<ConciergeMessage>> _messages =
       <String, List<ConciergeMessage>>{};
+
+  /// Concierge replies by intent key, with the message that produced each.
+  final Map<String, (String, String)> _conciergeReplies =
+      <String, (String, String)>{};
   final Map<String, ConciergeDraft> _drafts = <String, ConciergeDraft>{};
   final Map<String, StreamController<List<ConciergeMessage>>> _controllers =
       <String, StreamController<List<ConciergeMessage>>>{};
@@ -2096,12 +2104,12 @@ class MockConciergeRepository extends _MockRepo implements ConciergeRepository {
     // without re-running slot filling or appending messages. The same key
     // carrying a DIFFERENT message is refused, like the backend.
     final cacheKey = 'conciergeSend:$idempotencyKey';
-    final cached = _idempotentResults[cacheKey];
+    final cached = _conciergeReplies[cacheKey];
     if (cached != null) {
       if (cached.$1 != text) {
         throw const AppError(ErrorCodes.idempotencyKeyReused);
       }
-      for (final word in (cached.$2 as String).split(' ')) {
+      for (final word in cached.$2.split(' ')) {
         await Future<void>.delayed(const Duration(milliseconds: 40));
         yield '$word ';
       }
@@ -2222,7 +2230,7 @@ class MockConciergeRepository extends _MockRepo implements ConciergeRepository {
       ),
     );
     _emit(conversationId);
-    _idempotentResults[cacheKey] = (text, reply);
+    _conciergeReplies[cacheKey] = (text, reply);
   }
 }
 

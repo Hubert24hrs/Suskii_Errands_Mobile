@@ -6,6 +6,12 @@ import preset from '../../packages/design-tokens/tailwind-preset';
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   presets: [preset as Config],
+  // Dark follows the device unless <html> pins a theme (`light` or `dark`),
+  // set by the theme choice in Settings.
+  darkMode: [
+    'variant',
+    ['@media (prefers-color-scheme: dark) { &:not(.light *) }', '&:is(.dark *)'],
+  ],
 };
 
 export default config;

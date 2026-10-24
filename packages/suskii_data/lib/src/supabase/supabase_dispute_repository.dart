@@ -38,9 +38,9 @@ class SupabaseDisputeRepository implements DisputeRepository {
   Stream<Dispute?> watchDispute(String jobId) => _gateway
       .streamRows(
         'disputes',
-        primaryKey: <String>['id'],
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: <String>['job:$jobId'],
       )
       .asyncMap((rows) async {
         if (rows.isEmpty) return null;

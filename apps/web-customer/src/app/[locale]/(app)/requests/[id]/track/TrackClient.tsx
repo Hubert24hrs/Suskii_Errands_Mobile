@@ -11,6 +11,7 @@ import type { GeoPoint, JobRequest, JobStatus, TripShare } from '@/mocks/types';
 import { CopyButton } from '@/components/CopyButton';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
+import { SosButton } from '@/components/SosButton';
 import { errorText, statusLabel, statusTone } from '../../_shared';
 
 /** States in which a job is in contact and live tracking makes sense. */
@@ -254,7 +255,10 @@ export function TrackClient({
         <h1 className="text-headline-medium text-ink-primary dark:text-ink-dark-primary">
           {dict.tracking.title}
         </h1>
-        <StatusChip label={statusLabel(dict, job.status)} tone={statusTone(job.status)} />
+        <div className="flex items-center gap-md">
+          <StatusChip label={statusLabel(dict, job.status)} tone={statusTone(job.status)} />
+          {active ? <SosButton jobId={job.id} dict={dict} /> : null}
+        </div>
       </div>
 
       {active ? (

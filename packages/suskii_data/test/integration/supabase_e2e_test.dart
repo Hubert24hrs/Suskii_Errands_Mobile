@@ -269,11 +269,20 @@ void main() {
       'provider travels, the pickup PIN starts the work, SOS is raised',
       () async {
         final jobs = SupabaseJobProgressRepository(provider);
+        // The customer's screen follows without reloading: the project
+        // publishes no table changes, so this is a broadcast on job:{id} or,
+        // where Realtime is not running, the refresh timer.
+        final followed = SupabaseRequestRepository(customer)
+            .watchJob(requestId)
+            .map((job) => job.status)
+            .firstWhere((status) => status == JobStatus.enRoute)
+            .timeout(const Duration(seconds: 30));
         await jobs.requestStatusChange(
           requestId,
           JobStatus.enRoute,
           idempotencyKey: newIdempotencyKey(),
         );
+        expect(await followed, JobStatus.enRoute);
 
         // On the way, the position feeds the trip trail through the heartbeat
         // (ADR-0009). This stack runs without the Realtime service, so the
@@ -1004,10 +1013,11 @@ void main() {
         expect(profile.serviceAreaIds, <String>['kano']);
         await SupabaseProviderRepository(p)
             .setOnline(true, idempotencyKey: newIdempotencyKey());
-        await p.rpc('heartbeat', <String, Object?>{
-          'p_lat': 12.0030,
-          'p_lng': 8.5925,
-        });
+        // What both apps now do every 45 s while online: without it the
+        // provider has no fresh position and matching never considers them.
+        await SupabaseTrackingRepository(p).reportPosition(
+          const LiveFix(point: GeoPoint(latitude: 12.0030, longitude: 8.5925)),
+        );
 
         const pickup = GeoPoint(latitude: 12.0022, longitude: 8.5920);
         final nearby = await SupabaseCatalogRepository(c)

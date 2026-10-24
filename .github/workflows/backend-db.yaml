@@ -2,14 +2,16 @@ name: backend-db
 
 # Database CI (docs/plan/infra-cicd.md §5). Path-filtered so it never runs for frontend-only
 # changes and never overlaps frontend-ci.yaml, which belongs to Kimi Code. The exceptions are
-# the two data layers that talk to this database, whose end-to-end runs live here because they
-# need the stack: the app's Supabase repositories and the admin console (audit Z.8).
+# the data layers that talk to this database, whose end-to-end runs live here because they
+# need the stack: the app's Supabase repositories, the admin console (audit Z.8) and the
+# website (audit 2026-10-24).
 # On main it runs as the first stage of pipeline-main.yaml, which deploys only if it passes.
 on:
   pull_request:
     paths: ['supabase/**', '.github/workflows/backend-db.yaml',
             'packages/suskii_data/lib/src/supabase/**', 'packages/suskii_data/test/integration/**',
-            'apps/web-admin/**', 'packages/web-config/**', 'tests/web-admin-e2e/**']
+            'apps/web-admin/**', 'packages/web-config/**', 'tests/web-admin-e2e/**',
+            'apps/web-customer/src/lib/supabase/**', 'tests/web-customer-e2e/**']
   workflow_call:
 
 permissions:
@@ -121,6 +123,27 @@ jobs:
         with:
           name: admin-e2e-results
           path: tests/web-admin-e2e/test-results/
+          if-no-files-found: ignore
+
+      # The website on the same stack: a customer publishes, pays, chats and rates; a provider
+      # onboards, goes online, offers and runs the job. Screens must follow the server without
+      # a reload, through broadcasts or the refresh timer, since no table changes are published.
+      - name: Website end to end (Playwright)
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
+          NEXT_PUBLIC_SUPABASE_URL="$API_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
+            npm run build -w apps/web-customer
+          SUPABASE_URL="$API_URL" SUPABASE_ANON_KEY="$ANON_KEY" \
+            SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+            npx playwright test -c tests/web-customer-e2e
+
+      - name: Upload website traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-customer-e2e-results
+          path: tests/web-customer-e2e/test-results/
           if-no-files-found: ignore
 
       - name: Security and performance advisors

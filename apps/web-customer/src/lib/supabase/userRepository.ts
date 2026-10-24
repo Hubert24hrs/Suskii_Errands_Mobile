@@ -58,13 +58,23 @@ export class SupabaseUserRepository {
         'profiles',
         profileRowColumns,
         () => void emit(),
-        { filterColumn: 'user_id', filterValue: userId },
+        { filterColumn: 'user_id', filterValue: userId, everyMs: 30_000 },
       );
     });
     return () => {
       active = false;
       channelSub();
     };
+  }
+
+  /** `display_name` is one of the columns the profiles UPDATE grant covers. */
+  async updateDisplayName(displayName: string): Promise<AppUser> {
+    const userId = await this.gateway.currentAuthUserId();
+    if (!userId) throw new AppError(ErrorCodes.unauthenticated);
+    const name = displayName.trim();
+    if (name.length === 0 || name.length > 80) throw new AppError(ErrorCodes.invalidArgument);
+    await this.gateway.updateRows('profiles', { display_name: name }, 'user_id', userId, 'user_id');
+    return fetchMyProfile(this.gateway);
   }
 
   async setActiveMode(mode: UserMode, _idempotencyKey: string): Promise<UserMode> {

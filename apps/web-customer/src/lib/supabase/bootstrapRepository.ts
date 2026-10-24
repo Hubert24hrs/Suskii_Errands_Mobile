@@ -14,6 +14,7 @@ import {
   appNotificationFromRow,
   appUserFromProfileRow,
   countryPackFromBootstrap,
+  serviceAreasFromRows,
 } from './mappers';
 
 /** Explicit column list — a `*` naming an ungranted column fails the query. */
@@ -40,7 +41,7 @@ export class SupabaseBootstrapRepository {
       // No beta/live country for the caller's profile or hint.
       throw new AppError(ErrorCodes.countryDisabled);
     }
-    const cities = await this.gateway.selectList('cities', 'name', {
+    const cities = await this.gateway.selectList('cities', 'code, name', {
       column: 'country_code',
       value: packMap['code'] as string,
     });
@@ -53,6 +54,7 @@ export class SupabaseBootstrapRepository {
       countryPack: countryPackFromBootstrap(
         packMap,
         cities.map((row) => row['name'] as string),
+        serviceAreasFromRows(cities),
       ),
       featureFlags: boolRecord(payload['feature_flags']),
       voiceLanguages: boolRecord(config['voice_languages']),
@@ -73,8 +75,22 @@ export class SupabaseBootstrapRepository {
   watchNotifications(
     onChange: (notification: AppNotification) => void,
   ): Unsubscribe {
-    return this.gateway.watchRows('notifications', notificationColumns, (rows) => {
-      for (const row of rows) onChange(appNotificationFromRow(row));
+    let active = true;
+    let unsubscribe: Unsubscribe = () => {};
+    void this.gateway.currentAuthUserId().then((me) => {
+      if (!active || !me) return;
+      unsubscribe = this.gateway.watchRows(
+        'notifications',
+        notificationColumns,
+        (rows) => {
+          for (const row of rows) onChange(appNotificationFromRow(row));
+        },
+        { topics: [`user:${me}`], everyMs: 30_000 },
+      );
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }
 }

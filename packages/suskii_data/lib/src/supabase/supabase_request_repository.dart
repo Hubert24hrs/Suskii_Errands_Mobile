@@ -110,9 +110,10 @@ class SupabaseRequestRepository implements RequestRepository {
     return _gateway
         .streamRows(
           'requests',
-          primaryKey: <String>['id'],
           filterColumn: 'id',
           filterValue: jobId,
+          topics: <String>['job:$jobId'],
+          every: const Duration(seconds: 10),
         )
         .asyncMap((_) => loadJobRequestRow(_gateway, jobId))
         .where((request) => request != null)

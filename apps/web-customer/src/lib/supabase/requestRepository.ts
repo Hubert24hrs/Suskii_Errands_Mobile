@@ -135,7 +135,8 @@ export class SupabaseRequestRepository {
       'requests',
       'id',
       () => void load(),
-      { column: 'id', value: jobId, filterColumn: 'id', filterValue: jobId },
+      // A trigger: each tick reloads the whole job, whose money lives on `jobs`.
+      { column: 'id', value: jobId, filterColumn: 'id', filterValue: jobId, topics: [`job:${jobId}`], everyMs: 10_000, distinct: false },
     );
     return () => {
       active = false;

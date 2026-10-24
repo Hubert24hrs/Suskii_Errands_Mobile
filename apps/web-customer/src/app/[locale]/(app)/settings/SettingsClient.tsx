@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import { newIdempotencyKey } from '@/lib/idempotency';
-import { ErrorCodes, isAppError, settingsRepository } from '@/lib/repositories';
+import { ErrorCodes, isAppError, settingsRepository, userRepository } from '@/lib/repositories';
 import type { NotificationPreferences } from '@/mocks/types';
 import { Modal } from '@/components/Modal';
 import { StateBlock } from '@/components/StateBlock';
@@ -154,6 +154,18 @@ function NotificationsSection({ dict }: { dict: Dictionary }) {
             label={dict.settings.channels.email}
             checked={prefs.email}
             onChange={(email) => update({ email })}
+          />
+          <Toggle
+            id="prefs-sms"
+            label={dict.settings.channels.sms}
+            checked={prefs.sms}
+            onChange={(sms) => update({ sms })}
+          />
+          <Toggle
+            id="prefs-marketing"
+            label={dict.settings.channels.marketing}
+            checked={prefs.marketing}
+            onChange={(marketing) => update({ marketing })}
           />
 
           <div className="flex flex-col gap-sm border-t border-outline pt-lg dark:border-outline-dark">
@@ -524,6 +536,111 @@ function DeleteAccountSection({ dict }: { dict: Dictionary }) {
   );
 }
 
+type Theme = 'system' | 'light' | 'dark';
+const THEME_KEY = 'suskii-theme';
+
+function readTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
+/** Pins the theme with a class on <html>; "system" removes it and follows the device. */
+function applyTheme(theme: Theme): void {
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark');
+  if (theme !== 'system') root.classList.add(theme);
+  try {
+    if (theme === 'system') localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Storage blocked: the choice lasts for this page only.
+  }
+}
+
+function ProfileSection({ dict }: { dict: Dictionary }) {
+  const queryClient = useQueryClient();
+  const profile = useQuery({ queryKey: ['user', 'me'], queryFn: () => userRepository.getProfile() });
+  const [name, setName] = useState<string>();
+  const [theme, setTheme] = useState<Theme>('system');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setTheme(readTheme()), []);
+  const value = name ?? profile.data?.displayName ?? '';
+
+  const saveName = async () => {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const updated = await userRepository.updateDisplayName(value);
+      queryClient.setQueryData(['user', 'me'], updated);
+      setName(undefined);
+      setNote(dict.settings.nameSaved);
+    } catch (e) {
+      setError(errorText(dict, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className={sectionClass}>
+      <h2 className="text-title-large text-ink-primary dark:text-ink-dark-primary">{dict.settings.profileTitle}</h2>
+      <div className="mt-lg flex flex-col gap-lg">
+        <div className="flex flex-wrap items-end gap-sm">
+          <label className="flex min-w-0 flex-1 flex-col gap-xs">
+            <span className="text-label-large text-ink-primary dark:text-ink-dark-primary">{dict.settings.nameLabel}</span>
+            <input
+              data-testid="settings-name"
+              value={value}
+              maxLength={80}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-md border border-outline bg-surface-raised px-md py-sm text-body-large text-ink-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:text-ink-dark-primary"
+            />
+          </label>
+          <button
+            type="button"
+            data-testid="settings-name-save"
+            disabled={busy || value.trim().length === 0}
+            onClick={() => void saveName()}
+            className="rounded-md bg-brand-primary px-xl py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50"
+          >
+            {dict.settings.nameSave}
+          </button>
+        </div>
+        {note ? <p role="status" className="text-body-small text-success dark:text-success-dark">{note}</p> : null}
+        {error ? <p role="alert" className="text-body-small text-error dark:text-error-dark">{error}</p> : null}
+        <fieldset className="flex flex-col gap-xs">
+          <legend className="text-label-large text-ink-primary dark:text-ink-dark-primary">{dict.settings.themeTitle}</legend>
+          <div className="flex flex-wrap gap-lg">
+            {(['system', 'light', 'dark'] as const).map((option) => (
+              <label key={option} className="flex items-center gap-xs text-body-medium text-ink-primary dark:text-ink-dark-primary">
+                <input
+                  type="radio"
+                  name="theme"
+                  data-testid={`theme-${option}`}
+                  checked={theme === option}
+                  onChange={() => {
+                    setTheme(option);
+                    applyTheme(option);
+                  }}
+                />
+                {option === 'system' ? dict.settings.themeSystem : option === 'light' ? dict.settings.themeLight : dict.settings.themeDark}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  );
+}
+
 export function SettingsClient({ dict }: { dict: Dictionary }) {
   return (
     <div className="mx-auto w-full max-w-5xl px-lg py-xxxl">
@@ -531,6 +648,7 @@ export function SettingsClient({ dict }: { dict: Dictionary }) {
         {dict.settings.title}
       </h1>
       <div className="mt-xxl flex flex-col gap-xxl">
+        <ProfileSection dict={dict} />
         <NotificationsSection dict={dict} />
         <TrustedContactsSection dict={dict} />
         <DataSection dict={dict} />

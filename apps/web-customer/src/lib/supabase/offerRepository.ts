@@ -43,6 +43,8 @@ export class SupabaseOfferRepository {
         value: requestId,
         filterColumn: 'request_id',
         filterValue: requestId,
+        topics: [`request:${requestId}:customer`],
+        everyMs: 10_000,
       },
     );
     return () => {

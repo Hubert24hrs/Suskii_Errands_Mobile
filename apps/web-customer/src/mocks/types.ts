@@ -627,6 +627,14 @@ export interface CountryPack {
   offerTtlSeconds: number;
   maxNegotiationRounds: number;
   minWithdrawal?: Money;
+  /** Where a provider can work: Nigeria's 36 states and the FCT. The code
+   * goes over the wire (`update_provider_service_areas`); the name is shown. */
+  serviceAreas?: ServiceArea[];
+}
+
+export interface ServiceArea {
+  code: string;
+  name: string;
 }
 
 /** Compact summary of an in-flight job, shown as a banner. */
@@ -813,4 +821,178 @@ export interface NearbyProviders {
   total: number;
   radiusMeters: number;
   areas: NearbyArea[];
+}
+
+// ---------------------------------------------------------------------------
+// Provider mode: the same domain the mobile app's provider screens use
+// (packages/suskii_domain), so both clients call the same contract functions.
+// ---------------------------------------------------------------------------
+
+export interface DocumentExpiryWarning {
+  documentTypeKey: string;
+  daysRemaining: number;
+}
+
+export interface ProviderHomeSummary {
+  online: boolean;
+  verificationStatus: VerificationStatus;
+  todayEarnings: Money;
+  completedToday: number;
+  nearbyOpenRequests: number;
+  documentWarnings: DocumentExpiryWarning[];
+}
+
+/** A wrong PIN is a result, not an error (`verify_pin` returns rather than raises). */
+export interface PinVerificationResult {
+  verified: boolean;
+  status: JobStatus;
+  attemptsRemaining: number;
+}
+
+export type ProofKind = 'photo' | 'receipt' | 'signature';
+
+export interface Proof {
+  id: string;
+  jobId: string;
+  providerId: string;
+  kind: ProofKind;
+  storagePath: string;
+  createdAt: Date;
+  capturedAt?: Date;
+}
+
+export type UploadBucket = 'job-proofs' | 'receipts' | 'kyc-docs' | 'request-media' | 'avatars';
+
+export interface KycStep {
+  kind: KycStepKind;
+  status: KycStepStatus;
+  attemptCount: number;
+  submittedAt?: Date;
+  reviewedAt?: Date;
+  rejectionReasonKey?: string;
+}
+
+export interface ProviderKycProfile {
+  userId: string;
+  kind: ProviderKind;
+  serviceCategoryIds: string[];
+  serviceAreaIds: string[];
+  steps: KycStep[];
+  overallStatus: KycStepStatus;
+  vehicleType?: VehicleType;
+  submittedForReviewAt?: Date;
+}
+
+export interface ProviderOnboardingInput {
+  kind: ProviderKind;
+  serviceCategoryIds: string[];
+  serviceAreaIds: string[];
+  vehicleType?: VehicleType;
+  businessName?: string;
+}
+
+/** Step input, typed per kind (the mobile `submitStep(kind, Object input)`). */
+export type KycStepInput =
+  | { kind: 'government_id'; idType: string; idNumber: string }
+  | { kind: 'id_document_capture'; uploadRef: string }
+  | { kind: 'provider_facial'; sessionId: string }
+  | {
+      kind: 'police_clearance';
+      certificateNumber: string;
+      issueDate: string;
+      expiryDate: string;
+      uploadRef: string;
+    }
+  | { kind: 'address'; line1: string; line2?: string; city: string; state: string; landmarkNote?: string }
+  | { kind: 'guarantor'; fullName: string; phoneE164: string; relationship: string }
+  | { kind: 'payout_account'; bankCode: string; accountNumber: string }
+  | {
+      kind: 'vehicle_documents';
+      licenceUploadRef: string;
+      registrationUploadRef: string;
+      insuranceUploadRef?: string;
+    }
+  | { kind: 'credentials'; description: string; uploadRefs: string[] };
+
+export interface PayoutAccountResult {
+  bankCode: string;
+  maskedAccountNumber: string;
+  resolvedName: string;
+  nameMatch: boolean;
+}
+
+/** Minutes since local midnight; dayOfWeek 1 = Monday … 7 = Sunday. */
+export interface AvailabilitySlot {
+  dayOfWeek: number;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+export type GoalPeriod = 'weekly' | 'monthly';
+
+export interface EarningsGoal {
+  target: Money;
+  period: GoalPeriod;
+  progress: Money;
+}
+
+export interface DemandZone {
+  id: string;
+  label: string;
+  center: GeoPoint;
+  intensity: number;
+  openRequests: number;
+}
+
+export interface ProviderInsights {
+  acceptanceRate: number;
+  completionRate: number;
+  avgRating: number;
+  fiveStarShare: number;
+  avgResponseTimeSeconds: number;
+  periodDays: number;
+}
+
+export interface InstantPayoutQuote {
+  fee: Money;
+  net: Money;
+  arrivesWithinMinutes: number;
+}
+
+export type BusinessRole = 'owner' | 'dispatcher' | 'worker';
+
+export interface Organization {
+  id: string;
+  name: string;
+  ownerId: string;
+  verificationStatus: VerificationStatus;
+  payoutAccountSet: boolean;
+  memberCount: number;
+  activeVehicleCount: number;
+}
+
+export interface OrgInvitation {
+  organizationId: string;
+  organizationName: string;
+  role: BusinessRole;
+  invitedAt: Date;
+}
+
+export interface OrgMember {
+  userId: string;
+  displayName: string;
+  role: BusinessRole;
+  verificationStatus: VerificationStatus;
+  jobsCompleted: number;
+  /** The owner only; undefined for everyone else. */
+  earningsToDate?: Money;
+}
+
+export interface Vehicle {
+  id: string;
+  organizationId: string;
+  type: VehicleType;
+  plate: string;
+  assignedWorkerId?: string;
+  documentExpiry?: Date;
 }

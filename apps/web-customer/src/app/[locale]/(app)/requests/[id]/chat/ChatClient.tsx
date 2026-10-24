@@ -78,10 +78,13 @@ export function ChatClient({
   locale,
   jobId,
   dict,
+  backBase = 'requests',
 }: {
   locale: Locale;
   jobId: string;
   dict: Dictionary;
+  /** Where "back" goes: the customer's requests, or the provider's jobs. */
+  backBase?: 'requests' | 'provider/jobs';
 }) {
   const { query, job } = useJob(jobId);
 
@@ -174,7 +177,7 @@ export function ChatClient({
         />
         <div className="flex justify-center">
           <Link
-            href={`/${locale}/requests`}
+            href={`/${locale}/${backBase}`}
             className="rounded-md bg-brand-primary px-xl py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong"
           >
             {dict.common.back}
@@ -287,7 +290,7 @@ export function ChatClient({
 
       <div className="mt-lg">
         <Link
-          href={`/${locale}/requests/${job.id}`}
+          href={`/${locale}/${backBase}/${job.id}`}
           className="text-label-large text-brand-primary hover:underline dark:text-brand-secondary"
         >
           {dict.common.back}

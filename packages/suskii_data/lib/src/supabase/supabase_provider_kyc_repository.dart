@@ -39,8 +39,10 @@ class SupabaseProviderKycRepository implements ProviderKycRepository {
   Future<ProviderKycProfile> getKycProfile() async {
     final userId = _gateway.currentAuthUserId;
     if (userId == null) throw const AppError(ErrorCodes.unauthenticated);
+    // By name: an applicant is in customer mode until verified, and the
+    // active mode's list would be the customer one (audit AA.2).
     final stepRows = await _gateway
-        .rpc('get_my_kyc_profile')
+        .rpc('get_my_kyc_profile', <String, Object?>{'p_mode': 'provider'})
         .then((rows) => List<Map<String, dynamic>>.from(rows as List<dynamic>));
     final profile = await _gateway.selectSingle(
       'provider_profiles',

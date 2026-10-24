@@ -21,6 +21,17 @@ const routes: Record<keyof typeof apps, string[]> = {
     '/en/verify',
     '/en/meet',
     '/en/meet/meet-1',
+    '/en/provider',
+    '/en/provider/offers',
+    '/en/provider/jobs',
+    '/en/provider/jobs/job-p1',
+    '/en/provider/jobs/job-p1/chat',
+    '/en/provider/earnings',
+    '/en/provider/tools',
+    '/en/provider/business',
+    '/en/provider/onboarding',
+    '/en/provider/verification',
+    '/pcm/provider',
   ],
   marketing: [
     '/',
@@ -216,6 +227,114 @@ test.describe('customer: nearest providers', () => {
     expect([...km].sort((a, b) => a - b)).toEqual(km);
     await page.getByTestId('offers-sort-best').click();
     await expect(page.getByText('Ranked by price and reputation together')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// 2026-10-24 (part 4): provider mode on the website, the same screens as the app's provider side.
+// The mock keeps its session in memory, so in-app navigation is client-side (router.push).
+test.describe('provider mode', () => {
+  const base = `http://127.0.0.1:${apps.customer.port}`;
+
+  async function signIn(page: Page) {
+    await page.goto(`${base}/en/auth`);
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+  }
+
+  async function go(page: Page, path: string) {
+    await page.evaluate((url) => (window as unknown as { next: { router: { push(u: string): void } } }).next.router.push(url), path);
+    await page.waitForURL(`**${path}`);
+  }
+
+  test('switch to provider, go online and make an offer', async ({ page }) => {
+    const errors = watchErrors(page);
+    await signIn(page);
+    await page.getByTestId('dashboard-provider').click();
+    await page.waitForURL(`${base}/en/provider`);
+    await page.getByTestId('provider-online-toggle').click();
+    await expect(page.getByTestId('provider-online-state')).toHaveText("You're online");
+    await page.getByTestId('feed-req-feed-1').click();
+    await page.getByTestId('offer-send').click();
+    await expect(page.getByText('Offer sent.')).toBeVisible();
+    await expect(page.getByTestId('feed-my-offer')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('answer a counter-offer, then run a job to completion', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 6.4531, longitude: 3.3958 });
+    const errors = watchErrors(page);
+    await signIn(page);
+    await go(page, '/en/provider/offers');
+    await page.getByTestId('offer-accept-offer-p1').click();
+    await expect(page.getByText('Accepted. The customer pays next.')).toBeVisible();
+
+    await go(page, '/en/provider/jobs/job-p1');
+    await page.getByTestId('job-start').click();
+    await page.getByTestId('job-arrived').click();
+    await page.getByTestId('pin-input-pickup').fill('1111');
+    await page.getByTestId('pin-verify-pickup').click();
+    await expect(page.getByText('Wrong PIN. 4 attempts left.')).toBeVisible();
+    await page.getByTestId('pin-input-pickup').fill('428135');
+    await page.getByTestId('pin-verify-pickup').click();
+    await expect(page.getByTestId('job-proofs')).toBeVisible();
+
+    await page.getByTestId('job-complete').click();
+    await expect(page.getByText('Add the required proof before marking the job complete.')).toBeVisible();
+    await page
+      .locator('[data-testid^="proof-input-"]')
+      .first()
+      .setInputFiles({ name: 'proof.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
+    await expect(page.getByText('Proof added.')).toBeVisible();
+    await page.getByTestId('pin-input-delivery').fill('428135');
+    await page.getByTestId('pin-verify-delivery').click();
+    await expect(page.getByTestId('pin-delivery').getByText('PIN verified.')).toBeVisible();
+    await page.getByTestId('job-complete').click();
+    await expect(page.getByText('Waiting for the customer to confirm the job is done.')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('tools, business invitation and a state from the dropdown', async ({ page }) => {
+    const errors = watchErrors(page);
+    await signIn(page);
+    await go(page, '/en/provider/tools');
+    await page.getByTestId('tools-goal').getByRole('button', { name: 'Save goal' }).click();
+    await expect(page.getByText('Goal saved.')).toBeVisible();
+    await go(page, '/en/provider/business');
+    await page.getByTestId('invitation-accept-org-swift').click();
+    await expect(page.getByTestId('business-summary')).toContainText('SwiftErrands Ltd');
+    await go(page, '/en/provider/onboarding');
+    await page.getByTestId('onboarding-state').selectOption('kano');
+    await page.getByTestId('onboarding-save').click();
+    await page.waitForURL('**/en/provider/verification');
+    await expect(page.getByTestId('kyc-steps')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// 2026-10-24 (part 4): what the app had and the website did not, on the customer side.
+test.describe('customer: SOS, name and theme', () => {
+  const base = `http://127.0.0.1:${apps.customer.port}`;
+
+  test('SOS during a paid job; name and theme in settings', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(`${base}/en/auth`);
+    await page.getByTestId('auth-google').click();
+    await page.waitForURL(`${base}/en`);
+    await page.evaluate(() => (window as unknown as { next: { router: { push(u: string): void } } }).next.router.push('/en/requests/req-8'));
+    await page.getByTestId('sos-button').click();
+    await page.getByTestId('sos-send').click();
+    await expect(page.getByTestId('sos-sheet')).toContainText('Help has been notified.');
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => (window as unknown as { next: { router: { push(u: string): void } } }).next.router.push('/en/settings'));
+    await page.getByTestId('settings-name').fill('Adaeze O.');
+    await page.getByTestId('settings-name-save').click();
+    await expect(page.getByText('Name saved.')).toBeVisible();
+    await page.getByTestId('theme-dark').check();
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await page.getByTestId('theme-system').check();
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
     expect(errors).toEqual([]);
   });
 });

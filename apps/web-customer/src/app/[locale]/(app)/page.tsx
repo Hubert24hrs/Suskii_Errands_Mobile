@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n';
+import { ProviderModeCard } from './ProviderModeCard';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -29,7 +30,7 @@ export default async function DashboardPage({ params }: Props) {
         {dict.dashboard.subtitle}
       </p>
       <div className="mt-xxl grid gap-xl sm:grid-cols-2">
-        {dict.dashboard.cards.map((card, i) => (
+        {dict.dashboard.cards.slice(0, cardHrefs.length).map((card, i) => (
           <Link
             key={card.title}
             href={`/${locale}${cardHrefs[i]}`}
@@ -43,6 +44,7 @@ export default async function DashboardPage({ params }: Props) {
             </p>
           </Link>
         ))}
+        <ProviderModeCard locale={locale as Locale} dict={dict} />
       </div>
     </div>
   );

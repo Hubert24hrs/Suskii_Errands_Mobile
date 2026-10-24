@@ -25,6 +25,14 @@ import type {
   VerificationSession,
   WalletSummary,
   WalletTransaction,
+  AvailabilitySlot,
+  EarningsGoal,
+  OrgInvitation,
+  OrgMember,
+  Organization,
+  Proof,
+  ProviderKycProfile,
+  Vehicle,
 } from './types';
 
 /**
@@ -92,6 +100,19 @@ export class MockDatabase {
    * 24h after confirmation unless a dispute is open).
    */
   jobConfirmedAt: Record<string, Date> = {};
+
+  // Provider mode (the same signed-in person, switched to provider).
+  kycProfiles: Record<string, ProviderKycProfile> = {};
+  proofs: Record<string, Proof[]> = {};
+  availability: Record<string, AvailabilitySlot[]> = {};
+  earningsGoals: Record<string, EarningsGoal> = {};
+  organizations: Record<string, Organization> = {};
+  orgMembers: Record<string, OrgMember[]> = {};
+  /** Invitations waiting for each user. */
+  orgInvitations: Record<string, OrgInvitation[]> = {};
+  vehicles: Record<string, Vehicle[]> = {};
+  /** Org-accepted jobs awaiting dispatch, per organization. */
+  orgAssignableJobs: Record<string, string[]> = {};
 
   // Event channels (stand-ins for the Dart broadcast StreamControllers).
   readonly notificationEvents = new Emitter<AppNotification>();
@@ -263,6 +284,45 @@ export class MockDatabase {
         offerTtlSeconds: 600,
         maxNegotiationRounds: 5,
         minWithdrawal: { amountMinor: 100000, currency: 'NGN' },
+        serviceAreas: [
+          { code: 'abia', name: 'Abia' },
+          { code: 'adamawa', name: 'Adamawa' },
+          { code: 'akwa-ibom', name: 'Akwa Ibom' },
+          { code: 'anambra', name: 'Anambra' },
+          { code: 'bauchi', name: 'Bauchi' },
+          { code: 'bayelsa', name: 'Bayelsa' },
+          { code: 'benue', name: 'Benue' },
+          { code: 'borno', name: 'Borno' },
+          { code: 'cross-river', name: 'Cross River' },
+          { code: 'delta', name: 'Delta' },
+          { code: 'ebonyi', name: 'Ebonyi' },
+          { code: 'edo', name: 'Edo' },
+          { code: 'ekiti', name: 'Ekiti' },
+          { code: 'enugu', name: 'Enugu' },
+          { code: 'abuja', name: 'FCT (Abuja)' },
+          { code: 'gombe', name: 'Gombe' },
+          { code: 'imo', name: 'Imo' },
+          { code: 'jigawa', name: 'Jigawa' },
+          { code: 'kaduna', name: 'Kaduna' },
+          { code: 'kano', name: 'Kano' },
+          { code: 'katsina', name: 'Katsina' },
+          { code: 'kebbi', name: 'Kebbi' },
+          { code: 'kogi', name: 'Kogi' },
+          { code: 'kwara', name: 'Kwara' },
+          { code: 'lagos', name: 'Lagos' },
+          { code: 'nasarawa', name: 'Nasarawa' },
+          { code: 'niger', name: 'Niger' },
+          { code: 'ogun', name: 'Ogun' },
+          { code: 'ondo', name: 'Ondo' },
+          { code: 'osun', name: 'Osun' },
+          { code: 'oyo', name: 'Oyo' },
+          { code: 'plateau', name: 'Plateau' },
+          { code: 'rivers', name: 'Rivers' },
+          { code: 'sokoto', name: 'Sokoto' },
+          { code: 'taraba', name: 'Taraba' },
+          { code: 'yobe', name: 'Yobe' },
+          { code: 'zamfara', name: 'Zamfara' },
+        ],
       },
       KE: {
         countryCode: 'KE',
@@ -811,6 +871,229 @@ export class MockDatabase {
         updatedAt: daysFrom(now, -100),
       },
     };
+
+    this.seedProviderSide(now);
+  }
+
+  /**
+   * Provider mode for the demo person (user-ada): open requests from another
+   * customer for the feed, jobs assigned to her at three stages, her offers,
+   * a KYC profile, tools data and a business invitation.
+   */
+  private seedProviderSide(now: number): void {
+    const ngn = (amountMinor: number) => ({ amountMinor, currency: 'NGN' });
+    this.providers['user-ada'] = {
+      userId: 'user-ada',
+      displayName: 'Adaeze Obi',
+      kind: 'individual',
+      serviceCategoryIds: ['errands_delivery', 'shopping'],
+      serviceAreaIds: ['lagos'],
+      rating: 4.8,
+      completedJobs: 57,
+      cancellationRate: 0.02,
+      avgResponseTimeSeconds: 80,
+      online: false,
+      verificationStatus: 'verified',
+      vehicleType: 'motorcycle',
+    };
+
+    const feed: Record<string, JobRequest> = {
+      'req-feed-1': {
+        id: 'req-feed-1',
+        customerId: 'user-chidi',
+        categoryId: 'errands_delivery',
+        isCustomCategory: false,
+        description: 'Pick up a parcel from the GIG office and bring it to Surulere.',
+        mediaPaths: [],
+        pickup: { label: 'Yaba', point: { latitude: 6.509, longitude: 3.371 } },
+        destination: { label: '', point: { latitude: 6.5, longitude: 3.354 } },
+        urgency: 'standard',
+        status: 'published',
+        createdAt: minutesFrom(now, -6),
+        preferredPrice: ngn(350000),
+      },
+      'req-feed-2': {
+        id: 'req-feed-2',
+        customerId: 'user-chidi',
+        categoryId: 'shopping',
+        isCustomCategory: false,
+        description: 'Buy a carton of noodles and two crates of eggs from Shoprite.',
+        mediaPaths: [],
+        pickup: { label: 'Lekki Phase 1', point: { latitude: 6.448, longitude: 3.472 } },
+        urgency: 'urgent',
+        status: 'published',
+        createdAt: minutesFrom(now, -14),
+        preferredPrice: ngn(500000),
+        itemFloat: ngn(2500000),
+      },
+      'req-feed-3': {
+        id: 'req-feed-3',
+        customerId: 'user-chidi',
+        categoryId: 'errands_delivery',
+        isCustomCategory: false,
+        description: 'Deliver a birthday cake to Ikeja GRA before 4pm.',
+        mediaPaths: [],
+        pickup: { label: 'Ikoyi', point: { latitude: 6.452, longitude: 3.436 } },
+        destination: { label: '', point: { latitude: 6.58, longitude: 3.354 } },
+        urgency: 'standard',
+        status: 'offers_received',
+        createdAt: minutesFrom(now, -20),
+        preferredPrice: ngn(600000),
+      },
+    };
+    const jobs: Record<string, JobRequest> = {
+      // Paid and held, waiting for the provider to set off.
+      'job-p1': {
+        id: 'job-p1',
+        customerId: 'user-chidi',
+        categoryId: 'errands_delivery',
+        isCustomCategory: false,
+        description: 'Collect documents from a law firm on Broad Street and deliver to Victoria Island.',
+        mediaPaths: [],
+        pickup: {
+          label: 'Broad Street, Lagos Island',
+          point: { latitude: 6.4531, longitude: 3.3958 },
+          landmarkNote: 'Third floor, ask for Mrs Okafor',
+        },
+        destination: { label: 'Adeola Odeku, Victoria Island', point: { latitude: 6.4302, longitude: 3.4187 } },
+        urgency: 'standard',
+        status: 'paid_held',
+        createdAt: hoursFrom(now, -1),
+        agreedPrice: ngn(450000),
+        agreedBreakdown: simulateQuote(ngn(450000), { estimatedGatewayFee: ngn(6750) }),
+        providerId: 'user-ada',
+      },
+      // Underway: arrived at pickup, the PIN starts the work.
+      'job-p2': {
+        id: 'job-p2',
+        customerId: 'user-chidi',
+        categoryId: 'shopping',
+        isCustomCategory: false,
+        description: 'Buy groceries from Spar Lekki, list attached.',
+        mediaPaths: [],
+        pickup: { label: 'Spar, Lekki Phase 1', point: { latitude: 6.4474, longitude: 3.4723 } },
+        urgency: 'standard',
+        status: 'arrived',
+        createdAt: hoursFrom(now, -2),
+        agreedPrice: ngn(500000),
+        agreedBreakdown: simulateQuote(ngn(500000), { estimatedGatewayFee: ngn(7500) }),
+        itemFloat: ngn(1500000),
+        providerId: 'user-ada',
+      },
+      // Done and confirmed: history.
+      'job-p3': {
+        id: 'job-p3',
+        customerId: 'user-chidi',
+        categoryId: 'errands_delivery',
+        isCustomCategory: false,
+        description: 'Return a laptop to a repair shop in Computer Village.',
+        mediaPaths: [],
+        pickup: { label: 'Surulere', point: { latitude: 6.5, longitude: 3.354 } },
+        destination: { label: 'Computer Village, Ikeja', point: { latitude: 6.595, longitude: 3.342 } },
+        urgency: 'standard',
+        status: 'closed',
+        createdAt: daysFrom(now, -3),
+        agreedPrice: ngn(400000),
+        agreedBreakdown: simulateQuote(ngn(400000), { estimatedGatewayFee: ngn(6000) }),
+        providerId: 'user-ada',
+      },
+    };
+    Object.assign(this.requests, feed, jobs);
+
+    this.offers['req-feed-3'] = [
+      {
+        id: 'offer-p1',
+        requestId: 'req-feed-3',
+        providerId: 'user-ada',
+        providerName: 'Adaeze Obi',
+        providerRating: 4.8,
+        providerTrustLevel: 'trusted',
+        amount: ngn(650000),
+        status: 'countered',
+        round: 2,
+        createdAt: minutesFrom(now, -12),
+        message: 'Can you do 5,500?',
+        expiresAt: minutesFrom(now, 8),
+      },
+    ];
+
+    const step = (kind: ProviderKycProfile['steps'][number]['kind'], status: ProviderKycProfile['steps'][number]['status']) => ({
+      kind,
+      status,
+      attemptCount: status === 'not_started' ? 0 : 1,
+      submittedAt: status === 'not_started' ? undefined : daysFrom(now, -40),
+      reviewedAt: status === 'verified' ? daysFrom(now, -38) : undefined,
+    });
+    this.kycProfiles['user-ada'] = {
+      userId: 'user-ada',
+      kind: 'individual',
+      serviceCategoryIds: ['errands_delivery', 'shopping'],
+      serviceAreaIds: ['lagos'],
+      vehicleType: 'motorcycle',
+      overallStatus: 'verified',
+      submittedForReviewAt: daysFrom(now, -40),
+      steps: [
+        step('government_id', 'verified'),
+        step('provider_facial', 'verified'),
+        step('id_document_capture', 'verified'),
+        step('police_clearance', 'verified'),
+        step('address', 'verified'),
+        step('guarantor', 'verified'),
+        step('payout_account', 'verified'),
+        step('vehicle_documents', 'verified'),
+        step('credentials', 'not_started'),
+      ],
+    };
+    // Chidi has not started: the onboarding and KYC demos.
+    this.kycProfiles['user-chidi'] = {
+      userId: 'user-chidi',
+      kind: 'individual',
+      serviceCategoryIds: [],
+      serviceAreaIds: [],
+      overallStatus: 'not_started',
+      steps: (
+        [
+          'government_id',
+          'provider_facial',
+          'id_document_capture',
+          'police_clearance',
+          'address',
+          'guarantor',
+          'payout_account',
+          'vehicle_documents',
+          'credentials',
+        ] as const
+      ).map((kind) => step(kind, 'not_started')),
+    };
+
+    this.availability['user-ada'] = [
+      { dayOfWeek: 1, startMinutes: 8 * 60, endMinutes: 18 * 60 },
+      { dayOfWeek: 3, startMinutes: 8 * 60, endMinutes: 18 * 60 },
+      { dayOfWeek: 5, startMinutes: 10 * 60, endMinutes: 20 * 60 },
+    ];
+    this.earningsGoals['user-ada'] = { target: ngn(15000000), period: 'weekly', progress: ngn(9200000) };
+
+    this.organizations['org-swift'] = {
+      id: 'org-swift',
+      name: 'SwiftErrands Ltd',
+      ownerId: 'provider-swift',
+      verificationStatus: 'verified',
+      payoutAccountSet: true,
+      memberCount: 3,
+      activeVehicleCount: 2,
+    };
+    this.orgMembers['org-swift'] = [
+      { userId: 'provider-swift', displayName: 'SwiftErrands Ltd', role: 'owner', verificationStatus: 'verified', jobsCompleted: 1820 },
+      { userId: 'provider-musa', displayName: 'Musa Bello', role: 'worker', verificationStatus: 'verified', jobsCompleted: 312 },
+      { userId: 'provider-tunde', displayName: 'Tunde Bakare', role: 'worker', verificationStatus: 'suspended', jobsCompleted: 44 },
+    ];
+    this.vehicles['org-swift'] = [
+      { id: 'veh-1', organizationId: 'org-swift', type: 'motorcycle', plate: 'LND •••• 4KJ', assignedWorkerId: 'provider-musa', documentExpiry: daysFrom(now, 120) },
+      { id: 'veh-2', organizationId: 'org-swift', type: 'car', plate: 'KJA •••• 7AB', documentExpiry: daysFrom(now, 20) },
+    ];
+    this.orgInvitations['user-ada'] = [
+      { organizationId: 'org-swift', organizationName: 'SwiftErrands Ltd', role: 'worker', invitedAt: hoursFrom(now, -5) },
+    ];
   }
 }
 

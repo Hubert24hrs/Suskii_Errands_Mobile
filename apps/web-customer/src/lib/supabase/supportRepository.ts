@@ -45,6 +45,7 @@ export class SupabaseSupportRepository {
       'support_tickets',
       ticketColumns,
       (rows) => void emit(rows),
+      { everyMs: 30_000 },
     );
     return () => {
       active = false;

@@ -396,14 +396,23 @@ export class MockOfferRepository extends MockRepo {
     ) {
       throw new AppError(ErrorCodes.offerExpired);
     }
-    if (offer.status === 'countered') {
-      // The live offer in this thread is the customer's own counter —
-      // accepting/declining/countering is the provider's move now.
+    // `pending` is the provider's offer on the table (the customer's move);
+    // `countered` is the customer's counter (the provider's move).
+    const provider = this.callerIsProvider(offer);
+    if (offer.status === 'countered' && !provider) {
       throw new AppError(ErrorCodes.offerNotYourTurn);
     }
-    if (offer.status !== 'pending') {
+    if (offer.status === 'pending' && provider) {
+      throw new AppError(ErrorCodes.offerNotYourTurn);
+    }
+    if (offer.status !== 'pending' && offer.status !== 'countered') {
       throw new AppError(ErrorCodes.offerNotActive);
     }
+  }
+
+  /** The server answers by who is calling: the offer's provider, or the request's customer. */
+  private callerIsProvider(offer: Offer): boolean {
+    return offer.providerId === this.currentUser.id;
   }
 
   /** One transaction: accept, expire all siblings, agree the job. */
@@ -475,6 +484,20 @@ export class MockOfferRepository extends MockRepo {
         this.assertActionable(offer, requestId);
         if (amount.amountMinor <= 0 || !Number.isSafeInteger(amount.amountMinor)) {
           throw new AppError(ErrorCodes.priceOutOfRange);
+        }
+        if (this.callerIsProvider(offer)) {
+          // The provider answers the customer's counter: back on the table for the customer.
+          const answered: Offer = {
+            ...offer,
+            status: 'pending',
+            amount,
+            message,
+            round: offer.round + 1,
+            expiresAt: new Date(this.now().getTime() + this.offerTtlMs(categoryId)),
+          };
+          this.db.offers[requestId][index] = answered;
+          this.db.offerEvents.emit(answered);
+          return answered;
         }
         const providerAsk = offer.amount.amountMinor;
         const countered: Offer = {
@@ -573,10 +596,12 @@ export class MockOfferRepository extends MockRepo {
     await this.gate();
     return this.idempotent(`withdrawOffer:${offerId}`, idempotencyKey, '', () => {
       const { requestId, index, offer } = this.find(offerId);
-      if (offer.status === 'pending') {
-        throw new AppError(ErrorCodes.offerNotYourTurn);
-      }
-      if (offer.status !== 'countered') {
+      // The author withdraws: the provider while their offer is pending, the
+      // customer while their counter is.
+      const authored = this.callerIsProvider(offer) ? 'pending' : 'countered';
+      if (offer.status === 'pending' || offer.status === 'countered') {
+        if (offer.status !== authored) throw new AppError(ErrorCodes.offerNotYourTurn);
+      } else {
         throw new AppError(ErrorCodes.offerNotActive);
       }
       const withdrawn: Offer = { ...offer, status: 'withdrawn' };

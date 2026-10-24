@@ -329,6 +329,11 @@ abstract interface class TrackingRepository {
   /// trip trail current. Not a transition and not money, so no idempotency
   /// key; the server drops a heartbeat that has not moved.
   Future<void> publishProviderLocation(String jobId, LiveFix fix);
+
+  /// An online provider between jobs: the heartbeat alone, no job channel.
+  /// Matching only considers a position younger than two minutes, so an
+  /// online provider who never reports one is never told about a request.
+  Future<void> reportPosition(LiveFix fix);
 }
 
 abstract interface class ChatRepository {

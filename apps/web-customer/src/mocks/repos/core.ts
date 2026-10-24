@@ -166,6 +166,16 @@ export class MockUserRepository extends MockRepo {
     return this.profileEvents.subscribe(onChange);
   }
 
+  async updateDisplayName(displayName: string): Promise<AppUser> {
+    await this.gate();
+    const name = displayName.trim();
+    if (name.length === 0 || name.length > 80) throw new AppError(ErrorCodes.invalidArgument);
+    const updated: AppUser = { ...this.currentUser, displayName: name };
+    this.db.users[updated.id] = updated;
+    this.profileEvents.emit(updated);
+    return updated;
+  }
+
   /** Throws ERR_PROVIDER_NOT_VERIFIED when switching without provider KYC. */
   async setActiveMode(mode: UserMode, idempotencyKey: string): Promise<UserMode> {
     await this.gate();
