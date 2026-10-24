@@ -33,6 +33,13 @@ const CANCELLABLE: ReadonlySet<JobStatus> = new Set([
   'payment_pending',
 ]);
 
+/** A small stable hash for deterministic mock values. */
+function hash(text: string): number {
+  let h = 0;
+  for (let i = 0; i < text.length; i += 1) h = (h * 31 + text.charCodeAt(i)) % 1_000_003;
+  return h;
+}
+
 export class MockRequestRepository extends MockRepo {
   constructor(db: MockDatabase, behavior: MockBehavior) {
     super(db, behavior);
@@ -360,6 +367,8 @@ export class MockOfferRepository extends MockRepo {
           newProvider: offer.providerTrustLevel === 'new',
           offersCompared: live.length,
         },
+        // A stable stand-in in the server's half-kilometre steps.
+        distanceKm: Math.max(1, Math.round((800 + hash(offer.providerId) % 7000) / 500)) * 0.5,
       };
     });
     ranked.sort((a, b) => b.score - a.score || a.offerId.localeCompare(b.offerId));

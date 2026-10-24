@@ -71,6 +71,8 @@ android {
 
         manifestPlaceholders["appName"] = define("APP_NAME", "Suskii Errands")
         manifestPlaceholders["appLinkHost"] = define("APP_LINK_HOST", "suskii-errands.example")
+        // From a CI secret, never the committed define file; empty means no map on this build.
+        manifestPlaceholders["googleMapsApiKey"] = define("GOOGLE_MAPS_API_KEY", "")
         // Cleartext to the emulator's host loopback exists only for local Supabase in dev.
         manifestPlaceholders["networkSecurityConfig"] =
             if (appFlavor == "dev") "@xml/network_security_config_dev" else "@xml/network_security_config"

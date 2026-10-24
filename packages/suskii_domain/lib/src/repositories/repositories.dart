@@ -679,6 +679,13 @@ abstract interface class CatalogRepository {
     Urgency urgency = Urgency.standard,
     String? cityId,
   });
+
+  /// Providers online near [at] (`nearby_providers`): a count and blurred
+  /// areas, never a provider's position. [categoryId] narrows to one service.
+  Future<NearbyProviders> getNearbyProviders({
+    required GeoPoint at,
+    String? categoryId,
+  });
 }
 
 /// ---------------------------------------------------------------------------

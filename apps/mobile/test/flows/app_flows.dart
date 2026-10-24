@@ -51,6 +51,7 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'a provider registers a business': _registerBusiness,
   'an invited provider accepts and joins the business': _acceptInvitation,
   'sign in with Google': _googleSignIn,
+  'a provider picks their state from the dropdown': _providerState,
   'Suskii Meet: join a meet-up, then host one': _suskiiMeet,
 };
 
@@ -236,7 +237,12 @@ Future<void> _modeSwitch(WidgetTester tester) async {
 }
 
 Future<void> _createRequest(WidgetTester tester) async {
-  final app = await _signedInApp(tester);
+  final app = await _signedInApp(
+    tester,
+    overrides: <Override>[
+      deviceLocationProvider.overrideWithValue(const _FixedLocation()),
+    ],
+  );
   await tester.tap(find.byKey(const ValueKey<String>('home.newRequest')));
   await settle(tester);
   expect(find.text(l10n.createTitle), findsOneWidget);
@@ -248,12 +254,17 @@ Future<void> _createRequest(WidgetTester tester) async {
     'Collect a parcel from the front desk and bring it home.',
   );
   await _enter(tester, l10n.createPickupLabel, 'Lekki Phase 1 gate');
+  // No point, no publish: matching needs to know where the pickup is.
+  await _tap(tester, find.byKey(const ValueKey<String>('map.useMyLocation')));
+  expect(find.text(l10n.mapPickupSet), findsOneWidget);
+  expect(find.byKey(const ValueKey<String>('create.nearby')), findsOneWidget);
   final before = app.database.requests.length;
   await _tapText(tester, l10n.createPublish);
   await settle(tester, timeout: const Duration(seconds: 5));
   expect(app.database.requests.length, before + 1);
   final created = app.database.requests.values.last;
   expect(created.status, JobStatus.published);
+  expect(created.pickup.point, isNotNull);
   expect(
     app.container.read(routerProvider).state.uri.path,
     AppRoutes.customerRequestDetailPath(created.id),
@@ -264,7 +275,16 @@ Future<void> _createRequest(WidgetTester tester) async {
 Future<void> _acceptOffer(WidgetTester tester) async {
   final app = await _signedInApp(tester);
   await _go(tester, app, AppRoutes.customerRequestDetailPath('req-1'));
-  await _reveal(tester, find.text(l10n.offersRankedHint));
+  // Closest first by default, every offer saying how far its provider is.
+  await _reveal(tester, find.text(l10n.offersClosestHint));
+  expect(
+    find.byWidgetPredicate(
+      (Widget w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('offers.distance.'),
+    ),
+    findsWidgets,
+  );
   final accept = find.widgetWithText(InkWell, l10n.offersAccept);
   expect(accept, findsWidgets);
   await _tap(tester, accept);
@@ -633,5 +653,28 @@ Future<void> _suskiiMeet(WidgetTester tester) async {
   expect(find.text('Sunday picnic'), findsOneWidget);
   expect(find.text(l10n.meetHostedBy('Adaeze')), findsOneWidget);
   expect(find.byKey(const ValueKey<String>('meet.cancel')), findsOneWidget);
+  await app.dispose(tester);
+}
+
+Future<void> _providerState(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _go(tester, app, AppRoutes.providerOnboarding);
+  await _tap(tester, find.byType(FilterChip).first);
+  final field = find.byKey(const ValueKey<String>('onboarding.state'));
+  await _reveal(tester, field);
+  await tester.tap(field);
+  await settle(tester);
+  // All 36 states and the FCT, filtered by what is typed.
+  await tester.enterText(
+    find.descendant(of: field, matching: find.byType(TextField)),
+    'Kan',
+  );
+  await settle(tester);
+  await tester.tap(find.widgetWithText(MenuItemButton, 'Kano').last);
+  await settle(tester);
+  await _tapText(tester, l10n.actionContinue);
+  await settle(tester, timeout: const Duration(seconds: 5));
+  final me = app.container.read(mockBehaviorProvider).currentUserId;
+  expect(app.database.kycProfiles[me]!.serviceAreaIds, <String>['kano']);
   await app.dispose(tester);
 }

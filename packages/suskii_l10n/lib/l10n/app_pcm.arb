@@ -240,7 +240,7 @@
   "providerKindBusiness": "Business",
   "providerBusinessName": "Business name",
   "providerServicesLabel": "Services wey you dey offer",
-  "providerAreasLabel": "Areas wey you dey cover",
+  "providerAreasLabel": "Your state",
   "providerVehicleLabel": "Vehicle",
   "vehicleWalking": "Trek (on foot)",
   "vehicleBicycle": "Bicycle",
@@ -896,5 +896,17 @@
   "errMeetupLimit": "You fit host only 3 upcoming meet-ups at once.",
   "errMeetupTime": "Make e start at least 30 minutes from now, inside 90 days, and no pass 24 hours.",
   "errCountryNotSet": "Choose your country first.",
-  "errCountryAlreadySet": "Your country don already set."
+  "errCountryAlreadySet": "Your country don already set.",
+  "providerStateHint": "Choose your state",
+  "mapPickupTitle": "Pickup for map",
+  "mapPickupHint": "Move the map make the pin sit for where dem go pick am.",
+  "mapUseMyLocation": "Use where I dey",
+  "mapPickupSet": "Pickup point don set",
+  "mapPickupNeeded": "Set your pickup point make the providers wey near you fit see am.",
+  "mapUnavailable": "Map never dey this build. Your current location go work the same way.",
+  "nearbyProviders": "{count, plural, =1{1 provider dey near you now} other{{count} providers dey near you now}}",
+  "nearbyNone": "No provider dey online near you now. Publish am anyway: we go search further.",
+  "offersSortClosest": "Closest first",
+  "offersSortBest": "Best match",
+  "offersClosestHint": "We arrange am by how far each provider dey from your pickup."
 }

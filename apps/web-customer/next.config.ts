@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
           production: process.env.NODE_ENV === 'production',
           allowGeolocation: true,
+          googleMaps: Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY),
         }),
       },
     ];

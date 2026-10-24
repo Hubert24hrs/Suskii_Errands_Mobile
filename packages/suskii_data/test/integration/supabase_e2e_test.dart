@@ -976,6 +976,69 @@ void main() {
       );
       expect(published.status, JobStatus.published);
     });
+
+    test(
+      'a provider picks a state; the customer sees who is near and how far',
+      () async {
+        Future<SupabaseGateway> signedIn(String email) async {
+          final c = client(anonKey);
+          addTearDown(c.dispose);
+          await c.auth.signInWithPassword(email: email, password: password);
+          return SupabaseGateway(c);
+        }
+
+        await createUser('e2e-near-p-$run@suskii.test', provider: true);
+        await createUser('e2e-near-c-$run@suskii.test', provider: false);
+        final p = await signedIn('e2e-near-p-$run@suskii.test');
+        final c = await signedIn('e2e-near-c-$run@suskii.test');
+
+        // The state goes over the wire by code: the name never matched before.
+        final profile = await SupabaseProviderKycRepository(p).saveOnboarding(
+          const ProviderOnboardingInput(
+            kind: ProviderKind.individual,
+            serviceCategoryIds: <String>['plumbing'],
+            serviceAreaIds: <String>['kano'],
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        expect(profile.serviceAreaIds, <String>['kano']);
+        await SupabaseProviderRepository(p)
+            .setOnline(true, idempotencyKey: newIdempotencyKey());
+        await p.rpc('heartbeat', <String, Object?>{
+          'p_lat': 12.0030,
+          'p_lng': 8.5925,
+        });
+
+        const pickup = GeoPoint(latitude: 12.0022, longitude: 8.5920);
+        final nearby = await SupabaseCatalogRepository(c)
+            .getNearbyProviders(at: pickup, categoryId: 'plumbing');
+        expect(nearby.total, 1);
+        // One provider is below the floor of three: counted, never placed.
+        expect(nearby.areas, isEmpty);
+
+        final requests = SupabaseRequestRepository(c);
+        final draft = await requests.createRequest(
+          const CreateRequestInput(
+            categoryId: 'plumbing',
+            description: 'A leaking kitchen tap.',
+            pickup: PlaceRef(label: 'Zoo Road, Kano', point: pickup),
+          ),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        await requests.publishRequest(
+          draft.id,
+          idempotencyKey: newIdempotencyKey(),
+        );
+        await SupabaseProviderRepository(p).submitOffer(
+          requestId: draft.id,
+          amount: const Money(800000, 'NGN'),
+          idempotencyKey: newIdempotencyKey(),
+        );
+        final ranked = await SupabaseOfferRepository(c)
+            .getRankedOffers(draft.id);
+        expect(ranked.single.distanceKm, 0.5);
+      },
+    );
   });
 }
 

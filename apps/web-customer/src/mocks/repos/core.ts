@@ -12,6 +12,8 @@ import {
   type AppUser,
   type AuthState,
   type CountryPack,
+  type GeoPoint,
+  type NearbyProviders,
   type PriceBand,
   type PriceBandBasis,
   type PriceBandConfidence,
@@ -204,6 +206,22 @@ export class MockCatalogRepository extends MockRepo {
     const pack = this.db.countryPacks[countryCode.toUpperCase()];
     if (!pack) throw new AppError(ErrorCodes.countryNotSupported);
     return pack;
+  }
+
+  /** A stand-in for `nearby_providers`: a count and two blurred areas around
+   * the point, in the server's shape. Never a provider position. */
+  async getNearbyProviders(options: { at: GeoPoint; categoryId?: string }): Promise<NearbyProviders> {
+    await this.gate();
+    const lat = Math.floor(options.at.latitude * 100) / 100;
+    const lng = Math.floor(options.at.longitude * 100) / 100;
+    return {
+      total: 7,
+      radiusMeters: 5000,
+      areas: [
+        { center: { latitude: lat + 0.015, longitude: lng + 0.005 }, providers: 4 },
+        { center: { latitude: lat - 0.005, longitude: lng - 0.015 }, providers: 3 },
+      ],
+    };
   }
 
   /**

@@ -43,7 +43,7 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
     final pack = packMap['code'] as String;
     final cities = await _gateway.selectList(
       'cities',
-      'name',
+      'code, name',
       column: 'country_code',
       value: pack,
     );
@@ -54,6 +54,7 @@ class SupabaseBootstrapRepository implements BootstrapRepository {
         launchCities: cities
             .map((row) => row['name'] as String)
             .toList(growable: false),
+        serviceAreas: serviceAreasFromRows(cities),
       ),
       featureFlags:
           (payload['feature_flags'] as Map<String, dynamic>? ?? const {}).map(

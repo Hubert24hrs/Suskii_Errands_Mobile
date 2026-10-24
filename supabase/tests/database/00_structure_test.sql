@@ -112,7 +112,7 @@ SELECT is(
        'public.my_organization', 'public.my_organization_members',
        'public.my_organization_invitations', 'public.invite_member_by_phone', 'public.assign_vehicle', 'public.org_assignable_jobs',
        'public.set_availability', 'public.set_earnings_goal', 'public.my_earnings_goal',
-       'public.my_provider_insights', 'public.provider_demand_heatmap',
+       'public.my_provider_insights', 'public.provider_demand_heatmap', 'public.nearby_providers',
        -- Social sign-up country and Suskii Meet (20261024120000, 20261024120100).
        'public.set_initial_country', 'public.create_meetup', 'public.list_meetups',
        'public.get_meetup', 'public.my_meetups', 'public.join_meetup', 'public.leave_meetup',

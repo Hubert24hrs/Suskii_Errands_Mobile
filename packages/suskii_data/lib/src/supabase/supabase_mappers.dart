@@ -61,9 +61,22 @@ AppUser appUserFromProfileRow(
 /// server pack does not carry yet (emergency numbers, launch cities beyond
 /// the cities table, per-country TTL overrides) fall back to the spec
 /// defaults — tracked in HANDOFF (M9.1 follow-ups).
+/// `cities` rows (`code, name`), sorted by name for a dropdown.
+List<ServiceArea> serviceAreasFromRows(List<Map<String, dynamic>> rows) =>
+    rows
+        .map(
+          (row) => ServiceArea(
+            code: row['code'] as String,
+            name: row['name'] as String,
+          ),
+        )
+        .toList(growable: false)
+      ..sort((a, b) => a.name.compareTo(b.name));
+
 CountryPack countryPackFromBootstrap(
   Map<String, dynamic> pack, {
   List<String> launchCities = const <String>[],
+  List<ServiceArea> serviceAreas = const <ServiceArea>[],
 }) {
   final currency = pack['currency'] as Map<String, dynamic>? ?? const {};
   final client = pack['client'] as Map<String, dynamic>? ?? const {};
@@ -77,6 +90,7 @@ CountryPack countryPackFromBootstrap(
             .cast<String>(),
     defaultLanguage: pack['default_language'] as String? ?? 'en',
     launchCities: launchCities,
+    serviceAreas: serviceAreas,
     emergencyNumbers: <EmergencyNumber>[
       for (final e in emergency)
         if (e is Map<String, dynamic>)
@@ -382,6 +396,30 @@ RankedOffer rankedOfferFromRow(Map<String, dynamic> row) {
       newProvider: factors['new_provider'] == true,
       offersCompared: (factors['offers_compared'] as num?)?.toInt() ?? 1,
     ),
+    distanceKm: row['distance_km'] == null
+        ? null
+        : SupabaseGateway.asDecimal(row['distance_km']),
+  );
+}
+
+/// The single `nearby_providers` row: a total and blurred grid cells.
+NearbyProviders nearbyProvidersFromRow(Map<String, dynamic> row) {
+  final areas = row['areas'];
+  return NearbyProviders(
+    total: (row['total'] as num?)?.toInt() ?? 0,
+    radiusMeters: (row['radius_m'] as num?)?.toInt() ?? 5000,
+    areas: <NearbyArea>[
+      if (areas is List)
+        for (final a in areas)
+          if (a is Map)
+            NearbyArea(
+              center: GeoPoint(
+                latitude: (a['lat'] as num).toDouble(),
+                longitude: (a['lng'] as num).toDouble(),
+              ),
+              providers: (a['providers'] as num?)?.toInt() ?? 0,
+            ),
+    ],
   );
 }
 

@@ -5,6 +5,78 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 2) — Claude Code — the nearest providers first, a Google Map for the pickup, Nigeria's 37 states; contracts 2.4.0
+
+This is again the owner's explicit request ("all the states in Nigeria", "integrate Google Maps so
+the customer gets the provider closest to them"); it is not standing licence. ADR-0022 records the
+decisions. Contracts 2.4.0 is additive.
+
+### Three bugs this fixed on the way
+
+1. **The app's request form never sent a map point.** `match_providers` returns nobody without
+   one, so on a real backend a request from the app reached no provider. The form now needs a
+   point: from the map, or from "use my location" when the build has no Maps key.
+2. **Onboarding sent a city's name** ("Lagos") where `update_provider_service_areas` wants its
+   code ("lagos"). On a real backend that was `ERR_CITY_NOT_FOUND`. The country pack now carries
+   `serviceAreas` (code and name), and the dropdown sends the code.
+3. **Matching put score before distance.** It now groups candidates in 500 m bands, then orders by
+   score, and widens the search 5 → 15 → 30 km when nobody is near.
+
+### What I changed in your code
+
+- **States.**
+  - All 36 states plus the FCT are in the seed and both Dart mocks (`akwa-ibom` and `cross-river`
+    use hyphens, as the code check requires).
+  - `CountryPack.serviceAreas` / `ServiceArea` in the domain; `serviceAreasFromRows` in the
+    mappers.
+  - `provider_onboarding_page.dart`: the chips are replaced by a searchable `DropdownMenu`
+    (`onboarding.state`) that picks one state.
+- **Maps, mobile.**
+  - `google_maps_flutter` 2.18.2. The iOS and web halves are pinned through
+    `dependency_overrides`, because their newest releases were under two weeks old.
+  - `AppConfig.googleMapsApiKey` / `hasMaps`.
+  - The key reaches Android through a manifest placeholder and iOS through `GMSApiKey`
+    (Info.plist), applied in `AppDelegate`.
+  - `tool/write_release_env.sh`, `mobile-native.yaml` and `mobile-release.yaml` read it from the
+    `GOOGLE_MAPS_API_KEY` secret. It is never committed, because gitleaks would fail on it.
+  - `lib/app/maps.dart` holds `PickupMap`: the pin is fixed and the map moves under it, nearby
+    areas are drawn as soft circles, and there is a "use my location" button. Without a key it
+    falls back to a card with that button.
+  - `create_request_page.dart`: "Pickup on the map", then "N providers near you right now".
+  - `offers_board.dart`: closest first by default, a "Best match" toggle, and each offer's
+    distance from `rank_offers.distance_km`.
+- **Data.**
+  - `RankedOffer.distanceKm`.
+  - `NearbyProviders` / `NearbyArea` and `CatalogRepository.getNearbyProviders`, in the mock and
+    in Supabase (`nearby_providers`).
+- **Website.**
+  - `lib/maps.ts`: a small loader for the Maps JavaScript API, keyed by
+    `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+  - `components/PickupMap.tsx`, with the same fallback as the app.
+  - The new-request page needs a point and shows the nearby count.
+  - `OffersBoard.tsx` sorts closest first, has the toggle and shows distances.
+  - `getNearbyProviders` in both repositories.
+  - `packages/web-config/securityHeaders.ts` gains `googleMaps`: Google's documented Maps
+    origins, added only when a key is set.
+  - `@types/google.maps` 3.66.4 (dev only).
+
+### Tests
+
+| Suite | Result |
+|---|---|
+| pgTAP | 61 files, including `60_nearest_first_test` (16) |
+| Dart data | 230 |
+| App journeys | 25, including the new "a provider picks their state from the dropdown"; "create and publish a request" now sets the point; "offers" checks closest first and the distances |
+| E2E against real Supabase | 22, including a provider saving Kano by code and the customer seeing the count and a 0.5 km offer |
+| Web smoke | 48 for the customer site, including the location fallback, the nearby count and the closest-first order |
+
+### Needs the client
+
+A Google Cloud project with the Maps SDKs for Android and iOS and the Maps JavaScript API enabled,
+with billing on, and restricted keys. Store the key as the `GOOGLE_MAPS_API_KEY` GitHub secret and
+as `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` for the website (RB-15 action 31). Until then both apps show
+the "use my location" card instead of a map.
+
 ## 2026-10-24 — Claude Code — the Suskii brand, Google/Apple sign-in, verification for providers only, Suskii Meet, new services; contracts 2.3.0
 
 On the **owner's explicit request** (logo, login, home screen and Suskii Meet, "for both the app and

@@ -28,6 +28,7 @@ import type {
   PlaceRef,
   PriceBand,
   PriceBreakdown,
+  NearbyProviders,
   RankedOffer,
   Rating,
   ServiceCategory,
@@ -476,6 +477,23 @@ export function rankedOfferFromRow(row: Row): RankedOffer {
       newProvider: factors['new_provider'] === true,
       offersCompared: intOr(factors['offers_compared'], 0),
     },
+    distanceKm:
+      row['distance_km'] === null || row['distance_km'] === undefined
+        ? undefined
+        : SupabaseGateway.asDecimal(row['distance_km']),
+  };
+}
+
+/** The single `nearby_providers` row: a total and blurred grid cells. */
+export function nearbyProvidersFromRow(row: Row): NearbyProviders {
+  const areas = Array.isArray(row['areas']) ? (row['areas'] as Row[]) : [];
+  return {
+    total: intOr(row['total'], 0),
+    radiusMeters: intOr(row['radius_m'], 5000),
+    areas: areas.map((a) => ({
+      center: { latitude: Number(a['lat']), longitude: Number(a['lng']) },
+      providers: intOr(a['providers'], 0),
+    })),
   };
 }
 

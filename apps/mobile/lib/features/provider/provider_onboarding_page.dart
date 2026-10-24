@@ -86,9 +86,15 @@ class _ProviderOnboardingPageState
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final categories = ref.watch(categoriesProvider);
-    final areas =
-        ref.watch(bootstrapProvider).value?.countryPack.launchCities ??
-        const <String>[];
+    final pack = ref.watch(bootstrapProvider).value?.countryPack;
+    // States (Nigeria's service areas), by code for the server and name for
+    // people; a pack without them falls back to its launch cities.
+    final areas = (pack?.serviceAreas.isNotEmpty ?? false)
+        ? pack!.serviceAreas
+        : <ServiceArea>[
+            for (final city in pack?.launchCities ?? const <String>[])
+              ServiceArea(code: city, name: city),
+          ];
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.providerOnboardingTitle)),
@@ -159,23 +165,29 @@ class _ProviderOnboardingPageState
             const SizedBox(height: SSpacing.xl),
             Text(l10n.providerAreasLabel, style: theme.textTheme.titleMedium),
             const SizedBox(height: SSpacing.sm),
-            Wrap(
-              spacing: SSpacing.sm,
-              runSpacing: SSpacing.sm,
-              children: <Widget>[
-                for (final String area in areas)
-                  FilterChip(
-                    label: Text(area),
-                    selected: _areaIds.contains(area),
-                    onSelected: (bool selected) => setState(() {
-                      if (selected) {
-                        _areaIds.add(area);
-                      } else {
-                        _areaIds.remove(area);
-                      }
-                    }),
-                  ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) => DropdownMenu<String>(
+                key: const ValueKey<String>('onboarding.state'),
+                width: constraints.maxWidth,
+                menuHeight: 360,
+                enableFilter: true,
+                requestFocusOnTap: true,
+                hintText: l10n.providerStateHint,
+                leadingIcon: const Icon(Icons.place_outlined),
+                initialSelection: _areaIds.isEmpty ? null : _areaIds.first,
+                dropdownMenuEntries: <DropdownMenuEntry<String>>[
+                  for (final area in areas)
+                    DropdownMenuEntry<String>(
+                      value: area.code,
+                      label: area.name,
+                    ),
+                ],
+                onSelected: (String? code) => setState(() {
+                  _areaIds
+                    ..clear()
+                    ..addAll(<String>[if (code != null) code]);
+                }),
+              ),
             ),
             const SizedBox(height: SSpacing.xl),
             Text(l10n.providerVehicleLabel, style: theme.textTheme.titleMedium),

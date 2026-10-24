@@ -10,6 +10,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
+import '../../app/maps.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 
@@ -53,6 +54,10 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
   final _declaredValueController = TextEditingController();
 
   String? _categoryId;
+
+  /// Where the pickup is on the map. Matching finds the nearest providers to
+  /// this point; without it a request reaches nobody.
+  GeoPoint? _pickupPoint;
   Urgency _urgency = Urgency.standard;
   DateTime? _scheduledAt;
   final List<String> _mediaPaths = <String>[];
@@ -113,6 +118,7 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
   bool get _valid =>
       _descriptionController.text.trim().isNotEmpty &&
       _pickupController.text.trim().isNotEmpty &&
+      _pickupPoint != null &&
       _categoryId != null &&
       (!_isCustom || _customCategoryController.text.trim().isNotEmpty);
 
@@ -130,6 +136,7 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
       mediaPaths: _mediaPaths,
       pickup: PlaceRef(
         label: _pickupController.text.trim(),
+        point: _pickupPoint,
         landmarkNote: landmark.isEmpty ? null : landmark,
       ),
       destination: _destinationController.text.trim().isEmpty
@@ -292,6 +299,18 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
           controller: _pickupController,
           onChanged: (_) => setState(() {}),
         ),
+        const SizedBox(height: SSpacing.sm),
+        Text(l10n.mapPickupTitle, style: theme.textTheme.titleSmall),
+        const SizedBox(height: SSpacing.sm),
+        _PickupWithNearby(
+          point: _pickupPoint,
+          categoryId: _isCustom ? null : _categoryId,
+          onChanged: (GeoPoint p) => setState(() {
+            _pickupPoint = p;
+            // A moved pin is a different request: a fresh key, not a replay.
+            _createKey = null;
+          }),
+        ),
         const SizedBox(height: SSpacing.md),
         STextField(
           label: l10n.createDestinationLabel,
@@ -442,6 +461,69 @@ class _PriceBandHint extends ConsumerWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// The pickup map and, under it, how many providers are near that point.
+class _PickupWithNearby extends ConsumerWidget {
+  const _PickupWithNearby({
+    required this.point,
+    required this.categoryId,
+    required this.onChanged,
+  });
+
+  final GeoPoint? point;
+  final String? categoryId;
+  final ValueChanged<GeoPoint> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final p = point;
+    // Rounded to ~100 m so dragging the map does not refetch on every frame.
+    final nearby = p == null
+        ? null
+        : ref.watch(
+            nearbyProvidersProvider((
+              (p.latitude * 1000).roundToDouble() / 1000,
+              (p.longitude * 1000).roundToDouble() / 1000,
+              categoryId,
+            )),
+          );
+    final summary = nearby?.value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        PickupMap(
+          point: p,
+          areas: summary?.areas ?? const <NearbyArea>[],
+          onChanged: onChanged,
+        ),
+        if (summary != null) ...<Widget>[
+          const SizedBox(height: SSpacing.sm),
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.groups_2_outlined,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: SSpacing.xs),
+              Expanded(
+                child: Text(
+                  summary.total == 0
+                      ? l10n.nearbyNone
+                      : l10n.nearbyProviders(summary.total),
+                  key: const ValueKey<String>('create.nearby'),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

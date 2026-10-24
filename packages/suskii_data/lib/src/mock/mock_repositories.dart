@@ -14,6 +14,14 @@ import 'server_sim.dart';
 /// in-memory maps, a collision silently overwrites the earlier record. The
 /// sequence makes them unique without changing the readable `prefix-…` shape.
 int _mockIdSeq = 0;
+
+/// Metres to the server's display distance: half-kilometre steps, never
+/// below 0.5 (`rank_offers.distance_km`).
+double _halfKm(int metres) {
+  final halves = (metres / 500).round();
+  return (halves < 1 ? 1 : halves) * 0.5;
+}
+
 String _mockId(String prefix) =>
     '$prefix-${DateTime.now().millisecondsSinceEpoch}-${++_mockIdSeq}';
 
@@ -632,6 +640,11 @@ class MockOfferRepository extends _MockRepo implements OfferRepository {
               cheapest: o.amount.minorUnits == minMinor,
               newProvider: isNew,
               offersCompared: live.length,
+            ),
+            // The offer's own distance when the fixture has one, else a
+            // stable stand-in, in the server's half-kilometre steps.
+            distanceKm: _halfKm(
+              o.distanceMeters ?? 800 + (o.providerId.hashCode.abs() % 7000),
             ),
           );
         }(),
@@ -1854,6 +1867,38 @@ class MockReferralRepository extends _MockRepo implements ReferralRepository {
 
 class MockCatalogRepository extends _MockRepo implements CatalogRepository {
   MockCatalogRepository(super.db, super.behavior);
+
+  /// A stand-in for `nearby_providers`: a count and two blurred areas around
+  /// the point, the shape the server returns. Never a provider position.
+  @override
+  Future<NearbyProviders> getNearbyProviders({
+    required GeoPoint at,
+    String? categoryId,
+  }) async {
+    await gate();
+    final online = db.providers.values.where((p) => p.online).length;
+    final total = online + 4;
+    return NearbyProviders(
+      total: total,
+      radiusMeters: 5000,
+      areas: <NearbyArea>[
+        NearbyArea(
+          center: GeoPoint(
+            latitude: (at.latitude * 100).floorToDouble() / 100 + 0.015,
+            longitude: (at.longitude * 100).floorToDouble() / 100 + 0.005,
+          ),
+          providers: 3,
+        ),
+        NearbyArea(
+          center: GeoPoint(
+            latitude: (at.latitude * 100).floorToDouble() / 100 - 0.005,
+            longitude: (at.longitude * 100).floorToDouble() / 100 - 0.015,
+          ),
+          providers: total - 3,
+        ),
+      ],
+    );
+  }
 
   /// Simulated price-intelligence bands (minor units, NGN scale; the mock
   /// returns them in the current user's country-pack currency).

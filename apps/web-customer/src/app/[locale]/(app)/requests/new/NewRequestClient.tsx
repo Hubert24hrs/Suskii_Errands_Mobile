@@ -13,11 +13,12 @@ import {
   isAppError,
   requestRepository,
 } from '@/lib/repositories';
-import type { CreateRequestInput, Urgency } from '@/mocks/types';
+import type { CreateRequestInput, GeoPoint, Urgency } from '@/mocks/types';
 import { MoneyField } from '@/components/MoneyField';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { categoryLabel, errorText, mediaName } from '../_shared';
+import { PickupMap } from '@/components/PickupMap';
 
 const URGENCY_LEVELS: Urgency[] = ['flexible', 'standard', 'urgent', 'emergency'];
 
@@ -63,6 +64,9 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [pickupLabel, setPickupLabel] = useState('');
+  // Where the pickup is on the map: matching finds the nearest providers to
+  // this point, and without it a request reaches nobody (ADR-0022).
+  const [pickupPoint, setPickupPoint] = useState<GeoPoint | undefined>();
   const [landmark, setLandmark] = useState('');
   const [destinationLabel, setDestinationLabel] = useState('');
   const [urgency, setUrgency] = useState<Urgency>('standard');
@@ -73,6 +77,20 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   const [declaredValueMinor, setDeclaredValueMinor] = useState<number | null>(null);
   const [photoNames, setPhotoNames] = useState<string[]>([]);
   const [verificationRequired, setVerificationRequired] = useState(false);
+
+  // Rounded to ~100 m so dragging the map does not refetch on every frame.
+  const nearKey = pickupPoint
+    ? [Math.round(pickupPoint.latitude * 1000) / 1000, Math.round(pickupPoint.longitude * 1000) / 1000]
+    : null;
+  const nearbyQuery = useQuery({
+    queryKey: ['catalog', 'nearby', nearKey?.[0], nearKey?.[1], categoryId],
+    queryFn: () =>
+      catalogRepository.getNearbyProviders({
+        at: { latitude: nearKey![0], longitude: nearKey![1] },
+        categoryId: categoryId === '' || categoryId === 'custom' ? undefined : categoryId,
+      }),
+    enabled: nearKey !== null,
+  });
 
   const priceBandQuery = useQuery({
     queryKey: ['catalog', 'priceBand', categoryId],
@@ -88,6 +106,7 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
     description: description.trim(),
     pickup: {
       label: pickupLabel.trim(),
+      point: pickupPoint,
       landmarkNote: landmark.trim() === '' ? undefined : landmark.trim(),
     },
     destination:
@@ -145,7 +164,7 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   });
 
   const canSubmit =
-    categoryId !== '' && description.trim() !== '' && pickupLabel.trim() !== '';
+    categoryId !== '' && description.trim() !== '' && pickupLabel.trim() !== '' && pickupPoint !== undefined;
   const busy = saveDraft.isPending || publish.isPending;
   const actionError = saveDraft.error ?? publish.error;
   const band = priceBandQuery.data;
@@ -241,6 +260,26 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
             placeholder={dict.newRequest.pickupHint}
             className={inputClasses}
           />
+        </div>
+
+        <div className="flex flex-col gap-xs">
+          <span className={labelClasses}>{dict.map.pickupTitle}</span>
+          <PickupMap
+            dict={dict}
+            point={pickupPoint}
+            areas={nearbyQuery.data?.areas ?? []}
+            onChange={setPickupPoint}
+          />
+          {nearbyQuery.data ? (
+            <p data-testid="create-nearby" className="text-body-medium text-ink-primary dark:text-ink-dark-primary">
+              {nearbyQuery.data.total === 0
+                ? dict.map.nearbyNone
+                : (nearbyQuery.data.total === 1 ? dict.map.nearbyOne : dict.map.nearbyMany).replace(
+                    '{count}',
+                    String(nearbyQuery.data.total),
+                  )}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-xs">
