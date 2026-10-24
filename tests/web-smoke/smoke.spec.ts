@@ -273,7 +273,7 @@ test.describe('provider mode', () => {
     await go(page, '/en/provider/jobs/job-p1');
     await page.getByTestId('job-start').click();
     await page.getByTestId('job-arrived').click();
-    await page.getByTestId('pin-input-pickup').fill('1111');
+    await page.getByTestId('pin-input-pickup').fill('111111');
     await page.getByTestId('pin-verify-pickup').click();
     await expect(page.getByText('Wrong PIN. 4 attempts left.')).toBeVisible();
     await page.getByTestId('pin-input-pickup').fill('428135');
