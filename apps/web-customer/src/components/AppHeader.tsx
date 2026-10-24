@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { authRepository } from '@/lib/repositories';
+import { ModeSwitchButton } from './ModeSwitch';
 import type { AuthState } from '@/mocks/types';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import Image from 'next/image';
@@ -34,7 +35,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
           {/* On a phone the logo stands alone, so the language links and sign-out fit on one line. */}
           <span className="hidden sm:inline">{dict.header.appName}</span>
         </Link>
-        <nav className="hidden items-center gap-lg md:flex">
+        <nav className="hidden items-center gap-lg lg:flex">
           {(
             [
               [dict.requests.listTitle, '/requests'],
@@ -47,7 +48,7 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
             <Link
               key={href}
               href={`/${locale}${href}`}
-              className="text-label-large text-ink-secondary transition-colors duration-normal ease-standard hover:text-brand-primary dark:text-ink-dark-secondary dark:hover:text-brand-secondary"
+              className="whitespace-nowrap text-label-large text-ink-secondary transition-colors duration-normal ease-standard hover:text-brand-primary dark:text-ink-dark-secondary dark:hover:text-brand-secondary"
             >
               {label}
             </Link>
@@ -57,7 +58,12 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
           <LocaleSwitcher locale={locale} />
           {auth.status === 'signed_in' && auth.user ? (
             <>
-              <span className="hidden text-body-small text-ink-secondary sm:inline dark:text-ink-dark-secondary">
+              <ModeSwitchButton
+                locale={locale}
+                dict={dict}
+                className="hidden whitespace-nowrap rounded-md px-sm py-sm text-label-large text-brand-primary hover:underline disabled:opacity-50 sm:inline dark:text-brand-secondary"
+              />
+              <span className="hidden whitespace-nowrap text-body-small text-ink-secondary xl:inline dark:text-ink-dark-secondary">
                 {auth.user.displayName || auth.user.phoneE164 || auth.user.email}
               </span>
               <button

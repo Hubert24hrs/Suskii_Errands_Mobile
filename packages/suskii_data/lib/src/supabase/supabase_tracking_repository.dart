@@ -63,7 +63,16 @@ class SupabaseTrackingRepository implements TrackingRepository {
     final last = _lastHeartbeat;
     if (last == null || now.difference(last) >= heartbeatInterval) {
       _lastHeartbeat = now;
-      await _gateway.rpc('heartbeat', <String, Object?>{
+      await _heartbeat(fix);
+    }
+    if (broadcastError != null) throw broadcastError;
+  }
+
+  @override
+  Future<void> reportPosition(LiveFix fix) => _heartbeat(fix);
+
+  Future<void> _heartbeat(LiveFix fix) =>
+      _gateway.rpc('heartbeat', <String, Object?>{
         'p_lat': fix.point.latitude,
         'p_lng': fix.point.longitude,
         'p_heading': fix.headingDegrees == null
@@ -75,9 +84,6 @@ class SupabaseTrackingRepository implements TrackingRepository {
         'p_accuracy_m': fix.accuracyMetres?.round(),
         'p_is_mock': fix.isMock,
       });
-    }
-    if (broadcastError != null) throw broadcastError;
-  }
 
   static GeoPoint? _pointFrom(Map<String, dynamic> payload) {
     final lat = payload['lat'];

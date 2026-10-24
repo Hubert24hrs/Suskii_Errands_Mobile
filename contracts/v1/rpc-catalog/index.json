@@ -4418,8 +4418,23 @@
     {
       "name": "get_my_kyc_profile",
       "schema": "public",
-      "signature": "public.get_my_kyc_profile()",
-      "arguments": [],
+      "signature": "public.get_my_kyc_profile(public.user_mode)",
+      "arguments": [
+        {
+          "name": "p_mode",
+          "sql_type": "public.user_mode",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "provider"
+            ],
+            "enum_name": "user_mode"
+          },
+          "optional": true,
+          "default": "NULL"
+        }
+      ],
       "returns": {
         "kind": "rows",
         "columns": [
@@ -4531,7 +4546,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261012130100_kyc_completeness.sql"
+      "defined_in": "20261024140000_kyc_profile_for_mode.sql"
     },
     {
       "name": "get_payment_checkout",

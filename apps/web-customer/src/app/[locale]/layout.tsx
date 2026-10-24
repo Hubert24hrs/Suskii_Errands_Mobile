@@ -5,6 +5,8 @@ import { getDictionary, isLocale, locales } from '@/lib/i18n';
 import '../globals.css';
 import { bodyFont, displayFont } from '../fonts';
 
+const THEME_SCRIPT = `try{var t=localStorage.getItem('suskii-theme');if(t==='light'||t==='dark')document.documentElement.classList.add(t)}catch(e){}`;
+
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
@@ -39,7 +41,11 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   return (
-    <html lang={locale} className={`${bodyFont.variable} ${displayFont.variable}`}>
+    <html lang={locale} className={`${bodyFont.variable} ${displayFont.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Applies a saved theme before first paint, so a pinned theme never flashes the device's. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="bg-surface-background font-sans text-body-large text-ink-primary antialiased dark:bg-surface-dark-background dark:text-ink-dark-primary">
         {children}
       </body>

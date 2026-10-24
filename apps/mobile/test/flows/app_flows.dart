@@ -52,6 +52,8 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'an invited provider accepts and joins the business': _acceptInvitation,
   'sign in with Google': _googleSignIn,
   'a provider picks their state from the dropdown': _providerState,
+  'an online provider reports where they are until they go offline':
+      _onlineHeartbeat,
   'Suskii Meet: join a meet-up, then host one': _suskiiMeet,
 };
 
@@ -676,5 +678,29 @@ Future<void> _providerState(WidgetTester tester) async {
   await settle(tester, timeout: const Duration(seconds: 5));
   final me = app.container.read(mockBehaviorProvider).currentUserId;
   expect(app.database.kycProfiles[me]!.serviceAreaIds, <String>['kano']);
+  await app.dispose(tester);
+}
+
+Future<void> _onlineHeartbeat(WidgetTester tester) async {
+  final app = await _signedInApp(
+    tester,
+    overrides: <Override>[
+      deviceLocationProvider.overrideWithValue(const _FixedLocation()),
+    ],
+  );
+  await _switchToProvider(tester, app);
+  expect(app.database.reportedPositions, isEmpty);
+  // Matching only considers a position younger than two minutes, so going
+  // online must start reporting one straight away, with no job.
+  await _tap(tester, find.byType(SwitchListTile));
+  await settle(tester);
+  expect(app.database.reportedPositions, hasLength(1));
+  await tester.pump(const Duration(seconds: 46));
+  await settle(tester);
+  expect(app.database.reportedPositions, hasLength(2));
+  await _tap(tester, find.byType(SwitchListTile));
+  await settle(tester);
+  await tester.pump(const Duration(seconds: 90));
+  expect(app.database.reportedPositions, hasLength(2));
   await app.dispose(tester);
 }

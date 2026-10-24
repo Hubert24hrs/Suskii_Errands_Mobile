@@ -30,11 +30,11 @@ class SupabaseProviderRepository implements ProviderRepository {
 
   @override
   Stream<List<JobRequest>> watchNearbyRequests() {
-    // provider_feed is a one-shot RPC; the stream re-runs it whenever a
-    // published request changes (and once at listen time — the initial
-    // snapshot of the requests stream already covers the cold read).
+    // provider_feed is a one-shot RPC; the stream re-runs it at listen time,
+    // whenever a notification reaches the provider (a match is one) and on
+    // the refresh timer.
     late StreamController<List<JobRequest>> controller;
-    StreamSubscription<List<Map<String, dynamic>>>? sub;
+    StreamSubscription<void>? sub;
     var refreshing = false;
     var dirty = false;
     controller = StreamController<List<JobRequest>>(
@@ -59,11 +59,9 @@ class SupabaseProviderRepository implements ProviderRepository {
         }
 
         sub = _gateway
-            .streamRows(
-              'requests',
-              primaryKey: <String>['id'],
-              filterColumn: 'status',
-              filterValue: 'published',
+            .refreshes(
+              topics: <String>['user:${_gateway.currentAuthUserId}'],
+              every: const Duration(seconds: 30),
             )
             .listen((_) => unawaited(refresh()));
       },
@@ -102,9 +100,9 @@ class SupabaseProviderRepository implements ProviderRepository {
   Stream<List<JobRequest>> watchMyJobs() => _gateway
       .streamRows(
         'jobs',
-        primaryKey: <String>['request_id'],
         filterColumn: 'provider_id',
         filterValue: _gateway.currentAuthUserId,
+        topics: <String>['user:${_gateway.currentAuthUserId}'],
       )
       .asyncMap((rows) async {
         final jobs = <JobRequest>[];

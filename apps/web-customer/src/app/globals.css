@@ -19,8 +19,11 @@
     border-color: theme('colors.outline.strong');
   }
   @media (prefers-color-scheme: dark) {
-    :is(input:not([type='checkbox']):not([type='radio']), select, textarea).dark\:border-outline-dark {
+    :root:not(.light) :is(input:not([type='checkbox']):not([type='radio']), select, textarea).dark\:border-outline-dark {
       border-color: theme('colors.outline.strong-dark');
     }
+  }
+  :root.dark :is(input:not([type='checkbox']):not([type='radio']), select, textarea).dark\:border-outline-dark {
+    border-color: theme('colors.outline.strong-dark');
   }
 }

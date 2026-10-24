@@ -26,9 +26,10 @@ class SupabaseChatRepository implements ChatRepository {
     }
     await for (final rows in _gateway.streamRows(
       'messages',
-      primaryKey: <String>['id'],
       filterColumn: 'conversation_id',
       filterValue: conversation,
+      topics: <String>['job:$jobId'],
+      every: const Duration(seconds: 10),
     )) {
       final read = await _otherReadPointer(conversation);
       final messages = <ChatMessage>[

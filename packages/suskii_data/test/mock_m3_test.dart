@@ -215,7 +215,7 @@ void main() {
       final repo = MockJobProgressRepository(db, behavior);
       final ok = await repo.verifyHandoverPin(
         'req-3',
-        '4281',
+        '428135',
         kind: HandoverPinKind.pickup,
         idempotencyKey: newIdempotencyKey(),
       );

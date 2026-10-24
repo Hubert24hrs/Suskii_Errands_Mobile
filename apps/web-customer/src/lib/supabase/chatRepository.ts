@@ -65,6 +65,8 @@ export class SupabaseChatRepository {
           value: conversationId,
           filterColumn: 'conversation_id',
           filterValue: conversationId,
+          topics: [`job:${jobId}`],
+          everyMs: 10_000,
         },
       );
     })();

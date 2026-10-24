@@ -43,9 +43,9 @@ class SupabaseSafetyRepository implements SafetyRepository {
   Stream<SosAlert?> watchActiveSos(String jobId) => _gateway
       .streamRows(
         'sos_incidents',
-        primaryKey: <String>['id'],
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: <String>['job:$jobId'],
       )
       .map((rows) {
         if (rows.isEmpty) return null;

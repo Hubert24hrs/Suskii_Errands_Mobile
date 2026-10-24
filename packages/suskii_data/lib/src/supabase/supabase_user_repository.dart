@@ -39,9 +39,9 @@ class SupabaseUserRepository implements UserRepository {
     if (authUser == null) throw const AppError(ErrorCodes.unauthenticated);
     await for (final rows in _gateway.streamRows(
       'profiles',
-      primaryKey: <String>['user_id'],
       filterColumn: 'user_id',
       filterValue: authUser.id,
+      every: const Duration(seconds: 30),
     )) {
       if (rows.isEmpty) continue;
       yield appUserFromProfileRow(

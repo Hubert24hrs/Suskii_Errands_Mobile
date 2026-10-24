@@ -64,6 +64,7 @@ export class SupabaseDisputeRepository {
         value: jobId,
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: [`job:${jobId}`],
       },
     );
     return () => {

@@ -69,6 +69,7 @@ export class SupabaseSafetyRepository {
         value: jobId,
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: [`job:${jobId}`],
       },
     );
   }

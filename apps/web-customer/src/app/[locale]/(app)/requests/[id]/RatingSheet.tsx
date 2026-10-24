@@ -62,7 +62,8 @@ export function RatingSheet({ jobId, dict }: { jobId: string; dict: Dictionary }
   const queryClient = useQueryClient();
   const myRatingQuery = useQuery({
     queryKey: ['rating', jobId],
-    queryFn: () => ratingRepository.getMyRatingForJob(jobId),
+    // `null`, not `undefined`, for "not rated yet": React Query treats undefined data as an error.
+    queryFn: async () => (await ratingRepository.getMyRatingForJob(jobId)) ?? null,
   });
 
   const [stars, setStars] = useState(0);

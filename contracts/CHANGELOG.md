@@ -8,6 +8,19 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 Nothing pending.
 
+## [2.5.0] - 2026-10-24
+
+Provider applicants can see their verification steps (audit 2026-10-24, AA.2). **MINOR**: an
+optional argument.
+
+### Changed
+
+- **`get_my_kyc_profile(p_mode?)`**: optional `user_mode`, defaulting to the active mode as before.
+  The provider verification screens send `provider` and the customer identity screen sends
+  `customer`. Before this, an applicant was always in customer mode (`set_active_mode('provider')`
+  refuses anyone unverified), so the screen drew the customer list and showed no provider steps,
+  while `submit_kyc_for_review` checked the provider list. `overall_status` follows the same mode.
+
 ## [2.4.0] - 2026-10-24
 
 The nearest providers first (ADR-0022). **MINOR**: one function added, and `rank_offers` gains a

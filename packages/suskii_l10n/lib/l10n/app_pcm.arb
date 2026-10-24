@@ -749,7 +749,7 @@
   "jobActionMarkComplete": "Mark am done",
   "jobWaitingCustomerConfirmation": "Dey wait for customer to confirm say the job don complete.",
   "pinEntryTitle": "Handover PIN",
-  "pinEntryHint": "Ask the customer for their 4-digit PIN.",
+  "pinEntryHint": "Ask the customer for their 6-number PIN.",
   "pinAttemptsRemaining": "{count} attempts remain",
   "@pinAttemptsRemaining": {"placeholders": {"count": {"type": "int"}}},
   "jobArrivalGeofenceNote": "We dey record arrival with your location — only mark arrived when you don reach the pickup point.",

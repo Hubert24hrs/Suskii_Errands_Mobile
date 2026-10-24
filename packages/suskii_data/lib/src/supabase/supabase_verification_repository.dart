@@ -77,8 +77,10 @@ class SupabaseVerificationRepository implements VerificationRepository {
         _fallback(KycStepStatus.inProgress);
   }
 
+  // The customer list whatever mode the person is in: a provider has a
+  // customer identity too.
   Future<List<Map<String, dynamic>>> _profileRows() => _gateway
-      .rpc('get_my_kyc_profile')
+      .rpc('get_my_kyc_profile', <String, Object?>{'p_mode': 'customer'})
       .then((rows) => List<Map<String, dynamic>>.from(rows as List<dynamic>));
 
   VerificationSession _sessionFromRow(Map<String, dynamic> row) {

@@ -100,6 +100,9 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
 
   const draftIntent = useIntentKey();
   const publishIntent = useIntentKey();
+  // A key names one operation on the server, so the publish step keeps its own: a retry after
+  // a failed publish replays the create (same draft) and publishes under a stable key.
+  const publishStepIntent = useIntentKey();
 
   const buildInput = (): CreateRequestInput => ({
     categoryId,
@@ -146,14 +149,14 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   const publish = useMutation({
     mutationFn: async () => {
       setVerificationRequired(false);
-      // One intent = create the draft, then publish it. The same key covers
-      // both calls so a retry after a mid-flow failure replays the create.
-      const key = publishIntent.keyFor(fingerprint());
-      const draft = await requestRepository.createRequest(buildInput(), key);
-      return requestRepository.publishRequest(draft.id, key);
+      // One intent = create the draft, then publish it, each under its own key.
+      const fp = fingerprint();
+      const draft = await requestRepository.createRequest(buildInput(), publishIntent.keyFor(fp));
+      return requestRepository.publishRequest(draft.id, publishStepIntent.keyFor(fp));
     },
     onSuccess: (published) => {
       publishIntent.reset();
+      publishStepIntent.reset();
       router.push(`/${locale}/requests/${published.id}`);
     },
     onError: (error) => {

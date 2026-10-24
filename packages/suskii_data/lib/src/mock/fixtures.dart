@@ -65,6 +65,14 @@ class MockDatabase {
   /// last, so tests can see what a real device would have broadcast.
   final Map<String, List<LiveFix>> liveFixes = <String, List<LiveFix>>{};
 
+  /// Positions an online provider reported between jobs (the heartbeat).
+  final List<LiveFix> reportedPositions = <LiveFix>[];
+
+  /// Completed mutating calls by `'$userId:$key'`: the operation, the
+  /// argument hash and the result (see `_MockRepo.idempotent`).
+  final Map<String, (String, String, Object)> idempotentResults =
+      <String, (String, String, Object)>{};
+
   /// Support tickets by id.
   late final Map<String, SupportTicket> tickets;
 

@@ -1,3 +1,5 @@
+import providerEn from './provider.en';
+
 const en = {
   meta: {
     title: 'Suskii — your errands, handled',
@@ -47,6 +49,10 @@ const en = {
         title: 'Settings',
         body: 'Notifications, trusted contacts and your data.',
       },
+      {
+        title: 'Work as a provider',
+        body: 'Earn by running errands near you: set up, verify and go online.',
+      },
     ],
   },
   common: {
@@ -90,6 +96,23 @@ const en = {
     catCustom: 'Something else',
   },
   errors: {
+    ERR_PROOF_REQUIRED: 'Add the required proof before marking the job complete.',
+    ERR_NOT_AT_PICKUP: 'You are not at the pickup yet. Get closer, or tell us why you are marking arrival.',
+    ERR_PIN_ATTEMPTS_EXCEEDED: 'Too many wrong PINs. Contact support to continue this job.',
+    ERR_ILLEGAL_TRANSITION: 'This step is not available for the job right now.',
+    ERR_INVALID_ARGUMENT: 'Check the details you entered and try again.',
+    ERR_REQUEST_NOT_FOUND: 'We could not find that request.',
+    ERR_UPLOAD_NOT_FOUND: 'The file did not finish uploading. Try again.',
+    ERR_CITY_NOT_FOUND: 'Choose a state from the list.',
+    ERR_IDENTITY_ALREADY_REGISTERED: 'This ID is already linked to another account.',
+    ERR_ORGANIZATION_ALREADY_REGISTERED: 'A business with this registration number already exists.',
+    ERR_ORG_ROLE_REQUIRED: 'Only the business owner or a dispatcher can do this.',
+    ERR_WORKER_NOT_ELIGIBLE: 'That worker cannot take jobs yet: they must be verified and active.',
+    ERR_LOCATION_UNAVAILABLE: 'We could not get your location.',
+    ERR_KYC_INCOMPLETE: 'Finish every required step before submitting for review.',
+    ERR_KYC_EXPIRED: 'Your verification has expired. Renew it to go online.',
+    ERR_SELFIE_CHECK_REQUIRED: 'Take a quick selfie check to go online.',
+    ERR_PROVIDER_BUSY_AS_CUSTOMER: 'Finish your own active request before going online.',
     ERR_UNAUTHENTICATED: 'Please sign in to continue.',
     ERR_PERMISSION_DENIED: 'You do not have permission for this action.',
     ERR_VERIFICATION_REQUIRED: 'Verify your identity to publish requests.',
@@ -412,6 +435,16 @@ const en = {
       paymentTtlExpired: 'Payment window expired — the job returned to negotiation.',
     },
   },
+  sos: {
+    cta: 'SOS',
+    title: 'Emergency SOS',
+    confirmBody:
+      'We alert Suskii operations, the local security partner and your trusted contacts, with your live location and job details.',
+    send: 'Send SOS alert',
+    activeTitle: 'SOS active',
+    activeBody: 'Help has been notified. Stay where it is safe if you can.',
+    emergencyNumbers: 'Local emergency numbers',
+  },
   tracking: {
     title: 'Live tracking',
     legend: {
@@ -580,10 +613,20 @@ const en = {
   },
   settings: {
     title: 'Settings',
+    profileTitle: 'Profile',
+    nameLabel: 'Your name',
+    nameSave: 'Save name',
+    nameSaved: 'Name saved.',
+    themeTitle: 'Theme',
+    themeSystem: 'Same as my device',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     notificationsTitle: 'Notifications',
     channels: {
       push: 'Push notifications',
       email: 'Email',
+      sms: 'SMS',
+      marketing: 'Offers and news',
     },
     quietHours: 'Quiet hours',
     quietFrom: 'From',
@@ -707,6 +750,7 @@ const en = {
     body: 'The page you are looking for does not exist or has moved.',
     cta: 'Back to dashboard',
   },
+  provider: providerEn,
 };
 
 export default en;

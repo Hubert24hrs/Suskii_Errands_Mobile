@@ -3,7 +3,7 @@
 // packages/suskii_data/lib/src/mock/mock_repositories.dart).
 
 import { serverNow } from '../../lib/serverClock';
-import { gate, IdempotencyStore, type MockBehavior } from '../behavior';
+import { gate, idempotencyStore, type MockBehavior } from '../behavior';
 import { AppError, ErrorCodes } from '../errors';
 import type { MockDatabase } from '../fixtures';
 import type { AppUser } from '../types';
@@ -21,11 +21,9 @@ export abstract class MockRepo {
     return gate();
   }
 
-  private readonly idempotency = new IdempotencyStore();
-
   /**
-   * Runs a mutating call under an idempotency key. Same key + same argsHash
-   * replays the stored result; same key + different argsHash throws
+   * Runs a mutating call under an idempotency key, scoped like the server's: same key, same
+   * operation and argsHash replays the stored result; anything else throws
    * ERR_IDEMPOTENCY_KEY_REUSED.
    */
   protected idempotent<T>(
@@ -34,7 +32,7 @@ export abstract class MockRepo {
     argsHash: string,
     run: () => Promise<T> | T,
   ): Promise<T> {
-    return this.idempotency.run(operation, key, argsHash, run);
+    return idempotencyStore.run(this.behavior.currentUserId, operation, key, argsHash, run);
   }
 
   /** The simulated server clock — TTLs are always computed against this. */

@@ -40,9 +40,11 @@ class SupabasePaymentRepository implements PaymentRepository {
   Stream<Payment?> watchPaymentForJob(String jobId) => _gateway
       .streamRows(
         'payments',
-        primaryKey: <String>['id'],
+        columns: _columns,
         filterColumn: 'request_id',
         filterValue: jobId,
+        topics: <String>['request:$jobId:customer', 'job:$jobId'],
+        every: const Duration(seconds: 10),
       )
       .map((rows) {
         if (rows.isEmpty) return null;

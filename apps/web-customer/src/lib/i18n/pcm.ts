@@ -1,4 +1,5 @@
 import type { Dictionary } from './en';
+import providerPcm from './provider.pcm';
 
 const pcm = {
   meta: {
@@ -49,6 +50,10 @@ const pcm = {
         title: 'Settings',
         body: 'Notification, trusted contact-dem and your data.',
       },
+      {
+        title: 'Work as provider',
+        body: 'Make money as you dey run errands near you: set up, verify and go online.',
+      },
     ],
   },
   common: {
@@ -92,6 +97,23 @@ const pcm = {
     catCustom: 'Another thing',
   },
   errors: {
+    ERR_PROOF_REQUIRED: 'Add the proof wey dem need before you mark the job as done.',
+    ERR_NOT_AT_PICKUP: 'You never reach the pickup. Go near, or tell us why you dey mark say you don reach.',
+    ERR_PIN_ATTEMPTS_EXCEEDED: 'You don try wrong PIN too many times. Call support make you continue.',
+    ERR_ILLEGAL_TRANSITION: 'This step no dey available for this job now.',
+    ERR_INVALID_ARGUMENT: 'Check wetin you type, then try again.',
+    ERR_REQUEST_NOT_FOUND: 'We no fit find that request.',
+    ERR_UPLOAD_NOT_FOUND: 'The file never finish upload. Try again.',
+    ERR_CITY_NOT_FOUND: 'Choose one state from the list.',
+    ERR_IDENTITY_ALREADY_REGISTERED: 'This ID don join another account already.',
+    ERR_ORGANIZATION_ALREADY_REGISTERED: 'Business wey get this registration number don dey already.',
+    ERR_ORG_ROLE_REQUIRED: 'Na only the business owner or dispatcher fit do this one.',
+    ERR_WORKER_NOT_ELIGIBLE: 'That worker never fit take job: dem must verify and dey active.',
+    ERR_LOCATION_UNAVAILABLE: 'We no fit get where you dey.',
+    ERR_KYC_INCOMPLETE: 'Finish all the steps wey dem need before you submit for review.',
+    ERR_KYC_EXPIRED: 'Your verification don expire. Renew am make you fit go online.',
+    ERR_SELFIE_CHECK_REQUIRED: 'Do quick selfie check make you fit go online.',
+    ERR_PROVIDER_BUSY_AS_CUSTOMER: 'Finish your own request wey dey run before you go online.',
     ERR_UNAUTHENTICATED: 'Abeg sign in to continue.',
     ERR_PERMISSION_DENIED: 'You no get permission for this one.',
     ERR_VERIFICATION_REQUIRED: 'Verify who you be before you fit publish request.',
@@ -414,6 +436,16 @@ const pcm = {
       paymentTtlExpired: 'Payment time don pass — the job don go back to negotiation.',
     },
   },
+  sos: {
+    cta: 'SOS',
+    title: 'Emergency SOS',
+    confirmBody:
+      'We go alert Suskii operations, the security people for your area and your trusted contacts, with where you dey and the job details.',
+    send: 'Send SOS alert',
+    activeTitle: 'SOS dey on',
+    activeBody: 'We don tell people wey go help. Stay where e safe if you fit.',
+    emergencyNumbers: 'Emergency numbers for your area',
+  },
   tracking: {
     title: 'Live tracking',
     legend: {
@@ -582,10 +614,20 @@ const pcm = {
   },
   settings: {
     title: 'Settings',
+    profileTitle: 'Profile',
+    nameLabel: 'Your name',
+    nameSave: 'Save name',
+    nameSaved: 'Name don save.',
+    themeTitle: 'Theme',
+    themeSystem: 'Like my phone',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     notificationsTitle: 'Notification-dem',
     channels: {
       push: 'Push notification',
       email: 'Email',
+      sms: 'SMS',
+      marketing: 'Offers and gist',
     },
     quietHours: 'Quiet hours',
     quietFrom: 'From',
@@ -709,6 +751,7 @@ const pcm = {
     body: 'The page wey you dey find no exist or e don move.',
     cta: 'Back to dashboard',
   },
+  provider: providerPcm,
 } satisfies Dictionary;
 
 export default pcm;

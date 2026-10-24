@@ -29,6 +29,12 @@ import {
   walletRepository as mockWalletRepository,
   authRepository as mockAuthRepository,
   userRepository as mockUserRepository,
+  providerRepository as mockProviderRepository,
+  providerJobRepository as mockProviderJobRepository,
+  mediaUploadRepository as mockMediaUploadRepository,
+  providerKycRepository as mockProviderKycRepository,
+  providerToolsRepository as mockProviderToolsRepository,
+  organizationRepository as mockOrganizationRepository,
 } from '@/mocks/repositories';
 
 import { SupabaseAuthRepository } from './supabase/authRepository';
@@ -55,6 +61,14 @@ import { SupabaseTrackingRepository } from './supabase/trackingRepository';
 import { SupabaseUserRepository } from './supabase/userRepository';
 import { SupabaseVerificationRepository } from './supabase/verificationRepository';
 import { SupabaseWalletRepository } from './supabase/walletRepository';
+import {
+  SupabaseMediaUploadRepository,
+  SupabaseProviderJobRepository,
+  SupabaseProviderRepository,
+} from './supabase/providerRepository';
+import { SupabaseProviderKycRepository } from './supabase/providerKycRepository';
+import { SupabaseProviderToolsRepository } from './supabase/providerToolsRepository';
+import { SupabaseOrganizationRepository } from './supabase/organizationRepository';
 
 export { AppError, ErrorCodes, isAppError } from '@/mocks/errors';
 export type { ErrorCode } from '@/mocks/errors';
@@ -143,3 +157,23 @@ export const conciergeRepository = supabaseGateway
 export const meetupRepository = supabaseGateway
   ? new SupabaseMeetupRepository(supabaseGateway)
   : mockMeetupRepository;
+
+// Provider mode (2026-10-24): the website does what the app's provider side does.
+export const providerRepository = supabaseGateway
+  ? new SupabaseProviderRepository(supabaseGateway)
+  : mockProviderRepository;
+export const providerJobRepository = supabaseGateway
+  ? new SupabaseProviderJobRepository(supabaseGateway)
+  : mockProviderJobRepository;
+export const mediaUploadRepository = supabaseGateway
+  ? new SupabaseMediaUploadRepository(supabaseGateway)
+  : mockMediaUploadRepository;
+export const providerKycRepository = supabaseGateway
+  ? new SupabaseProviderKycRepository(supabaseGateway)
+  : mockProviderKycRepository;
+export const providerToolsRepository = supabaseGateway
+  ? new SupabaseProviderToolsRepository(supabaseGateway)
+  : mockProviderToolsRepository;
+export const organizationRepository = supabaseGateway
+  ? new SupabaseOrganizationRepository(supabaseGateway)
+  : mockOrganizationRepository;

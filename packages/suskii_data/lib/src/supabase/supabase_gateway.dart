@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:supabase/supabase.dart';
@@ -176,86 +177,215 @@ class SupabaseGateway {
     }
   }
 
-  /// Live rows of a table as a stream (RLS scopes them server-side). An
-  /// optional equality filter narrows the subscription server-side.
+  /// Rows of a table as a stream (RLS scopes them server-side), emitted
+  /// again only when they differ. Re-read on every [refreshes] tick: the
+  /// project publishes no table changes, by design (ADR-0009, contracts rule
+  /// 9), so a broadcast on one of [topics] says "look again" and the timer
+  /// covers whatever no broadcast announces. Name the [columns] for a table
+  /// with column-level grants: `*` is refused there.
   Stream<List<Map<String, dynamic>>> streamRows(
     String table, {
-    required List<String> primaryKey,
+    String columns = '*',
     String? filterColumn,
     Object? filterValue,
+    List<String> topics = const <String>[],
+    Duration every = const Duration(seconds: 15),
   }) {
-    var query = _client.from(table).stream(primaryKey: primaryKey);
-    if (filterColumn != null) query = query.eq(filterColumn, filterValue!);
-    return query.map(
-      (rows) => List<Map<String, dynamic>>.from(
-        rows.map((r) => Map<String, dynamic>.from(r)),
-      ),
-    );
+    String? last;
+    Future<List<Map<String, dynamic>>?> read() async {
+      var query = _client.from(table).select(columns);
+      if (filterColumn != null) query = query.eq(filterColumn, filterValue!);
+      final rows = List<Map<String, dynamic>>.from(
+        (await query).map((r) => Map<String, dynamic>.from(r)),
+      );
+      final encoded = jsonEncode(rows);
+      if (encoded == last) return null;
+      last = encoded;
+      return rows;
+    }
+
+    return _coalesced(
+      refreshes(topics: topics, every: every),
+      read,
+    ).where((rows) => rows != null).cast<List<Map<String, dynamic>>>();
   }
 
-  /// Channels this client has joined to send on, by topic.
-  final Map<String, RealtimeChannel> _sendChannels =
-      <String, RealtimeChannel>{};
+  /// A tick at once, then on any broadcast on [topics], on each (re)join of
+  /// one (what was missed while away), and every [every] regardless — a
+  /// broadcast is a courtesy, never a guarantee. A topic the caller may not
+  /// join is refused by `private.may_join_topic` and the timer still runs.
+  Stream<void> refreshes({
+    List<String> topics = const <String>[],
+    Duration every = const Duration(seconds: 15),
+  }) {
+    final leaves = <void Function()>[];
+    Timer? timer;
+    late final StreamController<void> controller;
+    void tick() {
+      if (!controller.isClosed) controller.add(null);
+    }
 
-  /// The payloads of [event] on the private Realtime [topic] (ADR-0009):
-  /// authorised by the `realtime.messages` policies, carried without a
-  /// database row. Leaving the stream leaves the channel.
-  Stream<Map<String, dynamic>> broadcasts(String topic, String event) {
-    RealtimeChannel? channel;
-    late final StreamController<Map<String, dynamic>> controller;
-    controller = StreamController<Map<String, dynamic>>(
+    controller = StreamController<void>(
       onListen: () {
-        channel = _client
-            .channel(topic, opts: const RealtimeChannelConfig(private: true))
-            .onBroadcast(
-              event: event,
-              callback: (message) {
-                // The callback receives the whole broadcast frame; what the
-                // sender put in `payload` is one level down.
-                final inner = message['payload'];
-                controller.add(
-                  inner is Map
-                      ? Map<String, dynamic>.from(inner)
-                      : Map<String, dynamic>.from(message),
-                );
-              },
-            )
-            .subscribe();
+        tick();
+        timer = Timer.periodic(every, (_) => tick());
+        for (final topic in topics) {
+          leaves.add(
+            _listen(topic, onMessage: (_, _) => tick(), onJoined: tick),
+          );
+        }
       },
-      onCancel: () async {
-        final joined = channel;
-        if (joined != null) await _client.removeChannel(joined);
+      onCancel: () {
+        timer?.cancel();
+        for (final leave in leaves) {
+          leave();
+        }
       },
     );
     return controller.stream;
   }
 
+  /// Runs [read] per tick, one at a time; ticks that arrive mid-read fold into
+  /// one more read. A failed read is an error event only before anything has
+  /// been emitted — afterwards the last good value stands until the next tick.
+  Stream<T> _coalesced<T>(Stream<void> ticks, Future<T> Function() read) {
+    StreamSubscription<void>? sub;
+    var reading = false;
+    var again = false;
+    var emitted = false;
+    late final StreamController<T> controller;
+    Future<void> run() async {
+      if (reading) {
+        again = true;
+        return;
+      }
+      reading = true;
+      try {
+        do {
+          again = false;
+          try {
+            final value = await read();
+            if (controller.isClosed) return;
+            controller.add(value);
+            emitted = true;
+          } on Object catch (error) {
+            if (!emitted && !controller.isClosed) {
+              controller.addError(mapSupabaseError(error));
+            }
+          }
+        } while (again && !controller.isClosed);
+      } finally {
+        reading = false;
+      }
+    }
+
+    controller = StreamController<T>(
+      onListen: () => sub = ticks.listen((_) => unawaited(run())),
+      onCancel: () async => sub?.cancel(),
+    );
+    return controller.stream;
+  }
+
+  /// One channel per topic, shared by everything on this client that uses
+  /// it: Realtime closes the first of two joins of one topic on a socket, so
+  /// a job screen's refresh and its location broadcasts must share a join.
+  final Map<String, _Topic> _topics = <String, _Topic>{};
+
+  /// Topics joined by [broadcast], held until [leaveTopic].
+  final Map<String, void Function()> _sending = <String, void Function()>{};
+
+  /// Joins [topic] (private, ADR-0009) or shares the existing join, and calls
+  /// [onMessage] with each broadcast's event and payload and [onJoined] on
+  /// each (re)join. Returns the call that leaves; the last one out closes it.
+  void Function() _listen(
+    String topic, {
+    void Function(String? event, Map<String, dynamic> payload)? onMessage,
+    void Function()? onJoined,
+  }) {
+    final entry = _topics.putIfAbsent(topic, () {
+      final created = _Topic();
+      created.channel = _client
+          .channel(topic, opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: '*',
+            callback: (message) {
+              // The callback receives the whole broadcast frame; what the
+              // sender put in `payload` is one level down.
+              final inner = message['payload'];
+              final payload = inner is Map
+                  ? Map<String, dynamic>.from(inner)
+                  : Map<String, dynamic>.from(message);
+              final event = message['event'] as String?;
+              for (final listener in List.of(created.listeners)) {
+                listener(event, payload);
+              }
+            },
+          )
+          .subscribe((status, _) {
+            if (status != RealtimeSubscribeStatus.subscribed) return;
+            for (final joined in List.of(created.joined)) {
+              joined();
+            }
+          });
+      return created;
+    });
+    entry.refs++;
+    if (onMessage != null) entry.listeners.add(onMessage);
+    if (onJoined != null) entry.joined.add(onJoined);
+    var left = false;
+    return () {
+      if (left) return;
+      left = true;
+      if (onMessage != null) entry.listeners.remove(onMessage);
+      if (onJoined != null) entry.joined.remove(onJoined);
+      if (--entry.refs == 0 && identical(_topics[topic], entry)) {
+        _topics.remove(topic);
+        unawaited(_client.removeChannel(entry.channel));
+      }
+    };
+  }
+
+  /// The payloads of [event] on the private Realtime [topic] (ADR-0009):
+  /// authorised by the `realtime.messages` policies, carried without a
+  /// database row. Leaving the stream leaves the topic.
+  Stream<Map<String, dynamic>> broadcasts(String topic, String event) {
+    void Function()? leave;
+    late final StreamController<Map<String, dynamic>> controller;
+    controller = StreamController<Map<String, dynamic>>(
+      onListen: () => leave = _listen(
+        topic,
+        onMessage: (received, payload) {
+          if (received == event && !controller.isClosed) {
+            controller.add(payload);
+          }
+        },
+      ),
+      onCancel: () => leave?.call(),
+    );
+    return controller.stream;
+  }
+
   /// Sends [payload] as [event] on the private Realtime [topic]. A broadcast
-  /// is a courtesy, not a record (the tables are the truth), so the channel
-  /// is joined once and kept for the next send.
+  /// is a courtesy, not a record (the tables are the truth), so the topic is
+  /// joined once and kept for the next send.
   Future<void> broadcast(
     String topic,
     String event,
     Map<String, dynamic> payload,
   ) async {
-    final channel = _sendChannels.putIfAbsent(
-      topic,
-      () => _client
-          .channel(topic, opts: const RealtimeChannelConfig(private: true))
-          .subscribe(),
-    );
+    _sending.putIfAbsent(topic, () => _listen(topic));
     try {
-      await channel.sendBroadcastMessage(event: event, payload: payload);
+      await _topics[topic]!.channel.sendBroadcastMessage(
+        event: event,
+        payload: payload,
+      );
     } on Object catch (error) {
       throw mapSupabaseError(error);
     }
   }
 
   /// Leaves a topic joined by [broadcast].
-  Future<void> leaveTopic(String topic) async {
-    final channel = _sendChannels.remove(topic);
-    if (channel != null) await _client.removeChannel(channel);
-  }
+  Future<void> leaveTopic(String topic) async => _sending.remove(topic)?.call();
 
   /// Opaque id string — safe for 64-bit ids that exceed 2^53.
   static String asId(Object? value) => value.toString();
@@ -280,4 +410,13 @@ class SupabaseGateway {
   /// Parses an RFC 3339 / Postgres timestamp with time zone.
   static DateTime asTimestamp(Object? value) =>
       DateTime.parse(value! as String).toUtc();
+}
+
+/// A joined topic and who is using it (see [SupabaseGateway._listen]).
+class _Topic {
+  late final RealtimeChannel channel;
+  final Set<void Function(String? event, Map<String, dynamic> payload)>
+  listeners = <void Function(String? event, Map<String, dynamic> payload)>{};
+  final Set<void Function()> joined = <void Function()>{};
+  int refs = 0;
 }

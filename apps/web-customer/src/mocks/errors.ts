@@ -57,6 +57,20 @@ export const ErrorCodes = {
   kycStepInvalid: 'ERR_KYC_STEP_INVALID',
   kycIncomplete: 'ERR_KYC_INCOMPLETE',
 
+  // Provider mode: job execution, KYC, business console
+  proofRequired: 'ERR_PROOF_REQUIRED',
+  notAtPickup: 'ERR_NOT_AT_PICKUP',
+  pinAttemptsExceeded: 'ERR_PIN_ATTEMPTS_EXCEEDED',
+  illegalTransition: 'ERR_ILLEGAL_TRANSITION',
+  invalidArgument: 'ERR_INVALID_ARGUMENT',
+  requestNotFound: 'ERR_REQUEST_NOT_FOUND',
+  uploadNotFound: 'ERR_UPLOAD_NOT_FOUND',
+  cityNotFound: 'ERR_CITY_NOT_FOUND',
+  identityAlreadyRegistered: 'ERR_IDENTITY_ALREADY_REGISTERED',
+  organizationAlreadyRegistered: 'ERR_ORGANIZATION_ALREADY_REGISTERED',
+  orgRoleRequired: 'ERR_ORG_ROLE_REQUIRED',
+  workerNotEligible: 'ERR_WORKER_NOT_ELIGIBLE',
+  locationUnavailable: 'ERR_LOCATION_UNAVAILABLE',
   // Features
   featureUnavailable: 'ERR_FEATURE_UNAVAILABLE',
   unsupportedLanguage: 'ERR_UNSUPPORTED_LANGUAGE',

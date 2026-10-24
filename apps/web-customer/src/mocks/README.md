@@ -46,7 +46,7 @@ the same signatures. Wired so far: auth + user profile.
 - `user-chidi` — unverified customer (NG, Pidgin) for the
   `ERR_VERIFICATION_REQUIRED` flows.
 - Requests: `req-1` negotiating with offers `offer-1a` (pending), `offer-1b`
-  (countered, round 2), `offer-1c` (expired) · `req-2` in_progress (PIN 4281,
+  (countered, round 2), `offer-1c` (expired) · `req-2` in_progress (PIN 428135,
   chat `msg-1..3`, tracking) · `req-3` disputed (dispute `disp-1` in review) ·
   `req-4` confirmed (rateable, chat open <24h) · `req-5` draft (custom) ·
   `req-6` payment_pending (TTL ticking) · `req-7` agreed (ready to pay) ·
@@ -67,7 +67,7 @@ the same signatures. Wired so far: auth + user profile.
   TTL come from the category. The mock provider answers counters after
   `providerResponseDelayMs`: accepts ≥90% of its ask, counters at the
   midpoint while rounds remain, otherwise declines. Accepting (either side)
-  expires all siblings and sets the customer-only handover PIN (`4281`).
+  expires all siblings and sets the customer-only handover PIN (`428135`).
 - **Payments**: `initializePayment` is verification-gated, 15-minute TTL,
   simulated webhook → `held` (job → `paid_held`) or `failed` (job → `agreed`
   for retry). A pending payment past its TTL fails with `paymentTtlExpired`.

@@ -31,6 +31,7 @@ import type {
   NearbyProviders,
   RankedOffer,
   Rating,
+  ServiceArea,
   ServiceCategory,
   SosAlert,
   SosStatus,
@@ -141,6 +142,7 @@ function intOr(value: unknown, fallback: number): number {
 export function countryPackFromBootstrap(
   pack: Row,
   launchCities: string[] = [],
+  serviceAreas: ServiceArea[] = [],
 ): CountryPack {
   const currency = (pack['currency'] as Row | null) ?? {};
   const client = (pack['client'] as Row | null) ?? {};
@@ -165,7 +167,15 @@ export function countryPackFromBootstrap(
       })),
     offerTtlSeconds: intOr(client['offer_ttl_seconds'], 600),
     maxNegotiationRounds: intOr(client['max_counter_rounds'], 5),
+    serviceAreas,
   };
+}
+
+/** `cities` rows (code, name) as the service areas a provider picks from, by name. */
+export function serviceAreasFromRows(rows: Row[]): ServiceArea[] {
+  return rows
+    .map((row) => ({ code: row['code'] as string, name: row['name'] as string }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** A `notifications` row. The wire carries title_key/body_key/params and

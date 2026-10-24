@@ -29,6 +29,14 @@ import {
 } from './repos/account';
 import { MockConciergeRepository, MockVerificationRepository } from './repos/concierge';
 import { MockMeetupRepository } from './repos/meet';
+import {
+  MockMediaUploadRepository,
+  MockOrganizationRepository,
+  MockProviderJobRepository,
+  MockProviderKycRepository,
+  MockProviderRepository,
+  MockProviderToolsRepository,
+} from './repos/provider';
 
 export { mockBehavior } from './behavior';
 export { db, createMockDatabase, MockDatabase } from './fixtures';
@@ -82,3 +90,9 @@ export const settingsRepository = new MockSettingsRepository(db, mockBehavior);
 export const conciergeRepository = new MockConciergeRepository(db, mockBehavior);
 export const verificationRepository = new MockVerificationRepository(db, mockBehavior);
 export const meetupRepository = new MockMeetupRepository(db, mockBehavior);
+export const providerRepository = new MockProviderRepository(db, mockBehavior);
+export const providerJobRepository = new MockProviderJobRepository(db, mockBehavior);
+export const mediaUploadRepository = new MockMediaUploadRepository(db, mockBehavior);
+export const providerKycRepository = new MockProviderKycRepository(db, mockBehavior);
+export const providerToolsRepository = new MockProviderToolsRepository(db, mockBehavior);
+export const organizationRepository = new MockOrganizationRepository(db, mockBehavior);

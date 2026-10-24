@@ -17,6 +17,7 @@ import type {
 import { SupabaseGateway, type Row } from './gateway';
 import {
   countryPackFromBootstrap,
+  serviceAreasFromRows,
   nearbyProvidersFromRow,
   priceBandFromRow,
   serviceCategoryFromRow,
@@ -61,13 +62,14 @@ export class SupabaseCatalogRepository {
       // Disabled/unknown country: get_bootstrap returns no pack.
       throw new AppError(ErrorCodes.countryDisabled);
     }
-    const cities = await this.gateway.selectList('cities', 'name', {
+    const cities = await this.gateway.selectList('cities', 'code, name', {
       column: 'country_code',
       value: countryCode,
     });
     return countryPackFromBootstrap(
       pack,
       cities.map((row) => row['name'] as string),
+      serviceAreasFromRows(cities),
     );
   }
 

@@ -5,6 +5,61 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-24 (part 5) — Claude Code — the website as a replica of the app; both apps on a real backend
+
+At the owner's request ("make sure the website and mobile app has same features (replica), audit/debug
+any bugs, test the entire platform end to end"). Audit: `docs/audit/AUDIT-2026-10-24.md`. Contracts
+**2.5.0** (MINOR), migration `20261024140000`. Edits in Kimi's paths on that instruction; not standing
+licence.
+
+### The website gains everything the app had and it lacked
+
+- **Provider mode** (`app/[locale]/(app)/provider/`): feed with the offer sheet, my offers (counter and
+  withdraw), jobs and job execution (start, arrive with position or a reason, pickup and delivery PIN,
+  proofs, complete), job chat, earnings, tools (hours, goal, heatmap, insights, instant payout),
+  business (register, team, invitations, vehicles, dispatch), onboarding (services and the state
+  dropdown), verification steps. Supabase repositories `providerRepository`, `providerKycRepository`,
+  `providerToolsRepository`, `organizationRepository`; mocks in `mocks/repos/provider.ts`.
+- **SOS** on the request and tracking pages; **display name**, **theme** (light, dark, system; a
+  pre-paint script avoids a flash) and the **SMS and marketing** switches in settings; a **mode
+  switch** in the header, on the home card and in the provider tabs on phones.
+
+### Bugs found by running both apps against a real local Supabase (all fixed)
+
+| # | What | Where |
+|---|---|---|
+| AA.1 | An online provider with no job never sent a position, so matching never found them and "providers near you" read 0 | Both apps: `reportPosition` every 45 s while online (`_OnlineHeartbeat`, `ProviderHeartbeat`) |
+| AA.2 | A provider applicant saw no verification steps: the list followed the active mode, and applicants are always in customer mode | Backend `get_my_kyc_profile(p_mode?)`; both apps pass the mode |
+| AA.3 | No screen updated live: the watchers listened for table changes, which the project never publishes | Both gateways: re-read on private broadcasts, on (re)join, on tab focus and on a timer |
+| AA.4 | Two joins of one topic collided (supabase-js throws; Realtime closes the first) | Both gateways: one shared, reference-counted channel per topic |
+| AA.5 | The app's payment watcher selected `*` from `payments`, which has column grants | `streamRows(columns:)` |
+| AA.6 | The website's PIN field took 4 digits; server PINs are 6. Hints said "4-digit" | Website field; `pinEntryHint` / `pinHint` in English and Pidgin; mocks issue `428135` |
+| AA.7 | Publishing from the website's form sent one idempotency key to two operations and was refused | `NewRequestClient`: a key per step |
+| AA.8 | The website's rating form errored for an unrated job (`undefined` query data) | `RatingSheet`: `?? null` |
+
+### For Kimi: what changed under you
+
+- **`SupabaseGateway.streamRows`** (Dart) lost `primaryKey` and gained `columns`, `topics` and
+  `every`; it emits only when the rows differ. **`refreshes(topics:, every:)`** is the tick stream for
+  callers that re-run an RPC. `broadcasts` / `broadcast` / `leaveTopic` keep their signatures and now
+  share the topic hub.
+- **`SupabaseGateway.watchRows`** (website) takes `topics`, `everyMs` and `distinct` (default true;
+  turn it off where the read is only a trigger). **`refreshes(read, {topics, everyMs})`** likewise.
+- **Mocks now scope idempotency keys like the server** in both apps: one store across repositories,
+  keyed by user and key, one operation per key. A screen that reuses a key for a second call now fails
+  on mocks too, which is the point.
+- `TrackingRepository.reportPosition(LiveFix)` is new in the domain; `MockDatabase.reportedPositions`
+  records it.
+
+### Tests added
+
+- `tests/web-customer-e2e` (14): the website's customer and provider journeys on a real local
+  Supabase, each step checked in the database; in `backend-db.yaml` after the admin console.
+- Dart E2E: the customer's job stream follows the provider to `en_route`; the provider-state test
+  reports position through `reportPosition`. App journey: going online reports at once and every 45 s,
+  and going offline stops it. pgTAP `61_kyc_profile_for_mode_test`. Web smoke: 11 provider routes and
+  the provider and SOS journeys.
+
 ## 2026-10-24 (part 4) — Claude Code — three customer-website fixes found by screenshotting every page
 
 At the owner's request, all 48 pages of the three sites were screenshotted on the mock build. Three
