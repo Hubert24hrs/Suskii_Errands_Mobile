@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code (pipeline) / client (store accounts, signing, review answers) |
 | Severity | SEV2 when a released build is broken in the field; otherwise a planned procedure |
-| Last rehearsed | **not yet** — no store account exists (client action 9), so no build has been signed or uploaded |
+| Last rehearsed | **Partly, 2026-10-13**: `mobile-release` run #1 built and signed the prod AAB (version code 10) with the upload key, upload off, and the owner reports it is live on Google Play. The Play upload, review and rollout steps have not been run by the pipeline; §3.4 is the procedure for taking over |
 | Related | [ADR-0015](../adr/0015-environments-from-the-define-file.md), [ADR-0017](../adr/0017-store-identity-and-release-signing.md), [RB-13](RB-13-kill-switch-and-forced-update.md) (forced update), `.github/workflows/mobile-release.yaml`, `apps/mobile/fastlane/`, audit [2026-09-27](../audit/AUDIT-2026-09-27.md) Y.1 and Y.10, drafts in [`docs/store/`](../store/) |
 
 The user asked for this file as `RB-store-release.md`; it is numbered RB-15 to keep the runbook
@@ -43,7 +43,7 @@ Numbers continue the client action list in [timeline.md §5](../plan/timeline.md
 | 27 | **Firebase project** (FCM) and an **APNs key** uploaded to it | Push notifications — not in the app yet (§6) | Firebase config values |
 | 29 | **Google sign-in** (built 2026-10-24, ADR-0021): in Google Cloud, OAuth clients for **web**, **Android** (package `com.suskiierrands.app` with the Play app-signing SHA-1 and the upload-key SHA-1) and **iOS** (bundle id) | The Google button in a real build | The client IDs (public identifiers) into `config/env/<env>.json` as `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_REVERSED_CLIENT_ID`, and into the deploy environment as `GOOGLE_CLIENT_IDS` (web first) with `GOOGLE_SKIP_NONCE_CHECK=true`; the web client secret as `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` for the website |
 | 30 | **Sign in with Apple**: a **Services ID** and a **Sign in with Apple key** in the Apple developer account (the App ID capability is action 22) | The Apple button (iOS and website) | `APPLE_CLIENT_IDS` (bundle id, plus the Services ID for the website) and `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in the deploy environment |
-| 31 | **Google Maps** (built 2026-10-24, ADR-0022): a Google Cloud project with the **Maps SDK for Android**, **Maps SDK for iOS** and **Maps JavaScript API** enabled and **billing** on; one key per platform, restricted (Android: package + SHA-1s; iOS: bundle id; web: the site's domains) | The pickup map in the app and on the website (without a key both show a "use my location" card instead) | `GOOGLE_MAPS_API_KEY` as a GitHub Actions secret (the app builds read it), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in the website's hosting environment. Never in the repository: the secret scanner fails on a Google key |
+| 31 | **Google Maps** (built 2026-10-24, ADR-0022): a Google Cloud project with the **Maps SDK for Android**, **Maps SDK for iOS** and **Maps JavaScript API** enabled and **billing** on; one key per platform, restricted (Android: package + SHA-1s — for the Play build that is the **app signing** key's SHA-1 from Play Console → App integrity, because Play re-signs what users install, plus the upload key's; iOS: bundle id; web: the site's domains) | The pickup map in the app and on the website (without a key both show a "use my location" card instead) | `GOOGLE_MAPS_API_KEY` as a GitHub Actions secret (the app builds read it), `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in the website's hosting environment. Never in the repository: the secret scanner fails on a Google key |
 | 32 | **Test-APK signing key** (2026-10-24, owner's request): run `apps/mobile/tool/new_test_key.ps1` once on your own computer. It creates a PKCS12 key in `%USERPROFILE%\suskii-test-key` (keep that folder; it is not the Play upload key of action 20) and prints four values and the key's SHA-1 | The `dev-latest` test APK installs over the previous one instead of needing an uninstall, and the Maps key (action 31) can be restricted to the test app: package `com.suskiierrands.app.dev` plus that SHA-1 | Four GitHub Actions secrets: `ANDROID_DEV_KEYSTORE_BASE64`, `ANDROID_DEV_KEYSTORE_PASSWORD`, `ANDROID_DEV_KEY_ALIAS`, `ANDROID_DEV_KEY_PASSWORD`. `mobile-native` uses them for builds of `main` only; until they exist it signs with the runner's throwaway debug key |
 | 28 | Optional: a **Sentry** project | Crash reports from release builds | `SENTRY_DSN` secret (a public client key) |
 | 4, 7, 11 | Merchant accounts, identity vendor, LiveKit and telephony — already on the list | Payments, KYC, calls | As listed there |
@@ -60,7 +60,7 @@ misleading-claims policy).
 | Identifier | `com.suskiierrands.app`; `.dev` / `.staging` suffixes | same |
 | Name | `Suskii Errands` (prod and dev: the test APK carries the real name, at the owner's request 2026-10-24), `Suskii Staging` | same |
 | Environment | `--dart-define-from-file=config/env/<env>.json` (ADR-0015); release builds use `build/env/<env>.json` with the backend values merged in by `tool/write_release_env.sh`, which refuses a staging or prod build without a backend | same, plus `tool/write_ios_defines.sh` for the bundle id, name and link host |
-| Version | `pubspec.yaml` `version: 1.0.0+N` — the name is semver; the build number comes from the workflow (`run_number × 10`) and only ever goes up | same |
+| Version | `pubspec.yaml` `version: 1.0.0+N` — the name is semver; the build number comes from the workflow: `BUILD_NUMBER_FLOOR + run_number × 10` (the floor is a repository variable, 0 when unset), or the `build_number` input to force one. It only ever goes up | same |
 | SDK levels | min 24, target and compile **36** (Play requires 36 for new apps and updates since 31 Aug 2026 [V] developer.android.com/google/play/requirements/target-sdk) | min iOS 15.0; built with **Xcode 26** (required for uploads since 28 Apr 2026 [V] developer.apple.com/news/upcoming-requirements) |
 | Shrinking | R8 + resource shrinking; `proguard-rules.pro`; mapping file kept with the build | Dart `--obfuscate` with `--split-debug-info`; symbols kept with the build |
 | Devices | phones, portrait | iPhone only (`TARGETED_DEVICE_FAMILY = 1`), portrait |
@@ -71,10 +71,12 @@ misleading-claims policy).
 | Permission / key | Platform | Why | When it is asked |
 |---|---|---|---|
 | `INTERNET` | Android | Everything. Its absence from the main manifest was audit Y.1 (Critical) | Not a runtime permission |
-| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` / `NSLocationWhenInUseUsageDescription` | both | While a provider is on a job: the customer's live map (broadcast on the job's channel, ADR-0009), the trip trail through the heartbeat, and the 150 m pickup geofence when they mark arrival (`set_job_status`, transition 13). Fine, because coarse cannot resolve 150 m. Foreground only; there is no background location (OD-27) | At "Start journey", after an in-app explanation the provider can decline and still travel; never at launch |
+| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` / `NSLocationWhenInUseUsageDescription` | both | A customer's pickup point ("use my location" on the request form, ADR-0022). An online provider's position every 45 s while the app is open, because matching only considers a fix younger than two minutes (audit AA.1). While a provider is on a job: the customer's live map (broadcast on the job's channel, ADR-0009), the trip trail through the heartbeat, and the 150 m pickup geofence when they mark arrival (`set_job_status`, transition 13). Suskii Meet sorts meet-ups by distance (asked per visit, not stored). Fine, because coarse cannot resolve 150 m. Foreground only; there is no background location (OD-27) | When the person taps "use my location", goes online, starts a journey (after an in-app explanation they can decline and still travel) or opens Suskii Meet; never at launch |
 | `NSCameraUsageDescription` | iOS | Photographing an ID document, a receipt or proof of a finished job | When the person chooses "Take a photo" |
 | `NSPhotoLibraryUsageDescription` | iOS | Choosing such a photo from the library | When the person chooses "Choose from library" |
 | — (no CAMERA, no READ_MEDIA_*) | Android | `image_picker` hands off to the system camera and the Android photo picker, which need no permission | — |
+
+The country a new account is created in is read without any permission: the mobile network the phone is registered on and the SIM's country (Android `TelephonyManager`), or the time zone and region (iOS), then the locale (`lib/app/device_country.dart`, 2026-10-24). It is sent once, as sign-up metadata. The store drafts in `docs/store/` declare it as approximate location; `VERIFY-IN-RESEARCH` whether a country-level inference needs that declaration.
 
 Not declared, on purpose: microphone (calls and the voice concierge have no audio yet), notifications
 (no push yet), background location, contacts, phone state, foreground services. `mobile-native.yaml`
@@ -125,6 +127,43 @@ Play expects the first bundle of a new app through the Console. `VERIFY-IN-RESEA
 Developer API accepts a first upload today. If not: run `mobile-release` with `upload: false`,
 download the `android-prod-*` artifact and upload `app-release.aab` to the internal track by hand.
 Every later release goes through the workflow.
+
+### 3.4 The app is already on Play (owner, 2026-10-24)
+
+The owner reports the app is live on Google Play. **What the run history shows [V]**:
+
+- `mobile-release` run #1 (2026-10-13, `main` at `3fbf3ca`, started by the owner) built the
+  **prod** App Bundle: package `com.suskiierrands.app`, version code **10**.
+- It was signed with the upload key held in the `prod` environment's secrets, with upload off.
+  The artifact `android-prod-10` (kept 90 days) was then uploaded to Play by hand, as §3.3
+  expects for a first upload.
+- Its define-file step passed for `prod`, so the `prod` environment has a `SUPABASE_URL`.
+- **No `deploy-production` or `infra-deploy` run exists**, and every `pipeline-main` deploy to dev
+  and staging was skipped. Unless migrations were pushed to that project by hand, the build on
+  Play calls a database with no schema and cannot load.
+
+Before the workflow uploads anything, confirm four facts in Play Console, and stop if any one does
+not match:
+
+1. **Package.** Play Console → the app → Dashboard. It must be `com.suskiierrands.app` (OD-26);
+   the prod build has no suffix. If it is anything else, stop and ask the owner: a package name
+   cannot change, and building another one means a second listing.
+2. **Highest version code.** Test and release → App bundle explorer, across every track. Run #1
+   produced 10, and the next run number gives 20, so nothing is needed if 10 is the highest.
+   If anything higher was uploaded by hand, set the repository variable `BUILD_NUMBER_FLOOR` to
+   that number. The next run then uploads `floor + run × 10`, and Play does not refuse it as a
+   duplicate or a downgrade.
+3. **The upload key.** Test and release → App integrity → upload key certificate. Its SHA-1 must
+   match the keystore behind `ANDROID_UPLOAD_KEYSTORE_BASE64`
+   (`keytool -list -v -keystore upload.jks`). If the keystore that made the first upload cannot
+   be found, request an upload key reset in the same page and register a new key per §3.1.
+4. **What it talks to.** A build made with `config/env/dev.json` runs on demo data. If the build on
+   Play was one, every installed copy is a demo until an update ships with a production backend.
+   `tool/write_release_env.sh prod` refuses to build without one, so the backend comes first
+   (RB-14, then RB-08 for the country).
+
+The whole sequence, from those checks to an AAB on the internal track, is written as a prompt for
+an agent with the owner's credentials: [`docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md`](../prompts/PLAY-UPDATE-AND-GO-LIVE.md).
 
 ## 4. Releasing
 

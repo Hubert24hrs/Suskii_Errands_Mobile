@@ -56,6 +56,47 @@ nowhere near sufficient.
 
 ## Procedure
 
+### 0. On a new production project (once)
+
+A project built from the migrations alone (RB-14) already holds the five countries, every one
+`disabled`, with their service areas (Nigeria's 36 states and the FCT) and the service catalogue
+(migration `20261024150000`; CI proves it on every change with
+`supabase/tools/check_production_reference.sql` against a database reset with `--no-seed`). It
+holds no admin, no legal page, no SMS, payment or payout provider. Nobody can sign up by phone
+until a country is `beta`, because the before-user-created hook refuses a number from a country
+that is not open; email accounts are accepted.
+
+1. **The first two admins** — the only step outside the four-eyes flow, because there is nobody
+   to approve the first approver. Create two email accounts (Supabase dashboard → Authentication →
+   Add user, or `auth.admin.createUser` with the service role), then, in the SQL editor as the
+   service role:
+
+   ```sql
+   INSERT INTO public.admin_users (user_id, roles, country_scope)
+   SELECT id, ARRAY['super_admin']::public.admin_role[], NULL
+   FROM auth.users WHERE email IN ('<first admin>', '<second admin>');
+   ```
+
+   Each signs in to the admin console and enrols TOTP (`aal2`) before any admin verb works. Every
+   later staff change goes through `propose_config_change('admin_user', …)`. Record who ran the
+   insert, and when, in `HANDOFF.md`.
+2. **Legal pages.** `legal_documents` has no write path for a client or an admin, on purpose: a
+   policy's version and URL are reviewed like code. Once counsel has approved and published the
+   pages (action 16, OD-24), add a migration with the rows (`terms`, `privacy`, and for KYC
+   `biometric_consent` and `criminal_record_consent`) for the country, `published_at` set.
+3. **Providers.** Once the SMS sender ID and the gateway merchant accounts exist (actions 4 and 5),
+   propose the country's `server` config. `client` and `server` are each replaced whole by a
+   proposal, so restate every server key:
+
+   ```sql
+   SELECT public.propose_config_change(gen_random_uuid()::text, 'country', 'NG',
+     '{"config": {"server": {"sms_providers": ["<vendor>"], "payment_providers": ["flutterwave", "paystack"],
+                             "payout_providers": ["flutterwave"]}}}'::jsonb, NULL, 'NG providers');
+   ```
+
+   The provider names must be ones the Edge Functions implement; `console` exists for development
+   only and `payments-worker` refuses it in production.
+
 ### 1. Two weeks before
 
 - [ ] `country_pack_readiness` returns `ready = true`.
@@ -71,10 +112,10 @@ nowhere near sufficient.
 Always. `beta` allows sign-ups and jobs; it just means you have not told the world.
 
 ```sql
-SELECT public.propose_config_change('country.status', 'NG',
-  jsonb_build_object('status', 'beta'), 'Go-live step 1: beta');
--- then, as a second, different admin:
-SELECT public.review_config_change(:id, 'approve', 'Pack verified, counsel signed');
+SELECT public.propose_config_change(gen_random_uuid()::text, 'country', 'NG',
+  jsonb_build_object('status', 'beta'), NULL, 'Go-live step 1: beta');
+-- then, as a second, different admin (signed in with TOTP), or from the admin console:
+SELECT public.review_config_change(gen_random_uuid()::text, :id, true);
 ```
 
 Run real jobs with real money in beta. Not test accounts — real customers, real providers, small
