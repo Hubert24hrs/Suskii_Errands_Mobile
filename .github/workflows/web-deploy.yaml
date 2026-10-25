@@ -171,14 +171,24 @@ jobs:
         if: inputs.deploy
         run: |
           set -euo pipefail
-          check() { # url expected-status
-            local code
-            for attempt in 1 2 3 4 5 6; do
-              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-redirs 0 "$1" || true)"
-              [ "$code" = "$2" ] && { echo "$1 -> $code"; return 0; }
+          # A custom domain's DNS record is created by the deploy itself, so a new host can take a
+          # minute or two to resolve; no answer at all (000) is retried, a wrong answer is not.
+          fetch() { # url -> headers on stdout, retried while nothing answers
+            local headers
+            for attempt in $(seq 1 18); do
+              headers="$(curl -sS -o /dev/null -D - --max-redirs 0 --max-time 20 "$1" 2>/dev/null || true)"
+              [ -n "$headers" ] && { printf '%s' "$headers"; return 0; }
               sleep 10
             done
-            echo "::error::$1 answered $code, expected $2"; return 1
+            return 1
+          }
+          status() { awk 'NR==1 {print $2}' <<<"$1"; }
+          check() { # url allowed-statuses-regex
+            local headers code
+            headers="$(fetch "$1")" || { echo "::error::$1 did not answer within three minutes"; return 1; }
+            code="$(status "$headers")"
+            [[ "$code" =~ ^($2)$ ]] || { echo "::error::$1 answered $code, expected $2"; return 1; }
+            echo "$1 -> $code"
           }
           case "$APP" in
             web-marketing)
@@ -187,14 +197,13 @@ jobs:
               check "https://$WEB_ZONE/en/delete-account" 200
               check "https://$WEB_ZONE/.well-known/assetlinks.json" 200 ;;
             web-customer)
-              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-redirs 0 "https://app.$WEB_ZONE/" || true)"
-              [[ "$code" =~ ^(200|307|308)$ ]] || { echo "::error::https://app.$WEB_ZONE/ answered $code"; exit 1; }
-              echo "https://app.$WEB_ZONE/ -> $code" ;;
+              check "https://app.$WEB_ZONE/" '200|307|308' ;;
             web-admin)
               # Access answers an unauthenticated request with a redirect to its login page; the
-              # console itself must never be what answers.
-              headers="$(curl -sS -o /dev/null -D - --max-redirs 0 "https://admin.$WEB_ZONE/" || true)"
-              code="$(awk 'NR==1 {print $2}' <<<"$headers")"
+              # console itself must never be what answers. The first answer decides: a console
+              # that answers is a failure even if Access would have caught up a minute later.
+              headers="$(fetch "https://admin.$WEB_ZONE/")" || { echo "::error::https://admin.$WEB_ZONE/ did not answer within three minutes"; exit 1; }
+              code="$(status "$headers")"
               if [ "$code" = 200 ] || ! grep -qi '^location: .*cloudflareaccess\.com' <<<"$headers"; then
                 echo "::error::https://admin.$WEB_ZONE/ is not behind Cloudflare Access (HTTP $code)"
                 exit 1
