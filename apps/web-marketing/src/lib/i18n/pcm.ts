@@ -263,10 +263,6 @@ const pcm = {
   legal: {
     placeholderNote: 'Placeholder text wey dey wait for legal review.',
     privacyTitle: 'Privacy policy',
-    privacyBody: [
-      'This placeholder describe, for high level, how Suskii Errands go handle personal data: we only collect wetin we need to complete errands, we no dey sell personal data, and you fit ask us to delete your data anytime.',
-      'The full policy — including how long we keep data, third-party processors and your rights under the Nigeria Data Protection Act — go dey published here before launch.',
-    ],
     termsTitle: 'Terms of service',
     termsBody: [
       'This placeholder summarise the terms wey we intend: Suskii Errands na marketplace wey dey connect customers with independent providers; price dey show upfront; disputes dey handled through the in-app process.',

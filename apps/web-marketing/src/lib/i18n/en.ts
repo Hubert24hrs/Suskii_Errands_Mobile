@@ -261,10 +261,6 @@ const en = {
   legal: {
     placeholderNote: 'Placeholder text pending legal review.',
     privacyTitle: 'Privacy policy',
-    privacyBody: [
-      'This placeholder describes, at a high level, how Suskii Errands will handle personal data: we collect only what is needed to fulfil errands, we never sell personal data, and you may request deletion of your data at any time.',
-      'The full policy — including retention periods, third-party processors and your rights under the Nigeria Data Protection Act — will be published here before launch.',
-    ],
     termsTitle: 'Terms of service',
     termsBody: [
       'This placeholder summarises the intended terms: Suskii Errands is a marketplace connecting customers with independent providers; prices are shown upfront; disputes are handled through the in-app process.',

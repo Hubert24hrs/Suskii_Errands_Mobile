@@ -5,6 +5,24 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-25 (part 16) — Claude Code — the privacy policy is published
+
+- **On the owner's explicit instruction, Claude Code changed three files in
+  `apps/web-marketing`**, and only the privacy page:
+  - `src/content/privacy-policy.ts` is new: the policy as typed sections (paragraphs, lists, tables);
+  - `src/app/[locale]/legal/privacy/page.tsx` renders it;
+  - `legal.privacyBody` is removed from `en.ts` and `pcm.ts` because nothing reads it now.
+
+  The terms page and `legal.placeholderNote` are unchanged.
+- **The policy is English for both locales.** A Pidgin version, if wanted, is a translation of
+  `privacy-policy.ts`.
+- **Where to change the policy.** The working copy, with counsel's open points, is the shared doc
+  "Suskii Errands — Privacy Policy (draft)". Change the policy there first, then copy it into
+  `privacy-policy.ts`. The owner chose to publish the defaults now, under the trading name "Suskii
+  Errands", with privacy@suskiierrand.com as the contact. Counsel's answers update both.
+
+---
+
 ## 2026-10-25 (part 15) — Claude Code — the websites on Cloudflare (go-live Phase 5)
 
 - **`web-deploy.yaml` and `infra/web/`** build the three Next.js apps with the OpenNext Cloudflare
