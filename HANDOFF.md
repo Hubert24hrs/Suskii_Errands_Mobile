@@ -5,6 +5,21 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-25 (part 17) — Claude Code — Play store listing; no payment claims yet
+
+- **On the owner's instruction, Claude Code changed the store text in
+  `apps/mobile/fastlane/metadata`**:
+  - Android `full_description.txt` and iOS `description.txt` (the two are identical);
+  - iOS `promotional_text.txt`.
+
+  Build 20 cannot take payments, so the "money is held" section and the payout line came out (RB-15
+  §1's rule). **Whoever wires payments to a live gateway puts them back in the same change.**
+- Play's default listing now has this text. The category is Lifestyle and the public contact is
+  `support@suskiierrand.com`. The icon, feature graphic and screenshots are being uploaded by the
+  owner. Nothing has been sent for review.
+
+---
+
 ## 2026-10-25 (part 16) — Claude Code — the privacy policy is published
 
 - **On the owner's explicit instruction, Claude Code changed three files in
