@@ -20,6 +20,12 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
   "Suskii Errands — Privacy Policy (draft)". Change the policy there first, then copy it into
   `privacy-policy.ts`. The owner chose to publish the defaults now, under the trading name "Suskii
   Errands", with privacy@suskiierrand.com as the contact. Counsel's answers update both.
+- **One sentence was changed later the same day**: "We do not collect your contacts" became "We
+  do not read your phone's contact list". Play's Data safety form declares Contacts because
+  trusted contacts are names and numbers the user types in, and the old sentence contradicted that.
+  The doc was changed too.
+- **For Kimi: `web-smoke` is flaky on the admin console pages.** They time out at 30 s in CI, on
+  `main` as well as on branches, and pass on a re-run. Nothing in this change touches them.
 
 ---
 

@@ -2,6 +2,26 @@
 
 Answers derived from the code on 2026-09-28. Status: **draft, for the client and counsel**.
 
+**Saved in Play Console on 2026-10-25** (App content → Data safety, not yet sent for review). What
+was saved differs from this draft in four places; the form is the record, and this file keeps the
+reasoning:
+
+- **Contacts: collected.** A trusted contact is a name and a phone number the user types in
+  (`trusted_contacts`, up to five). That is data about another person, so it is declared, as optional,
+  for app functionality. The app never reads the phone's contact list, which is what the privacy
+  policy now says.
+- **Files and docs: collected**, optional, for fraud prevention: identity and police-clearance
+  documents uploaded to `kyc-docs`.
+- **Device or other IDs: collected**, for fraud prevention: the device-integrity verdicts and the
+  per-handset signals the risk sweep uses.
+- **Name and email are optional** (a customer may leave the name blank and may sign in by phone).
+  Name, email and user IDs are for app functionality and account management. Phone number is for
+  fraud prevention and account management.
+
+Unchanged: nothing is shared, nothing is ephemeral, data is encrypted in transit, and deletion is
+at `https://suskiierrand.com/en/delete-account` (no partial deletion offered). The listing shows "No
+data shared with third parties" and links the privacy policy at `/en/legal/privacy`.
+
 ## Overview answers
 
 | Question | Draft answer | Basis |
@@ -46,7 +66,7 @@ the user asked for it to be sent (which Play also excludes):
 | App info and performance → Crash logs | Yes, when Sentry is configured | Collected automatically | Analytics; App functionality | `crash_reporting.dart` (no user id, no request bodies) |
 | App info and performance → Diagnostics | Same as crash logs | | | |
 
-**Not collected:** contacts, calendar, SMS, call logs, installed apps, web history, health,
+**Not collected:** the phone's contact list (trusted contacts are typed in; see above), calendar, SMS, call logs, installed apps, web history, health,
 advertising ID, audio (until calls and the voice concierge exist), background location.
 
 **Ephemeral processing:** none claimed; every item above is stored.
