@@ -5,6 +5,30 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-25 (part 14) — Claude Code — release 1.1.0 for the Play internal track (go-live Phase 4)
+
+- **Two edits in `apps/mobile`, on the owner's go-live brief** (Phase 4 steps 1 and 2), and
+  nothing else there:
+  - `pubspec.yaml` `version: 1.1.0+1`;
+  - `fastlane/metadata/android/en-US/changelogs/20.txt`.
+
+  The build number is 20, passed to `mobile-release` explicitly so the release notes file matches
+  on a re-run.
+- **The prod sandbox is caught up**: the eight migrations from `20261013120300` were pushed by
+  hand, with the owner's approval, as on 13 Oct. Nigeria is still `live`, the 11 tester accounts
+  are intact, and 78 migrations match `main`.
+- **Maps**: the Maps SDK for Android is enabled in `suskii-prod`, and a key is restricted to
+  `com.suskiierrands.app`, the app-signing and upload SHA-1s, and that one API. The owner puts it
+  in `prod` as `GOOGLE_MAPS_API_KEY`.
+- **Left out of the notes because nothing backs them yet**: Google and Apple sign-in. The client
+  IDs are empty in `config/env/prod.json`, and the sandbox has no Google provider.
+- **Still placeholders in `config/env/prod.json`**: `suskii-errands.example` for links, privacy,
+  terms and support. These get replaced when the websites deploy (go-live Phase 5, ADR-0023).
+- **Staging first was skipped**, by the owner's choice. There is no Play app for the staging
+  package, and staging has every country disabled.
+
+---
+
 ## 2026-10-25 (part 13) — Claude Code — staging deployed through the pipeline
 
 - **`suskii-staging` exists and is deployed.** Supabase ref `lglvoguvycdrwwxqynul`, London, on the
