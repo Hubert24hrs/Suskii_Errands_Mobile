@@ -1,0 +1,8 @@
+What's new
+- The app is now called Suskii Errands
+- Your country comes from your phone, so there is no country to pick
+- Providers get a dashboard for their jobs
+- Pickup points on Google Maps
+- The nearest providers are shown first
+- Suskii Meet: create and join meet-ups in your country
+- More service categories
