@@ -26,6 +26,11 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
   terms and support. These get replaced when the websites deploy (go-live Phase 5, ADR-0023).
 - **Staging first was skipped**, by the owner's choice. There is no Play app for the staging
   package, and staging has every country disabled.
+- **`fastlane/Fastfile` fixed**: Claude Code's own code, from 2026-09-28. The first automated
+  upload (mobile-release run #2) built and signed the bundle, then stopped with
+  `Could not find folder ./metadata/android`. Inside a lane `__dir__` is `"."` and actions run
+  from `apps/mobile`, so the three `metadata_path` values now come from `ROOT`, like the bundle
+  and mapping paths, which were found.
 
 ---
 
