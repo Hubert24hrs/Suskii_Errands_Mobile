@@ -5,6 +5,37 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-25 (part 13) — Claude Code — staging deployed through the pipeline
+
+- **`suskii-staging` exists and is deployed.** Supabase ref `lglvoguvycdrwwxqynul`, London, on the
+  Free plan. The owner chose to stay on Free for now: `ezike-oba` was paused to free the slot, and
+  `suskii-dev` stays paused. `pipeline-main` has applied every migration, deployed every Edge
+  Function and pushed the auth, API and storage config. `health` answers on `5af8944`.
+- **For Kimi**: staging is a real backend for a staging build (`com.suskiierrands.app.staging`).
+  It holds **no seed data**: every country is disabled, as production will be, so an app pointed at
+  it shows "not live in your country" until a country is configured there. Its publishable key is
+  the project's `default` one.
+- **Five deployment defects** turned up in the first deploy, all fixed in PRs #68, #69 and #70 and
+  listed in RB-14's new rehearsal record. Two matter beyond staging:
+  - `config.toml` had vector buckets on, which a Free project refuses.
+  - The auth push had lowered the email resend cooldown to the local `1s`; deployed projects now
+    keep the hosted `1m0s`.
+- **Rollback rehearsed** on staging: functions back one commit and forward again, healthy each
+  time.
+- **Staging's field-encryption KEK is escrowed** in Secret Manager (`suskii-field-kek-v1`), read
+  back and matched (RB-16 §1). The two helpers that did this without a secret reaching the screen
+  or the clipboard are now `supabase/tools/escrow_kek.py` and `supabase/tools/set_health_key.py`,
+  for production's turn.
+- **Open**:
+  - Staging's uptime check (owner's decision: each probe is an Edge Function call on the Free plan).
+  - `auth.rate_limit.email_sent = 2` per hour and `otp_expiry = 3600` in `config.toml` are local
+    values the push will carry to production. Both need a decision before launch, the second
+    against the spec's "short OTP expiry".
+  - RB-16's restore rehearsal (from Secret Manager into a scratch project).
+  - Wiping or recreating `suskii-prod`, still the sandbox.
+
+---
+
 ## 2026-10-24 (part 12) — Claude Code — GCP billing on, Terraform applied (go-live Phase 2 begins)
 
 - **Client action 1 is done.** Billing account "Suskii Errands" is open and linked to
