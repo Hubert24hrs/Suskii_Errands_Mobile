@@ -82,3 +82,9 @@ advertising ID, audio (until calls and the voice concierge exist), background lo
 - **Financial features**: the app takes payments for services through a licensed gateway and
   holds funds until completion — "held", never "escrow" (ADR-0002). Counsel confirms the
   declaration wording with OD-12.
+  **Saved 2026-10-25** as *Mobile payments and digital wallets* (the provider's earnings balance
+  and withdrawals, and payments held until completion) plus *Rewards, points, frequent flier
+  miles, and other incentives* (cash referral rewards and promo codes). It is not *Money transfer*,
+  because users cannot send money to each other. Play asked for no documents for either feature.
+  This is provisional until counsel answers OD-12. Declaring "no financial features" would have
+  certified something untrue.
