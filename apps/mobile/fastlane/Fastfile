@@ -14,6 +14,8 @@
 default_platform(:android)
 
 APP_ID = "com.suskiierrands.app"
+# Absolute, because it is resolved when the Fastfile loads: inside a lane `__dir__` is "." and
+# actions run from apps/mobile, so every path below is built from ROOT.
 ROOT = File.expand_path("..", __dir__)
 ENVIRONMENTS = %w[dev staging prod].freeze
 
@@ -71,7 +73,7 @@ platform :android do
       skip_upload_changelogs: false,
       skip_upload_images: true,
       skip_upload_screenshots: true,
-      metadata_path: File.join(__dir__, "metadata", "android"),
+      metadata_path: File.join(ROOT, "fastlane", "metadata", "android"),
     )
   end
 
@@ -92,7 +94,7 @@ platform :android do
       skip_upload_changelogs: true,
       skip_upload_images: true,
       skip_upload_screenshots: true,
-      metadata_path: File.join(__dir__, "metadata", "android"),
+      metadata_path: File.join(ROOT, "fastlane", "metadata", "android"),
     )
   end
 end
@@ -161,7 +163,7 @@ platform :ios do
     upload_to_app_store(
       api_key: asc_api_key,
       app_identifier: APP_ID,
-      metadata_path: File.join(__dir__, "metadata", "ios"),
+      metadata_path: File.join(ROOT, "fastlane", "metadata", "ios"),
       skip_binary_upload: true,
       skip_screenshots: true,
       force: true,
