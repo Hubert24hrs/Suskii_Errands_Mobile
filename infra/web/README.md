@@ -26,6 +26,16 @@ release), and the adapter builds it only with `--dangerouslyUseUnsupportedNextVe
 chose to deploy now and upgrade after (2026-10-25); the upgrade to Next 16 is filed in HANDOFF
 part 15.
 
+## Deployed (2026-10-25, web-deploy run 40215313910)
+
+All three Workers are live on `suskiierrand.com`:
+
+- **Marketing:** `/en`, `/en/legal/privacy`, `/en/delete-account` and `/.well-known/assetlinks.json` answer 200. The Worker is 1,044 KiB compressed.
+- **Customer:** `app.` answers 307 to `/en` (1,389 KiB).
+- **Admin:** `admin.` answers 302 to the Access sign-in at `summer-glitter-0acb.cloudflareaccess.com` (1,243 KiB).
+
+The customer and admin smoke tests failed on that first run only because the custom-domain DNS records are created by the deploy itself and had not resolved yet. They retry now. The Access application is "Suskii admin console" (policy "Suskii admins", the owner's email only), on Zero Trust Free.
+
 ## One-time setup
 
 1. **Cloudflare API token** (owner), as `CLOUDFLARE_API_TOKEN` in the GitHub environment
