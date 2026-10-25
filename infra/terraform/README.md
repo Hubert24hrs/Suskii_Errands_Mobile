@@ -8,7 +8,7 @@ Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, 
 - `bootstrap`: state bucket `suskii-ops-tfstate` (London) in `suskii-ops`. `state_admins` are the owner and the three `terraform-runner` accounts.
 - `envs/dev`, `envs/staging`, `envs/prod`: 54 resources each.
   - Budgets: $20, $20 and $50 a month. These are alerts at 50, 80 and 100% to the owner's Gmail, not caps.
-  - The Supabase uptime check is not created yet: no `supabase_project_ref` was passed, because no `health` function is deployed.
+  - The Supabase uptime check is not created yet: no `supabase_project_ref` was passed, because no `health` function was deployed. Staging's has been live since 2026-10-25 (`HEALTH_CHECK_API_KEY` is set on `infra-staging`). The check waits on the owner's decision, because every probe is also an Edge Function call against the Free plan's monthly allowance.
   - No backup jobs or AI service yet (no images).
 - GitHub variables set from the outputs:
   - `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_DEPLOYER_SA` on `dev`, `staging` and `production`;

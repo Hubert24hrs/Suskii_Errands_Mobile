@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | SEV2 (production functions unhealthy after deploy); SEV3 (dev or staging) |
-| Last rehearsed | Not yet — rehearse on staging as soon as it exists; must be within 6 months of launch |
+| Last rehearsed | **2026-10-25, staging**: the first `pipeline-main` deploy watched end to end, and a functions rollback round trip (see the record below). Production: not yet; must be within 6 months of launch |
 | Related | [infra-cicd.md](../plan/infra-cicd.md) §6; ADR-0013; RB-01 (incidents), RB-09 (PITR restore), RB-10 (key rotation); workflows `pipeline-main`, `deploy-production`, `rollback-functions`, `infra-deploy` |
 
 ## How deploys work (read once, before you need it)
@@ -110,10 +110,17 @@ Depends on the failed step:
 |---|---|
 | GCP project + billing; `terraform apply` of `infra/terraform/envs/<env>` by a named admin (creates WIF, deployer and terraform-runner identities, secret names) | `infra/terraform/README.md` |
 | Secret values added: `send-sms-hook-secrets` and `supabase-db-password` (required); `sentry-dsn-edge-functions` and `google-play-integrity-service-account` (optional: with no version the deploy logs a notice and the function runs with that feature off) | GCP Secret Manager |
-| Supabase project in the client organisation; named secret API key `monitoring` | Supabase dashboard |
+| Supabase project in the client organisation; named secret API key `monitoring`. Set `HEALTH_CHECK_API_KEY` with `python supabase/tools/set_health_key.py <project-ref> <env> infra-<env>`, which proves the key against `health` before saving it, rather than by copy and paste. A truncated or wrong-project key fails the smoke test with 401 | Supabase dashboard |
 | GitHub environment `<env>` (`dev`, `staging`, `production`) with the variables and secrets listed at the top of `_deploy-supabase.yaml`; required reviewers on `production` (needs a paid GitHub plan on a private repo, infra-cicd I-1) | GitHub → Settings → Environments |
 | App Attest capability on the iOS App ID; `IOS_APP_ID` = `<team id>.<bundle id>`; `APP_ATTEST_ENVIRONMENT` matching the build the environment serves (`development` for Xcode builds; `production` for TestFlight and App Store, with `APP_ATTEST_VALIDATION_CATEGORIES=2,4` where TestFlight builds must pass). A mismatch shows as verdict reason `environment_mismatch` | Apple Developer account; GitHub environment variables |
 | Social sign-in (optional per environment): `GOOGLE_CLIENT_IDS` with the **web** client ID first, then Android and iOS; `GOOGLE_SKIP_NONCE_CHECK=true` when an iOS client ID is listed (Supabase's instruction for native iOS); `APPLE_CLIENT_IDS` with the app bundle ID (and the Services ID if the web app offers Apple). Secrets `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` / `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` only for the web OAuth flow; the Apple one expires every 6 months (RB-10). After the first push, confirm in the dashboard that every client ID is listed | Google Cloud console, Apple Developer account; GitHub environment |
 | GitHub environment `infra-<env>` with the variables listed in `infra-deploy.yaml` | GitHub → Settings → Environments |
 | Repository variables `DEPLOY_DEV_ENABLED` / `DEPLOY_STAGING_ENABLED` = `true`, and `TF_STATE_BUCKET` | GitHub → Settings → Variables |
 | First deploy watched end to end; rollback rehearsed once on staging | This runbook |
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result | Findings |
+|---|---|---|---|---|
+| 2026-10-25 | Staging (`suskii-staging`, Supabase Free) | The first `pipeline-main` deploy, ending at `5af8944` | Healthy on `5af8944` on the seventh attempt, across runs 40192049960, 40192851300 and 40194927909 | Five setup defects, each fixed before the next attempt. **(1)** Fixed before the first run: the secret action refused the Sentry DSN and Play Integrity key, which had no version. Both are optional now (PR #68). **(2)** `db push` and `functions deploy` validate all of `config.toml`, and were not given `SEND_SMS_HOOK_SECRETS` (PR #69). **(3)** The stored hook secret ended in `\r\n` from a Windows PowerShell pipe; a clean version replaced it, and RB-10 now warns about this. **(4)** `config push` failed with 402: vector buckets, a Pro feature nothing uses, were on (PR #70). **(5)** The pasted `HEALTH_CHECK_API_KEY` was not the `monitoring` key. It was set again by a helper that proves the key against `health` before saving it. **Worth knowing:** a deploy that fails at the smoke test has already applied its migrations and functions. The pipeline is not atomic, and expand-only migrations are what make that safe |
+| 2026-10-25 | Staging | `rollback-functions` to `0c909ae` (run 40198340925), then to `5af8944` (run 40198441305). The function code is identical between the two, so only the release changed | Healthy on the requested SHA each time, about a minute after dispatch | The release marker that `health` reports follows the rollback, which is what an operator reads to confirm one. The database is untouched, as this runbook says |
