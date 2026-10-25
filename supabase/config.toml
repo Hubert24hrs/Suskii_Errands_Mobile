@@ -143,8 +143,10 @@ max_catalogs = 2
 # [storage.analytics.buckets.my-warehouse]
 
 # Store vector embeddings in S3 for large and durable datasets
+# Off: nothing uses vector buckets (embeddings will live in pgvector, ADR-0006), and on a hosted
+# Free project `config push` fails with 402 while this is on.
 [storage.vector]
-enabled = true
+enabled = false
 max_buckets = 10
 max_indexes = 5
 

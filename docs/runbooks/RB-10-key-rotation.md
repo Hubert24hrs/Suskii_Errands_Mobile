@@ -43,6 +43,7 @@ Where every secret lives, who uses it, and how often to rotate it **routinely**.
 - Never paste a secret value into chat, tickets, workflow inputs, commit messages or Terraform variables files.
 - Never put a new secret in a GitHub **repository** secret when it belongs to an **environment**: environment secrets are only readable by jobs in that environment.
 - Never delete the old secret version before the new one is proven in use (except when the old one is known to be abused).
+- Never pipe a secret into `gcloud secrets versions add --data-file=-` from **Windows PowerShell**: it appends `\r\n` to anything piped between programs, and the stored value silently gains a line ending. The Send SMS Hook secret then fails the Supabase CLI's format check on every `db push` (first staging deploy, 2026-10-25). Generate and hand over the value inside one process (Procedure A, step 1), or pipe from Git Bash.
 
 ## Procedures
 
@@ -50,7 +51,10 @@ Where every secret lives, who uses it, and how often to rotate it **routinely**.
 
 Both sides accept several secrets separated by `|`: the Supabase CLI validates each entry (checked in the CLI source) and `auth-send-sms` accepts a request signed with any configured secret.
 
-1. Generate a new secret: `v1,whsec_` + base64 of 32 random bytes.
+1. Generate a new secret: `v1,whsec_` + base64 of 32 random bytes. This one command generates it and gives it straight to Secret Manager without displaying it, and is safe in PowerShell (for step 2, build `NEW|OLD` the same way inside the script rather than on the command line):
+   ```bash
+   python -c "import secrets,base64,subprocess; v=('v1,whsec_'+base64.b64encode(secrets.token_bytes(32)).decode()).encode(); subprocess.run(['gcloud','secrets','versions','add','send-sms-hook-secrets','--project','<env-project>','--data-file=-'],input=v,check=True,shell=True)"
+   ```
 2. Add a new Secret Manager version with **both**: `v1,whsec_NEW|v1,whsec_OLD`.
 3. Deploy the environment (RB-14 pipeline, or `rollback-functions` at the current SHA for functions and secrets only). The function now accepts both; `config push` gives Auth both.
 4. Request an OTP on a test number. Expected: SMS received; no `send_sms.signature_rejected` in logs.
