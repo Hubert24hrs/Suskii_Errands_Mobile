@@ -36,6 +36,20 @@ All three Workers are live on `suskiierrand.com`:
 
 The customer and admin smoke tests failed on that first run only because the custom-domain DNS records are created by the deploy itself and had not resolved yet. They retry now. The Access application is "Suskii admin console" (policy "Suskii admins", the owner's email only), on Zero Trust Free.
 
+## Mail
+
+`suskiierrand.com` receives mail through **Cloudflare Email Routing**. It has no mailboxes of its
+own; each address forwards to the owner's verified mailbox, and the catch-all is off, so mail to
+any other address is dropped:
+
+| Address | Since | Used for |
+|---|---|---|
+| `privacy@` | 2026-10-25 | The privacy policy's contact (data requests) |
+| `support@` | 2026-10-25 | The public contact on the Play listing |
+
+Sending mail as the domain is not set up. Supabase Auth still sends from the owner's Gmail SMTP
+(testing only, RB-15). Choosing a sending provider belongs to the launch auth settings.
+
 ## One-time setup
 
 1. **Cloudflare API token** (owner), as `CLOUDFLARE_API_TOKEN` in the GitHub environment
