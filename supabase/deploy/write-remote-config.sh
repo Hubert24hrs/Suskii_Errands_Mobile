@@ -75,6 +75,10 @@ fi
   echo "site_url = \"$SITE_URL\""
   echo "additional_redirect_urls = $redirects"
   echo ""
+  # The base 1s exists for local tests; a deployed project keeps the hosted default between emails.
+  echo "[remotes.deploy.auth.email]"
+  echo "max_frequency = \"1m0s\""
+  echo ""
   echo "[remotes.deploy.auth.hook.send_sms]"
   echo "enabled = true"
   echo "uri = \"https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/auth-send-sms\""
