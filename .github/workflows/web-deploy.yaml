@@ -1,0 +1,203 @@
+name: web-deploy
+
+# Builds the three Next.js sites with the OpenNext Cloudflare adapter and deploys each as a
+# Worker on the owner's Cloudflare account (ADR-0023). Started by hand; the GitHub environment
+# `web-production` has a required reviewer.
+#
+# Environment `web-production`:
+#   vars:    CLOUDFLARE_ACCOUNT_ID, WEB_ZONE (e.g. suskiierrand.com), WORKERS_PLAN (free|paid),
+#            NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL,
+#            ANDROID_APP_ID, ANDROID_CERT_SHA256, IOS_BUNDLE_ID, APPLE_TEAM_ID (the .well-known files;
+#            public, and Worker vars rather than build env because those routes read them per request)
+#   secrets: CLOUDFLARE_API_TOKEN, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (optional; the customer site draws no map without it)
+# The admin console is deployed only when a Cloudflare Access application already covers its
+# host, and the smoke test fails if it answers an unauthenticated request.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        type: choice
+        options: [all, web-marketing, web-customer, web-admin]
+        default: all
+      deploy:
+        description: Deploy (off builds and reports each Worker's size only)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: false
+
+env:
+  # Pinned at releases at least two weeks old; raise together (the adapter names its wrangler range).
+  OPENNEXT_CLOUDFLARE_VERSION: 1.20.10
+  WRANGLER_VERSION: 4.149.0
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.apps.outputs.apps }}
+    steps:
+      - id: apps
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          set -euo pipefail
+          if [ "$APP" = all ]; then
+            echo 'apps=["web-marketing","web-customer","web-admin"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "apps=[\"$APP\"]" >> "$GITHUB_OUTPUT"
+          fi
+
+  site:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: web-production
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.plan.outputs.apps) }}
+    env:
+      APP: ${{ matrix.app }}
+      DEPLOY: ${{ inputs.deploy }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WEB_ZONE: ${{ vars.WEB_ZONE }}
+      WORKERS_PLAN: ${{ vars.WORKERS_PLAN }}
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Check configuration
+        env:
+          SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in CLOUDFLARE_ACCOUNT_ID WEB_ZONE WORKERS_PLAN; do
+            [ -n "${!name:-}" ] || missing+=("$name")
+          done
+          if [ "$APP" != web-marketing ]; then
+            [ -n "$SUPABASE_URL" ] || missing+=(NEXT_PUBLIC_SUPABASE_URL)
+            [ -n "$SUPABASE_ANON_KEY" ] || missing+=(NEXT_PUBLIC_SUPABASE_ANON_KEY)
+          fi
+          if [ "$DEPLOY" = true ] && [ -z "$CLOUDFLARE_API_TOKEN" ]; then missing+=(CLOUDFLARE_API_TOKEN); fi
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::environment web-production is missing: ${missing[*]}"
+            exit 1
+          fi
+          [[ "$WORKERS_PLAN" =~ ^(free|paid)$ ]] || { echo "::error::WORKERS_PLAN must be free or paid"; exit 1; }
+          case "$SUPABASE_URL" in ''|https://*) ;; *) echo "::error::NEXT_PUBLIC_SUPABASE_URL must be https"; exit 1 ;; esac
+
+      # Deploying the console without Access in front would publish it to the internet, so this runs
+      # before anything is built.
+      - name: Admin console is behind Cloudflare Access
+        if: matrix.app == 'web-admin' && inputs.deploy
+        run: |
+          set -euo pipefail
+          host="admin.$WEB_ZONE"
+          body="$(curl -sS --fail-with-body -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps?per_page=100")" || {
+            echo "::error::could not list Cloudflare Access applications (the token needs Access: Apps and Policies Read)"
+            exit 1
+          }
+          if ! jq -e --arg h "$host" '.result[] | select(.domain == $h or (.self_hosted_domains // [] | index($h)) or ((.destinations // []) | map(.uri) | index($h)))' <<<"$body" >/dev/null; then
+            echo "::error::no Cloudflare Access application covers $host; create one before deploying the console (ADR-0023)"
+            exit 1
+          fi
+          echo "Access application found for $host"
+
+      - name: Install
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          # Not in package.json, so apps/ and the lockfile stay as they are (write-cloudflare-config.sh).
+          npm install --no-save --no-audit --no-fund \
+            "@opennextjs/cloudflare@$OPENNEXT_CLOUDFLARE_VERSION" "wrangler@$WRANGLER_VERSION"
+
+      - name: Cloudflare configuration
+        env:
+          ANDROID_APP_ID: ${{ vars.ANDROID_APP_ID }}
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: bash infra/web/write-cloudflare-config.sh "$APP" "$WEB_ZONE"
+
+      # Next.js 15 left the Next.js team's support window in October 2026 and the adapter refuses it
+      # without this flag. Upgrading to Next 16 is filed for the apps' owner (HANDOFF part 15).
+      - name: Build
+        working-directory: apps/${{ matrix.app }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+        run: ../../node_modules/.bin/opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion
+
+      # Workers Free accepts at most 3 MiB compressed per Worker [S, developers.cloudflare.com/workers/platform/limits].
+      - name: Worker size
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          out="$(../../node_modules/.bin/wrangler deploy --dry-run --outdir "$RUNNER_TEMP/dry-$APP" 2>&1)"
+          line="$(grep -E 'Total Upload:' <<<"$out" || true)"
+          echo "$line"
+          echo "| $APP | ${line#*Total Upload: } |" >> "$GITHUB_STEP_SUMMARY"
+          gzip_kib="$(sed -nE 's/.*gzip: ([0-9.]+) KiB.*/\1/p' <<<"$line")"
+          [ -n "$gzip_kib" ] || { echo "::error::could not read the Worker size"; echo "$out" | tail -20; exit 1; }
+          if [ "$WORKERS_PLAN" = free ] && awk -v k="$gzip_kib" 'BEGIN { exit !(k > 3072) }'; then
+            echo "::error::$APP is ${gzip_kib} KiB compressed, over the Workers Free limit of 3 MiB (WORKERS_PLAN=free)"
+            exit 1
+          fi
+
+      - name: Deploy
+        if: inputs.deploy
+        working-directory: apps/${{ matrix.app }}
+        run: ../../node_modules/.bin/wrangler deploy
+
+      - name: Smoke test
+        if: inputs.deploy
+        run: |
+          set -euo pipefail
+          check() { # url expected-status
+            local code
+            for attempt in 1 2 3 4 5 6; do
+              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-redirs 0 "$1" || true)"
+              [ "$code" = "$2" ] && { echo "$1 -> $code"; return 0; }
+              sleep 10
+            done
+            echo "::error::$1 answered $code, expected $2"; return 1
+          }
+          case "$APP" in
+            web-marketing)
+              check "https://$WEB_ZONE/en" 200
+              check "https://$WEB_ZONE/en/legal/privacy" 200
+              check "https://$WEB_ZONE/en/delete-account" 200
+              check "https://$WEB_ZONE/.well-known/assetlinks.json" 200 ;;
+            web-customer)
+              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-redirs 0 "https://app.$WEB_ZONE/" || true)"
+              [[ "$code" =~ ^(200|307|308)$ ]] || { echo "::error::https://app.$WEB_ZONE/ answered $code"; exit 1; }
+              echo "https://app.$WEB_ZONE/ -> $code" ;;
+            web-admin)
+              # Access answers an unauthenticated request with a redirect to its login page; the
+              # console itself must never be what answers.
+              headers="$(curl -sS -o /dev/null -D - --max-redirs 0 "https://admin.$WEB_ZONE/" || true)"
+              code="$(awk 'NR==1 {print $2}' <<<"$headers")"
+              if [ "$code" = 200 ] || ! grep -qi '^location: .*cloudflareaccess\.com' <<<"$headers"; then
+                echo "::error::https://admin.$WEB_ZONE/ is not behind Cloudflare Access (HTTP $code)"
+                exit 1
+              fi
+              echo "https://admin.$WEB_ZONE/ -> $code to Cloudflare Access" ;;
+          esac

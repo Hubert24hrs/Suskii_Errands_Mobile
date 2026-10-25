@@ -5,6 +5,32 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-25 (part 15) — Claude Code — the websites on Cloudflare (go-live Phase 5)
+
+- **`web-deploy.yaml` and `infra/web/`** build the three Next.js apps with the OpenNext Cloudflare
+  adapter and deploy them as Workers on `suskiierrand.com`:
+  - the marketing site at the apex and `www`;
+  - the customer site at `app.`;
+  - the console at `admin.`, behind Cloudflare Access.
+
+  **Nothing under `apps/` changed.** The adapter's two files are generated at build time, and its
+  packages are installed with `--no-save`, so neither `package.json` nor the lockfile moves.
+- **For Kimi, high priority: upgrade the three web apps to Next.js 16.** Next 15 left the Next.js
+  team's support window this month (two years from October 2024). The Cloudflare adapter builds it
+  only with `--dangerouslyUseUnsupportedNextVersion`, and future Next 15 security fixes are not
+  guaranteed. The owner chose to deploy now and upgrade after. When the apps are on 16, remove the
+  flag from `web-deploy.yaml`. The adapter 1.20.10 accepts `>=16.3.8`.
+- **The `.well-known` routes read their values per request** (`force-dynamic`). On Workers,
+  `process.env` holds the Worker's vars, so `ANDROID_APP_ID`, `ANDROID_CERT_SHA256`, `IOS_BUNDLE_ID`
+  and `APPLE_TEAM_ID` are written as Worker vars, not build variables.
+- **The privacy policy and terms are still placeholders** (`legal.placeholderNote`). Play's Data
+  safety form needs a policy that describes the app's real data use. The text needs the owner and
+  counsel; the page is ready for it.
+- **The customer site has no map for now**, by the owner's choice: a web Maps key would be billed
+  past Google's free allowance.
+
+---
+
 ## 2026-10-25 (part 14) — Claude Code — release 1.1.0 for the Play internal track (go-live Phase 4)
 
 - **Two edits in `apps/mobile`, on the owner's go-live brief** (Phase 4 steps 1 and 2), and
