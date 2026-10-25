@@ -51,6 +51,17 @@ variable "supabase_project_ref" {
   default     = null
 }
 
+variable "uptime_check_period" {
+  description = "How often the health uptime check runs. Each probe is also an Edge Function call, which counts against a Supabase Free project's monthly allowance."
+  type        = string
+  default     = "60s"
+
+  validation {
+    condition     = contains(["60s", "300s", "600s", "900s"], var.uptime_check_period)
+    error_message = "uptime_check_period must be one of the periods Cloud Monitoring accepts: 60s, 300s, 600s or 900s."
+  }
+}
+
 variable "health_check_api_key" {
   description = "Named Supabase secret key \"monitoring\" sent to the health function. Stored in state: the state bucket is access-restricted."
   type        = string

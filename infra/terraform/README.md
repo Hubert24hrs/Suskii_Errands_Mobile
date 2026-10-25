@@ -8,7 +8,7 @@ Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, 
 - `bootstrap`: state bucket `suskii-ops-tfstate` (London) in `suskii-ops`. `state_admins` are the owner and the three `terraform-runner` accounts.
 - `envs/dev`, `envs/staging`, `envs/prod`: 54 resources each.
   - Budgets: $20, $20 and $50 a month. These are alerts at 50, 80 and 100% to the owner's Gmail, not caps.
-  - The Supabase uptime check is not created yet: no `supabase_project_ref` was passed, because no `health` function was deployed. Staging's has been live since 2026-10-25 (`HEALTH_CHECK_API_KEY` is set on `infra-staging`). The check waits on the owner's decision, because every probe is also an Edge Function call against the Free plan's monthly allowance.
+  - The Supabase uptime check is not created yet: no `supabase_project_ref` was passed, because no `health` function was deployed. Staging's has been live since 2026-10-25 (`HEALTH_CHECK_API_KEY` is set on `infra-staging`). Every probe is also an Edge Function call against the Free plan's monthly allowance, so the owner chose a 5-minute period for dev and staging (2026-10-25). Staging's check is applied through `infra-deploy` once `SUPABASE_PROJECT_REF` is set on `infra-staging`.
   - No backup jobs or AI service yet (no images).
 - GitHub variables set from the outputs:
   - `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_DEPLOYER_SA` on `dev`, `staging` and `production`;
@@ -35,7 +35,7 @@ Owner: Claude Code. Design: [infra-cicd.md](../../docs/plan/infra-cicd.md) §1, 
 | Secrets | Secret Manager **names only**, replicated in `europe-west2`; values are added out of band and rotated per RB-10 | §4 |
 | Analytics | BigQuery datasets `analytics`, `ai_evals`, `ops` in the EU multi-region | OD-15, ai-design §10 |
 | Backups | Versioned EU bucket, public access blocked, retention policy (35 days minimum), Coldline after 30 days; a `backup-worker` identity that can only create objects | §8 |
-| Alerting | Email notification channels; monthly budget alerts at 50/80/100% (when the billing account is set); an uptime check on the Supabase `health` function every 60 s with the API key header masked, and an alert policy when it fails | §7, §9 |
+| Alerting | Email notification channels; monthly budget alerts at 50/80/100% (when the billing account is set); an uptime check on the Supabase `health` function (every 60 s in prod, 5 min on dev and staging, which are on Supabase Free) with the API key header masked, and an alert policy when it fails | §7, §9 |
 | Backup jobs | Cloud Run Jobs `backup-dump` (02:15 UTC), `backup-storage-sync` (03:15 UTC) and `backup-verify` (04:15 UTC) triggered by Cloud Scheduler, running as `backup-worker` (create and read objects only; never delete) with the database URL from Secret Manager; backups deleted after 120 days. KYC document copies go to a separate `<project>-kyc-backups` bucket labelled `data_class=special`. Created only when `backup_worker_image` is set | §8, RB-09 |
 | AI service | Cloud Run service, only when `deploy_ai_service = true` (Phase 7) | C4 |
 

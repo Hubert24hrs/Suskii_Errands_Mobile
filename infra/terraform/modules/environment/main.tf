@@ -458,7 +458,7 @@ resource "google_monitoring_uptime_check_config" "supabase_health" {
   project      = var.project_id
   display_name = "suskii-${var.environment}-health"
   timeout      = "10s"
-  period       = "60s"
+  period       = var.uptime_check_period
 
   http_check {
     path           = "/functions/v1/health"
