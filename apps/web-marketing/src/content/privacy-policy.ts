@@ -32,7 +32,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
       blocks: [
         {
           kind: 'p',
-          text: 'We collect what you give us, what the app records while you use it, and a little from the services you sign in or pay with. We do not collect your contacts, calendar, SMS, call logs, installed apps, browsing history, health data, advertising ID or background location.',
+          text: "We collect what you give us, what the app records while you use it, and a little from the services you sign in or pay with. We do not read your phone's contact list, and we do not collect your calendar, SMS, call logs, installed apps, browsing history, health data, advertising ID or background location.",
         },
         {
           kind: 'table',
