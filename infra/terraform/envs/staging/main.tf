@@ -33,9 +33,11 @@ module "environment" {
   alert_emails            = var.alert_emails
   supabase_project_ref    = var.supabase_project_ref
   health_check_api_key    = var.health_check_api_key
-  deploy_ai_service       = var.deploy_ai_service
-  ai_service_image        = var.ai_service_image
-  backup_worker_image     = var.backup_worker_image
+  # Supabase Free: a 60 s check would spend about half the monthly Edge Function allowance.
+  uptime_check_period = "300s"
+  deploy_ai_service   = var.deploy_ai_service
+  ai_service_image    = var.ai_service_image
+  backup_worker_image = var.backup_worker_image
 }
 
 output "workload_identity_provider" {
