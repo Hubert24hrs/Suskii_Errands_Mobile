@@ -105,14 +105,20 @@ jobs:
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
+      # db push and functions deploy validate all of config.toml, including the env() reference
+      # in [auth.hook.send_sms], so each needs the hook secret even though it does not use it.
       - name: Migrations — dry run
         if: inputs.mode == 'full'
+        env:
+          SEND_SMS_HOOK_SECRETS: ${{ steps.runtime.outputs.send_sms_hook_secrets }}
         run: supabase db push --linked --dry-run --password "$SUPABASE_DB_PASSWORD"
 
       # No --include-all: a migration older than the remote history means someone rewrote an
       # applied migration, which must stop the deploy (ADR-0013 editability ends at first apply).
       - name: Migrations — apply
         if: inputs.mode == 'full'
+        env:
+          SEND_SMS_HOOK_SECRETS: ${{ steps.runtime.outputs.send_sms_hook_secrets }}
         run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
 
       - name: Function secrets
@@ -169,6 +175,8 @@ jobs:
           rm -f "$env_file"
 
       - name: Edge Functions
+        env:
+          SEND_SMS_HOOK_SECRETS: ${{ steps.runtime.outputs.send_sms_hook_secrets }}
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
 
       - name: Auth and project config
