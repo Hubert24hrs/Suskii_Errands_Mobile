@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | Used inside SEV1–SEV3 incidents (RB-01) |
-| Last rehearsed | **2026-10-13, locally**: the break-glass SQL below (a flag off globally and per country, a forced update) verified through `get_bootstrap()` and `audit.log`; the console's four-eyes path is exercised on every CI run by the admin console end-to-end suite. Not rehearsed: a real device picking the change up at its next bootstrap, which needs a build pointed at staging. Rehearse each switch on staging before launch |
+| Last rehearsed | **2026-10-26 on staging**: the break-glass upserts below (a flag off globally and per country, a forced update), verified through `get_bootstrap()` and `audit.log`, then backed out (rehearsal record); first rehearsed locally 2026-10-13. The console's four-eyes path is exercised on every CI run by the admin console end-to-end suite. Not rehearsed: a real device picking the change up at its next bootstrap, which needs a build pointed at staging |
 | Related | ERD §1 (`feature_flags`, `remote_config`); `get_bootstrap()`; PRD SH-35, AD-22; ai-design §6.5; RB-01, RB-10, RB-14 |
 
 ## How the switches work
@@ -57,10 +57,13 @@ Add a row here whenever a feature ships with a new switch. Features in Phases 3�
 Turn a feature off globally:
 
 ```sql
-UPDATE public.feature_flags
-SET enabled = false
-WHERE key = 'concierge.voice' AND country_code IS NULL;
+INSERT INTO public.feature_flags (key, country_code, enabled, rollout_pct, client_visible)
+VALUES ('concierge.voice', NULL, false, 100, true)
+ON CONFLICT (key, country_code) DO UPDATE SET enabled = EXCLUDED.enabled;
 ```
+
+Every command here is an upsert. A plain `UPDATE` of a row that does not exist changes nothing and
+still reports success, and staging had no switch rows at all until 2026-10-26.
 
 Turn it off for one country (creates the override row if missing):
 
@@ -73,16 +76,17 @@ ON CONFLICT (key, country_code) DO UPDATE SET enabled = EXCLUDED.enabled;
 Roll out gradually (users are bucketed stably by user id; anonymous users only see fully rolled-out flags):
 
 ```sql
-UPDATE public.feature_flags SET enabled = true, rollout_pct = 10
-WHERE key = 'concierge.voice' AND country_code IS NULL;
+INSERT INTO public.feature_flags (key, country_code, enabled, rollout_pct, client_visible)
+VALUES ('concierge.voice', NULL, true, 10, true)
+ON CONFLICT (key, country_code) DO UPDATE SET enabled = EXCLUDED.enabled, rollout_pct = EXCLUDED.rollout_pct;
 ```
 
 Force an app update:
 
 ```sql
-UPDATE public.remote_config
-SET value = '{"android": "1.4.2", "ios": "1.4.2", "web": "1.4.2"}'
-WHERE key = 'min_supported_app_version' AND country_code IS NULL;
+INSERT INTO public.remote_config (key, country_code, value, client_visible)
+VALUES ('min_supported_app_version', NULL, '{"android": "1.4.2", "ios": "1.4.2", "web": "1.4.2"}', true)
+ON CONFLICT (key, country_code) DO UPDATE SET value = EXCLUDED.value;
 ```
 
 Stop new users in a country (existing users and in-flight jobs continue):
@@ -110,6 +114,7 @@ Expected: the flag shows the new value, and an audit row records the change.
 | Date | Environment | What ran | Result |
 |---|---|---|---|
 | 2026-10-13 | Local CLI stack | The four commands above for `concierge.voice` (global and NG) and `min_supported_app_version`, then the three verify queries; values restored afterwards | `get_bootstrap('NG', 'android')` showed `concierge.voice: false` and `1.4.2`; `audit.log` had one `update` row per statement. The step-2 text above was out of date (it predated the admin console) and is corrected |
+| 2026-10-26 | **Staging** (`suskii-staging`) | The upsert commands above: `concierge.voice` off globally and for NG, `min_supported_app_version` to 9.9.9, then `get_bootstrap('NG', 'android')` and `audit.log`; backed out to the launch defaults (0.1.0, NG override deleted) | Worked as written. **Finding:** before the rehearsal, staging had **no** `feature_flags` rows and no `min_supported_app_version`, so the old `UPDATE` commands would have changed nothing and reported success. Fixed: the commands are upserts, and `…20261026130000_launch_switches` creates the switches, off, in every environment |
 
 ## Backout
 

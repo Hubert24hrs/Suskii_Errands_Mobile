@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / Finance |
 | Severity | SEV2 by default. SEV1 if the gap is growing, or if any provider balance is affected |
-| Last rehearsed | **2026-10-13, locally**, the detection half: the nightly job's own command run by hand (`ok`), then a one-unit drift planted in `ledger.balances` inside a rolled-back transaction (`ledger.reconcile()` found the account; the health check recorded `fail` with `drifted_accounts: 1`). The gateway-settlement comparison and the Finance steps need a gateway (action 4). Rehearse the whole runbook on staging with a deliberately broken posting before the first live country |
+| Last rehearsed | **2026-10-26, on staging**, with a deliberately broken posting, every write inside one block that rolled itself back (rehearsal record below). Every control in the ledger held; **the alert did not**: the nightly job recorded `fail` and `get_health()` still said `ok`, so the first symptom below could not happen. Fixed by `…20261026140000_health_reads_recorded_checks`. The gateway-settlement comparison and the Finance steps still need a gateway (action 4). Before that, **2026-10-13, locally**, the detection half: the nightly job's own command run by hand (`ok`), then a one-unit drift planted in `ledger.balances` inside a rolled-back transaction (`ledger.reconcile()` found the account; the health check recorded `fail` with `drifted_accounts: 1`). The gateway-settlement comparison and the Finance steps need a gateway (action 4). Rehearse the whole runbook on staging with a deliberately broken posting before the first live country |
 | Related | ADR-0011 (chart of accounts); S-14 (money invariants); money-flows.md; RB-02, RB-04 |
 
 ## What reconciliation actually checks
@@ -16,15 +16,19 @@ It asserts the things that must be true of a double-entry ledger no matter what 
    which cannot be caught — per S-14, `ledger.post` validates *before* writing and raises a
    catchable `P0001`, and the trigger stays as the invariant nothing can route around.
 2. **One currency per transaction.**
-3. **Derived balances match the sum of entries.** `ledger.balances` is a view over the entries, not
-   a stored total, so a divergence here means the entries themselves moved.
+3. **Stored balances match the sum of entries.** `ledger.balances` is a running total that
+   `ledger.post` increments under a row lock, and `ledger.reconcile()` compares it with the sum of the
+   entries. A divergence means something wrote one without the other: a write that went around
+   `ledger.post`, or a half-applied migration. (This line used to call it a view; it never was.)
 
 A mismatch against the **gateway** is a different thing from a mismatch **inside** the ledger, and
 the first question is always which one you have.
 
 ## Symptoms
 
-- `get_health()` shows `ledger_reconcile` degraded or failed.
+- `/health` returns 503 and the uptime alert fires: `get_health()` shows `checks.ledger_reconcile`
+  as `fail`, with `detail.drifted_accounts` and `detail.unbalanced_transactions`. **Only since
+  2026-10-26**: before that the snapshot never read this check (rehearsal record).
 - Finance's morning check: gateway settlement total ≠ `held_funds` movement for the day.
 - A provider says their available balance is wrong.
 
@@ -118,3 +122,10 @@ Finance agrees the gateway gap is explained.
   the tooling that made it the easy path.
 - If the cut-off caused it, write the cut-off into the Finance checklist so the next person does not
   spend a morning on it.
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result |
+|---|---|---|---|
+| 2026-10-13 | Local CLI stack | The nightly command by hand, then a one-unit drift planted in `ledger.balances` in a rolled-back transaction | `ok`, then `fail` with `drifted_accounts: 1` |
+| 2026-10-26 | **Staging** (`suskii-staging`) | One `DO` block that ends by raising its findings, so every write rolls back: checked `ledger-reconcile` is scheduled and `entries_balanced` is present, deferred and enabled; an unbalanced `ledger.post` (one leg off by one unit); a balanced `payment_captured` (9710 / 290 / −10000 USD); an `UPDATE` straight to `ledger.entries` with constraints set immediate; a one-unit drift in `ledger.balances`; the scheduled command run exactly as stored in `cron.job`; then `get_health()` | Books clean before and after the balanced post. Unbalanced post refused, catchably: `P0001 ERR_LEDGER_UNBALANCED`. The write around `ledger.post` refused by the deferred trigger with the same error. The drift found (`reconcile()`: one account, `drift_minor` 1) and recorded as `fail`, `drifted_accounts: 1`. **Finding: `get_health()` returned `ok` and had no `ledger_reconcile` key.** `private.health_snapshot()` read `audit_chain` and the backup keys by name and nothing else, so five recorded checks (`ledger_reconcile`, `partitions`, `notifications`, `outbox_stuck`, `analytics_export`) had never reached `/health` or the uptime alert. Fixed in `…20261026140000`; `63_health_recorded_checks_test` replays this rehearsal |

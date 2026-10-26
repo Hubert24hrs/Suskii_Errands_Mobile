@@ -155,3 +155,41 @@ jobs:
           docker run "${common[@]}" suskii-backup:ci dump
           docker run "${common[@]}" suskii-backup:ci verify
           ls "$RUNNER_TEMP"/backups/db/ci/*/*/*/ | grep -E '\.verify-.*\.json$'
+
+  # The image that passed `image` goes to staging's registry, so Terraform can create the backup
+  # jobs from its digest (BACKUP_WORKER_IMAGE in the infra-staging environment, RB-09). Prod is
+  # promoted by the same digest rather than rebuilt (infra-cicd.md §6.1).
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - name: Build and push
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          image="europe-west2-docker.pkg.dev/$GCP_PROJECT_ID/suskii/backup-worker"
+          gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
+          docker build -t "$image:$GITHUB_SHA" services/workers
+          docker push "$image:$GITHUB_SHA"
+          digest="$(gcloud artifacts docker images describe "$image:$GITHUB_SHA" --format='value(image_summary.digest)')"
+          [[ "$digest" == sha256:* ]] || { echo "::error::no digest for $image:$GITHUB_SHA"; exit 1; }
+          {
+            echo "### Backup worker image"
+            echo
+            echo "Set this as \`BACKUP_WORKER_IMAGE\` in the \`infra-staging\` environment, then run infra-deploy:"
+            echo
+            echo "\`$image@$digest\`"
+          } >> "$GITHUB_STEP_SUMMARY"

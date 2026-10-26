@@ -530,7 +530,7 @@ resource "google_monitoring_alert_policy" "health_failing" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "The Supabase health function is failing or unreachable. The response body lists which check failed (outbox, audit chain, audit partitions, scheduled jobs, database). Follow RB-01 (incident response)."
+    content   = "The Supabase health function is failing or unreachable. The response body lists which check failed (database, outbox, audit chain and partitions, backups, ledger reconciliation, table partitions, notifications, stuck outbox, analytics export, scheduled jobs); a ledger_reconcile fail is RB-03. Follow RB-01 (incident response)."
   }
 }
 

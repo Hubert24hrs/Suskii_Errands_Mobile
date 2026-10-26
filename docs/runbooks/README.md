@@ -23,6 +23,15 @@ detection with a planted drift) and RB-06 (the automatic escalation, which lands
 four minutes, now written down). **A local rehearsal is not a staging one**: none of them touched a
 console, a vendor, a phone or a real-sized database, and each still says so.
 
+**Staging rehearsals, 2026-10-26.** RB-13, RB-03 and RB-06 again, now against `suskii-staging`, each
+with a rehearsal record at the end of its file. All three found something a local stack could not.
+**RB-13**: staging had no switch rows at all, so every break-glass `UPDATE` would have changed
+nothing and reported success (the commands are now upserts, and a migration creates the switches).
+**RB-03**: the ledger's controls all held, but `get_health()` never read the reconciliation result,
+nor four other recorded checks, so none of them could ever fire the uptime alert (fixed).
+**RB-06**: escalation works and reaches nobody, because nothing reads SOS events (open: an alert is
+part of launch configuration, and until then a live country needs the console staffed).
+
 Two runbooks cannot be fully rehearsed even then, and say so at the top of the file rather than
 pretending otherwise: **RB-11** needs the AI service that Vertex billing blocks, and **RB-12** needs
 spike S-11 to replace vendor limits with our own measurements. Two more describe a vendor that does

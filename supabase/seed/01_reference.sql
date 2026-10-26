@@ -35,7 +35,8 @@ INSERT INTO public.feature_flags (key, country_code, enabled, rollout_pct, clien
   ('concierge.voice', NULL, true,  100, true),
   ('concierge.voice', 'NG', true,  100, true),
   ('calls.pstn_fallback', NULL, false, 0, true)
-ON CONFLICT DO NOTHING;
+-- The launch-switch migration creates these rows switched off; development turns the concierge on.
+ON CONFLICT (key, country_code) DO UPDATE SET enabled = EXCLUDED.enabled, rollout_pct = EXCLUDED.rollout_pct;
 
 INSERT INTO public.remote_config (key, country_code, value, client_visible) VALUES
   ('min_supported_app_version', NULL, '{"android": "0.1.0", "ios": "0.1.0", "web": "0.1.0"}', true),

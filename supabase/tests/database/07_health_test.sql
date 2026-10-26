@@ -15,6 +15,10 @@ SELECT is(public.get_health() #>> '{checks,audit_partitions,status}', 'ok',
   'audit partitions exist months ahead');
 
 SELECT is(private.run_audit_chain_check(), 'ok', 'the scheduled chain check passes on an intact chain');
+-- The recorded checks warn until their jobs have run once (63_health_recorded_checks_test).
+INSERT INTO private.health_checks (check_key, status)
+SELECT k, 'ok' FROM unnest(ARRAY['ledger_reconcile', 'partitions', 'analytics_export',
+                                 'notifications', 'outbox_stuck']) k;
 SELECT is(public.get_health() ->> 'status', 'ok', 'overall status is ok when every check passes');
 
 INSERT INTO public.remote_config (key, value, client_visible) VALUES ('ops.outbox_max_age_seconds', '60', false);
