@@ -89,6 +89,7 @@ variable "runtime_secret_ids" {
     "sentry-dsn-edge-functions",
     "fcm-service-account",
     "vertex-service-account",
+    "livekit-credentials",
     "sentry-dsn-ai-service",
     "supabase-service-role-key",
     "supabase-db-password",

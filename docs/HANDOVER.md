@@ -28,6 +28,7 @@ gate the rest.
 | **Supabase** | Organisation "Suskii Errands" (**Free**) in the builder's account: `suskii-dev` (paused), `suskii-staging`, `suskii-prod` (the testers' sandbox) | Invite the client as Owner, transfer ownership, and put the plan on the client's card (Pro for production) | The database |
 | **Cloudflare** | The builder's account: the zone, three Workers sites, the admin console's Access policy (the owner's email only), Email Routing for `privacy@` and `support@` | Moves with the domain (above) | |
 | **Resend** (email) | The builder's existing Resend account; the domain is verified there | The client opens their own account, verifies the domain again (new DKIM records), and the sandbox's SMTP setting gets the new key | Sign-in emails |
+| **LiveKit Cloud** (calls) | Created by the owner for go-live item 6 (free Build plan) | The client opens their own project, creates a key, and runs `infra/tools/set_livekit_credentials.py` | In-app calls |
 | **Termii** (SMS) | Signed up 2026-10-26 under the workspace name "Tech Tribe Institute", **paused** by the owner; wallet empty | The sender ID "Suskii" needs the client's CAC certificate, business licence and network letters, 2–4 weeks [S: Termii]. Open it in the client's name | Phone sign-in |
 | **Android signing** | Upload key at `C:\Users\HP\suskii-signing\upload.jks` on the builder's machine; the password is the builder's. Play App Signing holds the real app key | Hand the keystore and password over through a password manager, never in chat or email. If it is lost, Play can reset the upload key | Every Android release |
 
@@ -93,7 +94,7 @@ RB-16 on staging (secret writes the owner runs), RB-11 and RB-12 (blocked; each 
 
 | Where | Names | Set by |
 |---|---|---|
-| GCP Secret Manager, per project (created **empty** by Terraform) | `supabase-db-password`, `supabase-service-role-key`, `supabase-db-backup-url`, `supabase-storage-sync-key`, `send-sms-hook-secrets`, `suskii-field-kek-v1`, `google-play-integrity-service-account`, `sentry-dsn-edge-functions`, `sentry-dsn-ai-service`, `fcm-service-account` | The owner, with the helper scripts in `supabase/tools/` and `infra/tools/`, which store a value without showing it |
+| GCP Secret Manager, per project (created **empty** by Terraform) | `supabase-db-password`, `supabase-service-role-key`, `supabase-db-backup-url`, `supabase-storage-sync-key`, `send-sms-hook-secrets`, `suskii-field-kek-v1`, `google-play-integrity-service-account`, `sentry-dsn-edge-functions`, `sentry-dsn-ai-service`, `fcm-service-account`, `vertex-service-account` (Ask Suskii), `livekit-credentials` (calls) | The owner, with the helper scripts in `supabase/tools/` and `infra/tools/`, which store a value without showing it |
 | GitHub environment `prod` (mobile releases) | `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD`, `GOOGLE_MAPS_API_KEY`, `PLAY_SERVICE_ACCOUNT_JSON`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `FIREBASE_ANDROID_API_KEY` | The owner |
 | GitHub environments `dev`, `staging` | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `HEALTH_CHECK_API_KEY` | The owner; `set_health_key.py` for the last |
 | GitHub environments `infra-*` | `HEALTH_CHECK_API_KEY` (the uptime checks wait for it) | `set_health_key.py <ref> infra-<env>` |
@@ -137,7 +138,7 @@ month** from 2026-05-01 [S: Google's alerting cost guide]; there are two conditi
 | Identity verification vendor | A contract (client action 7) | RB-05 |
 | SOS partner | Client action 12 | RB-06 |
 | Phone sign-in by SMS | Termii resumed with a CAC-backed sender ID | §1 |
-| AI concierge, in-app calls | Being built (go-live items 5 and 6) | HANDOFF |
+| Voice concierge; a ringing screen and VoIP push for calls | LiveKit Agents worker; the device lab (S-03) | HANDOFF parts 20 and 21 |
 | The apps reading feature flags and forcing updates | Kimi (HANDOFF part 19, X.1 and X.2) | RB-13 |
 | Independent penetration test | A vendor, booked about six weeks ahead | Timeline row 20 |
 | Target-scale load test | The production-sized project, before launch (owner's decision, 2026-10-26) | `tests/load/README.md` |

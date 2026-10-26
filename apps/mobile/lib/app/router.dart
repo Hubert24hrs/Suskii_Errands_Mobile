@@ -125,9 +125,11 @@ abstract final class AppRoutes {
   static const String providerOffers = '/provider/offers';
   static const String providerJobExecution = '/provider/jobs/:id';
   static const String providerJobChat = '/provider/jobs/:id/chat';
+  static const String providerJobCall = '/provider/jobs/:id/call';
 
   static String providerJobExecutionPath(String id) => '/provider/jobs/$id';
   static String providerJobChatPath(String id) => '/provider/jobs/$id/chat';
+  static String providerJobCallPath(String id) => '/provider/jobs/$id/call';
 }
 
 /// Simple boolean flag controller (Riverpod 3 has no legacy StateProvider).
@@ -418,6 +420,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.providerJobChat,
         builder: (context, state) =>
             ChatPage(jobId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.providerJobCall,
+        builder: (context, state) => CallPage(
+          jobId: state.pathParameters['id']!,
+          returnPath: AppRoutes.providerJobExecutionPath(
+            state.pathParameters['id']!,
+          ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

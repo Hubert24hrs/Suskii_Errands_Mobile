@@ -1,6 +1,7 @@
 {
   "workspace": [
     "./auth-send-sms",
+    "./call-token",
     "./concierge",
     "./device-integrity",
     "./health",

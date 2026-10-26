@@ -5,6 +5,48 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-26 (part 21) — Claude Code — in-app calls over LiveKit
+
+Go-live item 6. The **`call-token`** Edge Function runs `start_call` as the caller, and answers when the other
+person is already ringing them. It signs a LiveKit token for that room only: HS256, microphone only, ten minutes
+for the first connection. All of that is per LiveKit's docs and server SDK, read the same day. No recording exists.
+Without LiveKit credentials it answers `503 ERR_FEATURE_UNAVAILABLE` before anybody is rung.
+
+**On the owner's instruction (the go-live goal), Claude Code changed Kimi's area:**
+
+- `apps/mobile/pubspec.yaml`: `livekit_client` 2.13.1 (it needs Dart 3.10; the app is on 3.13).
+- `lib/app/livekit_call_adapter.dart`: `LiveKitCallAdapter` implements `CallAdapter` behind a `CallRoom`
+  interface, so the logic is tested without WebRTC (7 tests).
+  - The caller rings; the person being rung is `active` at once.
+  - The other person leaving, or a 60 s ring with nobody joining, ends the call.
+  - `end_call` runs once per call, with its own key.
+- `providers.dart`: the real adapter whenever the real backend is there.
+- `router.dart`: `/provider/jobs/:id/call`. `call_page.dart` takes `returnPath`.
+- `provider_job_execution_page.dart`: **providers had no call button**; there is one now, beside Chat.
+- `push_notifications.dart`: `call_incoming` links to `/calls/<id>`, which the router did not know. It now opens
+  the call screen for the job the push carries (`request_id`). Opening that screen answers the call.
+- `AndroidManifest.xml`:
+  - added: `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, `ACCESS_NETWORK_STATE`, `CHANGE_NETWORK_STATE`, `BLUETOOTH`
+    (maxSdk 30), `BLUETOOTH_CONNECT`;
+  - `CAMERA` explicitly removed, because a voice call never uses it.
+- iOS `Info.plist`: `NSMicrophoneUsageDescription`.
+- `apps/web-marketing` privacy policy: Ask Suskii and calls, with Google Vertex AI and LiveKit as processors, where
+  they process, and 90 days for Ask Suskii messages.
+
+**For Kimi:**
+
+- **An incoming call while the app is open does not ring.** The push only shows when the app is in the
+  background, and the `job:<id>` broadcast `call.incoming` is not listened to anywhere.
+- A ringing screen with answer and decline, and a full-screen intent for a locked phone, are the next step.
+  VoIP push and CallKit/ConnectionService are the proper ring, and wait for the device lab (S-03).
+- Calls only open once a job is `assigned`, which needs a payment, so **the sandbox cannot reach a call** until a
+  gateway exists. The end-to-end test runs on staging, where the console payment provider works.
+
+**Before a build with these goes to Play**, change the Data safety form: audio is collected and processed
+ephemerally (`docs/store/play-data-safety.md`).
+
+---
+
 ## 2026-10-26 (part 20) — Claude Code — Ask Suskii, the text concierge, on Vertex AI
 
 Go-live item 5. It runs as the **`concierge` Edge Function**, not the planned Cloud Run service (ADR-0024).

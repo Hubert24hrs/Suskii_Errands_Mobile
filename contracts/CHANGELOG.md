@@ -6,6 +6,10 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**MINOR**: in-app calls over LiveKit. Additive: one Edge Function, `POST /call-token`, the third an app
+calls. `start_call`, `answer_call` and `end_call` are unchanged; the function runs the first two as the
+caller and signs a token for the room `start_call` returns.
+
 **MINOR**: Ask Suskii, the text concierge (ADR-0024). Additive: three RPCs, two readable tables, one
 Edge Function, one error code.
 

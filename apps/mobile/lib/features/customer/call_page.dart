@@ -16,9 +16,12 @@ import '../../app/router.dart';
 /// state and local audio controls. One active call per job — a second start
 /// is refused with ERR_CALL_IN_PROGRESS.
 class CallPage extends ConsumerStatefulWidget {
-  const CallPage({required this.jobId, super.key});
+  const CallPage({required this.jobId, this.returnPath, super.key});
 
   final String jobId;
+
+  /// Where the screen goes when the call ends: the job, from either side.
+  final String? returnPath;
 
   @override
   ConsumerState<CallPage> createState() => _CallPageState();
@@ -52,7 +55,9 @@ class _CallPageState extends ConsumerState<CallPage> {
   void _close() {
     if (_closed || !mounted) return;
     _closed = true;
-    context.leave(AppRoutes.customerRequestDetailPath(widget.jobId));
+    context.leave(
+      widget.returnPath ?? AppRoutes.customerRequestDetailPath(widget.jobId),
+    );
   }
 
   Future<void> _start() async {

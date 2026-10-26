@@ -48,6 +48,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
             ['Payouts', "Providers' bank account details for withdrawals, stored encrypted", 'When a provider adds a payout account'],
             ['Safety', 'Up to five trusted contacts (names and phone numbers, stored encrypted), SOS alerts and trip-share links you create', 'When you use safety features'],
             ['Suskii Meet', 'Meet-ups you create or join, and the venue you choose. Others see your first name only', 'When you use Suskii Meet'],
+            ['Ask Suskii', 'What you type to the assistant and its replies, stored with phone numbers, email addresses and ID, card and account numbers removed', 'When you use Ask Suskii'],
             ['Ratings, reports and support', 'Ratings and reviews, reports about users or content, support tickets and disputes', 'When you send them'],
             ['Referrals', 'Your referral code, who you referred or were referred by, and referral earnings', 'When you use the referral programme'],
             ['Device and security', 'Device identifiers, the push token if you allow notifications, app integrity checks from Google Play and Apple, IP address, app version, and crash reports', 'Automatically, to keep accounts secure and the app working'],
@@ -123,6 +124,8 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
             ['Google Cloud', 'Encrypted backups, monitoring data and security keys', 'Backups, monitoring and key storage'],
             ['Cloudflare', 'Website visits (IP address, pages requested)', 'Hosts and protects our websites'],
             ['Google Maps', 'Map requests from your device', 'Draws maps in the app'],
+            ['Google Cloud Vertex AI', 'What you type to Ask Suskii, with phone numbers, email addresses and ID, card and account numbers removed first, and the errand so far', "Understands your errand and writes Ask Suskii's reply"],
+            ['LiveKit', 'The sound of an in-app call while it happens, and which two people are connected', 'Connects in-app calls. Calls are never recorded'],
             ['Google Firebase Cloud Messaging', "Your device's push token, and a notification that names nothing: our name, a generic line and an internal id", 'Delivers the push notifications you allowed'],
             ['Google Play and Apple', 'Device integrity checks; app store purchase and install data', 'Protect accounts from tampered apps; distribute the app'],
             ['Payment providers', 'Amount, reference, and the card or bank details you enter on their page', 'Process payments, refunds and payouts'],
@@ -145,7 +148,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
       blocks: [
         {
           kind: 'p',
-          text: "Our database, files and backups are stored in London, United Kingdom: Supabase's eu-west-2 region and Google Cloud's europe-west2 region. Our websites are served from Cloudflare's network, which answers each visitor from a data centre near them.",
+          text: "Our database, files and backups are stored in London, United Kingdom: Supabase's eu-west-2 region and Google Cloud's europe-west2 region. Our websites are served from Cloudflare's network, which answers each visitor from a data centre near them. Ask Suskii's requests go to Google's Vertex AI in London, or to Google's global service when London is unavailable. In-app calls pass through LiveKit's servers while they happen and are not stored.",
         },
         {
           kind: 'p',
@@ -170,6 +173,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
             ['Identity check results', 'The life of the account, plus 5 years', 'Account closure'],
             ['Proof-of-delivery photos', '24 months', "The job's closing"],
             ['Chat messages, images and call records', '12 months', "The job's closing, or the call's end"],
+            ['Ask Suskii messages', '90 days', 'The message'],
             ['Job location trail', '90 days', "The job's closing"],
             ['Marketing consent records', 'The life of the consent, plus 3 years', 'Withdrawal'],
           ],

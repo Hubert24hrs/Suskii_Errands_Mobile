@@ -357,6 +357,14 @@
           "npm:@supabase/server@1.6.1"
         ]
       },
+      "call-token": {
+        "dependencies": [
+          "jsr:@supabase/functions-js@2",
+          "npm:@sentry/deno@10.74.0",
+          "npm:@supabase/server@1.6.1",
+          "npm:jose@6.2.12"
+        ]
+      },
       "concierge": {
         "dependencies": [
           "jsr:@supabase/functions-js@2",

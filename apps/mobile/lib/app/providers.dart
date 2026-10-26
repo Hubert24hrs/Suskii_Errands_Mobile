@@ -4,6 +4,7 @@ import 'package:suskii_core/suskii_core.dart';
 import 'package:suskii_data/suskii_data.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 
+import 'livekit_call_adapter.dart';
 import 'preferences.dart';
 import 'social_sign_in.dart';
 
@@ -209,9 +210,12 @@ final mediaUploadRepositoryProvider = Provider<MediaUploadRepository>((ref) {
   );
 });
 
-/// Masked calls (LiveKit plugs in behind this interface at M9).
+/// Masked calls: LiveKit through the `call-token` function on the real
+/// backend, the mock otherwise.
 final callAdapterProvider = Provider<CallAdapter>((ref) {
   ref.watch(sessionUserIdProvider);
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return LiveKitCallAdapter.overGateway(gateway);
   return MockCallAdapter(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),

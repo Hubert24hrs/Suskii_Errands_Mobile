@@ -61,7 +61,8 @@ jobs:
           grep -q 'package="com.suskiierrands.app"' "$manifest" || {
             echo "not the prod manifest (expected package com.suskiierrands.app, no suffix)"; exit 1; }
           grep -o 'uses-permission[^>]*android:name="[^"]*"' "$manifest" | sed 's/.*android:name=//' | sort -u
-          denied='FOREGROUND_SERVICE[A-Z_]*|CAMERA|RECORD_AUDIO|READ_MEDIA_[A-Z_]*|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_PHONE_STATE|READ_SMS|RECEIVE_SMS|SYSTEM_ALERT_WINDOW|QUERY_ALL_PACKAGES|REQUEST_INSTALL_PACKAGES|MANAGE_EXTERNAL_STORAGE'
+          # RECORD_AUDIO is declared on purpose for in-app calls (RB-15, 2026-10-26); it left this list then.
+          denied='FOREGROUND_SERVICE[A-Z_]*|CAMERA|READ_MEDIA_[A-Z_]*|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|ACCESS_BACKGROUND_LOCATION|READ_CONTACTS|READ_PHONE_STATE|READ_SMS|RECEIVE_SMS|SYSTEM_ALERT_WINDOW|QUERY_ALL_PACKAGES|REQUEST_INSTALL_PACKAGES|MANAGE_EXTERNAL_STORAGE'
           if grep -Eo "uses-permission[^>]*android:name=\"android.permission.($denied)\"" "$manifest"; then
             echo "A sensitive permission reached the merged manifest; declare it on purpose (RB-15) or remove the plugin that added it."
             exit 1

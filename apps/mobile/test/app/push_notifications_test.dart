@@ -57,6 +57,23 @@ void main() {
       },
     );
 
+    test('an incoming call opens the call screen for its job, either side', () {
+      const call = '11111111-2222-4333-8444-555555555555';
+      expect(
+        routeForPushLink('/calls/$call', UserMode.customer, requestId: id),
+        '/customer/requests/$id/call',
+      );
+      expect(
+        routeForPushLink('/calls/$call', UserMode.provider, requestId: id),
+        '/provider/jobs/$id/call',
+      );
+      // Without the job it carries, a call link cannot be followed.
+      expect(
+        routeForPushLink('/calls/$call', UserMode.customer),
+        '/customer/home',
+      );
+    });
+
     test('offers on a request open the request', () {
       expect(
         routeForPushLink('/requests/$id/offers', UserMode.customer),
