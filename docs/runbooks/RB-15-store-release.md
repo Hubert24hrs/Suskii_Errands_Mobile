@@ -193,6 +193,22 @@ not match:
 The whole sequence, from those checks to an AAB on the internal track, is written as a prompt for
 an agent with the owner's credentials: [`docs/prompts/PLAY-UPDATE-AND-GO-LIVE.md`](../prompts/PLAY-UPDATE-AND-GO-LIVE.md).
 
+### 3.5 Sign in with Google (set up 2026-10-26, testers' sandbox)
+
+Native sign-in: the app gets an ID token from Google through Android's Credential Manager and hands it
+to Supabase (`signInWithIdToken`), so **no client secret is involved anywhere**. Four pieces have to agree:
+
+| Where | What | State |
+|---|---|---|
+| Google Auth Platform, `suskii-prod` | App "Suskii Errands", External, **Testing**; test users: the owner | Testers outside the list are refused until the app is published (name, email and profile need no Google review) |
+| OAuth clients, `suskii-prod` | Web `…-k9kdn28vvr1lmgn9qjcb9geof4ijn6u3` (the token's audience, the app's `serverClientId`); Android `…-am85g2rrghuhftvb0ffjps9app5j5d17` (cert `57:FF:…`) and `…-d3mgtbvmsakmk9pb64cf1jel5eumkjv5` (cert `1A:8F:…`), both `com.suskiierrands.app` | One Android client per signing certificate: Play's app-signing key and the upload key |
+| Supabase Auth, sandbox `slfbtdwzoijgzqszfufp` | Google provider on; Client IDs: the web ID first, then both Android IDs; no secret; nonce check on | Set by hand: the pipeline never deploys the sandbox |
+| GitHub `prod` environment | Variable `GOOGLE_WEB_CLIENT_ID` = the web ID; `mobile-release` passes it into the define file | From build 22. A build without it shows *This feature is not available yet* on the Google button, which is what build 21 did |
+
+Verified on a phone with build 22, 2026-10-26: sign-in completed and the sandbox recorded the Google
+identity. Staging has none of this yet: it needs its own clients and `GOOGLE_CLIENT_IDS` on the `staging`
+environment, which `_deploy-supabase.yaml` pushes into Auth.
+
 ## 4. Releasing
 
 1. **Version.** Bump `version:` in `apps/mobile/pubspec.yaml` (semver name; leave `+1`, the
@@ -241,7 +257,7 @@ uninstall. If `dev.json` ever gains a backend, decide again whether this link sh
 |---|---|---|
 | Push notifications (FCM, APNs) | Actions 27 and 22 | Add `firebase_messaging`, register the token with `register_device` (the RPC exists; the app does not call it yet), declare `POST_NOTIFICATIONS` and ask for it in context, add `remote-notification` background mode |
 | In-app calls | **Built** 2026-10-26 (LiveKit) | Microphone declared above; update Data safety before the build reaches a track. The voice concierge is still to come |
-| Sign in with Google and Apple | **Built** 2026-10-24; needs actions 29 and 30 | Until then the Google button says it is not set up; Apple appears on iOS only |
+| Sign in with Google and Apple | Google **working** on the sandbox from build 22 (§3.5, 2026-10-26); Apple needs action 30 | Publish the Google Auth Platform app so every tester can use it; Apple appears on iOS only |
 | Store screenshots (retake: the brand changed 2026-10-24, ADR-0019) | Action 19, a simulator and an emulator | `fastlane/screenshots/README.md` |
 | Crash symbol upload | Action 28 and a Sentry auth token | Upload `build/symbols/*` and `mapping.txt` from the release artifacts |
 
