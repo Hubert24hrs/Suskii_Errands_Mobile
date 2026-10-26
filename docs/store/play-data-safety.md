@@ -14,6 +14,9 @@ reasoning:
   documents uploaded to `kyc-docs`.
 - **Device or other IDs: collected**, for fraud prevention: the device-integrity verdicts and the
   per-handset signals the risk sweep uses.
+  **From build 21 (push, 2026-10-26)** it is also for *App functionality*: the FCM push token,
+  stored against the device row so notifications reach the phone. Google's Firebase delivers them
+  as a service provider, so this is still not *shared*. The privacy policy lists it.
 - **Name and email are optional** (a customer may leave the name blank and may sign in by phone).
   Name, email and user IDs are for app functionality and account management. Phone number is for
   fraud prevention and account management.

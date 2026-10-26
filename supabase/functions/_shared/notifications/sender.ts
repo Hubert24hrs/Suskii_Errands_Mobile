@@ -5,11 +5,9 @@
 // Nothing here re-derives it. A sender's whole job is to take a decided message and hand it to a
 // vendor.
 //
-// **The APNs and FCM adapters are deliberately not written.** They need the project's push
-// credentials and a device lab to be worth anything (spike S-03, timeline action 6), and a push
-// adapter that has never woken a real handset is not an adapter. The console sender exercises
-// the whole path and refuses to run in production, so a deployment that still has it registered
-// fails loudly rather than silently dropping everybody's job alerts.
+// FCM (Android) lives in `fcm.ts`. APNs waits on an Apple developer account. The console sender
+// exercises the whole path and refuses to run in production, so a deployment that still has it
+// registered fails loudly rather than silently dropping everybody's job alerts.
 //
 // The SMS channel does not get a second abstraction: `_shared/sms/provider.ts` already exists for
 // the OTP hook, with the same console-in-development posture and the same per-country routing.

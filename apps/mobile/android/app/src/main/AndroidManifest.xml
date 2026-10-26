@@ -6,6 +6,8 @@
          the Android photo picker. Microphone and notifications are added with the features that
          use them (LiveKit calls and the voice concierge; FCM push), not before. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push notifications (Android 13+ asks for this at runtime, after the first sign-in). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Arrival at the pickup point is checked against the provider's position, asked for at
          the tap (lib/app/device_location.dart). Foreground only; never in the background. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

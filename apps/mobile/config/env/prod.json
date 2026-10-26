@@ -1,14 +1,14 @@
 {
   "APP_FLAVOR": "prod",
   "APP_NAME": "Suskii Errands",
-  "APP_LINK_HOST": "suskii-errands.example",
+  "APP_LINK_HOST": "suskiierrand.com",
   "SUPABASE_URL": "",
   "SUPABASE_ANON_KEY": "",
   "AI_SERVICE_URL": "",
   "SENTRY_DSN": "",
-  "PRIVACY_POLICY_URL": "https://suskii-errands.example/en/legal/privacy",
-  "TERMS_URL": "https://suskii-errands.example/en/legal/terms",
-  "SUPPORT_EMAIL": "support@suskii-errands.example",
+  "PRIVACY_POLICY_URL": "https://suskiierrand.com/en/legal/privacy",
+  "TERMS_URL": "https://suskiierrand.com/en/legal/terms",
+  "SUPPORT_EMAIL": "support@suskiierrand.com",
   "GOOGLE_WEB_CLIENT_ID": "",
   "GOOGLE_IOS_CLIENT_ID": "",
   "GOOGLE_REVERSED_CLIENT_ID": ""
