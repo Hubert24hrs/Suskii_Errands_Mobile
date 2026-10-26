@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createHealthHandler, type HealthSnapshot } from "./handler.ts";
+import { createHealthHandler, type HealthSnapshot, type SafetyAlarm } from "./handler.ts";
 
 const snapshot = (status: HealthSnapshot["status"]): HealthSnapshot => ({
   status,
@@ -50,4 +50,54 @@ Deno.test("only GET is allowed", async () => {
     new Request("http://localhost/health", { method: "POST" }),
   );
   assertEquals(res.status, 405);
+});
+
+const alarm = (status: SafetyAlarm["status"], unacknowledged = 0): SafetyAlarm => ({
+  status,
+  checked_at: "2026-10-26T03:00:00Z",
+  unacknowledged,
+  oldest_escalated_seconds: unacknowledged ? 75 : null,
+});
+const safety = () => new Request("http://localhost/health?scope=safety");
+
+Deno.test("the safety scope returns 503 while an escalated SOS is unacknowledged", async () => {
+  const res = await createHealthHandler({
+    getHealth: () => Promise.reject(new Error("the default scope must not be read")),
+    getSafetyAlarm: () => Promise.resolve(alarm("fail", 1)),
+  })(safety());
+  assertEquals(res.status, 503);
+  assertEquals((await res.json()).unacknowledged, 1);
+  assertEquals(res.headers.get("cache-control"), "no-store");
+});
+
+Deno.test("the safety scope is 200 with nobody waiting, whatever the platform's health", async () => {
+  const res = await createHealthHandler({
+    getHealth: () => Promise.resolve(snapshot("fail")),
+    getSafetyAlarm: () => Promise.resolve(alarm("ok")),
+  })(safety());
+  assertEquals(res.status, 200);
+});
+
+Deno.test("a safety check that cannot reach the database pages rather than guessing", async () => {
+  const res = await createHealthHandler({
+    getHealth: () => Promise.resolve(snapshot("ok")),
+    getSafetyAlarm: () => Promise.reject(new Error("connection refused")),
+  })(safety());
+  assertEquals(res.status, 503);
+  assertEquals(JSON.stringify(await res.json()).includes("connection refused"), false);
+});
+
+Deno.test("an SOS never fails the default scope, which the deploy smoke test reads", async () => {
+  const res = await createHealthHandler({
+    getHealth: () => Promise.resolve(snapshot("ok")),
+    getSafetyAlarm: () => Promise.resolve(alarm("fail", 2)),
+  })(get());
+  assertEquals(res.status, 200);
+});
+
+Deno.test("an unknown scope is refused rather than read as the default", async () => {
+  const res = await createHealthHandler({ getHealth: () => Promise.resolve(snapshot("ok")) })(
+    new Request("http://localhost/health?scope=everything"),
+  );
+  assertEquals(res.status, 400);
 });

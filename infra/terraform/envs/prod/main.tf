@@ -33,9 +33,13 @@ module "environment" {
   alert_emails            = var.alert_emails
   supabase_project_ref    = var.supabase_project_ref
   health_check_api_key    = var.health_check_api_key
-  deploy_ai_service       = var.deploy_ai_service
-  ai_service_image        = var.ai_service_image
-  backup_worker_image     = var.backup_worker_image
+  # Supabase Free (the testers' sandbox): a 60 s health check from six regions is about 260k of
+  # the 500k monthly Edge Function calls, and the SOS alarm (60 s, three regions) another 130k.
+  # The SOS alarm keeps the minute; an outage can wait five. Back to 60 s on a paid plan.
+  uptime_check_period = "300s"
+  deploy_ai_service   = var.deploy_ai_service
+  ai_service_image    = var.ai_service_image
+  backup_worker_image = var.backup_worker_image
 }
 
 output "workload_identity_provider" {

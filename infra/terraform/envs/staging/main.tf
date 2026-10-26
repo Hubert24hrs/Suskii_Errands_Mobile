@@ -35,6 +35,7 @@ module "environment" {
   health_check_api_key    = var.health_check_api_key
   # Supabase Free: a 60 s check would spend about half the monthly Edge Function allowance.
   uptime_check_period = "300s"
+  sos_alarm_period    = "300s"
   deploy_ai_service   = var.deploy_ai_service
   ai_service_image    = var.ai_service_image
   backup_worker_image = var.backup_worker_image
