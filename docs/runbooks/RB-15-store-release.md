@@ -82,11 +82,13 @@ officer reviews the documents by hand, so the claim does not depend on the ident
 | `NSCameraUsageDescription` | iOS | Photographing an ID document, a receipt or proof of a finished job | When the person chooses "Take a photo" |
 | `NSPhotoLibraryUsageDescription` | iOS | Choosing such a photo from the library | When the person chooses "Choose from library" |
 | — (no CAMERA, no READ_MEDIA_*) | Android | `image_picker` hands off to the system camera and the Android photo picker, which need no permission | — |
+| `POST_NOTIFICATIONS` | Android | Push notifications (FCM, build 21) | Once, after the first sign-in |
+| `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, `BLUETOOTH_CONNECT` / `NSMicrophoneUsageDescription` | both | In-app calls between the two people on a job (LiveKit, 2026-10-26). Audio only, never recorded; `CAMERA` is stripped from the merged manifest because a voice call never uses it. Data safety declares audio as collected and processed ephemerally | When the person starts or answers a call |
 
 The country a new account is created in is read without any permission: the mobile network the phone is registered on and the SIM's country (Android `TelephonyManager`), or the time zone and region (iOS), then the locale (`lib/app/device_country.dart`, 2026-10-24). It is sent once, as sign-up metadata. The store drafts in `docs/store/` declare it as approximate location; `VERIFY-IN-RESEARCH` whether a country-level inference needs that declaration.
 
-Not declared, on purpose: microphone (calls and the voice concierge have no audio yet), notifications
-(no push yet), background location, contacts, phone state, foreground services. `mobile-native.yaml`
+Not declared, on purpose: background location, contacts, phone state, foreground services. (The
+microphone and notifications were on this list until calls and push were built, 2026-10-26.) `mobile-native.yaml`
 fails if a plugin adds a sensitive permission or a foreground service type to the merged manifest.
 The first compiled build caught one: `geolocator` adds `FOREGROUND_SERVICE_LOCATION` and a
 `location`-typed service for tracking with the app closed. The app never starts that service, so the
@@ -238,7 +240,7 @@ uninstall. If `dev.json` ever gains a backend, decide again whether this link sh
 | Item | Needs | Then |
 |---|---|---|
 | Push notifications (FCM, APNs) | Actions 27 and 22 | Add `firebase_messaging`, register the token with `register_device` (the RPC exists; the app does not call it yet), declare `POST_NOTIFICATIONS` and ask for it in context, add `remote-notification` background mode |
-| In-app calls and the voice concierge | Action 11 | Add the microphone permission and usage string with the feature, not before |
+| In-app calls | **Built** 2026-10-26 (LiveKit) | Microphone declared above; update Data safety before the build reaches a track. The voice concierge is still to come |
 | Sign in with Google and Apple | **Built** 2026-10-24; needs actions 29 and 30 | Until then the Google button says it is not set up; Apple appears on iOS only |
 | Store screenshots (retake: the brand changed 2026-10-24, ADR-0019) | Action 19, a simulator and an emulator | `fastlane/screenshots/README.md` |
 | Crash symbol upload | Action 28 and a Sentry auth token | Upload `build/symbols/*` and `mapping.txt` from the release artifacts |
