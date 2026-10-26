@@ -38,6 +38,8 @@ dependencies:
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.7
   google_maps_flutter: 2.18.2
+  firebase_core: ^5.1.0
+  firebase_messaging: ^17.0.1
 
 # The maps plugin's iOS and web halves had releases under two weeks old when this was added; pinned
 # to the previous ones (the project's rule for third-party code). Lift once they have aged.

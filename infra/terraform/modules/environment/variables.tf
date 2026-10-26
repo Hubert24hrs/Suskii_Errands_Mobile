@@ -76,6 +76,7 @@ variable "runtime_secret_ids" {
     "send-sms-hook-secrets",
     "google-play-integrity-service-account",
     "sentry-dsn-edge-functions",
+    "fcm-service-account",
     "sentry-dsn-ai-service",
     "supabase-service-role-key",
     "supabase-db-password",

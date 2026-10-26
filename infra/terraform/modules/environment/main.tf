@@ -14,6 +14,7 @@ locals {
     "billingbudgets.googleapis.com",
     "cloudscheduler.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "fcm.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "logging.googleapis.com",
@@ -245,6 +246,24 @@ resource "google_storage_bucket" "kyc_backups" {
   }
 
   depends_on = [google_project_service.apis]
+}
+
+# ---------------------------------------------------------------------------
+# Push notifications: the notifications-worker Edge Function sends through FCM as this account.
+# Its key is created by hand and written straight to the `fcm-service-account` secret (RB-10);
+# a key in Terraform state would be a key in a bucket. Firebase itself is added to the project in
+# the Firebase console, which Terraform's stable provider does not manage.
+# ---------------------------------------------------------------------------
+resource "google_service_account" "fcm_sender" {
+  project      = var.project_id
+  account_id   = "fcm-sender"
+  display_name = "Push notifications through FCM (${var.environment})"
+}
+
+resource "google_project_iam_member" "fcm_sender" {
+  project = var.project_id
+  role    = "roles/firebasecloudmessaging.admin"
+  member  = "serviceAccount:${google_service_account.fcm_sender.email}"
 }
 
 resource "google_service_account" "backup_worker" {

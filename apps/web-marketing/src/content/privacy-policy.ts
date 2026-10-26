@@ -12,7 +12,7 @@ export type PolicyBlock =
 export type PolicySection = { heading: string; blocks: PolicyBlock[] };
 
 export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
-  updated: '25 October 2026',
+  updated: '26 October 2026',
   sections: [
     {
       heading: 'Who we are',
@@ -50,7 +50,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
             ['Suskii Meet', 'Meet-ups you create or join, and the venue you choose. Others see your first name only', 'When you use Suskii Meet'],
             ['Ratings, reports and support', 'Ratings and reviews, reports about users or content, support tickets and disputes', 'When you send them'],
             ['Referrals', 'Your referral code, who you referred or were referred by, and referral earnings', 'When you use the referral programme'],
-            ['Device and security', 'Device identifiers, app integrity checks from Google Play and Apple, IP address, app version, and crash reports', 'Automatically, to keep accounts secure and the app working'],
+            ['Device and security', 'Device identifiers, the push token if you allow notifications, app integrity checks from Google Play and Apple, IP address, app version, and crash reports', 'Automatically, to keep accounts secure and the app working'],
             ['Sign-in providers', 'Your name and email address from Google or Apple, if you choose to sign in with them', 'When you use that sign-in option'],
           ],
         },
@@ -123,6 +123,7 @@ export const privacyPolicy: { updated: string; sections: PolicySection[] } = {
             ['Google Cloud', 'Encrypted backups, monitoring data and security keys', 'Backups, monitoring and key storage'],
             ['Cloudflare', 'Website visits (IP address, pages requested)', 'Hosts and protects our websites'],
             ['Google Maps', 'Map requests from your device', 'Draws maps in the app'],
+            ['Google Firebase Cloud Messaging', "Your device's push token, and a notification that names nothing: our name, a generic line and an internal id", 'Delivers the push notifications you allowed'],
             ['Google Play and Apple', 'Device integrity checks; app store purchase and install data', 'Protect accounts from tampered apps; distribute the app'],
             ['Payment providers', 'Amount, reference, and the card or bank details you enter on their page', 'Process payments, refunds and payouts'],
             ['Identity verification provider', 'ID number, document photos and selfie', 'Check identity and liveness'],

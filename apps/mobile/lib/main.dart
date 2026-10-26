@@ -13,6 +13,7 @@ import 'app/app.dart';
 import 'app/crash_reporting.dart';
 import 'app/device_country.dart';
 import 'app/providers.dart';
+import 'app/push_notifications.dart';
 import 'app/secure_session_storage.dart';
 
 /// Single entrypoint; the flavor comes from --dart-define-from-file:
@@ -45,10 +46,14 @@ Future<void> main() async {
           ),
         );
       }
+      // Only a build with a backend registers for push: a mock build has no
+      // server to tell the token to.
+      final push = config.usesMockBackend ? null : await initializePush(config);
       runApp(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            pushMessagingProvider.overrideWithValue(push),
             deviceCountryProvider.overrideWithValue(deviceCountry),
             appVersionProvider.overrideWithValue(
               '${info.version} (${info.buildNumber})',

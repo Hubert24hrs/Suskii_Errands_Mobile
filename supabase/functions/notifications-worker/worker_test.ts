@@ -132,7 +132,24 @@ Deno.test("a push with nowhere to go is not a vendor failure", async () => {
     pushTargets: () => Promise.resolve([]),
   });
   await createNotificationsWorker(d)();
-  assertEquals(calls[0], "push:failed:console:no_registered_device");
+  // Skipped and completed: retrying will not give them a phone, and eight retries a minute apart
+  // would only fill the outbox health check with people who have not installed the app yet.
+  assertEquals(calls, ["push:skipped:console:no_registered_device", "complete:1"]);
+});
+
+Deno.test("no device on one channel and a vendor failure on another is still retried", async () => {
+  const s = senders();
+  s.set("sms", {
+    name: "broken",
+    channel: "sms",
+    send: () => Promise.resolve({ ok: false, provider: "broken", reason: "vendor_down" }),
+  });
+  const { deps: d, calls } = deps([notification(["push", "sms"])], {
+    senders: s,
+    pushTargets: () => Promise.resolve([]),
+  });
+  await createNotificationsWorker(d)();
+  assertEquals(calls.at(-1), "fail:1:ERR_NOTIFICATION_UNDELIVERED:true");
 });
 
 Deno.test("the console sender refuses to run in production", async () => {

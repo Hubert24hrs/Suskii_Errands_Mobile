@@ -9,15 +9,16 @@ import {
   type NotificationSender,
   type PushTarget,
 } from "../_shared/notifications/sender.ts";
+import { FcmSender, parseServiceAccount } from "../_shared/notifications/fcm.ts";
 import { type ClaimedEvent, createNotificationsWorker } from "./handler.ts";
 
-// Invoked on a schedule. Drains `private.outbox` for the `user` aggregate and sends what
-// `private.notify` already decided to send.
+// Invoked every minute by pg_cron through `private.invoke_edge_worker`. Drains `private.outbox` for
+// the `user` aggregate and sends what `private.notify` already decided to send.
 //
-// Only console senders are registered. APNs and FCM need the project's push credentials and a
-// device lab to be worth writing (S-03, timeline action 6); an SMS vendor waits on S-09. The
-// console sender refuses to run in production, so a deployment that never registered a real one
-// fails loudly instead of quietly dropping every job alert on the platform.
+// Push goes through FCM when `FCM_SERVICE_ACCOUNT_JSON` is set (Android; iOS waits on APNs and an
+// Apple account). Every other channel is still the console sender, which refuses to run in
+// production, so a deployment that never registered a real one fails loudly instead of quietly
+// dropping every job alert on the platform.
 const environment = Deno.env.get("SUSKII_ENV") ?? "development";
 const admin = createAdminClient();
 
@@ -26,6 +27,19 @@ const senders = new Map<string, NotificationSender>(
     channel,
   ) => [channel, new ConsoleNotificationSender(channel, environment)]),
 );
+const fcmServiceAccount = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON");
+if (fcmServiceAccount) {
+  senders.set(
+    "push",
+    new FcmSender({
+      serviceAccount: parseServiceAccount(fcmServiceAccount),
+      async onDeadToken(deviceId) {
+        const { error } = await admin.rpc("dispatch_clear_push_token", { p_device_id: deviceId });
+        if (error) throw new Error(error.message);
+      },
+    }),
+  );
+}
 
 const run = createNotificationsWorker({
   senders,

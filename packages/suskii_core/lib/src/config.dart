@@ -16,6 +16,10 @@ class AppConfig {
     required this.googleWebClientId,
     required this.googleIosClientId,
     required this.googleMapsApiKey,
+    required this.firebaseApiKey,
+    required this.firebaseAppId,
+    required this.firebaseMessagingSenderId,
+    required this.firebaseProjectId,
   });
 
   final AppFlavor flavor;
@@ -53,6 +57,21 @@ class AppConfig {
 
   bool get hasMaps => googleMapsApiKey.isNotEmpty;
 
+  /// Firebase Cloud Messaging for push (Android). Public client identifiers,
+  /// injected at build time from CI like the Maps key, never committed: the
+  /// API key would trip the secret scanner. All four empty: no push, and the
+  /// in-app inbox is the only way a person hears about an update.
+  final String firebaseApiKey;
+  final String firebaseAppId;
+  final String firebaseMessagingSenderId;
+  final String firebaseProjectId;
+
+  bool get hasPush =>
+      firebaseApiKey.isNotEmpty &&
+      firebaseAppId.isNotEmpty &&
+      firebaseMessagingSenderId.isNotEmpty &&
+      firebaseProjectId.isNotEmpty;
+
   bool get isProd => flavor == AppFlavor.prod;
 
   /// True when no backend is configured and every repository is the mock:
@@ -77,6 +96,12 @@ class AppConfig {
       googleWebClientId: const String.fromEnvironment('GOOGLE_WEB_CLIENT_ID'),
       googleIosClientId: const String.fromEnvironment('GOOGLE_IOS_CLIENT_ID'),
       googleMapsApiKey: const String.fromEnvironment('GOOGLE_MAPS_API_KEY'),
+      firebaseApiKey: const String.fromEnvironment('FIREBASE_ANDROID_API_KEY'),
+      firebaseAppId: const String.fromEnvironment('FIREBASE_ANDROID_APP_ID'),
+      firebaseMessagingSenderId: const String.fromEnvironment(
+        'FIREBASE_MESSAGING_SENDER_ID',
+      ),
+      firebaseProjectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
     );
   }
 }

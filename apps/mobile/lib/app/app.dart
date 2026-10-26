@@ -4,6 +4,7 @@ import 'package:suskii_design/suskii_design.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
 import 'providers.dart';
+import 'push_notifications.dart';
 import 'router.dart';
 
 class SuskiiApp extends ConsumerWidget {
@@ -23,16 +24,18 @@ class SuskiiApp extends ConsumerWidget {
       }
     });
 
-    return MaterialApp.router(
-      onGenerateTitle: (context) => AppLocalizations.of(context).appName,
-      theme: SAppTheme.light(),
-      darkTheme: SAppTheme.dark(),
-      themeMode: themeMode,
-      locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      routerConfig: router,
-      debugShowCheckedModeBanner: false,
+    return PushNotificationsScope(
+      child: MaterialApp.router(
+        onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+        theme: SAppTheme.light(),
+        darkTheme: SAppTheme.dark(),
+        themeMode: themeMode,
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
