@@ -1,5 +1,8 @@
 -- `countries.approved_by` named the proposer.
 --
+-- (Written as 20261026160000; renamed 2026-10-26 before anything applied it, because it merged after
+-- 20261026170000 had reached staging and `db push` refuses an older migration behind a newer one.)
+--
 -- Found rehearsing RB-08 on staging (2026-10-26) with a fake country taken disabled -> beta -> live
 -- -> disabled through the four-eyes flow: every step applied correctly, and every one stamped the
 -- country with the person who *asked*, because the apply copied `requested_by`. Somebody reading the
