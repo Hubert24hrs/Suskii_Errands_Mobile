@@ -30,7 +30,8 @@ nothing and reported success (the commands are now upserts, and a migration crea
 **RB-03**: the ledger's controls all held, but `get_health()` never read the reconciliation result,
 nor four other recorded checks, so none of them could ever fire the uptime alert (fixed).
 **RB-06**: escalation worked and reached nobody, because nothing reads SOS events. Fixed the same
-day by the *SOS unacknowledged* alert (`health?scope=safety`, its own uptime check).
+day by the *SOS unacknowledged* alert (`health?scope=safety`, its own uptime check), which was then
+rehearsed on staging too: open 5 min 13 s after the escalation, email delivered, closed by itself.
 **RB-08** (the database half, with a fake country): every refusal and every signature
 rule held; `countries.approved_by` named the proposer rather than the approver (fixed).
 **RB-05** (the queue half): its queue-depth query failed from the SQL editor and its switch did not
