@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops / the client |
 | Severity | Not an incident. A planned change with a rollback, run to a checklist |
-| Last rehearsed | **Not yet.** Rehearse the whole thing on staging with a fake country before doing it to Nigeria |
+| Last rehearsed | **2026-10-26, on staging**, the database half with a fake country (`ZZ`) taken `disabled → beta → live → disabled` through the four-eyes flow by three temporary super admins, inside a block that rolled itself back (rehearsal record below). Everything refused what it should and applied what it should. **Finding:** `countries.approved_by` recorded the proposer, not the approver (fixed in `…20261026160000_country_approved_by`). Not rehearsed: the sign-offs in *The things the gap check cannot see*, the week of watching, and the apps seeing the change at their next bootstrap |
 | Related | OD-07, OD-12, OD-14, OD-23, OD-24; `docs/research/country-packs/*.yaml`; ADR-0001; RB-13, RB-14, RB-01 |
 
 ## What "live" means
@@ -53,6 +53,16 @@ that actually block a launch:
 
 **Do not flip a country to `live` with any of these open.** The gap check passing is necessary and
 nowhere near sufficient.
+
+**`beta` is not gated by the pack at all**, on purpose: the testers' sandbox runs Nigeria in `beta`
+on the development providers, and closed testing needs that. So the checklist in step 1 is the only
+thing between an incomplete pack and real customers in beta. Treat it as a gate, not a formality.
+
+**A refused `live` stays `pending`.** When the last signature hits an incomplete pack, the change
+is not applied and is not rejected either; once the pack is complete, the same change lands on the
+next signature (`36_admin_config_test` asserts this). If the refusal meant *not yet*, that is
+convenient. If it meant *no*, reject the change explicitly, as the 2026-10-26 rehearsal did, so a
+signature given weeks ago does not take a country live today.
 
 ## Procedure
 
@@ -165,3 +175,9 @@ settle first, or you have converted a configuration change into RB-02 and RB-04 
 - Re-check the guardrails against real prices. The placeholders were always meant to be replaced by
   pilot data, and this is the pilot data.
 - Update the Status table in `CLAUDE.md` and file a HANDOFF entry.
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result |
+|---|---|---|---|
+| 2026-10-26 | **Staging** (`suskii-staging`) | One `DO` block that ends by raising its findings, so every write rolls back. A fake country `ZZ` inserted `disabled`, as a migration would; three temporary `super_admin`s (A proposes, B and C sign) with `aal2` and a TOTP `amr` entry; then: `live` straight away; cities and legal pages by insert; providers by proposal, first the development provider, then real ones; `beta`; `live`; back out to `beta` and `disabled` | Gaps at the start: all seven. `live` needs **2** signatures, `beta` and the backout **1** each. A reviewing their own change: `ERR_PERMISSION_DENIED`. The early `live` took B's signature, then C's hit `ERR_COUNTRY_PACK_INCOMPLETE`; the change stayed `pending` and the country `disabled`; C then rejected it. On the development provider the only gap left was `config.server.payment_providers.console_only`. A config proposal naming only `server` kept `client` (`accepted_id_types` still `["nin"]`): a proposal is a diff, as written. Then `ready`, `beta`, `live` (B again: refused as already signed; C with a TOTP ten minutes old: `ERR_REAUTH_REQUIRED`; C fresh: applied), and the backout to `disabled`. Version 7, six changes applied and one rejected, 58 audit rows. **Finding:** `countries.approved_by` was the proposer, A, on every step; fixed, and asserted in `36_admin_config_test` |

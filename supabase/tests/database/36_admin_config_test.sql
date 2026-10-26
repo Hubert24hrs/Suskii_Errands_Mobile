@@ -7,7 +7,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(52);
+SELECT plan(53);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('a1111111-1111-4111-8111-333333333333', '2348000000401'),   -- super admin, proposes
@@ -178,6 +178,9 @@ SELECT is((SELECT status FROM public.countries WHERE code = 'KE'),
   'live'::public.country_status, 'Kenya is live');
 SELECT isnt((SELECT approved_at FROM public.countries WHERE code = 'KE'), NULL,
   'and approved, which the spec asks for in the same breath as complete');
+SELECT is((SELECT approved_by FROM public.countries WHERE code = 'KE'),
+  'a3333333-3333-4333-8333-333333333333'::uuid,
+  'by the last signature, not by the person who asked (RB-08 rehearsal, 2026-10-26)');
 
 -- A pack that routes only to the development provider is not complete either: it would report a
 -- customer paid when nobody did.
