@@ -9,7 +9,7 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 - **On the owner's instruction (the go-live goal, item 1), Claude Code changed Kimi's area**:
   - `apps/mobile`: `lib/app/push_notifications.dart` (new), `main.dart`, `app/app.dart`, `pubspec.yaml`
-    (`firebase_core` 5.1.0, `firebase_messaging` 17.0.1), the manifest's `POST_NOTIFICATIONS`,
+    (`firebase_core` 4.15.2, `firebase_messaging` 16.7.1), the manifest's `POST_NOTIFICATIONS`,
     `tool/write_release_env.sh`, `config/env/prod.json` (the real domain, `suskiierrand.com`), and a test;
   - `packages/suskii_core/lib/src/config.dart`: four `FIREBASE_*` values, injected from CI like the Maps key;
   - `apps/web-marketing/src/content/privacy-policy.ts`: Firebase Cloud Messaging and the push token.
@@ -18,9 +18,10 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
   under a random per-install id, re-registers on refresh, and **deletes the token on sign-out** so the next
   person on the handset never gets the last one's alerts. A tapped push opens the screen its server link
   names (`routeForPushLink`, mode-aware; anything unknown opens home).
-- **For Kimi**: `firebase_messaging` 17 deprecates the token calls in favour of Firebase Installation IDs.
-  They are kept on purpose (an `ignore_for_file` with the reason) because the server sends to tokens with the
-  documented v1 API. Move both together when Firebase documents the FID send target.
+- **For Kimi: Firebase is held on 4.x/16.x on purpose.** `firebase_messaging` 17 brings Firebase's iOS SDK 13,
+  which needs `gtm-session-fetcher` 4 while `google_sign_in_ios` needs 3, so the iOS build cannot resolve its
+  Swift packages (it failed in CI on this PR). 17 also moves from registration tokens to Firebase Installation
+  IDs; when `google_sign_in` moves to `gtm-session-fetcher` 4, upgrade and switch the server sender at once.
 - **Backend**: FCM sender, worker scheduling through pg_cron + pg_net, stale-push expiry and dead-token
   clearing (`…20261026120000_push_dispatch`, 12 assertions; 8 Deno tests for the sender).
 

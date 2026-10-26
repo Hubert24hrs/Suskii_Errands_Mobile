@@ -30,13 +30,11 @@ abstract interface class PushMessaging {
   Stream<Map<String, String>> get taps;
 }
 
-// Registration tokens, not Firebase Installation IDs: firebase_messaging 17
-// deprecates the token calls in favour of FIDs, but the server sends with the
-// documented HTTP v1 `token` target (supabase/functions/_shared/notifications/
-// fcm.ts), and Firebase supports both during the transition. Moving to FIDs
-// is a server and app change together, made when the v1 FID target is
-// documented.
-// ignore_for_file: deprecated_member_use
+// firebase_messaging 16, not 17: 17 brings Firebase's iOS SDK 13, which needs
+// gtm-session-fetcher 4 while google_sign_in_ios still needs 3, so the iOS
+// build cannot resolve. 17 also moves from registration tokens to Firebase
+// Installation IDs; when google_sign_in moves, upgrade and switch the server
+// (supabase/functions/_shared/notifications/fcm.ts) in the same change.
 class FirebasePushMessaging implements PushMessaging {
   FirebaseMessaging get _m => FirebaseMessaging.instance;
 
