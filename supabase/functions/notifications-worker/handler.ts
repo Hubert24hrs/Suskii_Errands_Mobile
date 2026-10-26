@@ -98,6 +98,7 @@ export function createNotificationsWorker(deps: WorkerDeps) {
 
         const targets = channels.includes("push") ? await deps.pushTargets(message.userId) : [];
         let anySent = false;
+        let anyFailed = false;
 
         for (const channel of channels) {
           const sender = deps.senders.get(channel);
@@ -126,21 +127,26 @@ export function createNotificationsWorker(deps: WorkerDeps) {
             };
           }
 
+          // Nobody to push to is not a failure: the person has not opened the app on a phone yet,
+          // and retrying will not give them one.
+          const noDevice = !result.ok && result.reason === "no_registered_device";
           await deps.recordDelivery(
             message.notificationId,
             message.userId,
             channel,
             result.provider,
-            result.ok ? "sent" : "failed",
+            result.ok ? "sent" : noDevice ? "skipped" : "failed",
             result.ok ? undefined : (result.reason ?? "unknown"),
           );
           if (result.ok) {
             anySent = true;
             delivered++;
+          } else if (!noDevice) {
+            anyFailed = true;
           }
         }
 
-        if (anySent) {
+        if (anySent || !anyFailed) {
           await deps.complete(event.id);
           completed++;
         } else {

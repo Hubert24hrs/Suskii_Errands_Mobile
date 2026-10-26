@@ -1,0 +1,4 @@
+What's new
+- Notifications: Suskii now tells you about new offers, job updates and messages, even when the app is closed
+- Tapping a notification opens the right errand
+- Links in the app now point to suskiierrand.com
