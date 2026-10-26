@@ -7,11 +7,14 @@ secret is read without echo), checks their shape, and stores them as one JSON ve
 function on every deploy. With --supabase-ref it also sets them on that Supabase project
 directly, which the testers' sandbox needs because the pipeline never deploys to it (RB-15 §3.4).
 
-Where to find them: LiveKit Cloud -> your project -> Settings -> Keys -> Create key. Copy the
-URL, the key and the secret straight into this script's prompts, never into chat or a file.
+Where to find them: LiveKit Cloud -> your project -> Settings -> Keys -> open the key. The page
+masks the secret and offers no copy button for it alone, only for the environment block
+(LIVEKIT_URL=..., LIVEKIT_API_KEY=..., LIVEKIT_API_SECRET=...). So either copy that block and pass
+--from-clipboard, which reads the three values from the clipboard without showing them, or type
+them into the prompts. Never into chat or a file.
 
 Usage:
-  python infra/tools/set_livekit_credentials.py <gcp-project> [--supabase-ref <ref>]
+  python infra/tools/set_livekit_credentials.py <gcp-project> [--supabase-ref <ref>] [--from-clipboard]
 """
 
 import getpass
@@ -39,6 +42,21 @@ def private_file(content):
     return path
 
 
+def from_clipboard():
+    """The three values from a copied LiveKit environment block; nothing is printed."""
+    cmd = "powershell -NoProfile -Command Get-Clipboard" if os.name == "nt" else "pbpaste"
+    text = run(cmd).stdout
+    found = {}
+    for line in text.splitlines():
+        m = re.match(r"\s*(?:export\s+)?(LIVEKIT_URL|LIVEKIT_API_KEY|LIVEKIT_API_SECRET)\s*=\s*(\S+)\s*$", line)
+        if m:
+            found[m.group(1)] = m.group(2).strip("\"'")
+    missing = [k for k in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET") if k not in found]
+    if missing:
+        sys.exit(f"the clipboard has no {', '.join(missing)}: copy the key's environment block in LiveKit Cloud")
+    return found["LIVEKIT_URL"], found["LIVEKIT_API_KEY"], found["LIVEKIT_API_SECRET"]
+
+
 def main():
     args = sys.argv[1:]
     if not args or args[0].startswith("-"):
@@ -50,13 +68,17 @@ def main():
     if ref and not re.fullmatch(r"[a-z]{20}", ref):
         sys.exit("project ref must be 20 lowercase letters")
 
-    url = input("LiveKit project URL (wss://...livekit.cloud): ").strip()
+    if "--from-clipboard" in args:
+        url, api_key, api_secret = from_clipboard()
+        print("Read the URL, the key and the secret from the clipboard.")
+    else:
+        url = input("LiveKit project URL (wss://...livekit.cloud): ").strip()
+        api_key = input("LiveKit API key: ").strip()
+        api_secret = getpass.getpass("LiveKit API secret (not shown): ").strip()
     if not re.fullmatch(r"wss://[a-z0-9-]+(\.[a-z0-9-]+)+", url, re.I):
         sys.exit("that is not a wss:// project URL")
-    api_key = input("LiveKit API key: ").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", api_key):
         sys.exit("that does not look like a LiveKit API key")
-    api_secret = getpass.getpass("LiveKit API secret (not shown): ").strip()
     if len(api_secret) < 16 or re.search(r"\s|'", api_secret):
         sys.exit("that does not look like a LiveKit API secret")
 
