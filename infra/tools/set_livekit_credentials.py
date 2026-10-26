@@ -79,7 +79,12 @@ def main():
         sys.exit("that is not a wss:// project URL")
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", api_key):
         sys.exit("that does not look like a LiveKit API key")
-    if len(api_secret) < 16 or re.search(r"\s|'", api_secret):
+    if "•" in api_secret or "*" in api_secret:
+        # LiveKit shows a key's secret only when the key is created; afterwards the page (and its
+        # copy button) carries dots, which would be stored as the secret and fail every call.
+        sys.exit("that is the masked secret (dots), not the secret: create a new key in LiveKit Cloud "
+                 "and copy it from the window that opens")
+    if len(api_secret) < 16 or not re.fullmatch(r"[A-Za-z0-9_-]+", api_secret):
         sys.exit("that does not look like a LiveKit API secret")
 
     payload = json.dumps({"url": url, "api_key": api_key, "api_secret": api_secret}, separators=(",", ":"))
