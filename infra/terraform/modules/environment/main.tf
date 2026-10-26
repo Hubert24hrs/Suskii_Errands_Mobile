@@ -472,8 +472,15 @@ resource "google_billing_budget" "monthly" {
   }
 }
 
+# A check without the `monitoring` key gets a 401 from the health function on every probe and pages
+# on-call about nothing, so both checks wait for the key as well as the project
+# (`supabase/tools/set_health_key.py <ref> infra-<env>` sets it).
+locals {
+  uptime_checks = var.supabase_project_ref != null && var.health_check_api_key != null
+}
+
 resource "google_monitoring_uptime_check_config" "supabase_health" {
-  count        = var.supabase_project_ref == null ? 0 : 1
+  count        = local.uptime_checks ? 1 : 0
   project      = var.project_id
   display_name = "suskii-${var.environment}-health"
   timeout      = "10s"
@@ -506,7 +513,7 @@ resource "google_monitoring_uptime_check_config" "supabase_health" {
 }
 
 resource "google_monitoring_alert_policy" "health_failing" {
-  count                 = var.supabase_project_ref == null ? 0 : 1
+  count                 = local.uptime_checks ? 1 : 0
   project               = var.project_id
   display_name          = "suskii-${var.environment}: health check failing"
   combiner              = "OR"
@@ -540,7 +547,7 @@ resource "google_monitoring_alert_policy" "health_failing" {
 # must never be blocked by one. Three regions, so a probe a minute stays well inside a Free project's
 # Edge Function allowance; two of three failing pages, so one flaky checker does not.
 resource "google_monitoring_uptime_check_config" "sos_alarm" {
-  count            = var.supabase_project_ref == null ? 0 : 1
+  count            = local.uptime_checks ? 1 : 0
   project          = var.project_id
   display_name     = "suskii-${var.environment}-sos-alarm"
   timeout          = "10s"
@@ -574,7 +581,7 @@ resource "google_monitoring_uptime_check_config" "sos_alarm" {
 }
 
 resource "google_monitoring_alert_policy" "sos_unacknowledged" {
-  count                 = var.supabase_project_ref == null ? 0 : 1
+  count                 = local.uptime_checks ? 1 : 0
   project               = var.project_id
   display_name          = "suskii-${var.environment}: SOS unacknowledged"
   combiner              = "OR"
