@@ -32,7 +32,9 @@ PLACEHOLDER_HOOK = "v1,whsec_Y2ktb25seS1wbGFjZWhvbGRlci1ub3QtYS1zZWNyZXQ="
 
 
 def run(cmd, **kwargs):
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True, **kwargs)
+    # The Supabase CLI prints UTF-8; Windows would decode it as cp1252 and fail on a byte it lacks.
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          **kwargs)
 
 
 def private_file(content):
