@@ -96,6 +96,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Play symbolicates native crashes from these; build 20 shipped without them and Play
+            // warned that native crash reports would be unreadable (RB-15).
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
     }
 }
