@@ -7761,7 +7761,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261024130000_nearest_first.sql"
+      "defined_in": "20261026180000_matching_set_based.sql"
     },
     {
       "name": "open_dispute",
