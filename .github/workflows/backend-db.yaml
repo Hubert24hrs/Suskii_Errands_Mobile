@@ -52,6 +52,16 @@ jobs:
       - name: RLS matrix coverage
         run: python supabase/tools/check_rls_matrix.py .
 
+      # db push refuses a migration older than one already applied, so two branches that merge
+      # out of timestamp order leave main undeployable (three staging deploys, 2026-10-26).
+      - name: Migrations added after the base branch's newest
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          python supabase/tools/check_migration_order.py FETCH_HEAD
+
       # Realtime stays up for the admin console's SOS feed (`ops:sos`); mailpit for the website's
       # email sign-up (tests/web-customer-e2e/signup.spec.ts), which GoTrue rolls back when it
       # cannot send the code.

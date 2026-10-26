@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops / the client |
 | Severity | Not an incident. A planned change with a rollback, run to a checklist |
-| Last rehearsed | **2026-10-26, on staging**, the database half with a fake country (`ZZ`) taken `disabled → beta → live → disabled` through the four-eyes flow by three temporary super admins, inside a block that rolled itself back (rehearsal record below). Everything refused what it should and applied what it should. **Finding:** `countries.approved_by` recorded the proposer, not the approver (fixed in `…20261026160000_country_approved_by`). Not rehearsed: the sign-offs in *The things the gap check cannot see*, the week of watching, and the apps seeing the change at their next bootstrap |
+| Last rehearsed | **2026-10-26, on staging**, the database half with a fake country (`ZZ`) taken `disabled → beta → live → disabled` through the four-eyes flow by three temporary super admins, inside a block that rolled itself back (rehearsal record below). Everything refused what it should and applied what it should. **Finding:** `countries.approved_by` recorded the proposer, not the approver (fixed in `…20261026195000_country_approved_by`). Not rehearsed: the sign-offs in *The things the gap check cannot see*, the week of watching, and the apps seeing the change at their next bootstrap |
 | Related | OD-07, OD-12, OD-14, OD-23, OD-24; `docs/research/country-packs/*.yaml`; ADR-0001; RB-13, RB-14, RB-01 |
 
 ## What "live" means
