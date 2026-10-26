@@ -88,3 +88,11 @@ advertising ID, audio (until calls and the voice concierge exist), background lo
   because users cannot send money to each other. Play asked for no documents for either feature.
   This is provisional until counsel answers OD-12. Declaring "no financial features" would have
   certified something untrue.
+  **Superseded 2026-10-26: Google rejected that submission** under *Play Console Requirements*.
+  Only organisation developer accounts may distribute "financial products and services", and
+  Suskii's Play account (Hubert.dev) is a personal one. The declaration now says *My app doesn't
+  provide any financial features*. That is accurate for build 20, where no money moves: there is
+  no gateway, so nobody can pay, be paid or earn referral cash. Google's Financial Services policy
+  defines financial products as those "related to the management or investment of money", so the
+  earlier reasoning above overstated what a services marketplace declares. **Before any Play build
+  takes payments, the account question in OD-29 must be settled.**
