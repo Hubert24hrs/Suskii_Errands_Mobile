@@ -46,7 +46,7 @@ variable "alert_emails" {
 }
 
 variable "supabase_project_ref" {
-  description = "Supabase project ref. Null skips uptime monitoring until the project exists."
+  description = "Supabase project ref. Null skips uptime monitoring until the project exists; so does a null health_check_api_key."
   type        = string
   default     = null
 }
