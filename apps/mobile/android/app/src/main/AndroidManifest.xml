@@ -30,6 +30,10 @@
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- RECORD_AUDIO and BLUETOOTH otherwise imply both as required hardware, which took build 21
+         off 30 devices on Play. Without a microphone the app still installs; only calls fail. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <application
         android:label="${appName}"
