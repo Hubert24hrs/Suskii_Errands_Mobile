@@ -15,6 +15,10 @@ them into the prompts. Never into chat or a file.
 
 Usage:
   python infra/tools/set_livekit_credentials.py <gcp-project> [--supabase-ref <ref>] [--from-clipboard]
+  python infra/tools/set_livekit_credentials.py <gcp-project> --copy-from <other-gcp-project>
+
+--copy-from reuses the credentials another project already holds (the latest livekit-credentials
+version there), for an environment that shares the LiveKit project.
 """
 
 import getpass
@@ -59,6 +63,17 @@ def from_clipboard():
     return found["LIVEKIT_URL"], found["LIVEKIT_API_KEY"], found["LIVEKIT_API_SECRET"]
 
 
+def from_project(source):
+    """The three values from another project's latest livekit-credentials version; nothing is printed."""
+    if not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", source):
+        sys.exit("--copy-from needs a GCP project id")
+    r = run(f"gcloud secrets versions access latest --secret {SECRET} --project {source}")
+    if r.returncode != 0:
+        sys.exit(f"{source} has no {SECRET} version to copy")
+    creds = json.loads(r.stdout)
+    return creds["url"], creds["api_key"], creds["api_secret"]
+
+
 def main():
     args = sys.argv[1:]
     if not args or args[0].startswith("-"):
@@ -70,7 +85,11 @@ def main():
     if ref and not re.fullmatch(r"[a-z]{20}", ref):
         sys.exit("project ref must be 20 lowercase letters")
 
-    if "--from-clipboard" in args:
+    if "--copy-from" in args:
+        source = args[args.index("--copy-from") + 1] if args.index("--copy-from") + 1 < len(args) else ""
+        url, api_key, api_secret = from_project(source)
+        print(f"Copying the URL, the key and the secret from {source}.")
+    elif "--from-clipboard" in args:
         url, api_key, api_secret = from_clipboard()
         print("Read the URL, the key and the secret from the clipboard.")
     else:
