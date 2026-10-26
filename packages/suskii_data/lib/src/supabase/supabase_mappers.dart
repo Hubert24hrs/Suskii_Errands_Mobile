@@ -1113,3 +1113,63 @@ KycStepStatus kycOverallRollup(
   }
   return KycStepStatus.inProgress;
 }
+
+/// An `ai_messages` row (Ask Suskii). `structured_draft` is the concierge's
+/// slot state as snake_case jsonb (contracts/v1 `/concierge`), never money.
+ConciergeMessage conciergeMessageFromRow(Map<String, dynamic> row) =>
+    ConciergeMessage(
+      id: SupabaseGateway.asId(row['id']),
+      conversationId: SupabaseGateway.asId(row['conversation_id']),
+      role: row['role'] == 'assistant'
+          ? ConciergeRole.assistant
+          : ConciergeRole.user,
+      text: row['body'] as String? ?? '',
+      createdAt: SupabaseGateway.asTimestamp(row['created_at']),
+      structuredDraft: conciergeDraftFromWire(row['structured_draft']),
+      proposedAction: conciergeActionFromWire(row['proposed_action']),
+    );
+
+ConciergeProposedAction conciergeActionFromWire(Object? value) =>
+    switch (value) {
+      'show_publish_card' => ConciergeProposedAction.showPublishCard,
+      'show_offer_comparison' => ConciergeProposedAction.showOfferComparison,
+      'show_sos_card' => ConciergeProposedAction.showSosCard,
+      'handoff_to_form' => ConciergeProposedAction.handoffToForm,
+      _ => ConciergeProposedAction.none,
+    };
+
+ConciergeDraft? conciergeDraftFromWire(Object? value) {
+  if (value is! Map) return null;
+  final draft = Map<String, dynamic>.from(value);
+  String? text(String key) {
+    final v = draft[key];
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  final pickup = text('pickup_label');
+  final destination = text('destination_label');
+  final scheduledAt = text('scheduled_at');
+  final missing = draft['missing_slots'];
+  return ConciergeDraft(
+    isCustomCategory: draft['is_custom_category'] == true,
+    missingSlots: <String>[
+      if (missing is List)
+        for (final slot in missing) slot.toString(),
+    ],
+    categoryId: text('category_id'),
+    description: text('description'),
+    pickup: pickup == null
+        ? null
+        : PlaceRef(label: pickup, landmarkNote: text('pickup_landmark_note')),
+    destination: destination == null
+        ? null
+        : PlaceRef(
+            label: destination,
+            landmarkNote: text('destination_landmark_note'),
+          ),
+    urgency: text('urgency') == null ? null : urgencyFromWire(draft['urgency']),
+    scheduledAt: scheduledAt == null
+        ? null
+        : DateTime.tryParse(scheduledAt)?.toUtc(),
+  );
+}

@@ -164,6 +164,65 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
 
+  /concierge:
+    post:
+      tags: [customer]
+      operationId: conciergeTurn
+      security:
+        - supabaseJwt: []
+      summary: One turn of Ask Suskii, the text concierge (ADR-0024).
+      description: >
+        Open the conversation first with the RPC `concierge_start` (idempotent; `ERR_FEATURE_UNAVAILABLE`
+        when `concierge.text` is off for the caller's country). Each message is then one call here, with
+        a fresh idempotency key per message that is held across retries: a retried key returns the
+        recorded reply and never a second model call. Read the history from `ai_messages` (own rows,
+        redacted as stored); a `concierge.turn` broadcast on `user:{id}` says it changed.
+
+        The concierge never publishes, accepts, pays or sets money. A finished errand comes back as
+        `proposed_action: handoff_to_form` with the draft: open the request form with it, where the
+        customer sets the map pin and the price and publishes. A switched-off concierge, a limit, or a
+        model that is down is also a `200` with `handoff_to_form`, never an error, so the app is never
+        blocked on the AI. `show_sos_card` means show the SOS card and the emergency numbers first.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conversation_id, text, idempotency_key]
+              properties:
+                conversation_id: { type: string, format: uuid }
+                text: { type: string, minLength: 1, maxLength: 1000 }
+                idempotency_key: { type: string, minLength: 16, maxLength: 128 }
+      responses:
+        '200':
+          description: The reply, as recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reply, proposed_action, message]
+                properties:
+                  reply: { type: string, description: 'Redacted and filtered: no links off the app, no numbers.' }
+                  proposed_action:
+                    type: string
+                    enum: [none, handoff_to_form, show_sos_card]
+                  draft:
+                    type: object
+                    nullable: true
+                    description: >
+                      Slots so far, snake_case: category_key, category_id, is_custom_category,
+                      custom_category_label, description, pickup_label, pickup_landmark_note,
+                      destination_label, destination_landmark_note, urgency, scheduled_at,
+                      missing_slots. Never a price, a float or a declared value.
+                  message:
+                    type: object
+                    description: The assistant row as stored in `ai_messages` (id, body, structured_draft, proposed_action, language, created_at).
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
   /auth-send-sms:
     post:
       tags: [platform]

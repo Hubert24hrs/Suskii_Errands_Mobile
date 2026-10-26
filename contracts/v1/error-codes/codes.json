@@ -263,14 +263,25 @@
     },
     {
       "code": "ERR_FEATURE_UNAVAILABLE",
-      "status": "planned",
+      "status": "implemented",
       "category": "features",
       "surface": "client",
-      "sqlstate": null,
-      "http_status": null,
+      "sqlstate": "P0001",
+      "http_status": 400,
       "retryable": false,
-      "description": "Feature switched off by a flag or not configured (RB-13).",
+      "description": "Feature switched off by a flag or not configured (RB-13). Raised by concierge_start when concierge.text is off for the caller's country.",
       "client_action": "Hide the entry point; offer the fallback flow."
+    },
+    {
+      "code": "ERR_CONVERSATION_NOT_FOUND",
+      "status": "implemented",
+      "category": "features",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No concierge conversation with that id belongs to the caller.",
+      "client_action": "Start a new conversation."
     },
     {
       "code": "ERR_ILLEGAL_TRANSITION",

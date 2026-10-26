@@ -16,27 +16,3 @@ class SupabasePromoRepository implements PromoRepository {
   Future<Promo> redeemPromo(String code, {required String idempotencyKey}) =>
       throw const AppError(ErrorCodes.featureUnavailable);
 }
-
-/// The concierge needs the AI service, which waits on Vertex AI and GCP
-/// billing (client action 1). Until then it is unavailable, not simulated.
-class SupabaseConciergeRepository implements ConciergeRepository {
-  const SupabaseConciergeRepository();
-
-  @override
-  Future<ConciergeConversation> startConversation({
-    required String idempotencyKey,
-  }) => throw const AppError(ErrorCodes.featureUnavailable);
-
-  @override
-  Stream<List<ConciergeMessage>> watchMessages(String conversationId) =>
-      Stream<List<ConciergeMessage>>.error(
-        const AppError(ErrorCodes.featureUnavailable),
-      );
-
-  @override
-  Stream<String> sendMessage(
-    String conversationId,
-    String text, {
-    required String idempotencyKey,
-  }) => Stream<String>.error(const AppError(ErrorCodes.featureUnavailable));
-}

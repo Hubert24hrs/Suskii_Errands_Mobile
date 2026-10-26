@@ -16,6 +16,7 @@ AppError mapSupabaseError(Object error) {
   if (error is AppError) return error;
   if (error is PostgrestException) return _mapPostgrest(error);
   if (error is AuthException) return _mapAuth(error);
+  if (error is FunctionException) return _mapFunction(error);
   if (error is SocketException || error is HttpException) {
     return const AppError(ErrorCodes.network);
   }
@@ -38,6 +39,17 @@ AppError _mapPostgrest(PostgrestException e) {
     'PGRST303' => const AppError(ErrorCodes.unauthenticated),
     _ => const AppError(ErrorCodes.unknown),
   };
+}
+
+/// An Edge Function answers `{error: {code}}` (contracts/v1
+/// edge-functions.openapi.yaml); the code is what the UI localizes.
+AppError _mapFunction(FunctionException e) {
+  final details = e.details;
+  final error = details is Map ? details['error'] : null;
+  final code = error is Map ? error['code'] : null;
+  if (code is String && _wireCode.hasMatch(code)) return AppError(code);
+  if (e.status == 401) return const AppError(ErrorCodes.unauthenticated);
+  return const AppError(ErrorCodes.unknown);
 }
 
 AppError _mapAuth(AuthException e) {

@@ -1,7 +1,10 @@
 # `services/ai` — the AI service, and what exists of it
 
-The FastAPI service on Cloud Run is **not built**: it needs Vertex AI and a GCP project with
-billing (timeline action 1), and a Gemini gateway written against neither is a guess.
+**Ask Suskii, the text concierge, is built** (2026-10-26) as the `concierge` Edge Function on Vertex
+AI, not as the FastAPI service the plan drew (ADR-0024). Its code is in `supabase/functions/concierge`
+and `supabase/functions/_shared/ai`; its database half is `…20261026190000_concierge`; its evals are
+`supabase/functions/concierge/evals` (golden 5/5, red-team 11/11 on 2026-10-26). This directory
+keeps the allowlist, which binds every AI surface whatever runs it.
 
 What is here is the part of `docs/plan/ai-design.md` that does not need a model, and the part that
 has to exist *before* one does.
@@ -40,8 +43,8 @@ admin dashboard's numbers.
 
 | Piece | Needs |
 |---|---|
-| FastAPI service, Gemini gateway, model routing, cost tracking | Vertex AI + GCP billing (action 1) |
-| Redaction (§6.1) and the output filter (§6.2) | The service; the detectors are testable without a model and belong with it |
-| Golden and red-team eval suites in CI (§8) | A model to evaluate. The red-team *cases* are design, not code, and live in §8.2 |
+| ~~FastAPI service, Gemini gateway, model routing, cost tracking~~ | Built for the concierge as an Edge Function (ADR-0024); token counts per turn in `ai_messages` |
+| ~~Redaction (§6.1) and the output filter (§6.2)~~ | Built: `_shared/ai/redact.ts`, `concierge/filter.ts` |
+| Golden and red-team eval suites (§8) | Built and run by hand (`concierge/evals/run.ts`); not yet a CI job, because each run calls Vertex and needs a key in CI |
 | LiveKit Agents voice concierge | A LiveKit account (action 11) |
 | Embeddings for `classify_request` | ADR-0006 must pick a model before a vector dimension can be fixed |

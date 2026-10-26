@@ -27,6 +27,7 @@
       "offer.{status}"
     ],
     "user:{id}": [
+      "concierge.turn",
       "notification"
     ]
   }

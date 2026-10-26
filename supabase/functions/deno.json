@@ -1,6 +1,7 @@
 {
   "workspace": [
     "./auth-send-sms",
+    "./concierge",
     "./device-integrity",
     "./health",
     "./kyc-document-url",

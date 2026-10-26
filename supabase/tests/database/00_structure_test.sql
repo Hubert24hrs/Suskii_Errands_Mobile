@@ -117,6 +117,8 @@ SELECT is(
        'public.set_initial_country', 'public.create_meetup', 'public.list_meetups',
        'public.get_meetup', 'public.my_meetups', 'public.join_meetup', 'public.leave_meetup',
        'public.cancel_meetup', 'public.meetup_attendees',
+       -- Ask Suskii, the concierge (20261026190000).
+       'public.concierge_start', 'public.concierge_begin_turn', 'public.concierge_record_turn',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',

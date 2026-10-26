@@ -160,9 +160,8 @@ final referralRepositoryProvider = Provider<ReferralRepository>((ref) {
 
 final conciergeRepositoryProvider = Provider<ConciergeRepository>((ref) {
   ref.watch(sessionUserIdProvider);
-  if (ref.watch(supabaseGatewayProvider) != null) {
-    return const SupabaseConciergeRepository();
-  }
+  final gateway = ref.watch(supabaseGatewayProvider);
+  if (gateway != null) return SupabaseConciergeRepository(gateway);
   return MockConciergeRepository(
     ref.watch(mockDatabaseProvider),
     ref.watch(mockBehaviorProvider),

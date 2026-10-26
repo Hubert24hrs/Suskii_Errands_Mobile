@@ -9,6 +9,7 @@ locals {
   }, var.labels)
 
   apis = [
+    "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
     "bigquery.googleapis.com",
     "billingbudgets.googleapis.com",
@@ -264,6 +265,21 @@ resource "google_project_iam_member" "fcm_sender" {
   project = var.project_id
   role    = "roles/firebasecloudmessaging.admin"
   member  = "serviceAccount:${google_service_account.fcm_sender.email}"
+}
+
+# Ask Suskii: the concierge Edge Function calls Vertex AI as this account (ADR-0024). It may call
+# models and nothing else. Like FCM's, its key goes straight to the `vertex-service-account` secret
+# by `supabase/tools/set_vertex_key.py` and never through Terraform state.
+resource "google_service_account" "concierge_vertex" {
+  project      = var.project_id
+  account_id   = "concierge-vertex"
+  display_name = "Ask Suskii calling Vertex AI (${var.environment})"
+}
+
+resource "google_project_iam_member" "concierge_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.concierge_vertex.email}"
 }
 
 resource "google_service_account" "backup_worker" {

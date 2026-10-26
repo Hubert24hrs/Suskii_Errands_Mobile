@@ -12,7 +12,7 @@
 // a title key and a request id. The visible text is the brand and a generic line, so a lock screen
 // shows that something happened and not what.
 
-import { importPKCS8, SignJWT } from "jose";
+import { type ServiceAccount, ServiceAccountTokens } from "../google/access_token.ts";
 import {
   type DeliveryResult,
   type NotificationMessage,
@@ -20,13 +20,6 @@ import {
   pushPayload,
   type PushTarget,
 } from "./sender.ts";
-
-export interface ServiceAccount {
-  project_id: string;
-  client_email: string;
-  private_key: string;
-  token_uri: string;
-}
 
 export interface FcmSenderOptions {
   serviceAccount: ServiceAccount;
@@ -42,24 +35,17 @@ const BODY = "You have a new update. Open the app to see it.";
 // A push that arrives an hour late is noise; the in-app inbox still has it.
 const TTL = "3600s";
 
-export function parseServiceAccount(json: string): ServiceAccount {
-  const raw = JSON.parse(json) as Partial<ServiceAccount>;
-  for (const k of ["project_id", "client_email", "private_key", "token_uri"] as const) {
-    if (typeof raw[k] !== "string" || raw[k] === "") throw new Error(`service account: missing ${k}`);
-  }
-  return raw as ServiceAccount;
-}
+export { parseServiceAccount, type ServiceAccount } from "../google/access_token.ts";
 
 export class FcmSender implements NotificationSender {
   readonly name = "fcm";
   readonly channel = "push" as const;
-  private token?: { value: string; expiresAt: number };
+  private readonly tokens: ServiceAccountTokens;
   private readonly fetchFn: typeof fetch;
-  private readonly now: () => number;
 
   constructor(private readonly options: FcmSenderOptions) {
     this.fetchFn = options.fetch ?? fetch;
-    this.now = options.now ?? Date.now;
+    this.tokens = new ServiceAccountTokens(options.serviceAccount, SCOPE, { fetch: options.fetch, now: options.now });
   }
 
   async send(message: NotificationMessage, targets: PushTarget[], signal: AbortSignal): Promise<DeliveryResult> {
@@ -69,7 +55,7 @@ export class FcmSender implements NotificationSender {
     const data = Object.fromEntries(
       Object.entries(pushPayload(message)).map(([k, v]) => [k, String(v)]),
     );
-    const accessToken = await this.accessToken(signal);
+    const accessToken = await this.tokens.get(signal);
     const url = `https://fcm.googleapis.com/v1/projects/${this.options.serviceAccount.project_id}/messages:send`;
 
     let sent = 0;
@@ -100,33 +86,6 @@ export class FcmSender implements NotificationSender {
       }
     }
     return sent > 0 ? { ok: true, provider: this.name } : { ok: false, provider: this.name, reason: lastReason };
-  }
-
-  private async accessToken(signal: AbortSignal): Promise<string> {
-    const nowS = Math.floor(this.now() / 1000);
-    if (this.token && this.token.expiresAt - 60 > nowS) return this.token.value;
-
-    const sa = this.options.serviceAccount;
-    const key = await importPKCS8(sa.private_key, "RS256");
-    const assertion = await new SignJWT({ scope: SCOPE })
-      .setProtectedHeader({ alg: "RS256", typ: "JWT" })
-      .setIssuer(sa.client_email)
-      .setAudience(sa.token_uri)
-      .setIssuedAt(nowS)
-      .setExpirationTime(nowS + 3600)
-      .sign(key);
-
-    const response = await this.fetchFn(sa.token_uri, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
-      signal,
-    });
-    if (!response.ok) throw new Error(`fcm token exchange failed: ${response.status}`);
-    const body = await response.json() as { access_token?: string; expires_in?: number };
-    if (!body.access_token) throw new Error("fcm token exchange returned no access token");
-    this.token = { value: body.access_token, expiresAt: nowS + (body.expires_in ?? 3600) };
-    return body.access_token;
   }
 }
 

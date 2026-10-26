@@ -6,7 +6,21 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**MINOR**: Ask Suskii, the text concierge (ADR-0024). Additive: three RPCs, two readable tables, one
+Edge Function, one error code.
+
 ### Added
+- **`concierge_start(p_idempotency_key)`** → `{id, created_at, language}`. `ERR_FEATURE_UNAVAILABLE` when
+  `concierge.text` is off for the caller's country, which makes the flag a server-side switch.
+- **`concierge_begin_turn`** and **`concierge_record_turn`**: called by the `concierge` function as the
+  customer. An app does not call them.
+- **`POST /concierge`** (Edge Function): one turn. The second Edge Function an app calls.
+- **`ai_conversations`** (`id, created_at, language, last_turn_at`) and **`ai_messages`** (`id,
+  conversation_id, role, body, structured_draft, proposed_action, created_at`): own rows only, redacted
+  as stored. Token counts and model ids are not granted.
+- **`ERR_CONVERSATION_NOT_FOUND`**. `ERR_FEATURE_UNAVAILABLE` is now raised by the server, not only
+  client-side.
+- Realtime: `concierge.turn` on `user:{id}`, payload `{conversation_id}`.
 - `ERR_NOTIFICATION_STALE` (internal): a notification's push was dropped because it reached the dispatcher more than `notifications.push_max_age_minutes` after it was raised. No client sees it; the inbox row still exists.
 - `public.dispatch_clear_push_token(uuid)`, granted to `service_role` only, so it is not in the client RPC catalogue.
 - `health?scope=safety` (Edge Function, monitoring key only): RB-06's SOS alarm, backed by `public.get_safety_alarm()` (`service_role` only). No app calls either.

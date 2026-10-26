@@ -45,5 +45,6 @@ Every major technical decision gets an ADR (spec: `agent_claude_code.output_inst
 | [0021](0021-verification-for-providers-only.md) | Identity verification is for service providers; Google and Apple sign-in, with the country set once | Accepted | Owner decision (2026-10-24) | OAuth clients per platform (client action 9) |
 | [0022](0022-nearest-providers-first.md) | The nearest providers first, a Google Map for the pickup, and Nigeria's 37 states as service areas | Accepted | Owner request (2026-10-24) | Maps key and billing (RB-15) |
 | [0023](0023-web-hosting-on-cloudflare.md) | Host the three websites on Cloudflare (OpenNext on Workers), the admin console behind Cloudflare Access | Accepted | Owner decision (2026-10-24), infra I-2 | Domain (action 18), Cloudflare account, production backend |
+| [0024](0024-concierge-as-an-edge-function.md) | Ask Suskii runs as a Supabase Edge Function calling Vertex AI (amends ai-design §3's Cloud Run placement) | Accepted | Go-live goal item 5 (2026-10-26) | Voice, which needs a long-running worker |
 
 Decision refs D-01…D-10 come from [the Phase 0 checkpoint](../research/CHECKPOINT-PHASE-0.md#2-decisions-made). Open client decisions live in [docs/OPEN-DECISIONS.md](../OPEN-DECISIONS.md).

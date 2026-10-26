@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. Tables a client may read directly through PostgREST, with the column and column-level privileges they hold. RLS decides WHICH ROWS -- see docs/plan/rls-policy-matrix.md; these grants decide WHICH COLUMNS. A column absent from an UPDATE grant is server-owned and cannot be written from a client at all.",
-  "count": 70,
+  "count": 72,
   "tables": [
     {
       "name": "public.account_deletion_requests",
@@ -169,6 +169,267 @@
         }
       },
       "defined_in": "20260916120500_reference_and_admin.sql"
+    },
+    {
+      "name": "public.ai_conversations",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "feature",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "country_code",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "language",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "state",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "turn_count",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "last_turn_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "created_at",
+            "id",
+            "language",
+            "last_turn_at"
+          ]
+        }
+      },
+      "defined_in": "20261026190000_concierge.sql"
+    },
+    {
+      "name": "public.ai_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "conversation_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "user_id",
+          "type": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "role",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "body",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": false
+        },
+        {
+          "name": "structured_draft",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "proposed_action",
+          "type": {
+            "type": "string"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "safety_flags",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "language",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "model_id",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "prompt_version",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "tokens_in",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "tokens_out",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "tokens_thought",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "latency_ms",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "tool_calls",
+          "type": {
+            "type": "object"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "idempotency_key",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "created_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        }
+      ],
+      "privileges": {
+        "SELECT": {
+          "authenticated": [
+            "body",
+            "conversation_id",
+            "created_at",
+            "id",
+            "proposed_action",
+            "role",
+            "structured_draft"
+          ]
+        }
+      },
+      "defined_in": "20261026190000_concierge.sql"
     },
     {
       "name": "public.approvals",
