@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Ops (safety desk) — engineering supports, ops leads |
 | Severity | **SEV1, always.** There is no triage step. A false alarm costs a phone call; the other mistake does not have a price |
-| Last rehearsed | **2026-10-13, locally**, the system half only: an SOS raised through the app's own repository was escalated by the `sos-escalate` cron 233 s later (six clean runs, `sos.escalated` in the outbox), and acknowledge → resolve in the console runs on every CI build in the admin end-to-end suite. **The human half is not rehearsed** and cannot be until there is a desk and a phone tree: rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
+| Last rehearsed | **2026-10-26, on staging**, the system half and the desk's function calls (rehearsal record below): escalated 201 s after the SOS, and acknowledge, retry, close and reopen behaved as written. **Finding: an escalation reaches nobody who is not already looking at the console**, because no worker reads SOS events (see *What the system does on its own*). First rehearsed locally 2026-10-13 (233 s). **The human half is not rehearsed** and cannot be until there is a desk and a phone tree: rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
 | Related | Spec SH-24, AD-21; OD-25; `docs/plan/threat-model.md`; RB-01, RB-07, RB-13 |
 
 ## Read this first
@@ -23,8 +23,14 @@ procedure right now, and it needs to be written down before somebody needs it.
 3. If nobody acknowledges within the configured window — **three minutes**, per AD-21 — the
    `sos-escalate` cron (running **every minute**) stamps `escalated_at`, broadcasts `sos.escalated`
    and raises the alarm louder. Because the job runs on the minute, escalation lands **between three
-   and four minutes** after the SOS, not at three exactly (2026-10-13 rehearsal: 233 seconds). Train
-   the desk on three; do not promise anybody three.
+   and four minutes** after the SOS, not at three exactly (2026-10-13: 233 s locally; 2026-10-26: 201 s
+   on staging). Train the desk on three; do not promise anybody three.
+
+   **"Louder" is only on a screen today.** `sos.raised` and `sos.escalated` go to the `ops:sos`
+   broadcast and the outbox, and no worker reads the outbox's `sos` aggregate: nothing pages, emails
+   or pushes anybody. With no console open, an escalated SOS sits unheard. Until an alert exists
+   (launch configuration, Phase 10), **a person must have the console open whenever a live country
+   has users**. That is a staffing rule, not a suggestion.
 4. Status moves `open → acknowledged → dispatched → resolved`, with `false_alarm` as the other end.
 
 The three-minute clock is the only automatic thing here. Everything after it is people.
@@ -114,3 +120,10 @@ that is a complete and honest outcome.
   features people only discover they needed afterwards.
 - `[PARTNER]` Once a partner exists, re-rehearse this whole runbook against them. A phone tree that
   worked in rehearsal against ourselves has proved nothing about them.
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result |
+|---|---|---|---|
+| 2026-10-13 | Local CLI stack | An SOS raised through the app's own repository, left unacknowledged | Escalated by `sos-escalate` after 233 s, `sos.escalated` in the outbox |
+| 2026-10-26 | **Staging** (`suskii-staging`) | `raise_sos` as a rehearsal account (no person involved) at a Lagos point, left unacknowledged; then `update_sos_incident` as a temporary `support_agent` scoped to NG, inside a `DO` block that rolled itself back; then the incident closed as `false_alarm` with a note | Escalated after **201 s**, on the first cron run past three minutes; `sos.raised` and `sos.escalated` in the outbox. On a session without MFA: `ERR_PERMISSION_DENIED`. Acknowledged, with assignee and `ops_ack_at` set; the same key retried answered the same; closed as `false_alarm` with the note and `resolved_at`; reopening refused with `ERR_ILLEGAL_TRANSITION`. **Finding:** both events sat undispatched, because no worker claims the `sos` aggregate, so the escalation alerted nobody. The two rehearsal events were marked dispatched by hand so that no future reader pages on them |
