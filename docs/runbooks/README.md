@@ -31,6 +31,9 @@ nothing and reported success (the commands are now upserts, and a migration crea
 nor four other recorded checks, so none of them could ever fire the uptime alert (fixed).
 **RB-06**: escalation worked and reached nobody, because nothing reads SOS events. Fixed the same
 day by the *SOS unacknowledged* alert (`health?scope=safety`, its own uptime check).
+**RB-05** (the queue half): its queue-depth query failed from the SQL editor and its switch did not
+exist (both fixed), and **no app reads any switch at all**, which makes RB-13 inert on devices
+(HANDOFF part 19).
 
 Two runbooks cannot be fully rehearsed even then, and say so at the top of the file rather than
 pretending otherwise: **RB-11** needs the AI service that Vertex billing blocks, and **RB-12** needs

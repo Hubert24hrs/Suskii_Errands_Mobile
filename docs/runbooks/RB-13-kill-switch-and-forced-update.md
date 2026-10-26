@@ -7,6 +7,13 @@
 | Last rehearsed | **2026-10-26 on staging**: the break-glass upserts below (a flag off globally and per country, a forced update), verified through `get_bootstrap()` and `audit.log`, then backed out (rehearsal record); first rehearsed locally 2026-10-13. The console's four-eyes path is exercised on every CI run by the admin console end-to-end suite. Not rehearsed: a real device picking the change up at its next bootstrap, which needs a build pointed at staging |
 | Related | ERD §1 (`feature_flags`, `remote_config`); `get_bootstrap()`; PRD SH-35, AD-22; ai-design §6.5; RB-01, RB-10, RB-14 |
 
+**Read this first (2026-10-26): on a device, none of these switches does anything yet.** The
+mobile app and web-customer parse `feature_flags` and `min_supported_app_version` out of
+`get_bootstrap()` and no screen reads either: the concierge, voice and PSTN switches hide nothing,
+and a forced update shows no update screen (HANDOFF part 19, X.1 and X.2). The server half below is
+rehearsed and works. Until the app half lands, a bad release is stopped by halting its rollout in
+the store (RB-15), and a misbehaving feature by turning off what it calls on the server.
+
 ## How the switches work
 
 | Mechanism | Table | Reaches clients through | Takes effect |
@@ -30,6 +37,7 @@ A country row overrides the global row for the same key. Every change to these t
 | `calls.pstn_fallback` | flag | No masked phone-call fallback | Telephony vendor problems or cost |
 | `min_supported_app_version` | remote config | Blocks versions below it | Broken or insecure app release |
 | `ops.outbox_max_age_seconds` | remote config (server only) | Health outbox check skipped when absent | Health tuning |
+| `kyc.verification_entry` | flag | Verification entry hidden; "temporarily unavailable" shown instead | Identity vendor outage (RB-05) |
 
 Add a row here whenever a feature ships with a new switch. Features in Phases 3–7 (payments per method, payouts, referrals, promos, SOS partner dispatch) each get one before launch.
 
