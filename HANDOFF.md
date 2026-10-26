@@ -5,6 +5,27 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-26 (part 23) — Claude Code — in-app calls verified on a phone; closed testing open
+
+**Calls work end to end.** On the testers' sandbox, the owner tapped Call on a paid test job in build 22. `call-token`
+started the call; a headless participant (the LiveKit CLI, as the job's provider) answered through `answer_call` and
+joined. LiveKit (Frankfurt) reported both in the room and the phone's microphone track live and unmuted, and the CLI
+subscribed to it. The owner hung up, and the `calls` row closed `ended`, answered, with an 18-second duration. The
+harness is `sandbox_call_test.py` in the session scratchpad (`--latest`, `--cleanup`), and the test jobs are cancelled.
+Two things the run turned up, both fixed: LiveKit Cloud shows a key's secret only when the key is created, so the
+credential script now refuses the masked dots and can read the copied environment block (`--from-clipboard`, #101,
+#102); and on Windows the Supabase CLI's UTF-8 output broke the script's decoding after the secrets had already been
+stored.
+
+**Closed testing is open.** Build 22 is approved and live on the closed track (17:13, 26 Oct) for the "Suskii
+internal" email list, 25 people. The Google Auth Platform app is **in production** (RB-15 §3.5), so Google sign-in
+works for any tester on build 22. Push, Ask Suskii and Google sign-in were each confirmed on the owner's phone the same
+day. Production access needs at least 12 testers opted in for 14 consecutive days, then an application.
+
+Still open: staging has no LiveKit credentials yet, because the second prompt was left unanswered, and no redeploy
+has picked up its new Vertex key. VoIP push and a ringing screen for the callee are not built. #104 moves
+`setup-java` off Node 20.
+
 ## 2026-10-26 (part 22) — Claude Code — builds 21 and 22 on phones; Google sign-in; two app-side fixes
 
 Build 21 (1.2.0) reached the closed track and, for testing, the internal track. On the owner's phone, **Ask
