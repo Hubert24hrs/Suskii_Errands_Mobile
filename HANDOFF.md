@@ -5,7 +5,26 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
-## 2026-10-26 (part 21) — Claude Code — in-app calls over LiveKit
+## 2026-10-26 (part 22) — Claude Code — builds 21 and 22 on phones; Google sign-in; two app-side fixes
+
+Build 21 (1.2.0) reached the closed track and, for testing, the internal track. On the owner's phone, **Ask
+Suskii works**: the sandbox recorded the conversation. Build 22 followed with two changes that touch Kimi's
+paths, both made on the owner's instruction to fix what the phone showed:
+
+- **#98, `AndroidManifest.xml`**: `RECORD_AUDIO` and `BLUETOOTH` imply `android.hardware.microphone` and
+  `android.hardware.bluetooth` as *required*, and Play reported that build 21 dropped 30 devices the previous
+  release supported. Both are now `required="false"`, like GPS and the camera. A device without a microphone
+  installs; only calls fail, through the adapter's existing error path.
+- **#99, `tool/write_release_env.sh` and `mobile-release.yaml`**: `GOOGLE_WEB_CLIENT_ID` was never in a
+  release define file, so `NativeSocialSignIn._google` threw `ERR_FEATURE_UNAVAILABLE` and the Google button
+  read *This feature is not available yet*. It now comes from the environment's variable (and
+  `GOOGLE_IOS_CLIENT_ID` for the iOS job). With the Google Auth Platform clients and the sandbox's Google
+  provider set up (RB-15 §3.5), **Google sign-in works on build 22**, verified on the phone.
+
+For Kimi: an older build shows the concierge as *not available* because the pre-1.2.0 repository was the
+unavailable stub. That is expected and not a bug in build 21. `iOS` still lacks `GOOGLE_REVERSED_CLIENT_ID` in
+its URL schemes; it matters once there is an iOS release.
+
 
 Go-live item 6. The **`call-token`** Edge Function runs `start_call` as the caller, and answers when the other
 person is already ringing them. It signs a LiveKit token for that room only: HS256, microphone only, ten minutes
