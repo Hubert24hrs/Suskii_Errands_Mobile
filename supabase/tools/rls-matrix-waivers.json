@@ -2,9 +2,9 @@
   "$comment": "Divergences between docs/plan/rls-policy-matrix.md and the schema that are deliberate. check_rls_matrix.py refuses to pass on anything not either fixed or listed here, and warns when a waiver stops matching anything -- a waiver for something that no longer diverges is its own small lie. Every entry needs a reason a stranger can evaluate, not just an id.",
   "waivers": [
     {
-      "id": "table:ai_conversations",
-      "reason": "Not built. Phase 7's model half needs Vertex AI and GCP billing (client action 1). The deterministic half shipped without it.",
-      "action": "Build with the FastAPI service."
+      "id": "scope:ai_conversations",
+      "reason": "Built 2026-10-26 (20261026190000) stricter than the matrix: staff read nothing. The matrix gives support a ticket-linked read, and no ticket can name a conversation yet; a support read without a ticket is the S.1 gap. The customer reads their own, redacted.",
+      "action": "When support tickets can name a conversation, add the read through private.support_ticket_scope and remove this waiver."
     },
     {
       "id": "cols:payments:SELECT",

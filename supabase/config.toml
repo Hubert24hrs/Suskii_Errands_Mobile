@@ -485,6 +485,14 @@ verify_jwt = false
 import_map = "./functions/kyc-document-url/deno.json"
 entrypoint = "./functions/kyc-document-url/index.ts"
 
+[functions.concierge]
+enabled = true
+# Ask Suskii (ADR-0024). Called by the app with the customer's session; withSupabase auth "user"
+# verifies the JWT inside the function, and every database call it makes is as that customer.
+verify_jwt = false
+import_map = "./functions/concierge/deno.json"
+entrypoint = "./functions/concierge/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false

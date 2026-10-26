@@ -31,7 +31,7 @@ A country row overrides the global row for the same key. Every change to these t
 
 | Key | Type | Effect when off | Used for |
 |---|---|---|---|
-| `concierge.text` | flag | Concierge hidden; request form only (ai-design §6.5) | AI outage, cost runaway, harmful output |
+| `concierge.text` | flag | **Enforced on the server** (2026-10-26): `concierge_start` refuses a new conversation with `ERR_FEATURE_UNAVAILABLE`, and a conversation already open answers every turn by handing off to the form. Works on every app build, flag reader or not | AI outage, cost runaway, harmful output |
 | `concierge.voice` | flag | Voice entry hidden; text concierge remains | Voice vendor outage, cost |
 | `voice_languages` | remote config `{"en": true, "pcm": false}` | Per-language voice availability (OD-17) | Pidgin voice gate |
 | `calls.pstn_fallback` | flag | No masked phone-call fallback | Telephony vendor problems or cost |

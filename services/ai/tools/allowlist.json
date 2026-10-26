@@ -10,7 +10,9 @@
       "get_availability_summary",
       "rank_offers",
       "get_job_summary",
-      "get_provider_card"
+      "get_provider_card",
+      "concierge_begin_turn",
+      "concierge_record_turn"
     ],
     "admin_assistant": [
       "kpi_jobs_by_state",

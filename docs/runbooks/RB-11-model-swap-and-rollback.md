@@ -4,10 +4,36 @@
 |---|---|
 | Owner | Claude Code / ops |
 | Severity | Not an incident by default. SEV2 if a model is producing harmful output, SEV3 if it is producing expensive output |
-| Last rehearsed | **Cannot be rehearsed yet.** See the blocker below |
+| Last rehearsed | **The eval gate ran 2026-10-26** against `gemini-3.5-flash` (London, then global) for `concierge.text`: golden 5/5, red-team 11/11, twice. A swap itself has not been rehearsed: change the route on staging, run the evals, change it back |
 | Related | ADR-0006 (model IDs in remote config, routing chosen by evaluation); ai-design §3.1, §6.5, §8; OD-17; RB-13, RB-01 |
 
-## Blocker, stated plainly
+## What exists now (2026-10-26)
+
+`concierge.text` is live code (ADR-0024): the `concierge` Edge Function, its route in
+`remote_config` under **`ai.routes.concierge.text`**, and the evals in
+`supabase/functions/concierge/evals/` (`cases.json` and `run.ts`, which reads the route from the
+migration so it tests what ships). The route is an ordered list of
+`{"model", "location", "thinking_budget"}`; the function tries each in turn.
+
+```sql
+-- What is routed now
+SELECT value FROM public.remote_config WHERE key = 'ai.routes.concierge.text';
+-- A swap is a config change (two people: propose_config_change, then review_config_change)
+```
+
+```bash
+cd supabase/functions
+VERTEX_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+  deno run --allow-net --allow-env --allow-read concierge/evals/run.ts <gcp-project>
+```
+
+The run exits non-zero if any red-team case fails; those must all pass before a route changes.
+To evaluate a candidate before proposing it, edit the route in a local copy of the migration and
+run the evals against it; nothing is deployed by doing so.
+
+The other workloads below are still design: only the concierge exists.
+
+## Blocker, as it was (superseded for the concierge)
 
 **The AI service does not exist.** ADR-0006 is accepted and defines the mechanism — model IDs live
 in `remote_config`, never in code, and routing is chosen by evaluation results — but the FastAPI

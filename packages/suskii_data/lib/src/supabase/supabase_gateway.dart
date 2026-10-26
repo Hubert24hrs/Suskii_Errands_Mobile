@@ -28,6 +28,26 @@ class SupabaseGateway {
   /// The signed-in user's auth id, or null when signed out.
   String? get currentAuthUserId => _client.auth.currentUser?.id;
 
+  /// Calls an Edge Function with the signed-in user's session and a JSON body,
+  /// returning the decoded JSON object. A non-2xx answer leaves as [AppError]
+  /// carrying the function's `{error: {code}}`.
+  Future<Map<String, dynamic>> invokeFunction(
+    String name,
+    Map<String, Object?> body,
+  ) async {
+    try {
+      final response = await _client.functions.invoke(name, body: body);
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      if (data is String && data.isNotEmpty) {
+        return Map<String, dynamic>.from(jsonDecode(data) as Map);
+      }
+      return <String, dynamic>{};
+    } on Object catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
   /// Calls an RPC with named arguments, omitting null-valued ones.
   Future<dynamic> rpc(
     String function, [
@@ -190,6 +210,7 @@ class SupabaseGateway {
     Object? filterValue,
     List<String> topics = const <String>[],
     Duration every = const Duration(seconds: 15),
+    Stream<void>? nudges,
   }) {
     String? last;
     Future<List<Map<String, dynamic>>?> read() async {
@@ -205,7 +226,7 @@ class SupabaseGateway {
     }
 
     return _coalesced(
-      refreshes(topics: topics, every: every),
+      refreshes(topics: topics, every: every, nudges: nudges),
       read,
     ).where((rows) => rows != null).cast<List<Map<String, dynamic>>>();
   }
@@ -214,12 +235,15 @@ class SupabaseGateway {
   /// one (what was missed while away), and every [every] regardless — a
   /// broadcast is a courtesy, never a guarantee. A topic the caller may not
   /// join is refused by `private.may_join_topic` and the timer still runs.
+  /// [nudges] is the caller's own "look again", for a write it knows it made.
   Stream<void> refreshes({
     List<String> topics = const <String>[],
     Duration every = const Duration(seconds: 15),
+    Stream<void>? nudges,
   }) {
     final leaves = <void Function()>[];
     Timer? timer;
+    StreamSubscription<void>? nudged;
     late final StreamController<void> controller;
     void tick() {
       if (!controller.isClosed) controller.add(null);
@@ -229,6 +253,7 @@ class SupabaseGateway {
       onListen: () {
         tick();
         timer = Timer.periodic(every, (_) => tick());
+        nudged = nudges?.listen((_) => tick());
         for (final topic in topics) {
           leaves.add(
             _listen(topic, onMessage: (_, _) => tick(), onJoined: tick),
@@ -237,6 +262,7 @@ class SupabaseGateway {
       },
       onCancel: () {
         timer?.cancel();
+        unawaited(nudged?.cancel());
         for (final leave in leaves) {
           leave();
         }

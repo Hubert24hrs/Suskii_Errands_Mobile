@@ -88,6 +88,7 @@ variable "runtime_secret_ids" {
     "google-play-integrity-service-account",
     "sentry-dsn-edge-functions",
     "fcm-service-account",
+    "vertex-service-account",
     "sentry-dsn-ai-service",
     "supabase-service-role-key",
     "supabase-db-password",

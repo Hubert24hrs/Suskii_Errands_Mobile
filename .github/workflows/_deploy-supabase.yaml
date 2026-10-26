@@ -153,13 +153,17 @@ jobs:
           play_sa_raw="$(optional_secret google-play-integrity-service-account)"
           # Without it, push stays on the console sender, which refuses to send in production.
           fcm_sa_raw="$(optional_secret fcm-service-account)"
+          # Without it, Ask Suskii answers every turn by handing the customer to the form.
+          vertex_sa_raw="$(optional_secret vertex-service-account)"
           # Service account JSON is compacted to one line; values are single-quoted for the
           # dotenv parser and contain no single quotes.
           play_sa=""
           if [ -n "$play_sa_raw" ]; then play_sa="$(printf '%s' "$play_sa_raw" | jq -c .)"; fi
           fcm_sa=""
           if [ -n "$fcm_sa_raw" ]; then fcm_sa="$(printf '%s' "$fcm_sa_raw" | jq -c .)"; fi
-          for value in "$sentry_dsn" "$play_sa" "$fcm_sa"; do
+          vertex_sa=""
+          if [ -n "$vertex_sa_raw" ]; then vertex_sa="$(printf '%s' "$vertex_sa_raw" | jq -c .)"; fi
+          for value in "$sentry_dsn" "$play_sa" "$fcm_sa" "$vertex_sa"; do
             if [ -n "$value" ]; then echo "::add-mask::$value"; fi
           done
           {
@@ -170,6 +174,7 @@ jobs:
             printf "ANDROID_PACKAGE_NAME='%s'\n" "$ANDROID_PACKAGE_NAME"
             printf "GOOGLE_PLAY_INTEGRITY_SERVICE_ACCOUNT='%s'\n" "$play_sa"
             if [ -n "$fcm_sa" ]; then printf "FCM_SERVICE_ACCOUNT_JSON='%s'\n" "$fcm_sa"; fi
+            if [ -n "$vertex_sa" ]; then printf "VERTEX_SERVICE_ACCOUNT_JSON='%s'\n" "$vertex_sa"; fi
             printf "IOS_APP_ID='%s'\n" "$IOS_APP_ID"
             printf "APP_ATTEST_ENVIRONMENT='%s'\n" "${APP_ATTEST_ENVIRONMENT:-production}"
             if [ -n "$APP_ATTEST_VALIDATION_CATEGORIES" ]; then

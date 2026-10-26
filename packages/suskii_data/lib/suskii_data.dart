@@ -10,6 +10,7 @@ export 'src/supabase/supabase_auth_repository.dart';
 export 'src/supabase/supabase_bootstrap_repository.dart';
 export 'src/supabase/supabase_catalog_repository.dart';
 export 'src/supabase/supabase_chat_repository.dart';
+export 'src/supabase/supabase_concierge_repository.dart';
 export 'src/supabase/supabase_dispute_repository.dart';
 export 'src/supabase/supabase_error_mapping.dart';
 export 'src/supabase/supabase_gateway.dart';

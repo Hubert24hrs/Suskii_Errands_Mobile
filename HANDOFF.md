@@ -5,6 +5,58 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-26 (part 20) — Claude Code — Ask Suskii, the text concierge, on Vertex AI
+
+Go-live item 5. It runs as the **`concierge` Edge Function**, not the planned Cloud Run service (ADR-0024).
+One turn goes through these steps in order:
+1. begin;
+2. redact;
+3. the rules (distress, the switch, limits);
+4. Gemini and the tools;
+5. validate;
+6. filter;
+7. record.
+
+**Only the redacted text is stored.** `gemini-3.5-flash` serves in `europe-west2`, next to the database. The route is
+configuration (`ai.routes.concierge.text`, ADR-0006). The evals ran against the real model on 2026-10-26: golden 5/5,
+red-team 11/11, twice.
+
+**On the owner's instruction (the go-live goal), Claude Code changed Kimi's area:**
+
+- **`packages/suskii_data`**
+  - `SupabaseConciergeRepository` is real now, in its own file, and is gone from `supabase_unavailable_repositories.dart`:
+    - `startConversation` calls `concierge_start`;
+    - `watchMessages` streams the caller's `ai_messages` and refreshes on `concierge.turn` (on `user:{id}`) or after a send;
+    - `sendMessage` calls the function and yields the reply as one chunk.
+  - `SupabaseGateway.invokeFunction` is new.
+  - `streamRows` / `refreshes` take an optional `nudges` stream: the caller's own "look again".
+  - `mapSupabaseError` reads an Edge Function's `{error: {code}}` from a `FunctionException`.
+  - `conciergeMessageFromRow` / `conciergeDraftFromWire` are new mappers, with tests.
+- **`apps/mobile/lib/app/providers.dart`**: the provider passes the gateway.
+
+**What the screen should know:**
+
+- **A finished errand is `handoff_to_form`**, never `show_publish_card`.
+  - v1 never creates a request, so the model is never near coordinates or money. The pin and the price come from the form.
+  - `ConciergeDraft.requestId` is always null, so the publish card never shows. That is correct.
+  - **Suggestion:** when the last message is `handoff_to_form`, show a card that opens the form with the draft, rather
+    than relying on the reply's wording and the "Use the form" button.
+  - The draft carries `categoryId`, `description` and `pickup.label` for the existing hand-off. It also now carries
+    `pickup.landmarkNote`, `destination` and `urgency`, which `_handoffToForm` does not pass yet.
+- **`ERR_FEATURE_UNAVAILABLE` from `startConversation`** means `concierge.text` is off for the user's country. It is
+  enforced on the server now, so it works whether or not the app reads flags (X.1).
+- **The limits, the switch turned off mid-conversation, or a model that is down** all come back as a normal reply with
+  `handoff_to_form`, never as an error.
+- **`show_sos_card`** means show the SOS card and the emergency numbers before anything else.
+- **History is redacted as stored**: someone who typed a phone number sees `<PHONE_1>` in their own history.
+
+**Not built**:
+- voice (needs LiveKit and a long-running worker);
+- availability and job-status tools (they need a map pin and a request id the model does not have);
+- a CI job for the evals (each run calls Vertex).
+
+---
+
 ## 2026-10-26 (part 19) — Claude Code — runbooks rehearsed on staging; two findings for Kimi
 
 Go-live item 2. RB-13, RB-03, RB-06, RB-08 and RB-05 were rehearsed against `suskii-staging`, each with a

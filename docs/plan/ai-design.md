@@ -34,6 +34,13 @@ These five rules decide every question below. Where a later section looks like a
 
 ## 3. Architecture
 
+> **2026-10-26, ADR-0024:** the text concierge runs as the `concierge` Edge Function, not a FastAPI
+> service on Cloud Run. The pipeline below is the same, steps 1–9, written in TypeScript in
+> `supabase/functions/concierge` and `_shared/ai`; the containment (allowlist, validator, output
+> filter, tools as the user) is unchanged. v1 hands every finished errand to the request form and
+> never creates a request, so `save_request_draft` is not built and the state lives on the
+> conversation. Voice still needs a long-running worker and is not decided by that ADR.
+
 ```mermaid
 flowchart LR
     APP["App / web<br/>(user JWT)"] -->|HTTPS SSE| GW

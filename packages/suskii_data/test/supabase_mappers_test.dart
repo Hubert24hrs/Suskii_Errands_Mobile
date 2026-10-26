@@ -1434,4 +1434,55 @@ void chatMapperTests() {
       expect(areas.map((a) => a.code), <String>['abia', 'lagos']);
     });
   });
+
+  group('conciergeMessageFromRow', () {
+    test('reads the draft the concierge function stores', () {
+      final message = conciergeMessageFromRow(<String, dynamic>{
+        'id': 42,
+        'conversation_id': 'c0c00000-0000-4000-8000-000000000001',
+        'role': 'assistant',
+        'body': 'Tap Use the form to drop the pin and post it.',
+        'created_at': '2026-10-26T05:00:00+00:00',
+        'proposed_action': 'handoff_to_form',
+        'structured_draft': <String, dynamic>{
+          'category_key': 'document_delivery',
+          'category_id': 'cat-doc',
+          'is_custom_category': false,
+          'description': 'Deliver an envelope',
+          'pickup_label': 'Yaba',
+          'pickup_landmark_note': 'office',
+          'destination_label': 'Ikeja GRA',
+          'urgency': 'urgent',
+          'missing_slots': <String>[],
+        },
+      });
+      expect(message.id, '42');
+      expect(message.role, ConciergeRole.assistant);
+      expect(message.proposedAction, ConciergeProposedAction.handoffToForm);
+      final draft = message.structuredDraft!;
+      expect(draft.categoryId, 'cat-doc');
+      expect(draft.pickup!.label, 'Yaba');
+      expect(draft.pickup!.landmarkNote, 'office');
+      expect(draft.destination!.label, 'Ikeja GRA');
+      expect(draft.urgency, Urgency.urgent);
+      expect(draft.missingSlots, isEmpty);
+      // The concierge never sets money; the form does.
+      expect(draft.preferredPrice, isNull);
+    });
+
+    test('a user line has no draft, and an unknown action is none', () {
+      final message = conciergeMessageFromRow(<String, dynamic>{
+        'id': '7',
+        'conversation_id': 'c',
+        'role': 'user',
+        'body': 'call me <PHONE_1>',
+        'created_at': '2026-10-26T05:00:00Z',
+        'proposed_action': 'something_new',
+        'structured_draft': null,
+      });
+      expect(message.role, ConciergeRole.user);
+      expect(message.structuredDraft, isNull);
+      expect(message.proposedAction, ConciergeProposedAction.none);
+    });
+  });
 }
