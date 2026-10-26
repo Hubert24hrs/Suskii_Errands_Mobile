@@ -30,7 +30,8 @@ payment webhooks are not in it, and spike S-11 must run before the Realtime prof
 
 The target-scale profile (100k providers, 500 q/s, heartbeats at 814 writes/s) needs a project
 upsized to production compute (§5), which costs money and needs the owner's yes. The k6 HTTP
-suite needs test users that can sign in on that project. Both wait for that decision.
+suite needs test users that can sign in on that project. **Owner's decision, 2026-10-26: run both on
+the production-sized project before launch** (timeline row 19), not on an upsized staging.
 
 ## Runs
 
