@@ -95,7 +95,7 @@ final pushMessagingProvider = Provider<PushMessaging?>((ref) => null);
 /// Server links name the thing (`/jobs/<request id>`), not a screen, so the
 /// same push opens the customer or the provider view by the current mode.
 /// Anything unrecognised opens the home screen rather than a dead end.
-String routeForPushLink(String? link, UserMode mode) {
+String routeForPushLink(String? link, UserMode mode, {String? requestId}) {
   final provider = mode == UserMode.provider;
   final home = provider ? AppRoutes.providerFeed : AppRoutes.customerHome;
   if (link == null || !link.startsWith('/')) return home;
@@ -104,6 +104,16 @@ String routeForPushLink(String? link, UserMode mode) {
   final id = parts.length > 1 ? parts[1] : null;
   final validId = id != null && RegExp(r'^[0-9a-fA-F-]{8,64}$').hasMatch(id);
   switch (parts.first) {
+    case 'calls':
+      // The link names the call; the push carries its job. Opening the call
+      // screen answers it: start_call hands the person being rung their call.
+      final job = requestId;
+      if (job == null || !RegExp(r'^[0-9a-fA-F-]{8,64}$').hasMatch(job)) {
+        return home;
+      }
+      return provider
+          ? '/provider/jobs/$job/call'
+          : '/customer/requests/$job/call';
     case 'jobs':
       if (!validId) return home;
       return provider ? '/provider/jobs/$id' : '/customer/requests/$id';
@@ -232,7 +242,11 @@ final pushRegistrationProvider = Provider<PushRegistration?>((ref) {
     navigate: (data) => ref
         .read(routerProvider)
         .go(
-          routeForPushLink(data['deep_link'], ref.read(modeControllerProvider)),
+          routeForPushLink(
+            data['deep_link'],
+            ref.read(modeControllerProvider),
+            requestId: data['request_id'],
+          ),
         ),
   );
   ref.onDispose(registration.dispose);

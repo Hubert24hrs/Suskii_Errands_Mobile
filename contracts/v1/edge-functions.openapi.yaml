@@ -223,6 +223,55 @@ paths:
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
 
+  /call-token:
+    post:
+      tags: [customer, provider]
+      operationId: callToken
+      security:
+        - supabaseJwt: []
+      summary: Join the in-app call on a job (LiveKit Cloud).
+      description: >
+        Runs `start_call` as the caller: the database picks the other person from the job, refuses
+        outside the job window (`ERR_CALL_WINDOW_CLOSED`) and turns two people calling each other into
+        one call. If the other person is already ringing the caller, the call is answered here
+        (`is_caller: false`, `status: active`), so the person being rung opens the same screen and
+        needs no other path. Returns a LiveKit token for that room only, audio only
+        (`canPublishSources: ["microphone"]`), valid ten minutes for the first connection. No recording
+        exists. `503 ERR_FEATURE_UNAVAILABLE` when LiveKit is not configured, before anybody is rung.
+        End the call with the RPC `end_call`; an unanswered call is marked missed after a minute.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, idempotency_key]
+              properties:
+                request_id: { type: string, format: uuid }
+                idempotency_key: { type: string, minLength: 16, maxLength: 100 }
+      responses:
+        '200':
+          description: The room to join.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, token, expires_at, call_id, room_name, is_caller, status]
+                properties:
+                  url: { type: string, description: 'wss:// LiveKit project URL' }
+                  token: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  call_id: { type: string, format: uuid }
+                  room_name: { type: string }
+                  is_caller: { type: boolean }
+                  status: { type: string, enum: [ringing, active] }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
   /auth-send-sms:
     post:
       tags: [platform]

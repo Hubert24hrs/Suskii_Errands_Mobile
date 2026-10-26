@@ -486,6 +486,15 @@ class _ProviderJobExecutionPageState
               context.push(AppRoutes.providerJobChatPath(widget.jobId)),
             ),
           ),
+          const SizedBox(height: SSpacing.sm),
+          SButton(
+            label: l10n.detailCall,
+            variant: SButtonVariant.secondary,
+            icon: Icons.call_outlined,
+            onPressed: () => unawaited(
+              context.push(AppRoutes.providerJobCallPath(widget.jobId)),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(top: SSpacing.xs),
             child: Text(

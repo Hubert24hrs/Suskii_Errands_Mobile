@@ -21,7 +21,19 @@ reasoning:
   Name, email and user IDs are for app functionality and account management. Phone number is for
   fraud prevention and account management.
 
-Unchanged: nothing is shared, nothing is ephemeral, data is encrypted in transit, and deletion is
+**From the build with Ask Suskii and in-app calls (go-live items 5 and 6, 2026-10-26), change the form
+before that build goes to any track:**
+
+- **Audio → Voice or sound recordings: collected, processed ephemerally**, optional, for app
+  functionality. A call's audio leaves the phone for LiveKit while the call happens and is never
+  stored or recorded (`calls` has no recording column, asserted by `25_calls_test`). The form's
+  "Is this data processed ephemerally?" is **yes** for this type and no other.
+- **Messages → Other in-app messages** gains Ask Suskii: what a person types to the assistant,
+  stored redacted for 90 days, for app functionality.
+- Still **not shared**: LiveKit and Google's Vertex AI process on Suskii's behalf (service
+  providers), and the privacy policy names both.
+
+Unchanged: nothing is shared, nothing else is ephemeral, data is encrypted in transit, and deletion is
 at `https://suskiierrand.com/en/delete-account` (no partial deletion offered). The listing shows "No
 data shared with third parties" and links the privacy policy at `/en/legal/privacy`.
 
@@ -48,6 +60,8 @@ the user asked for it to be sent (which Play also excludes):
 | The other party to a job | Name, rating, pickup and drop-off, messages, live position during the job | Inherent to the service the user requested | — |
 | Trusted contacts, via a trip link | The trip's route and status | User-initiated | — |
 | SOS partner (when contracted) | Position and job details during an SOS | User-initiated emergency | Counsel |
+| Google Cloud Vertex AI (Ask Suskii) | What the person types, redacted, and the errand so far | Service provider | Counsel: Vertex data-handling terms (ai-design §10) |
+| LiveKit (in-app calls) | The audio of a call while it happens | Service provider; nothing stored | — |
 
 ## Data collected
 
@@ -63,16 +77,18 @@ the user asked for it to be sent (which Play also excludes):
 | Financial info → Other financial info | Yes (payout bank account, for providers) | Required for providers to be paid | App functionality | `payout_accounts` (encrypted) |
 | Location → Precise location | Yes: a customer's pickup point when they tap "use my location"; an online provider's position every 45 s while the app is open (matching, `heartbeat`); the provider's position when marking arrival and the live trail during an active job; Suskii Meet's distance sort (not stored) | Optional — the pickup can be set on the map by hand, a provider may refuse and confirm arrival manually | App functionality; Fraud prevention, security and compliance | `create_request`, `heartbeat`, `set_job_status`, `location_samples` |
 | Location → Approximate location | Yes (2026-10-24): the **country** a new account is created in, inferred on the device from the mobile network, the SIM, the time zone or the region setting, with no permission, and sent once at sign-up. `VERIFY-IN-RESEARCH` whether a country-level inference counts as approximate location in Play's definition; declaring it is the conservative answer, and costs nothing because precise location is declared anyway | Required (it decides which country's rules apply) | App functionality | `lib/app/device_country.dart`, `profiles.country_code` |
-| Messages → Other in-app messages | Yes (job chat) | Optional | App functionality | `messages` |
+| Messages → Other in-app messages | Yes (job chat; Ask Suskii, redacted) | Optional | App functionality | `messages`, `ai_messages` |
+| Audio → Voice or sound recordings | Yes, **processed ephemerally**: the audio of an in-app call, never stored | Optional | App functionality | `call-token`, LiveKit; `calls` holds metadata only |
 | Photos and videos → Photos | Yes (ID documents, receipts, proof of delivery, request photos) | Required for some steps (KYC, proof) | App functionality; Fraud prevention, security and compliance | storage buckets |
 | App activity → Other user-generated content | Yes (errand descriptions, ratings and reviews, support tickets, disputes) | Optional per feature | App functionality | various |
 | App info and performance → Crash logs | Yes, when Sentry is configured | Collected automatically | Analytics; App functionality | `crash_reporting.dart` (no user id, no request bodies) |
 | App info and performance → Diagnostics | Same as crash logs | | | |
 
 **Not collected:** the phone's contact list (trusted contacts are typed in; see above), calendar, SMS, call logs, installed apps, web history, health,
-advertising ID, audio (until calls and the voice concierge exist), background location.
+advertising ID, background location. Audio is collected only as a call's live sound (above); the voice
+concierge is not built.
 
-**Ephemeral processing:** none claimed; every item above is stored.
+**Ephemeral processing:** call audio only; every other item above is stored.
 
 ## Declarations elsewhere in App content
 

@@ -37,6 +37,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Suskii uses the camera when you photograph an ID document, a receipt or proof that a job is done. Photos are taken only when you tap to take one.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Suskii uses the microphone only during a call you start or answer with the other person on your job. Calls are never recorded.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>When you are the provider on a job, Suskii checks your location at the moment you mark that you have arrived, so the customer knows you are at the pickup point.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

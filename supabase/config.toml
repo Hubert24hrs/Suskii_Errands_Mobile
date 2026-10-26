@@ -493,6 +493,14 @@ verify_jwt = false
 import_map = "./functions/concierge/deno.json"
 entrypoint = "./functions/concierge/index.ts"
 
+[functions.call-token]
+enabled = true
+# In-app calls. Called by the app with the caller's session; withSupabase auth "user" verifies the
+# JWT inside the function, and start_call and answer_call run as that person.
+verify_jwt = false
+import_map = "./functions/call-token/deno.json"
+entrypoint = "./functions/call-token/index.ts"
+
 [functions.device-integrity]
 enabled = true
 verify_jwt = false
