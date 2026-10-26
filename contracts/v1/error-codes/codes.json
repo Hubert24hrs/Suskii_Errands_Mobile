@@ -1241,6 +1241,17 @@
       "client_action": "Internal: recorded on the outbox event. The inbox row exists either way, so the app is not missing anything."
     },
     {
+      "code": "ERR_NOTIFICATION_STALE",
+      "status": "implemented",
+      "category": "communication",
+      "surface": "internal",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": false,
+      "description": "A notification's outbox event was older than notifications.push_max_age_minutes (120 by default) when the dispatcher reached it, so its push, SMS or email was dropped rather than delivered late.",
+      "client_action": "Internal: recorded on the outbox event. The inbox row still exists, so the app shows the notification; only the late push is skipped."
+    },
+    {
       "code": "ERR_UNKNOWN_EVENT",
       "status": "implemented",
       "category": "server",

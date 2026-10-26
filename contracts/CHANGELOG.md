@@ -6,7 +6,9 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
-Nothing pending.
+### Added
+- `ERR_NOTIFICATION_STALE` (internal): a notification's push was dropped because it reached the dispatcher more than `notifications.push_max_age_minutes` after it was raised. No client sees it; the inbox row still exists.
+- `public.dispatch_clear_push_token(uuid)`, granted to `service_role` only, so it is not in the client RPC catalogue.
 
 ## [2.5.0] - 2026-10-24
 
