@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Claude Code / ops / Verification |
 | Severity | SEV2. Not SEV1: nobody is in danger and no money is at risk. It is a growth stop, not an outage |
-| Last rehearsed | **Not yet.** Rehearsable today against the queue; the vendor half cannot be rehearsed until a contract exists |
+| Last rehearsed | **2026-10-26, on staging**, the half that exists (rehearsal record below): two of the three things this runbook told on-call to do could not be done. The queue-depth query fails as the database owner, and the verification switch did not exist. Both fixed; **the switch still does nothing on a phone** until the app reads flags (HANDOFF part 19, X.1). The vendor half cannot be rehearsed until a contract exists |
 | Related | OD-13 (selfie-check frequency), ADR-0007; PRD SH-06, SH-07, PR-02…PR-08; RB-01, RB-13 |
 
 ## Read this first
@@ -55,14 +55,20 @@ That asymmetry is the whole shape of this incident: it hurts tomorrow's business
    ```sql
    SELECT status, count(*) FROM kyc.verification_sessions
    WHERE created_at > now() - interval '6 hours' GROUP BY 1;
-   SELECT count(*) FROM public.kyc_review_queue();
+   -- What is waiting, per country. Not kyc_review_queue(): that needs a signed-in officer and
+   -- refuses the SQL editor (ERR_UNAUTHENTICATED), which is where on-call is.
+   SELECT p.country_code, count(*) AS waiting, min(s.submitted_at) AS oldest
+   FROM kyc.kyc_steps s JOIN public.profiles p ON p.user_id = s.user_id
+   WHERE s.status = 'in_review' GROUP BY 1;
    ```
 3. `[VENDOR]` Confirm it is the vendor and not us: their status page, then a single manual sandbox
    call. A DNS or credential problem on our side looks identical from the app.
-4. Turn off the screen that cannot work, rather than letting people fail repeatedly at it. Flip the
-   verification entry flag (RB-13) and let the app show "verification is temporarily unavailable"
-   instead of a liveness SDK that times out. A user who fails three times assumes they are the
-   problem.
+4. Turn off the screen that cannot work, rather than letting people fail repeatedly at it. Flip
+   `kyc.verification_entry` off (RB-13's upsert, globally or for the affected country) and let the
+   app show "verification is temporarily unavailable" instead of a liveness SDK that times out. A
+   user who fails three times assumes they are the problem. **As of 2026-10-26 no app reads this
+   flag (HANDOFF part 19, X.1)**: flipping it changes the server and nothing on a device, so until
+   that lands, step 4 is a support message, not a switch.
 
 **Stop conditions.**
 
@@ -130,3 +136,9 @@ re-verified in a hurry, sample ten of them properly afterwards.
 - If the queue was the constraint, file the staffing follow-up rather than quietly relying on the
   next person to absorb it.
 - `[VENDOR]` Add the vendor's observed failure mode to the diagnosis table.
+
+## Rehearsal record
+
+| Date | Environment | What ran | Result |
+|---|---|---|---|
+| 2026-10-26 | **Staging** (`suskii-staging`) | Step 2's two queries as printed, from the SQL editor's position (the database owner, no signed-in user); `kyc-expiry` in `cron.job`; step 4's switch in `feature_flags` and RB-13's table; the apps' handling of `feature_flags` | The sessions query ran (no sessions on staging). **`SELECT count(*) FROM public.kyc_review_queue()` failed with `ERR_UNAUTHENTICATED`**, because the queue is an officer's view and needs a signed-in officer: replaced with a direct count by country that runs as the owner and names nobody. `kyc-expiry` scheduled `41 2 * * *`, last run succeeded. **Step 4's flag did not exist** anywhere: `kyc.verification_entry` is created by `…20261026170000_kyc_entry_switch`, on. **No screen in the mobile or web apps reads any feature flag**, so this switch and RB-13's are inert on devices (HANDOFF part 19, X.1). The decision rules (officer only, no self-review, audit row) are not re-run here: `22_kyc_test` asserts them on every build |

@@ -5,6 +5,46 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-26 (part 19) — Claude Code — runbooks rehearsed on staging; two findings for Kimi
+
+Go-live item 2. RB-13, RB-03, RB-06, RB-08 and RB-05 were rehearsed against `suskii-staging`, each with a
+record at the end of its file. Every rehearsal found something a local stack could not.
+
+**Backend, fixed and merged:**
+
+| Rehearsal | Found | Fix |
+|---|---|---|
+| RB-13 | Staging had no switch rows, so the break-glass `UPDATE`s changed nothing and reported success | Upserts; `…20261026130000_launch_switches` (#86) |
+| RB-03 | The ledger's controls held, and `get_health()` still said `ok`: five recorded checks never reached `/health` | `…20261026140000_health_reads_recorded_checks` (#86) |
+| RB-06 | Escalation in 201 s, reaching nobody: no worker reads SOS events | *SOS unacknowledged* alert: `health?scope=safety` and its own uptime check (#87) |
+| — | Staging function deploys had failed since #85: `notifications-worker` imported `jose` through `_shared` without mapping it | Mapped; `check_function_imports.py` in CI (#88) |
+| RB-08 | `countries.approved_by` named the proposer | The last signer (#89) |
+| RB-05 | Its queue query fails from the SQL editor, and its switch did not exist | A direct count; `kyc.verification_entry` (this entry's PR) |
+
+### Findings for Kimi
+
+- **X.1 (High for operations): no screen reads `featureFlags`.** `Bootstrap.featureFlags` is parsed in
+  `suskii_data` (`supabase_bootstrap_repository.dart`) and in web-customer (`bootstrapRepository.ts`), and nothing
+  reads it. So every kill switch in RB-13 changes the server and nothing on a device. The four that exist:
+  - `concierge.text`: hide the concierge entry;
+  - `concierge.voice`: hide voice entry, keep text;
+  - `calls.pstn_fallback`: hide the phone-call fallback;
+  - `kyc.verification_entry`: replace the verification entry with "temporarily unavailable" (RB-05 step 4).
+
+  They are created **off** in production for the concierge and PSTN, and **on** for verification. A
+  missing key should read as the server's default for that key, not as `true`.
+- **X.2 (High for operations): a forced update cannot happen.** `minSupportedAppVersion` is parsed in both places
+  and never compared. `ERR_FORCE_UPDATE_REQUIRED` is a client-surfaced code in `contracts/v1/error-codes` (the
+  server never raises it), and the l10n string exists, but no blocking update screen is ever shown (PRD SH-35).
+  The fix: at bootstrap, compare the build's version with the platform's value. Below it, show a blocking
+  screen with the store link. Until then, the only way to stop a broken release is halting its rollout in Play
+  (RB-15).
+
+Both were found by rehearsing the server half on staging. Neither can be seen from the server, which is the
+reason RB-13 has said *Not rehearsed: a real device picking the change up* since 2026-10-13.
+
+---
+
 ## 2026-10-26 (part 18) — Claude Code — push notifications (Android, FCM)
 
 - **On the owner's instruction (the go-live goal, item 1), Claude Code changed Kimi's area**:

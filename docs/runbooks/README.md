@@ -33,6 +33,9 @@ nor four other recorded checks, so none of them could ever fire the uptime alert
 day by the *SOS unacknowledged* alert (`health?scope=safety`, its own uptime check).
 **RB-08** (the database half, with a fake country): every refusal and every signature
 rule held; `countries.approved_by` named the proposer rather than the approver (fixed).
+**RB-05** (the queue half): its queue-depth query failed from the SQL editor and its switch did not
+exist (both fixed), and **no app reads any switch at all**, which makes RB-13 inert on devices
+(HANDOFF part 19).
 
 Two runbooks cannot be fully rehearsed even then, and say so at the top of the file rather than
 pretending otherwise: **RB-11** needs the AI service that Vertex billing blocks, and **RB-12** needs
