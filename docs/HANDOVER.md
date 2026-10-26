@@ -124,7 +124,7 @@ month** from 2026-05-01 [S: Google's alerting cost guide]; there are two conditi
 | Item | Cost | Why |
 |---|---|---|
 | Supabase Pro for production | $25 a month and up, plus compute | Free compute is not production: the 2026-10-26 load test fits launch traffic with little room to spare |
-| Point-in-time recovery | **$100 a month for 7 days** (14 days $200, 28 days $400) on a Pro project [V: Supabase pricing] | RB-09's recovery point; daily logical backups alone lose up to a day |
+| Point-in-time recovery | **$100 a month for 7 days** (14 days $200, 28 days $400) on a Pro project [V: Supabase pricing] | RB-09's recovery point; daily logical backups alone lose up to a day. **Owner's decision, 2026-10-26: a launch requirement on the production project, not the sandbox** |
 | Apple Developer Program | $99 a year | iOS |
 | Play organisation account | $25 once | OD-29 |
 | SMS | Per message, prepaid (Termii) | Phone sign-in |
@@ -140,7 +140,7 @@ month** from 2026-05-01 [S: Google's alerting cost guide]; there are two conditi
 | AI concierge, in-app calls | Being built (go-live items 5 and 6) | HANDOFF |
 | The apps reading feature flags and forcing updates | Kimi (HANDOFF part 19, X.1 and X.2) | RB-13 |
 | Independent penetration test | A vendor, booked about six weeks ahead | Timeline row 20 |
-| Target-scale load test | An upsized project for a day (costs money) | `tests/load/README.md` |
+| Target-scale load test | The production-sized project, before launch (owner's decision, 2026-10-26) | `tests/load/README.md` |
 | Counsel's sign-off: terms, restricted items, funds holding | Counsel (OD-12, OD-24) | `docs/OPEN-DECISIONS.md` |
 
 The open decisions themselves live in `docs/OPEN-DECISIONS.md`, with the default the build uses
