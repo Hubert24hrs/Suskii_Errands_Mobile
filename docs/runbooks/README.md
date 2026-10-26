@@ -31,6 +31,8 @@ nothing and reported success (the commands are now upserts, and a migration crea
 nor four other recorded checks, so none of them could ever fire the uptime alert (fixed).
 **RB-06**: escalation works and reaches nobody, because nothing reads SOS events (open: an alert is
 part of launch configuration, and until then a live country needs the console staffed).
+**RB-08** (the database half, with a fake country): every refusal and every signature
+rule held; `countries.approved_by` named the proposer rather than the approver (fixed).
 
 Two runbooks cannot be fully rehearsed even then, and say so at the top of the file rather than
 pretending otherwise: **RB-11** needs the AI service that Vertex billing blocks, and **RB-12** needs
