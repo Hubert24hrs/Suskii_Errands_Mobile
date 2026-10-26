@@ -11,6 +11,7 @@ Project documentation. `docs/spec/` is shared; everything else here is owned by 
 | [research/](research/README.md) | Phase 0 evidence: report with sources, vendor matrix, country packs, compliance and DPIA, risk register, cost model, spike plan, checkpoint | Choosing a vendor, sizing cost, checking a country rule |
 | [runbooks/](runbooks/README.md) | Operational procedures, one per failure mode | On call, or shipping a feature that can fail in production |
 | [audit/](audit/README.md) | Dated audit findings and severity rules | After a Kimi integration milestone, before release |
+| [HANDOVER.md](HANDOVER.md) | Who owns which account and how each moves to the client, environments, secrets by name, alerts, costs, and what is not done | Taking the platform over, or before launch |
 
 Related files outside `docs/`: `CLAUDE.md` (Claude Code instructions and maintenance policy), `AGENTS.md` (Kimi Code instructions), `HANDOFF.md` (shared log), `contracts/README.md` (the API agreement).
 

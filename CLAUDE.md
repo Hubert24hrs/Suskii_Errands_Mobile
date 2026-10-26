@@ -65,6 +65,7 @@ Phases 0 and 1 produce documents only. Spike code is throwaway: `spike/*` branch
 | `docs/store/` | Drafts of Play's Data safety and the App Store's App Privacy answers, derived from the code, for the client and counsel |
 | `docs/prompts/` | Handover prompts for another agent. `PLAY-UPDATE-AND-GO-LIVE.md` (2026-10-24): update the Play app, put the backend in production, finish the integrations |
 | `docs/audit/` | Dated audit findings after each integration milestone; whole-repository audit 2026-09-17; Phase 5 and Phase 8 money audit 2026-09-22; RLS surface audit 2026-09-22 (second pass); the Participant column 2026-09-22 (third pass); **whole repository, both agents, 2026-09-22 (fourth pass)**; **the seam between both agents' code, 2026-10-13** (part 2: the admin console on the real backend); **the website as a replica and both apps on a real backend, 2026-10-24** (AA.1–AA.13) |
+| `docs/HANDOVER.md` | **For whoever takes the platform over**: account ownership and the move to the client, environments, secrets by name, alerts, costs, what is not done. Update it when an account, a secret or an environment changes |
 | `contracts/README.md` | The rules that bind both agents |
 | `contracts/v1/` | **Binding, v1.0.0.** RPC catalogue, client-readable tables with column grants, enums, buckets, realtime topics (all generated); state machines, error codes, Edge Function OpenAPI, fixtures (authored). Drift check `contracts.yaml` |
 | `contracts/v1-preview/` | Superseded by `v1/`; kept for the four decisions it made |
@@ -84,6 +85,7 @@ Documentation is part of the definition of done, not a postscript. Update on the
 | A feature is built | Its runbook, contract entry, and the commands section below. A new or removed `ERR_` code updates `contracts/v1-preview/error-codes.json`; a new enum value regenerates `enums.json` (`python contracts/tools/check_preview.py . --write`) |
 | An audit runs | `docs/audit/AUDIT-<date>.md` + findings for Kimi in `HANDOFF.md` |
 | Contracts change | `contracts/CHANGELOG.md` (semver) + a migration note in `HANDOFF.md` for breaking changes |
+| An account, a secret, an environment or an alert changes | `docs/HANDOVER.md` (names and places only, never a value) |
 
 Two rules: never delete a decision or a finding, supersede it; and every factual claim carries its evidence tag — `[V]` verified from an official source, `[S]` secondary, `[A]` assumption. Nothing tagged `[A]` may be implemented as fact.
 

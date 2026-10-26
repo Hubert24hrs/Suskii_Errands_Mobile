@@ -23,8 +23,8 @@ detection with a planted drift) and RB-06 (the automatic escalation, which lands
 four minutes, now written down). **A local rehearsal is not a staging one**: none of them touched a
 console, a vendor, a phone or a real-sized database, and each still says so.
 
-**Staging rehearsals, 2026-10-26.** RB-13, RB-03 and RB-06 again, now against `suskii-staging`, each
-with a rehearsal record at the end of its file. All three found something a local stack could not.
+**Staging rehearsals, 2026-10-26.** RB-13, RB-03, RB-06, RB-08 and RB-05 against `suskii-staging`,
+each with a rehearsal record at the end of its file. Every one found something a local stack could not.
 **RB-13**: staging had no switch rows at all, so every break-glass `UPDATE` would have changed
 nothing and reported success (the commands are now upserts, and a migration creates the switches).
 **RB-03**: the ledger's controls all held, but `get_health()` never read the reconciliation result,
