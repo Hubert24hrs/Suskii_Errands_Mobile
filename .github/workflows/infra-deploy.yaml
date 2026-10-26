@@ -70,6 +70,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
           MONTHLY_BUDGET_USD: ${{ vars.MONTHLY_BUDGET_USD }}
           HEALTH_CHECK_API_KEY: ${{ secrets.HEALTH_CHECK_API_KEY }}
+          BACKUP_WORKER_IMAGE: ${{ vars.BACKUP_WORKER_IMAGE }}
         run: |
           set -euo pipefail
           if [ -n "$BILLING_ACCOUNT_ID" ]; then echo "TF_VAR_billing_account_id=$BILLING_ACCOUNT_ID" >> "$GITHUB_ENV"; fi
@@ -79,6 +80,12 @@ jobs:
             echo "TF_VAR_monthly_budget_usd=$MONTHLY_BUDGET_USD" >> "$GITHUB_ENV"
           fi
           if [ -n "$HEALTH_CHECK_API_KEY" ]; then echo "TF_VAR_health_check_api_key=$HEALTH_CHECK_API_KEY" >> "$GITHUB_ENV"; fi
+          # Without it the backup jobs stay uncreated; with it, it must be a digest, never a tag that can move.
+          if [ -n "$BACKUP_WORKER_IMAGE" ]; then
+            [[ "$BACKUP_WORKER_IMAGE" =~ ^europe-west2-docker\.pkg\.dev/[a-z0-9-]+/suskii/backup-worker@sha256:[0-9a-f]{64}$ ]] \
+              || { echo "::error::BACKUP_WORKER_IMAGE must be a registry image pinned by digest"; exit 1; }
+            echo "TF_VAR_backup_worker_image=$BACKUP_WORKER_IMAGE" >> "$GITHUB_ENV"
+          fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
