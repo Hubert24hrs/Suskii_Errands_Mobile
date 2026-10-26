@@ -255,14 +255,41 @@ paths:
       security:
         - workerKey: []
       summary: Uptime and dependency check for Cloud Monitoring.
+      description: |
+        Two uptime checks call this. The default scope is the platform's health: 503 when any check
+        fails, 200 with warnings in the body. `scope=safety` is RB-06's alarm: 503 while an escalated
+        SOS is unacknowledged, or while that cannot be known. It carries counts and an age only.
+        The deploy smoke test reads the default scope, so an SOS never blocks a deploy.
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, enum: [safety] }
       responses:
         '200':
-          description: Healthy.
+          description: Healthy, or nobody waiting on an SOS.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [ok, warn] }
+                      checks: { type: object, additionalProperties: true }
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [ok] }
+                      unacknowledged: { type: integer }
+        '400':
+          description: An unknown scope (`ERR_INVALID_ARGUMENT`). Never read as the default.
+        '503':
+          description: A check failed, the database is unreachable, or an escalated SOS is unacknowledged.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status: { type: string, enum: [ok, degraded] }
+                  status: { type: string, enum: [fail] }
                   checks: { type: object, additionalProperties: true }
-        '503': { $ref: '#/components/responses/Error' }
+                  unacknowledged: { type: integer }
+                  oldest_escalated_seconds: { type: integer, nullable: true }

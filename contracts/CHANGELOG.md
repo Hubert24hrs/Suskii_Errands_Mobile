@@ -9,6 +9,10 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 ### Added
 - `ERR_NOTIFICATION_STALE` (internal): a notification's push was dropped because it reached the dispatcher more than `notifications.push_max_age_minutes` after it was raised. No client sees it; the inbox row still exists.
 - `public.dispatch_clear_push_token(uuid)`, granted to `service_role` only, so it is not in the client RPC catalogue.
+- `health?scope=safety` (Edge Function, monitoring key only): RB-06's SOS alarm, backed by `public.get_safety_alarm()` (`service_role` only). No app calls either.
+
+### Fixed
+- `health` in the OpenAPI: the status enum said `ok | degraded`, and the function has always returned `ok | warn | fail`; the 503 body is the snapshot, not the error envelope.
 
 ## [2.5.0] - 2026-10-24
 

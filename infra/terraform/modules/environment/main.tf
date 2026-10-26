@@ -534,6 +534,79 @@ resource "google_monitoring_alert_policy" "health_failing" {
   }
 }
 
+# RB-06's alarm. The SOS escalation cron only stamps the incident and broadcasts to a console;
+# this is what makes an unacknowledged SOS reach a person who is not looking at one. Its own check
+# and policy rather than a check inside /health: an SOS is not an outage, and the deploy smoke test
+# must never be blocked by one. Three regions, so a probe a minute stays well inside a Free project's
+# Edge Function allowance; two of three failing pages, so one flaky checker does not.
+resource "google_monitoring_uptime_check_config" "sos_alarm" {
+  count            = var.supabase_project_ref == null ? 0 : 1
+  project          = var.project_id
+  display_name     = "suskii-${var.environment}-sos-alarm"
+  timeout          = "10s"
+  period           = var.sos_alarm_period
+  selected_regions = ["EUROPE", "SOUTH_AMERICA", "USA_VIRGINIA"]
+
+  http_check {
+    path           = "/functions/v1/health?scope=safety"
+    port           = 443
+    use_ssl        = true
+    validate_ssl   = true
+    request_method = "GET"
+    mask_headers   = true
+    headers = {
+      apikey = var.health_check_api_key
+    }
+    accepted_response_status_codes {
+      status_class = "STATUS_CLASS_2XX"
+    }
+  }
+
+  monitored_resource {
+    type = "uptime_url"
+    labels = {
+      project_id = var.project_id
+      host       = "${var.supabase_project_ref}.supabase.co"
+    }
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_monitoring_alert_policy" "sos_unacknowledged" {
+  count                 = var.supabase_project_ref == null ? 0 : 1
+  project               = var.project_id
+  display_name          = "suskii-${var.environment}: SOS unacknowledged"
+  combiner              = "OR"
+  severity              = "CRITICAL"
+  notification_channels = [for c in google_monitoring_notification_channel.email : c.id]
+
+  conditions {
+    display_name = "An escalated SOS has nobody on it"
+    condition_threshold {
+      filter          = "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.sos_alarm[0].uptime_check_id}\" AND resource.type=\"uptime_url\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
+      aggregations {
+        alignment_period     = var.sos_alarm_period
+        per_series_aligner   = "ALIGN_NEXT_OLDER"
+        cross_series_reducer = "REDUCE_COUNT_FALSE"
+        group_by_fields      = ["resource.label.*"]
+      }
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+    content   = "**Somebody raised an SOS more than three minutes ago and nobody has acknowledged it.** Open the admin console's SOS queue now, acknowledge, and call them: RB-06, first 60 seconds. This clears itself once the incident is acknowledged. If the console shows nothing open, the safety check could not reach the database: treat it as an outage (RB-01) and check the queue by SQL."
+  }
+}
+
 # ---------------------------------------------------------------------------
 # AI service (Phase 7). Created only once an image exists.
 # ---------------------------------------------------------------------------
