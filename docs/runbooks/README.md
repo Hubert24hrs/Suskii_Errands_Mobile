@@ -29,8 +29,8 @@ with a rehearsal record at the end of its file. All three found something a loca
 nothing and reported success (the commands are now upserts, and a migration creates the switches).
 **RB-03**: the ledger's controls all held, but `get_health()` never read the reconciliation result,
 nor four other recorded checks, so none of them could ever fire the uptime alert (fixed).
-**RB-06**: escalation works and reaches nobody, because nothing reads SOS events (open: an alert is
-part of launch configuration, and until then a live country needs the console staffed).
+**RB-06**: escalation worked and reached nobody, because nothing reads SOS events. Fixed the same
+day by the *SOS unacknowledged* alert (`health?scope=safety`, its own uptime check).
 **RB-08** (the database half, with a fake country): every refusal and every signature
 rule held; `countries.approved_by` named the proposer rather than the approver (fixed).
 

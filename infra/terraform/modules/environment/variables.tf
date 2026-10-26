@@ -62,6 +62,17 @@ variable "uptime_check_period" {
   }
 }
 
+variable "sos_alarm_period" {
+  description = "How often the SOS alarm uptime check (RB-06) asks whether an escalated SOS is unacknowledged. Each probe is an Edge Function call from three regions."
+  type        = string
+  default     = "60s"
+
+  validation {
+    condition     = contains(["60s", "300s", "600s", "900s"], var.sos_alarm_period)
+    error_message = "sos_alarm_period must be one of the periods Cloud Monitoring accepts: 60s, 300s, 600s or 900s."
+  }
+}
+
 variable "health_check_api_key" {
   description = "Named Supabase secret key \"monitoring\" sent to the health function. Stored in state: the state bucket is access-restricted."
   type        = string

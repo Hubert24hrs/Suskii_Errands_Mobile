@@ -4,7 +4,7 @@
 |---|---|
 | Owner | Ops (safety desk) — engineering supports, ops leads |
 | Severity | **SEV1, always.** There is no triage step. A false alarm costs a phone call; the other mistake does not have a price |
-| Last rehearsed | **2026-10-26, on staging**, the system half and the desk's function calls (rehearsal record below): escalated 201 s after the SOS, and acknowledge, retry, close and reopen behaved as written. **Finding: an escalation reaches nobody who is not already looking at the console**, because no worker reads SOS events (see *What the system does on its own*). First rehearsed locally 2026-10-13 (233 s). **The human half is not rehearsed** and cannot be until there is a desk and a phone tree: rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
+| Last rehearsed | **2026-10-26, on staging**, the system half and the desk's function calls (rehearsal record below): escalated 201 s after the SOS, and acknowledge, retry, close and reopen behaved as written. **Finding: an escalation reached nobody who was not already looking at the console**, because no worker reads SOS events; fixed the same day by the *SOS unacknowledged* alert (see *What the system does on its own*). The alert itself is rehearsed once Terraform has created it in staging. First rehearsed locally 2026-10-13 (233 s). **The human half is not rehearsed** and cannot be until there is a desk and a phone tree: rehearse the console and the phone tree before the first live country — this is the one runbook where rehearsal is not optional |
 | Related | Spec SH-24, AD-21; OD-25; `docs/plan/threat-model.md`; RB-01, RB-07, RB-13 |
 
 ## Read this first
@@ -26,11 +26,15 @@ procedure right now, and it needs to be written down before somebody needs it.
    and four minutes** after the SOS, not at three exactly (2026-10-13: 233 s locally; 2026-10-26: 201 s
    on staging). Train the desk on three; do not promise anybody three.
 
-   **"Louder" is only on a screen today.** `sos.raised` and `sos.escalated` go to the `ops:sos`
-   broadcast and the outbox, and no worker reads the outbox's `sos` aggregate: nothing pages, emails
-   or pushes anybody. With no console open, an escalated SOS sits unheard. Until an alert exists
-   (launch configuration, Phase 10), **a person must have the console open whenever a live country
-   has users**. That is a staffing rule, not a suggestion.
+   **"Louder" is the SOS alarm.** Until 2026-10-26 it was only a screen: `sos.raised` and
+   `sos.escalated` go to the `ops:sos` broadcast and the outbox, and no worker reads the outbox's
+   `sos` aggregate, so with no console open an escalated SOS sat unheard (rehearsal record). Now a
+   Cloud Monitoring uptime check asks `health?scope=safety` every minute (five on staging), from
+   three regions; `public.get_safety_alarm()` answers 503 while any escalated SOS is still `open`,
+   and two failing regions raise the **CRITICAL** alert *"SOS unacknowledged"* to the on-call
+   addresses. Expect it **one to two minutes after the escalation**, so four to six after the SOS.
+   It clears itself when somebody acknowledges. It is an email, which is not a pager: a live country
+   still needs the console staffed, and the alert is for the minute when it is not.
 4. Status moves `open → acknowledged → dispatched → resolved`, with `false_alarm` as the other end.
 
 The three-minute clock is the only automatic thing here. Everything after it is people.
@@ -41,7 +45,8 @@ model understanding somebody. A human taps the button, or the button did not get
 
 ## Symptoms
 
-`sos.raised` on `ops:sos`. That is it. There is no ambiguous version of this alert.
+`sos.raised` on `ops:sos`, then, if nobody acknowledges, the *SOS unacknowledged* alert. There is no
+ambiguous version of either.
 
 ## Impact
 

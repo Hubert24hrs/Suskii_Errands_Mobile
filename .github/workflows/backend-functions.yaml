@@ -37,5 +37,10 @@ jobs:
       - name: Type-check every function entry point
         run: deno check */index.ts
 
+      # The checks above resolve through the workspace root's import map; the deploy bundles each
+      # function with its own and nothing else. This is the difference two failed deploys found.
+      - name: Every import a function reaches is in its own deno.json
+        run: python3 ../tools/check_function_imports.py .
+
       - name: Tests
         run: deno test --allow-env
