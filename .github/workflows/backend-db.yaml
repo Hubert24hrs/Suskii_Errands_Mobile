@@ -37,6 +37,12 @@ jobs:
         with:
           version: 2.117.0
 
+      # setup-cli exports SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io, and any override switches off
+      # the CLI's own fallback (public.ecr.aws, then ghcr.io, then Docker Hub). When ghcr.io
+      # rate-limited runners on 2026-10-27, every run failed before a test started.
+      - name: Let the CLI fall back across image registries
+        run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
+
       - name: Deploy config writer tests
         run: bash supabase/deploy/write-remote-config_test.sh
 
