@@ -17,6 +17,15 @@
 | Production | Manual: Actions → **deploy-production** → SHA + PITR confirmation | `deploy-production` → `_deploy-supabase` (`production`) | SHA on `main` **and** a successful staging deployment of that SHA; `production` environment reviewers |
 | Infrastructure | Manual: Actions → **infra-deploy** → env + plan/apply | `infra-deploy` | `infra-<env>` environment reviewers |
 
+> **Staging is paused (2026-10-27)** to free a Supabase Free slot, and `DEPLOY_STAGING_ENABLED=false`: `pipeline-main`
+> runs the checks and skips staging. The dashboard allows a resume until **01 Dec 2027**. Because production needs a
+> successful staging deploy of the same SHA, resume staging before any production deploy. To resume:
+> 1. Supabase dashboard → `suskii-staging` → **Resume project**; wait until the project shows healthy.
+> 2. `gh variable set DEPLOY_STAGING_ENABLED --repo Hubert24hrs/Suskii_Errands_Mobile --body true`
+> 3. `gh workflow run pipeline-main.yaml --repo Hubert24hrs/Suskii_Errands_Mobile --ref main`, and check the smoke
+>    test. Its secrets, including LiveKit and Vertex, are still in `suskii-staging`'s Secret Manager and are re-applied
+>    by the deploy.
+
 Each Supabase deploy runs, in order (§6.2): **migrations** (dry run, then apply) → **function secrets** from GCP Secret Manager → **Edge Functions** → **auth/project config** (`config push` with a generated `[remotes.deploy]` block) → **smoke test** (`/functions/v1/health` must return 200 with `release` equal to the deployed SHA).
 
 ## Symptoms
@@ -60,6 +69,7 @@ Depends on the failed step:
 | Function logs | Supabase dashboard → Edge Functions → Logs; search `request.completed` / `request.unhandled_error` and the `x-request-id` | Status 2xx, no unhandled errors |
 | Migration state | `supabase migration list --linked` in a trusted shell | Local and remote columns identical |
 | Last good release | Actions → deployments for the environment | Most recent successful deploy SHA |
+| Database checks fail before any test, with `toomanyrequests` or `failed to pull docker image from all registries` | The `Start local stack` step's log | Images pull from `public.ecr.aws`. If every pull names `ghcr.io`, something has set `SUPABASE_INTERNAL_IMAGE_REGISTRY` again (#107): that switches off the CLI's fallback across registries |
 
 ## Resolution
 

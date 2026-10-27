@@ -5,6 +5,29 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-10-27 (part 24) — Claude Code — staging gets LiveKit, then is paused
+
+**Staging has LiveKit.** The owner copied the sandbox's LiveKit credentials into `suskii-staging`'s Secret Manager
+(`set_livekit_credentials.py suskii-staging --copy-from suskii-prod`), `check_livekit.py` had LiveKit accept the key and
+its signature, and `pipeline-main` run 40539161451 deployed them. In that run, `livekit-credentials` was the one optional
+secret with no "no version" notice; FCM, Sentry and Play Integrity have no version on staging, which is fine because no
+app build points at it. The new Vertex key went out in the same deploy. Calls themselves were proven on the sandbox
+(part 23) with the same key and code.
+
+**#107: CI could not start a local stack.** For 40 minutes ghcr.io answered every image pull from the runners with
+`toomanyrequests`, so the database checks failed before a test ran and the redeploy never started. The cause was ours to
+fix: `supabase/setup-cli` exports `SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io`, and Supabase CLI 2.117.0 treats any value
+there as an override that switches off its own fallback (public.ecr.aws, then ghcr.io, then Docker Hub).
+`backend-db.yaml` and `services-workers.yaml` now clear it after setup. The PR's run pulled every image from
+public.ecr.aws.
+
+**Staging is paused (owner's request, 2026-10-27)** to free a Supabase Free slot for another project. The repository
+variable `DEPLOY_STAGING_ENABLED` is `false`, so merges to `main` run the checks and skip the staging deploy. The
+dashboard says it can be resumed until **01 Dec 2027**; after that only its backups can be downloaded. Testers are not
+affected: the Play builds talk only to `suskii-prod`, which is where sign-in, push, Ask Suskii and the test call were all
+recorded. While it is paused, expect staging uptime alerts, and note that `deploy-production` cannot run, because it
+requires a successful staging deploy of the same SHA. Resume steps are in RB-14.
+
 ## 2026-10-26 (part 23) — Claude Code — in-app calls verified on a phone; closed testing open
 
 **Calls work end to end.** On the testers' sandbox, the owner tapped Call on a paid test job in build 22. `call-token`
