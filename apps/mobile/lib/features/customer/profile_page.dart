@@ -10,6 +10,7 @@ import 'package:suskii_l10n/suskii_l10n.dart';
 
 import '../../app/error_l10n.dart';
 import '../../app/idempotency_keys.dart';
+import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 
@@ -17,17 +18,6 @@ import '../../app/router.dart';
 /// status, language/theme, demo offline toggle, version, sign out.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
-
-  String _verificationLabel(AppLocalizations l10n, VerificationStatus status) =>
-      switch (status) {
-        VerificationStatus.unverified => l10n.verificationUnverified,
-        VerificationStatus.pending => l10n.verificationPending,
-        VerificationStatus.inReview => l10n.verificationInReview,
-        VerificationStatus.verified => l10n.verificationVerified,
-        VerificationStatus.rejected => l10n.verificationRejected,
-        VerificationStatus.suspended => l10n.verificationSuspended,
-        VerificationStatus.expired => l10n.verificationExpired,
-      };
 
   Future<void> _switchMode(
     BuildContext context,
@@ -216,7 +206,11 @@ class ProfilePage extends ConsumerWidget {
                     ),
                     const SizedBox(height: SSpacing.md),
                     SButton(
-                      label: l10n.modeProviderLockedAction,
+                      // Somebody who chose Service Provider on the first-run
+                      // screen is part-way there already.
+                      label: user?.signupRole == UserMode.provider
+                          ? l10n.providerSetupContinue
+                          : l10n.modeProviderLockedAction,
                       variant: SButtonVariant.secondary,
                       onPressed: () =>
                           context.push(AppRoutes.providerOnboarding),
@@ -233,9 +227,15 @@ class ProfilePage extends ConsumerWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.verified_user_outlined),
-              title: Text(l10n.profileProviderVerification),
+              title: Text(l10n.providerStatusLabel),
+              // The server's status where bootstrap carries it; it also knows
+              // about a suspension, which the profile row does not.
               trailing: Text(
-                _verificationLabel(l10n, user.providerVerification),
+                providerStatusLabel(
+                  l10n,
+                  ref.watch(bootstrapProvider).value?.user?.providerStatus ??
+                      user.effectiveProviderStatus,
+                ),
                 style: theme.textTheme.labelLarge,
               ),
               onTap: () => context.push(

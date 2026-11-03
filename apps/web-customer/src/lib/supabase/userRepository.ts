@@ -77,6 +77,19 @@ export class SupabaseUserRepository {
     return fetchMyProfile(this.gateway);
   }
 
+  /** The first-run role screen (`select_initial_role`). Answered once; returns the profile. */
+  async selectInitialRole(role: UserMode, idempotencyKey: string): Promise<AppUser> {
+    try {
+      await this.gateway.rpc('select_initial_role', {
+        p_role: role,
+        p_idempotency_key: idempotencyKey,
+      });
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+    return fetchMyProfile(this.gateway);
+  }
+
   async setActiveMode(mode: UserMode, _idempotencyKey: string): Promise<UserMode> {
     // The RPC takes no idempotency key — the mode switch is naturally
     // idempotent (same input, same state).

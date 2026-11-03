@@ -5,6 +5,7 @@
 // break an old build.
 
 import type {
+  AiUsage,
   AppNotification,
   AppUser,
   ChatMessage,
@@ -47,6 +48,7 @@ import type {
   WalletTransaction,
   WalletTransactionKind,
   WalletTransactionStatus,
+  ProviderStatus,
 } from '@/mocks/types';
 
 import { SupabaseGateway, type Row } from './gateway';
@@ -56,7 +58,7 @@ import { SupabaseGateway, type Row } from './gateway';
 export const profileRowColumns =
   'user_id, display_name, country_code, language, avatar_path, ' +
   'active_mode, customer_verification, provider_verification, ' +
-  'trust_level, created_at';
+  'trust_level, created_at, role_selected_at, signup_role';
 
 const VERIFICATION_STATUSES: readonly VerificationStatus[] = [
   'unverified',
@@ -113,7 +115,57 @@ export function appUserFromProfileRow(
     email: identity.email,
     // avatar_path is a storage path, not a URL — signed URLs are a later
     // slice (storage gateway), so photoUrl stays undefined for now.
+    // get_bootstrap says `role_selected`; a profiles row has the timestamp. Neither means the
+    // source predates the role screen, which counts as answered.
+    roleSelected:
+      'role_selected' in row
+        ? row['role_selected'] !== false
+        : !('role_selected_at' in row) || row['role_selected_at'] != null,
+    signupRole: row['signup_role'] == null ? undefined : userModeFromWire(row['signup_role']),
+    providerStatus: providerStatusFromWire(row['provider_status']),
   };
+}
+
+const PROVIDER_STATUSES: readonly ProviderStatus[] = [
+  'not_registered',
+  'pending_verification',
+  'pending_approval',
+  'approved',
+  'rejected',
+  'suspended',
+];
+
+export function providerStatusFromWire(value: unknown): ProviderStatus | undefined {
+  return PROVIDER_STATUSES.find((s) => s === value);
+}
+
+/** `my_ai_usage()`. */
+export function aiUsageFromJson(json: Row): AiUsage {
+  return {
+    dailyLimit: intOr(json['daily_limit'], 0),
+    usedToday: intOr(json['used_today'], 0),
+    remainingToday: intOr(json['remaining_today'], 0),
+    monthlyLimit: intOr(json['monthly_limit'], 0),
+    usedThisMonth: intOr(json['used_this_month'], 0),
+    remainingThisMonth: intOr(json['remaining_this_month'], 0),
+    credits: intOr(json['credits'], 0),
+    dayResetsAt: SupabaseGateway.asTimestamp(json['day_resets_at']),
+    monthResetsAt: SupabaseGateway.asTimestamp(json['month_resets_at']),
+    suspendedUntil:
+      json['suspended_until'] == null ? undefined : SupabaseGateway.asTimestamp(json['suspended_until']),
+    available: json['available'] !== false,
+  };
+}
+
+/** A `{language: text}` object from the catalogue; anything else is dropped. */
+function texts(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [lang, value] of Object.entries(raw as Row)) {
+      if (typeof value === 'string' && value !== '') out[lang] = value;
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +291,8 @@ export function serviceCategoryFromRow(row: Row): ServiceCategory {
     offerTtlSeconds: intOr(row['offer_ttl_seconds'], 600),
     maxCounterRounds: intOr(row['max_counter_rounds'], 5),
     proofRequirements: requirements,
+    displayNames: texts(row['display_names']),
+    descriptions: texts(row['descriptions']),
   };
 }
 

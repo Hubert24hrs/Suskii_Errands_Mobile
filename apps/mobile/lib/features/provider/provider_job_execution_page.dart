@@ -374,7 +374,12 @@ class _ProviderJobExecutionPageState
             ),
             const Spacer(),
             Text(
-              categoryLabel(l10n, _categoryKey(request.categoryId)),
+              serviceNameById(
+                l10n,
+                ref.watch(categoriesProvider).value ??
+                    const <ServiceCategory>[],
+                request.categoryId,
+              ),
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -573,15 +578,6 @@ class _ProviderJobExecutionPageState
         ),
       ],
     );
-  }
-
-  String _categoryKey(String categoryId) {
-    final cats =
-        ref.read(categoriesProvider).value ?? const <ServiceCategory>[];
-    for (final c in cats) {
-      if (c.id == categoryId) return c.labelKey;
-    }
-    return 'catCustom';
   }
 
   Map<String, int> _proofRequirements(String categoryId) {

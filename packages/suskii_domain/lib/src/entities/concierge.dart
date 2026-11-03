@@ -73,3 +73,28 @@ abstract class ConciergeDraft with _$ConciergeDraft {
   factory ConciergeDraft.fromJson(Map<String, dynamic> json) =>
       _$ConciergeDraftFromJson(json);
 }
+
+/// Ask Suskii allowance for the signed-in person (`my_ai_usage()`,
+/// 20261103120200). Counted and enforced on the server; the app only shows it.
+@freezed
+abstract class AiUsage with _$AiUsage {
+  const factory AiUsage({
+    required int dailyLimit,
+    required int usedToday,
+    required int remainingToday,
+    required int monthlyLimit,
+    required int usedThisMonth,
+    required int remainingThisMonth,
+    required DateTime dayResetsAt,
+    required DateTime monthResetsAt,
+    @Default(0) int credits,
+    DateTime? suspendedUntil,
+
+    /// False when Ask Suskii is switched off or the platform's AI budget is
+    /// spent: say it is unavailable, not that the person is over a limit.
+    @Default(true) bool available,
+  }) = _AiUsage;
+
+  factory AiUsage.fromJson(Map<String, dynamic> json) =>
+      _$AiUsageFromJson(json);
+}

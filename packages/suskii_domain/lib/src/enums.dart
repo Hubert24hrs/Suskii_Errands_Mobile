@@ -33,6 +33,24 @@ enum Urgency {
   emergency,
 }
 
+/// The provider side of an account as the app shows it, from
+/// `get_bootstrap().user.provider_status` (20261103120000). Derived on the
+/// server from the verification standing and any suspension, never stored.
+enum ProviderStatus {
+  @JsonValue('not_registered')
+  notRegistered,
+  @JsonValue('pending_verification')
+  pendingVerification,
+  @JsonValue('pending_approval')
+  pendingApproval,
+  @JsonValue('approved')
+  approved,
+  @JsonValue('rejected')
+  rejected,
+  @JsonValue('suspended')
+  suspended,
+}
+
 enum TrustLevel {
   @JsonValue('new')
   new_,

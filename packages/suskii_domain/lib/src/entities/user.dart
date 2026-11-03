@@ -21,7 +21,35 @@ abstract class AppUser with _$AppUser {
     String? email,
     String? photoUrl,
     String? referralCode,
+
+    /// False only for an account that has not answered the first-run
+    /// "How would you like to use Suskii Errands?" screen. Accounts that
+    /// existed before the screen count as having answered.
+    @Default(true) bool roleSelected,
+
+    /// What was chosen on that screen; null for accounts that predate it.
+    UserMode? signupRole,
+
+    /// Null when the source does not carry it (a plain `profiles` row);
+    /// [effectiveProviderStatus] falls back to the verification standing.
+    ProviderStatus? providerStatus,
   }) = _AppUser;
+
+  const AppUser._();
+
+  /// The server's status when known, otherwise the same reading of the
+  /// provider verification standing the server makes (less any suspension).
+  ProviderStatus get effectiveProviderStatus =>
+      providerStatus ??
+      switch (providerVerification) {
+        VerificationStatus.verified => ProviderStatus.approved,
+        VerificationStatus.rejected => ProviderStatus.rejected,
+        VerificationStatus.suspended => ProviderStatus.suspended,
+        VerificationStatus.inReview => ProviderStatus.pendingApproval,
+        VerificationStatus.pending ||
+        VerificationStatus.expired => ProviderStatus.pendingVerification,
+        VerificationStatus.unverified => ProviderStatus.notRegistered,
+      };
 
   factory AppUser.fromJson(Map<String, dynamic> json) =>
       _$AppUserFromJson(json);

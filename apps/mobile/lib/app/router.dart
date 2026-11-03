@@ -29,6 +29,7 @@ import '../features/meet/create_meet_page.dart';
 import '../features/meet/meet_detail_page.dart';
 import '../features/meet/meet_page.dart';
 import '../features/onboarding/onboarding_page.dart';
+import '../features/onboarding/role_selection_page.dart';
 import '../features/provider/earnings_page.dart';
 import '../features/provider/my_offers_page.dart';
 import '../features/provider/organization_page.dart';
@@ -59,6 +60,9 @@ abstract final class AppRoutes {
   static const String startupError = '/startup-error';
   static const String welcome = '/welcome';
   static const String onboarding = '/onboarding';
+
+  /// First run after sign-up: "How would you like to use Suskii Errands?"
+  static const String chooseRole = '/role';
   static const String auth = '/auth';
 
   /// Shown after signing back in to an account scheduled for deletion.
@@ -146,6 +150,23 @@ final deletionPromptDismissedProvider = NotifierProvider<BoolFlag, bool>(
   BoolFlag.new,
 );
 
+/// The role screen was answered in this session. The profile the router
+/// reads still says otherwise until it is fetched again, and without this the
+/// redirect would send the person straight back. A new session starts unset.
+class RoleAnswered extends Notifier<bool> {
+  @override
+  bool build() {
+    ref.watch(sessionUserIdProvider);
+    return false;
+  }
+
+  void set(bool value) => state = value;
+}
+
+final roleAnsweredProvider = NotifierProvider<RoleAnswered, bool>(
+  RoleAnswered.new,
+);
+
 /// Triggers redirect re-evaluation when session, bootstrap or mode change.
 final _routerRefreshProvider = Provider<ValueNotifier<int>>((ref) {
   final notifier = ValueNotifier<int>(0);
@@ -154,7 +175,8 @@ final _routerRefreshProvider = Provider<ValueNotifier<int>>((ref) {
     ..listen(modeControllerProvider, (_, _) => notifier.value++)
     ..listen(bootstrapProvider, (_, _) => notifier.value++)
     ..listen(welcomeSeenProvider, (_, _) => notifier.value++)
-    ..listen(deletionPromptDismissedProvider, (_, _) => notifier.value++);
+    ..listen(deletionPromptDismissedProvider, (_, _) => notifier.value++)
+    ..listen(roleAnsweredProvider, (_, _) => notifier.value++);
   ref.onDispose(notifier.dispose);
   return notifier;
 });
@@ -226,12 +248,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             ? null
             : AppRoutes.deletionPending;
       }
+      // 4b. First run: how this account will use the app, asked once. Every
+      // account that existed before the question counts as having answered.
+      final me = auth?.user ?? boot.value?.user;
+      if (me != null && !me.roleSelected && !ref.read(roleAnsweredProvider)) {
+        return loc == AppRoutes.chooseRole ? null : AppRoutes.chooseRole;
+      }
       final isPublicRoute =
           loc == AppRoutes.auth ||
           loc == AppRoutes.onboarding ||
           loc == AppRoutes.welcome;
       if (isPublicRoute ||
           loc == AppRoutes.splash ||
+          loc == AppRoutes.chooseRole ||
           loc == AppRoutes.deletionPending ||
           loc == AppRoutes.startupError) {
         return ref.read(modeControllerProvider) == UserMode.provider
@@ -272,6 +301,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.chooseRole,
+        builder: (context, state) => const RoleSelectionPage(),
       ),
       GoRoute(
         path: AppRoutes.auth,

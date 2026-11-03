@@ -68,6 +68,8 @@ const routes: Record<keyof typeof apps, string[]> = {
     '/analytics',
     '/audit',
     '/admin-users',
+    '/services',
+    '/ai-usage',
   ],
 };
 

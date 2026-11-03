@@ -142,6 +142,16 @@ abstract interface class UserRepository {
   /// Sets the caller's display name (trimmed, 1–80 characters — the
   /// `profiles` column check). Returns the updated profile.
   Future<AppUser> updateDisplayName(String displayName);
+
+  /// Answers the first-run "How would you like to use Suskii Errands?"
+  /// screen (`select_initial_role`). Answered once: a later answer changes
+  /// nothing. Choosing [UserMode.provider] does not switch modes — provider
+  /// mode still waits for approval — it records where to take the person.
+  /// Returns the updated profile.
+  Future<AppUser> selectInitialRole(
+    UserMode role, {
+    required String idempotencyKey,
+  });
 }
 
 abstract interface class RequestRepository {
@@ -670,9 +680,17 @@ abstract interface class ConciergeRepository {
     String text, {
     required String idempotencyKey,
   });
+
+  /// The caller's Ask Suskii allowance (`my_ai_usage`). Enforced on the
+  /// server; a limit reached comes back from [sendMessage] as a reply that
+  /// says so, never as an error.
+  Future<AiUsage> getUsage();
 }
 
 abstract interface class CatalogRepository {
+  /// The whole catalogue, including services no longer offered
+  /// ([ServiceCategory.active] false), so past requests keep their names.
+  /// A picker lists only the active ones.
   Future<List<ServiceCategory>> getCategories();
   Future<CountryPack> getCountryPack(String countryCode);
 

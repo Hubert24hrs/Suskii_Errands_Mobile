@@ -13,6 +13,7 @@ import '../../app/labels.dart';
 import '../../app/maps.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
+import '../shared/service_picker.dart';
 
 /// Optional prefill when the concierge hands off to the form (A.3) or the
 /// home category grid preselects a category. Money arrives as minor units +
@@ -263,18 +264,12 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
     return ListView(
       padding: const EdgeInsets.all(SSpacing.lg),
       children: <Widget>[
-        Text(l10n.createCategoryLabel, style: theme.textTheme.titleSmall),
+        Text(l10n.servicesAllAvailable, style: theme.textTheme.titleSmall),
         const SizedBox(height: SSpacing.sm),
-        Wrap(
-          spacing: SSpacing.sm,
-          runSpacing: SSpacing.sm,
-          children: cats.map((ServiceCategory c) {
-            return ChoiceChip(
-              label: Text(categoryLabel(l10n, c.labelKey)),
-              selected: _categoryId == c.id,
-              onSelected: (_) => setState(() => _categoryId = c.id),
-            );
-          }).toList(),
+        ServicePickerField(
+          categories: cats,
+          selectedId: _categoryId,
+          onChanged: (String? id) => setState(() => _categoryId = id),
         ),
         if (_isCustom) ...<Widget>[
           const SizedBox(height: SSpacing.md),

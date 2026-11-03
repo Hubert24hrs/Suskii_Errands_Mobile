@@ -12,6 +12,7 @@ import '../../app/error_l10n.dart';
 import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
+import '../shared/service_picker.dart';
 
 /// Provider onboarding (step 1 of provider KYC): account kind, services,
 /// service areas and vehicle. Saves via the KYC repository, then continues
@@ -143,23 +144,16 @@ class _ProviderOnboardingPageState
                 retryLabel: l10n.actionRetry,
                 onRetry: () => ref.invalidate(categoriesProvider),
               ),
-              data: (List<ServiceCategory> data) => Wrap(
-                spacing: SSpacing.sm,
-                runSpacing: SSpacing.sm,
-                children: <Widget>[
-                  for (final ServiceCategory category in data)
-                    FilterChip(
-                      label: Text(categoryLabel(l10n, category.labelKey)),
-                      selected: _categoryIds.contains(category.id),
-                      onSelected: (bool selected) => setState(() {
-                        if (selected) {
-                          _categoryIds.add(category.id);
-                        } else {
-                          _categoryIds.remove(category.id);
-                        }
-                      }),
-                    ),
-                ],
+              // The customer's picker, choosing several: one catalogue, so a
+              // provider is matched to exactly what customers can ask for.
+              data: (List<ServiceCategory> data) => ServiceMultiPickerField(
+                categories: data,
+                selectedIds: _categoryIds,
+                onChanged: (Set<String> ids) => setState(() {
+                  _categoryIds
+                    ..clear()
+                    ..addAll(ids);
+                }),
               ),
             ),
             const SizedBox(height: SSpacing.xl),

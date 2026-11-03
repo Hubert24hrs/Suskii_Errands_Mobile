@@ -283,6 +283,23 @@ class MockUserRepository extends _MockRepo implements UserRepository {
     _controller.add(updated);
     return updated;
   }
+
+  @override
+  Future<AppUser> selectInitialRole(
+    UserMode role, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('selectInitialRole', idempotencyKey, () async {
+      final user = currentUser;
+      // Answered once, like select_initial_role: a second answer is ignored.
+      if (user.roleSelected) return user;
+      final updated = user.copyWith(roleSelected: true, signupRole: role);
+      db.users[user.id] = updated;
+      _controller.add(updated);
+      return updated;
+    }, argsHash: '$role');
+  }
 }
 
 class MockRequestRepository extends _MockRepo implements RequestRepository {
@@ -2248,6 +2265,28 @@ class MockConciergeRepository extends _MockRepo implements ConciergeRepository {
     );
     _emit(conversationId);
     _conciergeReplies[cacheKey] = (text, reply);
+  }
+
+  /// The free allowance the server starts everybody on, counted from the
+  /// turns this mock has answered.
+  static const int _dailyLimit = 10;
+  static const int _monthlyLimit = 150;
+
+  @override
+  Future<AiUsage> getUsage() async {
+    await gate();
+    final used = _turns.values.fold<int>(0, (sum, n) => sum + n);
+    final now = serverNow().toUtc();
+    return AiUsage(
+      dailyLimit: _dailyLimit,
+      usedToday: used,
+      remainingToday: (_dailyLimit - used).clamp(0, _dailyLimit),
+      monthlyLimit: _monthlyLimit,
+      usedThisMonth: used,
+      remainingThisMonth: (_monthlyLimit - used).clamp(0, _monthlyLimit),
+      dayResetsAt: DateTime.utc(now.year, now.month, now.day + 1),
+      monthResetsAt: DateTime.utc(now.year, now.month + 1),
+    );
   }
 }
 

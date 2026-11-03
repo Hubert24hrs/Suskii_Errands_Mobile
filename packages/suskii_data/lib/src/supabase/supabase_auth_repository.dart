@@ -12,7 +12,7 @@ import 'supabase_mappers.dart';
 const String profileRowColumns =
     'user_id, display_name, country_code, language, avatar_path, '
     'active_mode, customer_verification, provider_verification, '
-    'trust_level, created_at';
+    'trust_level, created_at, role_selected_at, signup_role';
 
 /// User metadata sent with an OTP request. GoTrue applies it only when the
 /// request creates the user, and `private.handle_new_user` validates it

@@ -58,9 +58,19 @@ export function categoryLabel(
   categories: ServiceCategory[],
   categoryId: string,
 ): string {
-  const labelKey = categories.find((c) => c.id === categoryId)?.labelKey;
+  const category = categories.find((c) => c.id === categoryId);
+  // The stored name first (20261103120100): it is what an admin edits, and the only name a
+  // service added after this release has. The dictionary covers a catalogue without them.
+  const stored = category?.displayNames?.[dict.lang] ?? category?.displayNames?.en;
+  if (stored) return stored;
+  const labelKey = category?.labelKey;
   const table = dict.categories as Record<string, string>;
   return (labelKey ? table[labelKey] : undefined) ?? labelKey ?? categoryId;
+}
+
+/** The service's short description in the reader's language, if it has one. */
+export function categoryDescription(dict: Dictionary, category: ServiceCategory): string | undefined {
+  return category.descriptions?.[dict.lang] ?? category.descriptions?.en;
 }
 
 export function urgencyLabel(dict: Dictionary, urgency: Urgency): string {

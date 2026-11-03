@@ -26,7 +26,7 @@ import {
 /** Explicit column list — a `*` naming an ungranted column fails the query. */
 const categoryColumns =
   'id, key, name_key, icon_key, allows_custom, offer_ttl_seconds, ' +
-  'max_counter_rounds, proof_requirements';
+  'max_counter_rounds, proof_requirements, display_names, descriptions';
 
 export class SupabaseCatalogRepository {
   constructor(private readonly gateway: SupabaseGateway) {}

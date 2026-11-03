@@ -2,7 +2,10 @@
 // honest about it, never the mock's invented data (audit 2026-10-13, Z.15 on the web).
 
 import { AppError, ErrorCodes } from '@/mocks/errors';
-import type { ConciergeConversation, ConciergeMessage, Promo } from '@/mocks/types';
+import type { AiUsage, ConciergeConversation, ConciergeMessage, Promo } from '@/mocks/types';
+import { mapSupabaseError } from './errors';
+import type { SupabaseGateway } from './gateway';
+import { aiUsageFromJson } from './mappers';
 import type { Unsubscribe } from '@/mocks/repos/base';
 
 /**
@@ -20,8 +23,21 @@ export class SupabasePromoRepository {
   }
 }
 
-/** The concierge needs the AI service, which waits on Vertex AI and GCP billing (action 1). */
+/**
+ * The website's concierge is not wired to the `concierge` function yet, so the turns say it is
+ * unavailable. The allowance is real: it is the same `my_ai_usage` the app shows.
+ */
 export class SupabaseConciergeRepository {
+  constructor(private readonly gateway: SupabaseGateway) {}
+
+  async getUsage(): Promise<AiUsage> {
+    try {
+      return aiUsageFromJson((await this.gateway.rpc('my_ai_usage')) as Record<string, unknown>);
+    } catch (error) {
+      throw mapSupabaseError(error);
+    }
+  }
+
   async startConversation(_idempotencyKey: string): Promise<ConciergeConversation> {
     throw new AppError(ErrorCodes.featureUnavailable);
   }

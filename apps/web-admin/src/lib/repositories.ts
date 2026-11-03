@@ -9,6 +9,7 @@
 import {
   adminUsersRepository as mockAdminUsersRepository,
   aiAdminRepository as mockAiAdminRepository,
+  aiUsageRepository as mockAiUsageRepository,
   analyticsRepository as mockAnalyticsRepository,
   auditRepository as mockAuditRepository,
   configRepository as mockConfigRepository,
@@ -20,6 +21,7 @@ import {
   promoRepository as mockPromoRepository,
   referralRepository as mockReferralRepository,
   riskRepository as mockRiskRepository,
+  servicesRepository as mockServicesRepository,
   sessionRepository as mockSessionRepository,
   sosRepository as mockSosRepository,
   supportRepository as mockSupportRepository,
@@ -27,6 +29,7 @@ import {
 } from '@/mocks/repositories';
 
 import { SupabaseAdminUsersRepository } from './supabase/adminUsersRepository';
+import { SupabaseAiUsageRepository, SupabaseServicesRepository } from './supabase/catalogueRepository';
 import {
   SupabaseAiAdminRepository,
   SupabaseAnalyticsRepository,
@@ -105,3 +108,6 @@ export const aiAdminRepository = gw ? new SupabaseAiAdminRepository(gw) : mockAi
 export const adminUsersRepository = gw
   ? new SupabaseAdminUsersRepository(gw)
   : mockAdminUsersRepository;
+// The service catalogue and Ask Suskii usage (2026-11-03).
+export const servicesRepository = gw ? new SupabaseServicesRepository(gw) : mockServicesRepository;
+export const aiUsageRepository = gw ? new SupabaseAiUsageRepository(gw) : mockAiUsageRepository;

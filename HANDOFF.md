@@ -5,6 +5,80 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-11-03 (part 26) — Claude Code — roles, the service picker and Ask Suskii usage: the screens
+
+The screens for part 25. **The owner asked Claude Code to build them** (decision 1 of the 2026-11-03
+brief), as with go-live, so these are changes in Kimi's area. Each is listed here so nothing arrives
+unannounced. Every change is additive: build 22 keeps working against the backend as it is.
+
+**Mobile (`apps/mobile`, packages)**
+- `features/onboarding/role_selection_page.dart` and the route `/role`: "How would you like to use
+  Suskii Errands?", with two cards and Continue. Router step 4b sends a signed-in account with
+  `roleSelected == false` there, once; `roleAnsweredProvider` holds the answer for the session,
+  because the profile still says otherwise until it is fetched again, and it resets with the
+  session user. Service Provider goes to provider onboarding in customer mode, because approval
+  comes first.
+- `features/shared/service_picker.dart`: the one way the app picks services. It is a field that
+  opens a searchable sheet headed "All services available", single choice for the request form and
+  several for provider onboarding. It shows names, icons and descriptions, and you can change or
+  remove the choice. Inactive services are left out.
+- `app/labels.dart`:
+  - `serviceName` prefers the stored name (`display_names`), then the translation. An admin rename
+    shows, and so does a service with `name_key = svc_*`.
+  - `serviceNameById` and `serviceIcon` replace the per-screen lookups and the home page's icon
+    switch.
+  - `providerStatusLabel` covers the six statuses.
+  - Twelve call sites moved over.
+- `CatalogRepository.getCategories` now returns inactive services too (`ServiceCategory.active`),
+  so a past request keeps its service's name. The pickers and the home grid filter `active`.
+- The profile page shows the provider status (bootstrap's, which knows about a suspension; otherwise
+  `AppUser.effectiveProviderStatus`). Someone who chose Service Provider sees "Continue provider
+  setup".
+- The concierge shows what is left of the allowance (`getUsage` → `my_ai_usage`) and refreshes it
+  after each message.
+- Domain and data: `ProviderStatus`; `AppUser.roleSelected`, `signupRole` and `providerStatus`;
+  `ServiceCategory.displayNames`, `descriptions` and `active`; `AiUsage`;
+  `UserRepository.selectInitialRole`; `ConciergeRepository.getUsage`; mappers, Supabase calls and
+  mocks.
+- 29 strings in `app_en.arb` and `app_pcm.arb`. **The Pidgin needs a native speaker's review.**
+- Tests:
+  - Two journeys moved onto the picker.
+  - Three new journeys: the role screen asked once, picker search including the empty case, and the
+    allowance counting down.
+  - The screen catalog renders the role screen and the open picker in both themes at 1x and 2x text.
+  - Analyzer clean; 323 package tests and every journey pass.
+- **Goldens.** The catalog goldens for the request form, provider onboarding, profile and concierge
+  need re-recording. Recording on Windows does not work: every golden there differs by 1.7–3.4% on
+  screens nobody changed, against a 0.5% tolerance. `goldens-record.yaml` records them on Linux,
+  where frontend-ci compares them, and uploads them as an artifact. It never commits; a person
+  looks at them first.
+
+**Customer website (`apps/web-customer`)**, kept in parity as the owner's rule since 2026-10-24
+requires (`check_screen_parity` found both gaps):
+- `RoleSelectionGate` in the signed-in layout.
+- The request form's dropdown is headed "All services available" and has a search box that
+  narrows it; the chosen service shows its description.
+- Provider onboarding keeps its checkboxes and gains the same search and descriptions.
+- The concierge shows the allowance line. `SupabaseConciergeRepository.getUsage` is real even
+  though the website's turns are still not wired.
+- Stored service names first in `categoryLabel`.
+- `tests/web-customer-e2e/customer.spec.ts` picks the service by its new label.
+
+**Admin console (`apps/web-admin`)**
+- **Services** (`/services`): the whole catalogue with request and provider counts. Super admins
+  add, edit and switch services on and off, with a reason. There is no delete.
+- **AI usage** (`/ai-usage`):
+  - Estimated spend and usage for a date range, by day and by model.
+  - The budget, the switch and the free allowance (super admin).
+  - People, sorted by cost or by how close they are to a limit, with one person's limits, credits
+    and suspension (support and super admin).
+  - CSV export of the day and people tables.
+- Six new actions in `PERMISSIONS`, mirroring the functions' role checks. Every change is
+  `SENSITIVE`, as the server's `require_recent_mfa` is.
+- Mocks for the demo, Supabase repositories, and `_form.tsx`, which converts US dollars to
+  micro-dollars with integer arithmetic only.
+- Both routes added to the web smoke test.
+
 ## 2026-11-03 (part 25) — Claude Code — roles, the service catalogue and Ask Suskii usage: the backend
 
 The owner's brief of 2026-11-03 asked for three things; the audit found most of the first already built, and

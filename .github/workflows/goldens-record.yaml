@@ -1,0 +1,43 @@
+name: goldens-record
+
+# Re-records the Flutter golden images on Linux, where frontend-ci compares them. A screen change
+# needs new goldens, and recording them on Windows does not work: font rendering there differs
+# from these by 1.7-3.4% on screens nobody changed, against a 0.5% tolerance. This uploads the
+# images as an artifact and commits nothing; a person looks at them and commits the ones that
+# should change.
+# workflow_dispatch reaches only workflows already on the default branch, so a change to this file
+# also runs it, on whatever branch carries the change.
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/goldens-record.yaml']
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+      - name: Pub get, localization and codegen (as frontend-ci)
+        run: |
+          set -e
+          for dir in packages/suskii_domain packages/suskii_core packages/suskii_design packages/suskii_l10n packages/suskii_data apps/mobile; do
+            (cd "$dir" && flutter pub get)
+          done
+          (cd packages/suskii_l10n && flutter gen-l10n)
+          (cd packages/suskii_domain && dart run build_runner build)
+      - name: Record
+        run: cd apps/mobile && flutter test --tags golden --update-goldens
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: goldens
+          path: apps/mobile/test/goldens
+          retention-days: 7

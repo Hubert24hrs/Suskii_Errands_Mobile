@@ -117,6 +117,39 @@ void main() {
         }
         await app.dispose(tester);
       });
+      testWidgets('first-run role screen renders ($label)', (tester) async {
+        final app = await TestApp.pump(
+          tester,
+          themeMode: mode,
+          textScale: scale,
+          prefs: const <String, Object>{'welcome_seen': true},
+        );
+        final me = app.behavior.currentUserId;
+        app.database.users[me] = app.database.users[me]!.copyWith(
+          roleSelected: false,
+        );
+        await signInThroughUi(tester);
+        expect(tester.takeException(), isNull);
+        expect(
+          app.container.read(routerProvider).state.matchedLocation,
+          AppRoutes.chooseRole,
+        );
+        await tester.tap(find.byKey(const Key('role-provider')));
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        await app.dispose(tester);
+      });
+      testWidgets('the service picker renders ($label)', (tester) async {
+        final app = await _signedIn(tester, mode: mode, textScale: scale);
+        await _visit(tester, app, AppRoutes.customerRequestsNew);
+        await tester.tap(find.byKey(const Key('service-picker-field')));
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const Key('service-option-shopping')));
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        await app.dispose(tester);
+      });
     }
   }
 

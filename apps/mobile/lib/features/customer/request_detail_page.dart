@@ -242,7 +242,12 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             ),
             const Spacer(),
             Text(
-              categoryLabel(l10n, _categoryKey(request.categoryId)),
+              serviceNameById(
+                l10n,
+                ref.watch(categoriesProvider).value ??
+                    const <ServiceCategory>[],
+                request.categoryId,
+              ),
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -409,14 +414,6 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         ],
       ],
     );
-  }
-
-  String _categoryKey(String categoryId) {
-    final cats = ref.read(categoriesProvider).value ?? const [];
-    for (final c in cats) {
-      if (c.id == categoryId) return c.labelKey;
-    }
-    return 'catCustom';
   }
 
   Widget _row(String label, String value) {

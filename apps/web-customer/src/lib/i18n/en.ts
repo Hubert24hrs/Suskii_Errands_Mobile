@@ -1,6 +1,30 @@
 import providerEn from './provider.en';
 
 const en = {
+  /** BCP-47-ish language code: picks a service's stored name (20261103120100). */
+  lang: 'en' as 'en' | 'pcm',
+  roleSelection: {
+    title: 'How would you like to use Suskii Errands?',
+    subtitle: 'You can add the other one later from your profile.',
+    customerTitle: 'Customer',
+    customerBody: 'Request errands and services, make bookings and track your orders.',
+    providerTitle: 'Service Provider',
+    providerBody: 'Offer services, receive job requests and earn money.',
+    providerNote: "We'll set up your provider profile next. You can take jobs once you're approved.",
+    continue: 'Continue',
+  },
+  servicePicker: {
+    heading: 'All services available',
+    placeholder: 'Select the service you need',
+    search: 'Search services',
+    empty: 'No service matches your search',
+  },
+  conciergeUsage: {
+    left: '{remaining} of {limit} messages left today',
+    noneToday: 'No messages left today. Your allowance comes back on {time}.',
+    noneMonth: "You've used this month's messages. They come back on {date}.",
+    unavailable: 'Suskii AI is taking a short break. The form still works.',
+  },
   meta: {
     title: 'Suskii — your errands, handled',
     description: 'Request errands, track deliveries and manage your wallet on Suskii.',

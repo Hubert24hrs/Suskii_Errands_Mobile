@@ -86,4 +86,16 @@ class SupabaseUserRepository implements UserRepository {
     });
     return userModeFromWire(result);
   }
+
+  @override
+  Future<AppUser> selectInitialRole(
+    UserMode role, {
+    required String idempotencyKey,
+  }) async {
+    await _gateway.rpc('select_initial_role', <String, Object?>{
+      'p_role': role == UserMode.provider ? 'provider' : 'customer',
+      'p_idempotency_key': idempotencyKey,
+    });
+    return getProfile();
+  }
 }
