@@ -187,11 +187,11 @@ SELECT is((SELECT (b ->> 'reset_at')::timestamptz FROM b3),
 -- A person's own override, and its expiry.
 SELECT pg_temp.act('a1000000-0000-4000-8000-000000000005', 'aal2');
 SET LOCAL ROLE authenticated;
-SELECT is((public.admin_set_ai_quota('a1000000-0000-4000-8000-000000000001', 20, 300,
-           now() + interval '7 days', 'Testing the long flow') ->> 'remaining_today')::int, 10,
+SELECT is((public.admin_set_ai_quota('a1000000-0000-4000-8000-000000000001', 'Testing the long flow',
+           20, 300, now() + interval '7 days') ->> 'remaining_today')::int, 10,
   'raising one person''s limits gives them more today');
-SELECT throws_ok($$SELECT public.admin_set_ai_quota('a1000000-0000-4000-8000-000000000001', 20, 300,
-                   now() - interval '1 day', 'In the past')$$, '22023', 'ERR_INVALID_ARGUMENT',
+SELECT throws_ok($$SELECT public.admin_set_ai_quota('a1000000-0000-4000-8000-000000000001', 'In the past',
+                   20, 300, now() - interval '1 day')$$, '22023', 'ERR_INVALID_ARGUMENT',
   'an override cannot expire before it starts');
 RESET ROLE;
 UPDATE public.ai_usage_accounts SET override_expires_at = now() - interval '1 second'
@@ -203,13 +203,13 @@ SELECT is((private.ai_quota('a1000000-0000-4000-8000-000000000001') ->> 'daily_l
 SELECT pg_temp.act('a1000000-0000-4000-8000-000000000005', 'aal2');
 SET LOCAL ROLE authenticated;
 CREATE TEMP TABLE s8 AS SELECT public.admin_set_ai_suspension('a1000000-0000-4000-8000-000000000001',
-  now() + interval '1 day', 'Automated messages');
+  'Automated messages', now() + interval '1 day');
 SELECT pg_temp.act('a1000000-0000-4000-8000-000000000001');
 SELECT is((public.concierge_begin_turn((SELECT id FROM cv WHERE name = 'c'), 'key-ai-turn-0000000000007')
            ->> 'limited'), 'suspended', 'a suspended person is refused before anything else');
 SELECT pg_temp.act('a1000000-0000-4000-8000-000000000005', 'aal2');
-SELECT ok((public.admin_set_ai_suspension('a1000000-0000-4000-8000-000000000001', NULL, 'Reviewed')
-           ->> 'suspended_until') IS NULL, 'and the suspension can be lifted');
+SELECT ok((public.admin_set_ai_suspension('a1000000-0000-4000-8000-000000000001', 'Reviewed')
+           ->> 'suspended_until') IS NULL, 'and the suspension can be lifted by leaving the end out');
 RESET ROLE;
 
 -- Cooldown between messages.

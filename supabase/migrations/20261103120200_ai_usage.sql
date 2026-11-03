@@ -732,9 +732,11 @@ BEGIN
   INSERT INTO public.ai_usage_accounts (user_id) VALUES (p_user) ON CONFLICT DO NOTHING;
 END $$;
 
--- A person's own limits, for a while or until changed. NULLs clear the override.
-CREATE FUNCTION public.admin_set_ai_quota(p_user uuid, p_daily integer, p_monthly integer,
-                                          p_expires_at timestamptz, p_reason text)
+-- A person's own limits, for a while or until changed. NULLs (or leaving them out, as the console
+-- does) clear the override.
+CREATE FUNCTION public.admin_set_ai_quota(p_user uuid, p_reason text, p_daily integer DEFAULT NULL,
+                                          p_monthly integer DEFAULT NULL,
+                                          p_expires_at timestamptz DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -799,7 +801,8 @@ END $$;
 
 -- Stop one person using the assistant until a time, or lift it with NULL. Nothing else about the
 -- account changes: the request form works as before.
-CREATE FUNCTION public.admin_set_ai_suspension(p_user uuid, p_until timestamptz, p_reason text)
+CREATE FUNCTION public.admin_set_ai_suspension(p_user uuid, p_reason text,
+                                               p_until timestamptz DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -928,9 +931,9 @@ REVOKE ALL ON FUNCTION private.ai_require_staff_for(uuid) FROM PUBLIC, anon, aut
 REVOKE ALL ON FUNCTION
   public.admin_ai_usage_summary(date, date),
   public.admin_ai_users(date, date, text, integer),
-  public.admin_set_ai_quota(uuid, integer, integer, timestamptz, text),
+  public.admin_set_ai_quota(uuid, text, integer, integer, timestamptz),
   public.admin_grant_ai_credits(text, uuid, integer, text),
-  public.admin_set_ai_suspension(uuid, timestamptz, text),
+  public.admin_set_ai_suspension(uuid, text, timestamptz),
   public.admin_set_ai_budget(bigint, bigint, text),
   public.admin_set_ai_tier(text, integer, integer, text),
   public.admin_set_ai_enabled(boolean, text)
@@ -938,9 +941,9 @@ REVOKE ALL ON FUNCTION
 GRANT EXECUTE ON FUNCTION
   public.admin_ai_usage_summary(date, date),
   public.admin_ai_users(date, date, text, integer),
-  public.admin_set_ai_quota(uuid, integer, integer, timestamptz, text),
+  public.admin_set_ai_quota(uuid, text, integer, integer, timestamptz),
   public.admin_grant_ai_credits(text, uuid, integer, text),
-  public.admin_set_ai_suspension(uuid, timestamptz, text),
+  public.admin_set_ai_suspension(uuid, text, timestamptz),
   public.admin_set_ai_budget(bigint, bigint, text),
   public.admin_set_ai_tier(text, integer, integer, text),
   public.admin_set_ai_enabled(boolean, text)

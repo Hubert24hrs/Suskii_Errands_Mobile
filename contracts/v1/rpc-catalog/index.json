@@ -1370,7 +1370,7 @@
     {
       "name": "admin_set_ai_quota",
       "schema": "public",
-      "signature": "public.admin_set_ai_quota(uuid, integer, integer, timestamp with time zone, text)",
+      "signature": "public.admin_set_ai_quota(uuid, text, integer, integer, timestamp with time zone)",
       "arguments": [
         {
           "name": "p_user",
@@ -1382,12 +1382,21 @@
           "optional": false
         },
         {
+          "name": "p_reason",
+          "sql_type": "text",
+          "schema": {
+            "type": "string"
+          },
+          "optional": false
+        },
+        {
           "name": "p_daily",
           "sql_type": "integer",
           "schema": {
             "type": "integer"
           },
-          "optional": false
+          "optional": true,
+          "default": "NULL"
         },
         {
           "name": "p_monthly",
@@ -1395,7 +1404,8 @@
           "schema": {
             "type": "integer"
           },
-          "optional": false
+          "optional": true,
+          "default": "NULL"
         },
         {
           "name": "p_expires_at",
@@ -1404,15 +1414,8 @@
             "type": "string",
             "format": "date-time"
           },
-          "optional": false
-        },
-        {
-          "name": "p_reason",
-          "sql_type": "text",
-          "schema": {
-            "type": "string"
-          },
-          "optional": false
+          "optional": true,
+          "default": "NULL"
         }
       ],
       "returns": {
@@ -1437,7 +1440,7 @@
     {
       "name": "admin_set_ai_suspension",
       "schema": "public",
-      "signature": "public.admin_set_ai_suspension(uuid, timestamp with time zone, text)",
+      "signature": "public.admin_set_ai_suspension(uuid, text, timestamp with time zone)",
       "arguments": [
         {
           "name": "p_user",
@@ -1449,21 +1452,22 @@
           "optional": false
         },
         {
-          "name": "p_until",
-          "sql_type": "timestamp with time zone",
-          "schema": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "optional": false
-        },
-        {
           "name": "p_reason",
           "sql_type": "text",
           "schema": {
             "type": "string"
           },
           "optional": false
+        },
+        {
+          "name": "p_until",
+          "sql_type": "timestamp with time zone",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional": true,
+          "default": "NULL"
         }
       ],
       "returns": {
