@@ -340,7 +340,9 @@ BEGIN
       v_reset_at := (v_budget ->> 'day_resets_at')::timestamptz;
     ELSIF v_conv.turn_count >= v_max_turns THEN
       v_limited := 'turns';
-    ELSIF v_last IS NOT NULL
+    -- Only when a cooldown is set: a turn that waited on the lock started before the one it waited
+    -- for was stamped, so with no cooldown the comparison below would still refuse it.
+    ELSIF (v_limits ->> 'cooldown_seconds')::integer > 0 AND v_last IS NOT NULL
           AND v_last > now() - make_interval(secs => (v_limits ->> 'cooldown_seconds')::integer) THEN
       v_limited := 'cooldown';
       v_reset_at := v_last + make_interval(secs => (v_limits ->> 'cooldown_seconds')::integer);
