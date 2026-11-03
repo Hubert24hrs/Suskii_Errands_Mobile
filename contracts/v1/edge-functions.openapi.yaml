@@ -183,6 +183,13 @@ paths:
         customer sets the map pin and the price and publishes. A switched-off concierge, a limit, or a
         model that is down is also a `200` with `handoff_to_form`, never an error, so the app is never
         blocked on the AI. `show_sos_card` means show the SOS card and the emergency numbers first.
+
+        Usage (20261103120200): each person has a daily and a monthly allowance of messages, checked
+        and reserved on the server under a lock, so messages sent at once cannot get past it. A reply
+        that never reached the model is not counted. When a limit stops a message, `limited` names it
+        and `reset_at` says when it lifts; `usage` is what is left, for the screen to show (also
+        readable at any time from the RPC `my_ai_usage`). `409 ERR_IDEMPOTENCY_IN_PROGRESS` means the
+        same key is already being answered: wait, then retry with the same key.
       requestBody:
         required: true
         content:
@@ -218,6 +225,26 @@ paths:
                   message:
                     type: object
                     description: The assistant row as stored in `ai_messages` (id, body, structured_draft, proposed_action, language, created_at).
+                  limited:
+                    type: string
+                    nullable: true
+                    enum: [day, month, budget, suspended, minute, cooldown, turns, null]
+                    description: >
+                      Why the model was not asked: the daily or monthly allowance is used, the
+                      platform's AI budget is spent, AI is suspended on this account, messages are
+                      too fast, or the conversation is too long. Absent on a replayed key.
+                  reset_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: When `limited` lifts. Day and month are the person's own midnight and first of the month.
+                  usage:
+                    type: object
+                    nullable: true
+                    description: >
+                      daily_limit, used_today, remaining_today, monthly_limit, used_this_month,
+                      remaining_this_month, credits, suspended_until, day_resets_at, month_resets_at.
+                      Null on a replayed key.
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }

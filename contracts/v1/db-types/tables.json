@@ -4394,6 +4394,28 @@
           },
           "nullable": true,
           "server_default": false
+        },
+        {
+          "name": "role_selected_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "signup_role",
+          "type": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "provider"
+            ],
+            "enum_name": "user_mode"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {
@@ -6620,6 +6642,22 @@
           "type": {
             "type": "string",
             "format": "date-time"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "display_names",
+          "type": {
+            "type": "object"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "descriptions",
+          "type": {
+            "type": "object"
           },
           "nullable": false,
           "server_default": true

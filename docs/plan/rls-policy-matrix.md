@@ -63,7 +63,8 @@ Every table below has `ENABLE ROW LEVEL SECURITY` **and** `FORCE ROW LEVEL SECUR
 | `currencies` | R | R | R | R | R | R | R + F |
 | `countries` | — | — | R | R | R | R | R + F (four-eyes) |
 | `cities`, `zones` | R | R | R | R | R | R | R + F |
-| `service_categories` | R | R | R | R | R | R | R + F |
+| `service_categories` | R | R | R | R | R | R | R + F (`admin_save_service()`, `admin_set_service_active()`; no delete) |
+| (rev. 2026-11-03) `service_categories` rows are readable when inactive, so a past request keeps its service's name; pickers filter `active`. Support and verification read the admin list through `admin_service_catalogue()` | | | | | | | |
 | per-country category settings: `countries.config` and the country pack, not a table (rev. 2026-10-13) | — | R | R | R | R | R | R + F (four-eyes, via `propose_config_change()`) |
 | `feature_flags` | — | — | R | R | R | R | R + F (four-eyes) |
 | `legal_documents` | R | R | R | R | R | R | R + F |
@@ -199,6 +200,7 @@ Support reads a conversation only when a ticket references it, not by browsing. 
 | `private.idempotency_keys`, `private.outbox` | No role. Written only inside `SECURITY DEFINER` functions |
 | `approvals` | Requester R:own; approvers R:scope + F (`approve`); `CHECK (approved_by <> requested_by)` |
 | `ai_conversations`, `ai_messages` | User R:own (conversation list, redacted content); support R:scope (ticket-linked) |
+| `ai_usage`, `ai_usage_accounts` | No client role (rev. 2026-11-03). The person reads their own allowance through `my_ai_usage()`; the concierge reserves and settles through `concierge_begin_turn()`, `concierge_record_turn()` and `concierge_release_turn()`. Finance and super admin read the spend through `admin_ai_usage_summary()`; support, finance and super admin list people through `admin_ai_users()` (audited, country-scoped); support and super admin change one person's allowance, credits or suspension (`admin_set_ai_quota()`, `admin_grant_ai_credits()`, `admin_set_ai_suspension()`); super admin alone moves the budget, the tiers and the switch (`admin_set_ai_budget()`, `admin_set_ai_tier()`, `admin_set_ai_enabled()`) |
 | `audit.log`, `audit.kyc_access` | Super admin R via F (`audit_search`). **No role has `UPDATE` or `DELETE`, including `service_role`** — revoked explicitly, so the hash chain cannot be rewritten through the API |
 
 ## Storage bucket policies

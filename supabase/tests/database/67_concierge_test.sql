@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(24);
+SELECT plan(25);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('c0c00000-0000-4000-8000-000000000001', '2348000006701'),   -- verified customer
@@ -97,7 +97,8 @@ SELECT throws_ok(format($$SELECT public.concierge_begin_turn(%L, 'key-cv-turn-00
 SELECT is((SELECT count(*)::int FROM public.ai_messages), 0, 'or read a line of it');
 RESET ROLE;
 
--- Limits: half for the unverified. Ten user lines a minute is the default 20 halved.
+-- Limits count the usage ledger, not message rows (20261103120200), and no longer halve for the
+-- unverified: customer verification was withdrawn, so halving applied to everybody.
 SELECT pg_temp.act('c0c00000-0000-4000-8000-000000000003');
 SET LOCAL ROLE authenticated;
 INSERT INTO cv SELECT 'u', id FROM public.concierge_start('key-cv-start-00000000003');
@@ -108,7 +109,20 @@ FROM generate_series(1, 10);
 SELECT pg_temp.act('c0c00000-0000-4000-8000-000000000003');
 SET LOCAL ROLE authenticated;
 SELECT is((public.concierge_begin_turn((SELECT id FROM cv WHERE name = 'u'), 'key-cv-turn-000000000010')
-           ->> 'limited'), 'minute', 'an unverified person hits the per-minute limit at ten');
+           -> 'limited'), 'null'::jsonb, 'message rows alone are not usage');
+RESET ROLE;
+INSERT INTO public.ai_usage (user_id, conversation_id, country_code, idempotency_key, status, created_at)
+SELECT 'c0c00000-0000-4000-8000-000000000003', (SELECT id FROM cv WHERE name = 'u'), 'NG',
+       'key-cv-burst-' || lpad(g::text, 12, '0'), 'completed', now() - interval '30 seconds'
+FROM generate_series(1, 20) g;
+UPDATE public.ai_usage SET created_at = now() - interval '30 seconds'
+WHERE idempotency_key = 'key-cv-turn-000000000010';
+UPDATE public.ai_usage_accounts SET daily_limit_override = 100, monthly_limit_override = 100
+WHERE user_id = 'c0c00000-0000-4000-8000-000000000003';
+SELECT pg_temp.act('c0c00000-0000-4000-8000-000000000003');
+SET LOCAL ROLE authenticated;
+SELECT is((public.concierge_begin_turn((SELECT id FROM cv WHERE name = 'u'), 'key-cv-turn-000000000011')
+           ->> 'limited'), 'minute', 'twenty messages in a minute is the burst limit');
 RESET ROLE;
 
 SELECT ok(NOT has_column_privilege('authenticated', 'public.ai_messages', 'tokens_in', 'SELECT'),

@@ -5,6 +5,41 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-11-03 (part 25) — Claude Code — roles, the service catalogue and Ask Suskii usage: the backend
+
+The owner's brief of 2026-11-03 asked for three things; the audit found most of the first already built, and
+this is the backend for what was not. Three migrations (`20261103120000`–`120200`), three pgTAP files (103
+assertions), an end-to-end concurrency check, and the `concierge` function. Contracts v1 is a MINOR bump;
+nothing an app reads today changed shape.
+
+- **Role selection.** `select_initial_role(role, key)` records the first-run answer once. Every account that
+  existed before the migration counts as having answered, so no current tester sees the new screen. Choosing
+  Service Provider does **not** enter provider mode: `set_active_mode('provider')` still waits for approval,
+  so the app should take that person to provider onboarding. `get_bootstrap().user` gains `role_selected`,
+  `signup_role` and `provider_status` (`not_registered`, `pending_verification`, `pending_approval`,
+  `approved`, `rejected`, `suspended`), derived from the existing standing rather than stored.
+- **Catalogue as data.** `service_categories` carries `display_names` and `descriptions` per language. The 21
+  services keep their keys, ids and `name_key`s, and the stored names are the apps' own strings word for word;
+  **the descriptions are new copy and need the client's review**. A service an admin adds has
+  `name_key = 'svc_<key>'`, which no translation file has: show `display_names` then. Inactive rows are
+  readable now, so a past request keeps its service's name; **pickers must keep filtering `active = true`**,
+  which both apps already do. `admin_save_service`, `admin_set_service_active`, `admin_service_catalogue`; no
+  delete exists, and the foreign keys forbid one anyway.
+- **Ask Suskii usage.** `ai_usage` is a ledger, one row per message, keyed by its idempotency key and reserved
+  under a lock on the person's row, so simultaneous messages cannot get past the allowance. The old check
+  counted message rows before the model call, and ten messages at once all passed. The defaults are 10 a day
+  and 150 a month, a 3-second cooldown, and a $2/day and $25/month platform budget. The day is the person's
+  own midnight. Cost is estimated in integer micro-dollars from Vertex list prices, read off Google's pricing
+  page on 2026-11-03 [V] (`ai.pricing`, configuration). The sandbox's 26 real turns averaged about half a US
+  cent each. A reply that never reached the model is released and costs nothing; a failure after it ran
+  counts; a retry is the same row and never counted twice. The function caps tokens per call and per turn,
+  trims the oldest history to fit, says which limit was hit and when it lifts, and returns `usage` for the
+  screen (`my_ai_usage()` reads it at any time). Halving the limits for unverified customers is gone: customer
+  verification was withdrawn on 2026-10-24, so it halved everyone.
+
+For Kimi: these are additive, and the screens that use them are being built against them next (the owner
+asked Claude Code to build them, as with go-live). `contracts/CHANGELOG.md` lists every new field.
+
 ## 2026-10-27 (part 24) — Claude Code — staging gets LiveKit, then is paused
 
 **Staging has LiveKit.** The owner copied the sandbox's LiveKit credentials into `suskii-staging`'s Secret Manager

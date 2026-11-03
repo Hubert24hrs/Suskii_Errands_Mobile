@@ -30,8 +30,39 @@ export function unavailableReply(language: "en" | "pcm"): string {
     : "Ask Suskii isn't available right now. You can still post your errand: tap “Use the form”.";
 }
 
-export function limitReply(language: "en" | "pcm"): string {
-  return language === "pcm"
-    ? "We don reach the limit for now. Wetin we don get go dey for the form: tap “Use the form” to finish am."
-    : "We've reached the limit for now. What we have so far is on the form: tap “Use the form” to finish.";
+// Why Ask Suskii is not answering this message, from concierge_begin_turn (20261103120200). Each
+// says when it comes back, and every one leaves the form working, so the assistant never looks
+// broken when it is only rationed.
+export function limitReply(language: "en" | "pcm", reason: string): string {
+  const pcm = language === "pcm";
+  const form = pcm
+    ? " Wetin we don get go dey for the form: tap “Use the form” to finish am."
+    : " What we have so far is on the form: tap “Use the form” to finish.";
+  switch (reason) {
+    case "day":
+      return (pcm
+        ? "You don use all your Suskii AI messages for today. Abeg come back tomorrow."
+        : "You have reached your daily Suskii AI usage limit. Please come back tomorrow.") + form;
+    case "month":
+      return (pcm
+        ? "You don use all your Suskii AI messages for this month. E go start again for the beginning of next month."
+        : "You have used your monthly AI allowance. Your allowance will reset at the beginning of next month.") +
+        form;
+    case "budget":
+      return (pcm
+        ? "Suskii AI dey rest small now. Abeg try again later."
+        : "Suskii AI is taking a short break. Please try again later.") + form;
+    case "suspended":
+      return (pcm
+        ? "Suskii AI no dey available for your account now. Contact support if you think say na mistake."
+        : "Suskii AI isn't available on your account right now. Contact support if you think this is a mistake.") +
+        form;
+    case "minute":
+    case "cooldown":
+      return pcm
+        ? "You dey send message too fast. Abeg wait small, then send am again."
+        : "You're sending messages a little fast. Please wait a moment and send it again.";
+    default:
+      return (pcm ? "This conversation don reach im limit." : "This conversation has reached its limit.") + form;
+  }
 }

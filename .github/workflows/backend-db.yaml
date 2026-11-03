@@ -93,13 +93,15 @@ jobs:
         run: supabase db lint --local --schema public,private,ledger,kyc,audit --level warning --fail-on warning
 
       # Proves what revocation means to a signed-in app: pgTAP can only show rows vanish.
-      - name: Sessions and storage end to end (real GoTrue and Storage)
+      # Also the Ask Suskii allowance under concurrency: one transaction cannot race itself.
+      - name: Sessions, storage and the AI allowance end to end (real GoTrue, Storage and PostgREST)
         run: |
           set -euo pipefail
           eval "$(supabase status -o env --workdir "$GITHUB_WORKSPACE")"
           export API_URL SECRET_KEY ANON_KEY PUBLISHABLE_KEY
           bash supabase/tests/e2e/sessions_e2e.sh
           bash supabase/tests/e2e/storage_e2e.sh
+          bash supabase/tests/e2e/ai_quota_e2e.sh
 
       # The app's own Supabase repositories against the real stack: sign-in, request to offer
       # to held payment, the job, proofs, ratings, a dispute, wallet, KYC upload and account

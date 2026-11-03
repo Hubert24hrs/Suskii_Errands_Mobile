@@ -15,6 +15,12 @@
 migration so it tests what ships). The route is an ordered list of
 `{"model", "location", "thinking_budget"}`; the function tries each in turn.
 
+**A new model needs a price** (2026-11-03). Spend is estimated from `ai.pricing` in `remote_config`,
+per model and per endpoint (`global` or `regional`), in micro-dollars per million tokens. A model with
+no entry is priced as `default_model`, so spend is never under-counted, but the budget and the admin
+page are only accurate once the new model's list price is added, read from Google's Vertex AI pricing
+page on the day of the swap. Thinking tokens bill as output.
+
 ```sql
 -- What is routed now
 SELECT value FROM public.remote_config WHERE key = 'ai.routes.concierge.text';

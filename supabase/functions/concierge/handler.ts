@@ -40,6 +40,11 @@ interface Begin {
   conversation_id: string;
   enabled: boolean;
   limited: string | null;
+  // When a limit lifts, and whether this message holds a reservation that has to be settled.
+  reset_at?: string | null;
+  reserved?: boolean;
+  usage?: Record<string, unknown> | null;
+  limits?: Partial<Limits> | null;
   replay: Record<string, unknown> | null;
   language: "en" | "pcm";
   currency: { code: string; exponent: number };
@@ -50,10 +55,25 @@ interface Begin {
   country_code: string;
 }
 
+interface Limits {
+  max_input_tokens_per_call: number;
+  max_input_tokens_per_turn: number;
+  max_output_tokens_per_turn: number;
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TOOL_ROUNDS = 3;
+const MAX_OUTPUT_PER_CALL = 600;
+// The database sends these with every turn; the defaults only cover a begin_turn from before
+// 20261103120200, so a function deployed ahead of the migration is never unbounded.
+const DEFAULT_LIMITS: Limits = {
+  max_input_tokens_per_call: 4000,
+  max_input_tokens_per_turn: 12000,
+  max_output_tokens_per_turn: 800,
+};
 const STATUS_FOR: Record<string, number> = {
   ERR_CONVERSATION_NOT_FOUND: 404,
+  ERR_IDEMPOTENCY_IN_PROGRESS: 409,
   ERR_IDEMPOTENCY_KEY_INVALID: 400,
   ERR_IDEMPOTENCY_KEY_REUSED: 409,
   ERR_INVALID_ARGUMENT: 400,
@@ -79,12 +99,17 @@ export function createConciergeHandler(deps: ConciergeDeps) {
     }
 
     const started = now();
+    let begin: Begin | null = null;
+    // Filled in as the model is called, so a failure part-way still settles what was spent.
+    const spent: Spend = { usage: { input: 0, output: 0, thought: 0 }, model: null, location: null };
     try {
-      const begin = await deps.rpc("concierge_begin_turn", {
+      begin = await deps.rpc("concierge_begin_turn", {
         p_conversation_id: conversationId,
         p_idempotency_key: key,
       }) as Begin;
       if (begin.replay) return json(answer(begin.replay));
+      // The same message is already being answered. Recording a reply here would take its key.
+      if (begin.limited === "in_progress") return errorResponse(409, "ERR_IDEMPOTENCY_IN_PROGRESS");
 
       const userBody = redact(text).text.slice(0, 2000);
       const language = begin.language === "pcm" ? "pcm" : "en";
@@ -94,9 +119,15 @@ export function createConciergeHandler(deps: ConciergeDeps) {
       } else if (!begin.enabled || !validRoutes(begin.routes).length) {
         outcome = fixed(unavailableReply(language), language, "handoff_to_form", [], "unavailable");
       } else if (begin.limited) {
-        outcome = fixed(limitReply(language), language, "handoff_to_form", [], `limited_${begin.limited}`);
+        outcome = fixed(
+          limitReply(language, begin.limited),
+          language,
+          "handoff_to_form",
+          [],
+          `limited_${begin.limited}`,
+        );
       } else {
-        outcome = await converse(deps, begin, userBody, language);
+        outcome = await converse(deps, begin, userBody, language, spent);
       }
 
       const { state, draft, missing } = applySlots(begin.state ?? {}, outcome.slotUpdates, begin.categories);
@@ -117,6 +148,7 @@ export function createConciergeHandler(deps: ConciergeDeps) {
         p_tokens_thought: outcome.usage.thought,
         p_latency_ms: now() - started,
         p_tool_calls: outcome.toolCalls,
+        p_location: outcome.location,
       }) as Record<string, unknown>;
 
       deps.log("info", "concierge.turn", {
@@ -131,13 +163,37 @@ export function createConciergeHandler(deps: ConciergeDeps) {
         missing: missing.length,
         action: outcome.action,
       });
-      return json(answer(recorded));
+      return json({
+        ...answer(recorded),
+        limited: begin.limited ?? null,
+        reset_at: begin.reset_at ?? null,
+        usage: begin.usage ?? null,
+      });
     } catch (err) {
+      if (begin?.reserved) {
+        // Settle the reservation: counted if the model ran, released if it did not. Best effort;
+        // housekeeping abandons whatever this cannot reach.
+        await deps.rpc("concierge_release_turn", {
+          p_conversation_id: conversationId,
+          p_idempotency_key: key,
+          p_model_id: spent.model,
+          p_location: spent.location,
+          p_tokens_in: spent.usage.input,
+          p_tokens_out: spent.usage.output,
+          p_tokens_thought: spent.usage.thought,
+        }).catch(() => {});
+      }
       if (err instanceof RpcError) return errorResponse(STATUS_FOR[err.code] ?? 400, err.code);
       deps.log("error", "concierge.failed", { error: err instanceof Error ? err.name : "unknown" });
       return errorResponse(500, "ERR_INTERNAL");
     }
   };
+}
+
+interface Spend {
+  usage: Usage;
+  model: string | null;
+  location: string | null;
 }
 
 function answer(m: Record<string, unknown>) {
@@ -186,26 +242,46 @@ function validRoutes(routes: unknown): Route[] {
   );
 }
 
-async function converse(deps: ConciergeDeps, begin: Begin, userBody: string, language: "en" | "pcm"): Promise<Outcome> {
+// A rough token count for a prompt: about four characters a token for the languages the concierge
+// speaks. Used only to keep history inside the per-call budget; the bill uses the provider's count.
+function estimateTokens(value: unknown): number {
+  return Math.ceil(JSON.stringify(value).length / 4);
+}
+
+async function converse(
+  deps: ConciergeDeps,
+  begin: Begin,
+  userBody: string,
+  language: "en" | "pcm",
+  spent: Spend,
+): Promise<Outcome> {
   const routes = validRoutes(begin.routes);
+  const limits: Limits = { ...DEFAULT_LIMITS, ...(begin.limits ?? {}) };
   const system = systemPrompt({
     countryCode: begin.country_code,
     currencyCode: begin.currency.code,
     categories: begin.categories.map((c) => c.key),
   });
-  const contents: Content[] = [];
-  for (const h of begin.history ?? []) {
-    contents.push({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: h.body }] });
-  }
-  contents.push({
+  const current: Content = {
     role: "user",
     parts: [{
       text: `Errand so far: ${JSON.stringify(begin.state ?? {})}\nThe customer's language so far: ${language}\n` +
         `<user_content>${userBody}</user_content>`,
     }],
-  });
+  };
+  // The oldest turns go first when the prompt would not fit the per-call budget; the current
+  // message and the errand so far are never dropped.
+  const history: Content[] = (begin.history ?? []).map((h) => ({
+    role: h.role === "assistant" ? "model" : "user",
+    parts: [{ text: h.body }],
+  }));
+  const fixedCost = estimateTokens(system) + estimateTokens(DECLARATIONS) + estimateTokens(current);
+  while (history.length && fixedCost + estimateTokens(history) > limits.max_input_tokens_per_call) {
+    history.shift();
+  }
+  const contents: Content[] = [...history, current];
 
-  const usage: Usage = { input: 0, output: 0, thought: 0 };
+  const usage = spent.usage;
   const toolCalls: Array<{ name: string; ok: boolean }> = [];
   const amounts: string[] = [];
   let rejected = 0;
@@ -215,12 +291,24 @@ async function converse(deps: ConciergeDeps, begin: Begin, userBody: string, lan
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS + 3; round++) {
+      // The turn's token budget: a tool loop or a run of refusals stops here, not at the bill.
+      const outputLeft = limits.max_output_tokens_per_turn - usage.output - usage.thought;
+      if (round > 0 && (usage.input >= limits.max_input_tokens_per_turn || outputLeft < 50)) {
+        deps.log("warn", "concierge.token_budget", { tokens_in: usage.input, tokens_out: usage.output });
+        return {
+          ...fixed(unavailableReply(language), language, "handoff_to_form", [], "token_budget"),
+          usage,
+          toolCalls,
+          model,
+          location,
+        };
+      }
       const result = await deps.llm.generate({
         system,
         contents,
         tools: DECLARATIONS,
         responseSchema: RESPONSE_SCHEMA,
-        maxOutputTokens: 600,
+        maxOutputTokens: Math.max(50, Math.min(MAX_OUTPUT_PER_CALL, outputLeft)),
         temperature: 0.3,
       }, routes);
       usage.input += result.usage.input;
@@ -228,6 +316,8 @@ async function converse(deps: ConciergeDeps, begin: Begin, userBody: string, lan
       usage.thought += result.usage.thought;
       model = result.model;
       location = result.location;
+      spent.model = model;
+      spent.location = location;
 
       const calls = result.parts.filter((p) => p.functionCall);
       if (calls.length && toolCalls.length < MAX_TOOL_ROUNDS * 2) {

@@ -52,6 +52,14 @@ SELECT is(
      AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
      AND n.nspname || '.' || p.proname NOT IN (
        'public.get_bootstrap', 'public.set_active_mode', 'public.register_device',
+       -- First-run role selection and the catalogue as data (20261103120000, -120100).
+       'public.select_initial_role', 'public.admin_save_service', 'public.admin_set_service_active',
+       'public.admin_service_catalogue',
+       -- Ask Suskii usage and cost control (20261103120200).
+       'public.concierge_release_turn', 'public.my_ai_usage', 'public.admin_ai_usage_summary',
+       'public.admin_ai_users', 'public.admin_set_ai_quota', 'public.admin_grant_ai_credits',
+       'public.admin_set_ai_suspension', 'public.admin_set_ai_budget', 'public.admin_set_ai_tier',
+       'public.admin_set_ai_enabled',
        'public.record_consent', 'public.request_integrity_nonce',
        'public.list_sessions', 'public.revoke_session', 'public.revoke_other_sessions',
        -- Account lifecycle (20260927120000): deletion with a grace period, and export.
