@@ -24,9 +24,10 @@ class SupabaseCatalogRepository implements CatalogRepository {
     final rows = await _gateway.selectList(
       'service_categories',
       'id, key, name_key, icon_key, allows_custom, offer_ttl_seconds, '
-          'max_counter_rounds, proof_requirements',
-      column: 'active',
-      value: true,
+          'max_counter_rounds, proof_requirements, display_names, descriptions, '
+          'active',
+      // Inactive services too (readable since 20261103120100): a past request
+      // still names its service. Pickers filter on ServiceCategory.active.
       orderBy: 'sort_order',
     );
     _categoryUuids

@@ -630,3 +630,109 @@ export interface AiAdminMessage {
   /** Assistant-only: cards linking to modules. Never mutates anything. */
   proposedActions?: AiProposedAction[];
 }
+
+// ---------------------------------------------------------------------------
+// Service catalogue and Ask Suskii usage (2026-11-03)
+// ---------------------------------------------------------------------------
+
+/** One service in `admin_service_catalogue()`, active or not, with what points at it. */
+export interface CatalogueService {
+  id: string;
+  key: string;
+  active: boolean;
+  /** Language code -> name. English is always present. */
+  displayNames: Record<string, string>;
+  descriptions: Record<string, string>;
+  iconKey: string;
+  requiresVehicle: boolean;
+  allowsCustom: boolean;
+  sortOrder: number;
+  requestCount: number;
+  openRequestCount: number;
+  providerCount: number;
+  updatedAt: Date;
+}
+
+export interface ServiceInput {
+  key: string;
+  displayNames: Record<string, string>;
+  descriptions: Record<string, string>;
+  iconKey?: string;
+  requiresVehicle?: boolean;
+}
+
+export interface AiUsageTotals {
+  requests: number;
+  completed: number;
+  failed: number;
+  released: number;
+  tokensIn: number;
+  tokensOut: number;
+  tokensThought: number;
+  /** Estimated, in millionths of a US dollar. */
+  costMicros: number;
+  users: number;
+  avgCostPerUserMicros: number;
+}
+
+export interface AiUsageDay {
+  day: string;
+  requests: number;
+  failed: number;
+  tokensIn: number;
+  tokensOut: number;
+  costMicros: number;
+  users: number;
+}
+
+export interface AiUsageModel {
+  modelId: string;
+  location: string | null;
+  requests: number;
+  tokensIn: number;
+  tokensOut: number;
+  costMicros: number;
+}
+
+export interface AiBudget {
+  dailyMicros: number;
+  monthlyMicros: number;
+  spentTodayMicros: number;
+  spentThisMonthMicros: number;
+  dayExceeded: boolean;
+  monthExceeded: boolean;
+  dayResetsAt: Date;
+  monthResetsAt: Date;
+}
+
+export interface AiUsageSummary {
+  from: string;
+  to: string;
+  totals: AiUsageTotals;
+  byDay: AiUsageDay[];
+  byModel: AiUsageModel[];
+  budget: AiBudget;
+  /** The `concierge.text` switch, platform-wide. */
+  enabled: boolean;
+  /** Allowance per tier; `free` is everybody without an override. */
+  tiers: Record<string, { daily: number; monthly: number }>;
+  pricingVerifiedAt?: string;
+}
+
+export interface AiUserUsage {
+  userId: string;
+  displayName: string;
+  countryCode: string;
+  requests: number;
+  failed: number;
+  tokens: number;
+  costMicros: number;
+  usedToday: number;
+  dailyLimit: number;
+  usedThisMonth: number;
+  monthlyLimit: number;
+  credits: number;
+  suspendedUntil?: Date;
+  overrideExpiresAt?: Date;
+}
+

@@ -31,6 +31,7 @@ import {
   MockAiAdminRepository,
 } from './repos/config';
 import { MockAdminUsersRepository } from './repos/adminUsers';
+import { MockAiUsageRepository, MockServicesRepository } from './repos/catalogue';
 
 export { mockBehavior } from './behavior';
 export { db, createMockDatabase, MockDatabase } from './fixtures';
@@ -64,6 +65,8 @@ export {
   MockAuditRepository,
   MockAiAdminRepository,
   MockAdminUsersRepository,
+  MockServicesRepository,
+  MockAiUsageRepository,
 };
 
 // Singletons over the shared seeded database. Construct your own instances
@@ -85,3 +88,5 @@ export const analyticsRepository = new MockAnalyticsRepository(db, mockBehavior)
 export const auditRepository = new MockAuditRepository(db, mockBehavior);
 export const aiAdminRepository = new MockAiAdminRepository(db, mockBehavior);
 export const adminUsersRepository = new MockAdminUsersRepository(db, mockBehavior);
+export const servicesRepository = new MockServicesRepository(db, mockBehavior);
+export const aiUsageRepository = new MockAiUsageRepository(db, mockBehavior);

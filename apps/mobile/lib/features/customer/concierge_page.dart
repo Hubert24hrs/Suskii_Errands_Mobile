@@ -98,6 +98,8 @@ class _ConciergePageState extends ConsumerState<ConciergePage> {
           _sending = false;
           _streaming = '';
         });
+        // The server counted (or released) that message: show what is left.
+        ref.invalidate(_aiUsageProvider);
       }
     }
   }
@@ -261,6 +263,7 @@ class _ConciergePageState extends ConsumerState<ConciergePage> {
           ),
           child: Column(
             children: <Widget>[
+              const _UsageLine(),
               Row(
                 children: <Widget>[
                   Expanded(
@@ -353,7 +356,7 @@ class _DraftSummaryCard extends ConsumerWidget {
     final cats = ref.watch(categoriesProvider).value ?? const [];
     var category = l10n.catCustom;
     for (final c in cats) {
-      if (c.id == draft.categoryId) category = categoryLabel(l10n, c.labelKey);
+      if (c.id == draft.categoryId) category = serviceName(l10n, c);
     }
     return Card(
       child: Padding(
@@ -462,6 +465,76 @@ class _SosCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The caller's Ask Suskii allowance (`my_ai_usage`). Shown, never enforced
+/// here: the server counts and refuses, and a refused message still gets a
+/// reply that says why.
+final _aiUsageProvider = FutureProvider.autoDispose<AiUsage>(
+  (ref) => ref.watch(conciergeRepositoryProvider).getUsage(),
+);
+
+class _UsageLine extends ConsumerWidget {
+  const _UsageLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usage = ref.watch(_aiUsageProvider).value;
+    if (usage == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final material = MaterialLocalizations.of(context);
+    String when(DateTime at) {
+      final local = at.toLocal();
+      return '${material.formatMediumDate(local)}, '
+          '${material.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
+    }
+
+    final exhausted = usage.remainingToday <= 0 && usage.credits <= 0;
+    final String text;
+    if (!usage.available) {
+      text = l10n.conciergeUsageUnavailable;
+    } else if (exhausted && usage.remainingThisMonth <= 0) {
+      text = l10n.conciergeUsageNoneMonth(
+        material.formatMediumDate(usage.monthResetsAt.toLocal()),
+      );
+    } else if (exhausted) {
+      text = l10n.conciergeUsageNoneToday(when(usage.dayResetsAt));
+    } else {
+      text = l10n.conciergeUsageLeft(usage.remainingToday, usage.dailyLimit);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: SSpacing.xs),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            exhausted || !usage.available
+                ? Icons.hourglass_empty
+                : Icons.auto_awesome_outlined,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: SSpacing.xs),
+          Expanded(
+            child: Text(
+              text,
+              key: const Key('concierge-usage'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (usage.credits > 0 && usage.available)
+            Text(
+              l10n.conciergeUsageCredits(usage.credits),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+        ],
       ),
     );
   }

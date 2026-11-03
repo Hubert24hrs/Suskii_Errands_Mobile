@@ -6,6 +6,39 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**MINOR**: first-run role selection, the service catalogue as data, and Ask Suskii usage control
+(20261103120000–120200). Additive for every app: no column, function or field an app reads today
+changed shape or meaning.
+
+### Added
+- **`select_initial_role(p_role, p_idempotency_key)`** → `{role_selected, signup_role, active_mode,
+  provider_status}`. Answered once; a later answer changes nothing. Choosing `provider` does **not**
+  enter provider mode: `set_active_mode('provider')` still needs an approved provider.
+- **`get_bootstrap().user`**: `role_selected` (false only for accounts created after this migration
+  that have not answered), `signup_role`, and `provider_status`, one of `not_registered`,
+  `pending_verification`, `pending_approval`, `approved`, `rejected`, `suspended`.
+- **`service_categories.display_names`** and **`descriptions`**: language code → text, English always
+  present. A service an admin adds has `name_key = 'svc_<key>'`, which no app translates: show the
+  stored name. The 21 existing services keep their keys, ids and `name_key`s.
+- `service_categories` rows are now readable when inactive, so a past request keeps its service's
+  name. **Pickers must keep asking for `active = true`**, as both apps already do.
+- Staff: `admin_save_service`, `admin_set_service_active`, `admin_service_catalogue` (super admin to
+  change, support and verification to read). There is no delete.
+- **`my_ai_usage()`** → the caller's allowance: `daily_limit`, `used_today`, `remaining_today`,
+  `monthly_limit`, `used_this_month`, `remaining_this_month`, `credits`, `suspended_until`,
+  `day_resets_at`, `month_resets_at`, `available`.
+- **`POST /concierge`** responses gain `limited`, `reset_at` and `usage`, and may return `409
+  ERR_IDEMPOTENCY_IN_PROGRESS` when the same key is already being answered.
+- `concierge_release_turn` (called by the function, not the app) and `concierge_record_turn`'s new
+  trailing `p_location`.
+- Staff: `admin_ai_usage_summary`, `admin_ai_users`, `admin_set_ai_quota`, `admin_grant_ai_credits`,
+  `admin_set_ai_suspension`, `admin_set_ai_budget`, `admin_set_ai_tier`, `admin_set_ai_enabled`.
+
+### Changed
+- Ask Suskii's limits: 10 messages a day and 150 a month per person by default (was 200 a day), a
+  3-second cooldown, and no halving for unverified customers. Counted from a reservation ledger, not
+  from message rows, so simultaneous messages cannot get past them.
+
 **MINOR**: in-app calls over LiveKit. Additive: one Edge Function, `POST /call-token`, the third an app
 calls. `start_call`, `answer_call` and `end_call` are unchanged; the function runs the first two as the
 caller and signs a token for the room `start_call` returns.

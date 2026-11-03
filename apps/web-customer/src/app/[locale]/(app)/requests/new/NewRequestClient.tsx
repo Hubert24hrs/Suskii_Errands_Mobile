@@ -17,7 +17,7 @@ import type { CreateRequestInput, GeoPoint, Urgency } from '@/mocks/types';
 import { MoneyField } from '@/components/MoneyField';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
-import { categoryLabel, errorText, mediaName } from '../_shared';
+import { categoryDescription, categoryLabel, errorText, mediaName } from '../_shared';
 import { PickupMap } from '@/components/PickupMap';
 
 const URGENCY_LEVELS: Urgency[] = ['flexible', 'standard', 'urgent', 'emergency'];
@@ -62,6 +62,7 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   const currency = bootstrapQuery.data?.countryPack.currencyCode ?? 'NGN';
 
   const [categoryId, setCategoryId] = useState('');
+  const [serviceQuery, setServiceQuery] = useState('');
   const [description, setDescription] = useState('');
   const [pickupLabel, setPickupLabel] = useState('');
   // Where the pickup is on the map: matching finds the nearest providers to
@@ -202,6 +203,21 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
   }
 
   const categories = categoriesQuery.data;
+  const words = serviceQuery.trim().toLowerCase().split(/\s+/).filter((w) => w !== '');
+  // The chosen service stays listed whatever the search, so the dropdown never loses it.
+  const shownServices = categories.filter((c) => {
+    if (c.id === categoryId || words.length === 0) return true;
+    const haystack = [
+      categoryLabel(dict, categories, c.id),
+      categoryDescription(dict, c) ?? '',
+      ...Object.values(c.displayNames ?? {}),
+      c.id.replace(/_/g, ' '),
+    ]
+      .join(' ')
+      .toLowerCase();
+    return words.every((w) => haystack.includes(w));
+  });
+  const selectedService = categories.find((c) => c.id === categoryId);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-lg py-xxxl">
@@ -216,10 +232,21 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
           if (canSubmit && !busy) publish.mutate();
         }}
       >
-        <div className="flex flex-col gap-xs">
+        {/* One searchable list of every service (2026-11-03), as the app's picker: the search
+            narrows the dropdown, and the chosen service shows its description. */}
+        <div className="flex flex-col gap-xs" data-testid="service-picker">
           <label htmlFor="category" className={labelClasses}>
-            {dict.newRequest.categoryLabel}
+            {dict.servicePicker.heading}
           </label>
+          <input
+            id="service-search"
+            type="search"
+            aria-label={dict.servicePicker.search}
+            placeholder={dict.servicePicker.search}
+            value={serviceQuery}
+            onChange={(e) => setServiceQuery(e.target.value)}
+            className={inputClasses}
+          />
           <select
             id="category"
             value={categoryId}
@@ -227,14 +254,19 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
             className={inputClasses}
           >
             <option value="" disabled>
-              {dict.newRequest.categoryLabel}
+              {shownServices.length === 0 ? dict.servicePicker.empty : dict.servicePicker.placeholder}
             </option>
-            {categories.map((c) => (
+            {shownServices.map((c) => (
               <option key={c.id} value={c.id}>
                 {categoryLabel(dict, categories, c.id)}
               </option>
             ))}
           </select>
+          {selectedService && categoryDescription(dict, selectedService) ? (
+            <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+              {categoryDescription(dict, selectedService)}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-xs">

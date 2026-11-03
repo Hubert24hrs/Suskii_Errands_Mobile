@@ -47,7 +47,7 @@ test.afterAll(async () => {
 
 test('a request goes out from the form with the device as the pickup point', async () => {
   await page.goto('/en/requests/new');
-  await page.getByLabel('Category').selectOption('plumbing');
+  await page.getByLabel('All services available').selectOption('plumbing');
   await page.locator('#description').fill(`The bathroom sink is blocked ${run}`);
   await page.locator('#pickup').fill('Herbert Macaulay Way, Yaba');
   await page.getByTestId('map-use-my-location').click();

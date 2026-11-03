@@ -42,9 +42,7 @@ class ProviderJobsPage extends ConsumerWidget {
 
     String categoryLabelFor(String categoryId) {
       for (final ServiceCategory category in categories) {
-        if (category.id == categoryId) {
-          return categoryLabel(l10n, category.labelKey);
-        }
+        if (category.id == categoryId) return serviceName(l10n, category);
       }
       return l10n.catCustom;
     }

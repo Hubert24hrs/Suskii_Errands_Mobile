@@ -17,7 +17,7 @@ import {
   catalogRepository,
   conciergeRepository,
 } from '@/lib/repositories';
-import type { ConciergeDraft, ConciergeMessage, ServiceCategory } from '@/mocks/types';
+import type { AiUsage, ConciergeDraft, ConciergeMessage, ServiceCategory } from '@/mocks/types';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
 import { categoryLabel, errorText, urgencyLabel } from '../requests/_shared';
@@ -198,6 +198,12 @@ export function ConciergeClient({ locale, dict }: { locale: Locale; dict: Dictio
     queryKey: ['catalog', 'categories'],
     queryFn: () => catalogRepository.getCategories(),
   });
+  // The allowance, as the app shows it. Counted and enforced on the server; shown only.
+  const usageQuery = useQuery({
+    queryKey: ['concierge', 'usage'],
+    queryFn: () => conciergeRepository.getUsage(),
+    retry: false,
+  });
 
   // Start the conversation once, then watch the message list (the mock
   // patches the assistant message with the server-side draft requestId
@@ -258,6 +264,9 @@ export function ConciergeClient({ locale, dict }: { locale: Locale; dict: Dictio
       // Key is kept so retrying the same text replays instead of re-running.
       setSendError(e);
       setStream(null);
+    } finally {
+      // The server counted (or released) that message: show what is left.
+      void usageQuery.refetch();
     }
   };
 
@@ -375,6 +384,8 @@ export function ConciergeClient({ locale, dict }: { locale: Locale; dict: Dictio
         </p>
       ) : null}
 
+      {usageQuery.data ? <UsageLine dict={dict} usage={usageQuery.data} /> : null}
+
       <form
         className="mt-xl flex flex-col gap-sm"
         onSubmit={(e) => {
@@ -419,5 +430,25 @@ export function ConciergeClient({ locale, dict }: { locale: Locale; dict: Dictio
         ) : null}
       </form>
     </div>
+  );
+}
+
+function UsageLine({ dict, usage }: { dict: Dictionary; usage: AiUsage }) {
+  const t = dict.conciergeUsage;
+  // en-NG for both locales, as settings does: pcm has no Intl locale data.
+  const when = (at: Date) =>
+    new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium', timeStyle: 'short' }).format(at);
+  const exhausted = usage.remainingToday <= 0 && usage.credits <= 0;
+  const text = !usage.available
+    ? t.unavailable
+    : exhausted && usage.remainingThisMonth <= 0
+      ? t.noneMonth.replace('{date}', new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium' }).format(usage.monthResetsAt))
+      : exhausted
+        ? t.noneToday.replace('{time}', when(usage.dayResetsAt))
+        : t.left.replace('{remaining}', String(usage.remainingToday)).replace('{limit}', String(usage.dailyLimit));
+  return (
+    <p data-testid="concierge-usage" className="mt-lg text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+      {text}
+    </p>
   );
 }

@@ -9,7 +9,15 @@ import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { ModeSwitchButton } from '@/components/ModeSwitch';
 
-export { categoryLabel, errorText, formatDateTime, statusLabel, statusTone, urgencyLabel } from '../requests/_shared';
+export {
+  categoryDescription,
+  categoryLabel,
+  errorText,
+  formatDateTime,
+  statusLabel,
+  statusTone,
+  urgencyLabel,
+} from '../requests/_shared';
 
 export const btnPrimary =
   'rounded-md bg-brand-primary px-xl py-sm text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50';

@@ -177,6 +177,19 @@ export class MockUserRepository extends MockRepo {
     return updated;
   }
 
+  /** Answered once, like `select_initial_role`: a second answer changes nothing. */
+  async selectInitialRole(role: UserMode, idempotencyKey: string): Promise<AppUser> {
+    await this.gate();
+    return this.idempotent('selectInitialRole', idempotencyKey, role, () => {
+      const user = this.currentUser;
+      if (user.roleSelected !== false) return user;
+      const updated: AppUser = { ...user, roleSelected: true, signupRole: role };
+      this.db.users[user.id] = updated;
+      this.profileEvents.emit(updated);
+      return updated;
+    });
+  }
+
   /** Throws ERR_PROVIDER_NOT_VERIFIED when switching without provider KYC. */
   async setActiveMode(mode: UserMode, idempotencyKey: string): Promise<UserMode> {
     await this.gate();

@@ -41,6 +41,9 @@ export type AdminAction =
   | 'audit.read'
   | 'adminUsers.read'
   | 'aiAdmin.use'
+  | 'services.read'
+  | 'aiUsage.read'
+  | 'aiUsage.people'
   // Mutations
   | 'directory.suspend'
   | 'verification.claim'
@@ -55,7 +58,10 @@ export type AdminAction =
   | 'risk.review'
   | 'config.propose'
   | 'config.approve'
-  | 'adminUsers.manage';
+  | 'adminUsers.manage'
+  | 'services.manage'
+  | 'aiUsage.manage'
+  | 'aiUsage.controls';
 
 const ALL: AdminRole[] = [
   'super_admin',
@@ -90,6 +96,12 @@ export const PERMISSIONS: Record<AdminAction, AdminRole[]> = {
   'audit.read': ['super_admin'],
   'adminUsers.read': ['super_admin'],
   'aiAdmin.use': ALL,
+  // admin_service_catalogue
+  'services.read': ['super_admin', 'support_agent', 'verification_officer'],
+  // admin_ai_usage_summary: what it costs
+  'aiUsage.read': ['super_admin', 'finance_officer'],
+  // admin_ai_users: who uses it
+  'aiUsage.people': ['super_admin', 'finance_officer', 'support_agent'],
 
   // suspend_provider / suspend_organization
   'directory.suspend': ['super_admin'],
@@ -108,6 +120,12 @@ export const PERMISSIONS: Record<AdminAction, AdminRole[]> = {
   'config.propose': ['super_admin'],
   'config.approve': ['super_admin'],
   'adminUsers.manage': ['super_admin'],
+  // admin_save_service, admin_set_service_active
+  'services.manage': ['super_admin'],
+  // admin_set_ai_quota, admin_grant_ai_credits, admin_set_ai_suspension
+  'aiUsage.manage': ['super_admin', 'support_agent'],
+  // admin_set_ai_budget, admin_set_ai_tier, admin_set_ai_enabled
+  'aiUsage.controls': ['super_admin'],
 };
 
 /**
@@ -122,6 +140,9 @@ const SENSITIVE: ReadonlySet<AdminAction> = new Set([
   'config.propose',
   'config.approve',
   'adminUsers.manage',
+  'services.manage',
+  'aiUsage.manage',
+  'aiUsage.controls',
 ]);
 
 export abstract class MockRepo {

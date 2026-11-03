@@ -218,6 +218,39 @@ export interface AppUser {
   email?: string;
   photoUrl?: string;
   referralCode?: string;
+  /**
+   * False only for an account that has not answered "How would you like to use Suskii
+   * Errands?" (20261103120000). Absent means answered: accounts that predate the question.
+   */
+  roleSelected?: boolean;
+  /** What was chosen on that screen. */
+  signupRole?: UserMode;
+  /** The provider side as `get_bootstrap` reports it; absent on a plain profile row. */
+  providerStatus?: ProviderStatus;
+}
+
+export type ProviderStatus =
+  | 'not_registered'
+  | 'pending_verification'
+  | 'pending_approval'
+  | 'approved'
+  | 'rejected'
+  | 'suspended';
+
+/** The signed-in person's Ask Suskii allowance (`my_ai_usage`). The server enforces it. */
+export interface AiUsage {
+  dailyLimit: number;
+  usedToday: number;
+  remainingToday: number;
+  monthlyLimit: number;
+  usedThisMonth: number;
+  remainingThisMonth: number;
+  credits: number;
+  dayResetsAt: Date;
+  monthResetsAt: Date;
+  suspendedUntil?: Date;
+  /** False when Ask Suskii is off or the platform's AI budget is spent. */
+  available: boolean;
 }
 
 export interface ProviderProfile {
@@ -595,6 +628,10 @@ export interface ServiceCategory {
   maxCounterRounds: number;
   /** Server-owned proof counts per kind (service_categories.proof_requirements). */
   proofRequirements?: Record<string, number>;
+  /** Stored names by language (20261103120100); an admin-added service has only these. */
+  displayNames?: Record<string, string>;
+  /** Short descriptions for the service picker, by language. */
+  descriptions?: Record<string, string>;
 }
 
 /**

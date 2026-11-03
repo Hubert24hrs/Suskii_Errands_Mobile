@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:suskii_domain/suskii_domain.dart';
 import 'package:suskii_l10n/suskii_l10n.dart';
 
@@ -49,6 +50,74 @@ String categoryLabel(AppLocalizations l10n, String labelKey) =>
       'catPhotography' => l10n.catPhotography,
       'catTutoring' => l10n.catTutoring,
       _ => l10n.catCustom,
+    };
+
+/// A service's name as the person reads it. The catalogue's stored name comes
+/// first (20261103120100): it is what an admin edits, and the only name a
+/// service added after this release has. The translation is the fallback for
+/// a catalogue that predates stored names.
+String serviceName(AppLocalizations l10n, ServiceCategory category) {
+  final language = l10n.localeName.split('_').first;
+  return category.displayNames[language] ??
+      category.displayNames['en'] ??
+      categoryLabel(l10n, category.labelKey);
+}
+
+/// The service's short description in the reader's language, or null.
+String? serviceDescription(AppLocalizations l10n, ServiceCategory category) {
+  final language = l10n.localeName.split('_').first;
+  return category.descriptions[language] ?? category.descriptions['en'];
+}
+
+/// The name of the service with [categoryId] (the catalogue key), from a
+/// loaded catalogue; "Something else" when it is not in it.
+String serviceNameById(
+  AppLocalizations l10n,
+  List<ServiceCategory> categories,
+  String categoryId,
+) {
+  for (final c in categories) {
+    if (c.id == categoryId) return serviceName(l10n, c);
+  }
+  return l10n.catCustom;
+}
+
+/// The catalogue's `icon_key` as an icon. A key no release knows yet gets the
+/// generic one rather than nothing.
+IconData serviceIcon(String iconKey) => switch (iconKey) {
+  'package' => Icons.local_shipping_outlined,
+  'cart' || 'basket' => Icons.shopping_cart_outlined,
+  'sparkles' || 'sparkle' => Icons.auto_awesome_outlined,
+  'truck' => Icons.local_shipping_outlined,
+  'wrench' || 'tools' => Icons.build_outlined,
+  'mechanic' => Icons.car_repair_outlined,
+  'fashion' => Icons.checkroom_outlined,
+  'beauty' => Icons.content_cut_rounded,
+  'plumbing' => Icons.plumbing_outlined,
+  'electric' => Icons.electrical_services_outlined,
+  'carpentry' => Icons.carpenter_outlined,
+  'catering' => Icons.restaurant_menu_outlined,
+  'camera' => Icons.photo_camera_outlined,
+  'school' => Icons.school_outlined,
+  'person' => Icons.person_outline,
+  'document' => Icons.description_outlined,
+  'food' => Icons.restaurant_outlined,
+  'car' => Icons.directions_car_outlined,
+  'laptop' => Icons.laptop_outlined,
+  'calendar' => Icons.event_outlined,
+  'paw' => Icons.pets_outlined,
+  _ => Icons.auto_fix_high_outlined,
+};
+
+String providerStatusLabel(AppLocalizations l10n, ProviderStatus status) =>
+    switch (status) {
+      ProviderStatus.notRegistered => l10n.providerStatusNotRegistered,
+      ProviderStatus.pendingVerification =>
+        l10n.providerStatusPendingVerification,
+      ProviderStatus.pendingApproval => l10n.providerStatusPendingApproval,
+      ProviderStatus.approved => l10n.providerStatusApproved,
+      ProviderStatus.rejected => l10n.providerStatusRejected,
+      ProviderStatus.suspended => l10n.providerStatusSuspended,
     };
 
 /// `doc<KycStepKind>` keys from `provider_home_summary` reuse the step labels.

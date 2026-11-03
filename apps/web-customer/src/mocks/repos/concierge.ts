@@ -15,6 +15,7 @@ import { AppError, ErrorCodes } from '../errors';
 import type { MockDatabase } from '../fixtures';
 import type { MockBehavior } from '../behavior';
 import type {
+  AiUsage,
   ConciergeConversation,
   ConciergeDraft,
   ConciergeMessage,
@@ -73,6 +74,26 @@ export class MockConciergeRepository extends MockRepo {
     isCustomCategory: false,
     missingSlots: [...ALL_SLOTS],
   };
+
+  /** The free allowance the server starts everybody on, less the turns this mock answered. */
+  async getUsage(): Promise<AiUsage> {
+    await this.gate();
+    let used = 0;
+    for (const state of this.conversations.values()) used += state.turn;
+    const now = this.now();
+    return {
+      dailyLimit: 10,
+      usedToday: used,
+      remainingToday: Math.max(10 - used, 0),
+      monthlyLimit: 150,
+      usedThisMonth: used,
+      remainingThisMonth: Math.max(150 - used, 0),
+      credits: 0,
+      dayResetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)),
+      monthResetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+      available: true,
+    };
+  }
 
   async startConversation(idempotencyKey: string): Promise<ConciergeConversation> {
     await this.gate();

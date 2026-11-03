@@ -150,7 +150,7 @@ export const verificationRepository = supabaseGateway
 // No backend yet: against a real one they say so instead of serving the mock's invented data.
 export const promoRepository = supabaseGateway ? new SupabasePromoRepository() : mockPromoRepository;
 export const conciergeRepository = supabaseGateway
-  ? new SupabaseConciergeRepository()
+  ? new SupabaseConciergeRepository(supabaseGateway)
   : mockConciergeRepository;
 
 // Suskii Meet (2026-10-24).

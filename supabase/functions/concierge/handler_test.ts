@@ -26,7 +26,11 @@ function begin(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function harness(llmReplies: Array<Part[] | Error>, beginOverrides: Record<string, unknown> = {}) {
+function harness(
+  llmReplies: Array<Part[] | Error>,
+  beginOverrides: Record<string, unknown> = {},
+  opts: { failRecord?: boolean } = {},
+) {
   const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
   const llm = new FakeLlm(llmReplies);
   const handler = createConciergeHandler({
@@ -45,7 +49,9 @@ function harness(llmReplies: Array<Part[] | Error>, beginOverrides: Record<strin
           basis: "rules",
         }]);
       }
+      if (fn === "concierge_release_turn") return Promise.resolve(null);
       if (fn === "concierge_record_turn") {
+        if (opts.failRecord) return Promise.reject(new Error("database went away"));
         return Promise.resolve({
           id: "1",
           body: args.p_reply,
@@ -217,4 +223,95 @@ Deno.test("bad requests and database refusals keep their codes", async () => {
   assertEquals(refused.status, 404);
   assertEquals((await refused.json()).error.code, "ERR_CONVERSATION_NOT_FOUND");
   assertEquals((await h.send("")).status, 400);
+});
+
+Deno.test("each limit says why, and when the assistant is back", async () => {
+  const expected: Record<string, RegExp> = {
+    day: /daily Suskii AI usage limit\. Please come back tomorrow/,
+    month: /monthly AI allowance\. Your allowance will reset at the beginning of next month/,
+    budget: /taking a short break/,
+    suspended: /isn't available on your account/,
+    cooldown: /a little fast/,
+    turns: /conversation has reached its limit/,
+  };
+  for (const [limited, reply] of Object.entries(expected)) {
+    const h = harness([], { limited, reset_at: "2026-11-04T00:00:00+01:00" });
+    const body = await (await h.send("Deliver a parcel")).json();
+    assertMatch(body.reply, reply);
+    assertEquals(body.limited, limited);
+    assertEquals(body.reset_at, "2026-11-04T00:00:00+01:00");
+    assertEquals(h.llm.requests.length, 0);
+  }
+  const pcm = harness([], { limited: "day", language: "pcm" });
+  assertMatch((await (await pcm.send("Abeg")).json()).reply, /come back tomorrow/);
+});
+
+Deno.test("a message already being answered is not answered twice", async () => {
+  const h = harness([turn({ reply: "unused" })], { limited: "in_progress" });
+  const res = await h.send("Deliver a parcel");
+  assertEquals(res.status, 409);
+  assertEquals((await res.json()).error.code, "ERR_IDEMPOTENCY_IN_PROGRESS");
+  assertEquals(h.calls.map((c) => c.fn), ["concierge_begin_turn"]);
+  assertEquals(h.llm.requests.length, 0);
+});
+
+Deno.test("the reply carries what is left of the allowance", async () => {
+  const usage = { remaining_today: 7, daily_limit: 10, remaining_this_month: 140 };
+  const h = harness([turn({ reply: "Where to?" })], { reserved: true, usage });
+  const body = await (await h.send("Deliver a parcel")).json();
+  assertEquals(body.usage, usage);
+  assertEquals(body.limited, null);
+  assertEquals(h.recorded().p_location, "europe-west2");
+});
+
+Deno.test("a failure after the model ran settles what it spent", async () => {
+  const h = harness([turn({ reply: "Where to?" })], { reserved: true }, { failRecord: true });
+  const res = await h.send("Deliver a parcel");
+  assertEquals(res.status, 500);
+  const release = h.calls.find((c) => c.fn === "concierge_release_turn")?.args ?? {};
+  assertEquals(release.p_tokens_in, 100);
+  assertEquals(release.p_tokens_out, 20);
+  assertEquals(release.p_model_id, "test-model");
+});
+
+Deno.test("nothing to settle when nothing was reserved", async () => {
+  const h = harness([turn({ reply: "Where to?" })], { reserved: false }, { failRecord: true });
+  await h.send("Deliver a parcel");
+  assertEquals(h.calls.filter((c) => c.fn === "concierge_release_turn").length, 0);
+});
+
+Deno.test("the output budget caps every model call in the turn", async () => {
+  const h = harness([
+    [{ functionCall: { name: "estimate_price_band", args: { category_key: "document_delivery" }, id: "c1" } }],
+    turn({ reply: "Usually ₦2,500 to ₦5,000." }),
+  ], { limits: { max_output_tokens_per_turn: 120 } });
+  await h.send("How much does document delivery cost?");
+  assertEquals(h.llm.requests[0].maxOutputTokens, 120);
+  assertEquals(h.llm.requests[1].maxOutputTokens, 100);
+});
+
+Deno.test("a tool loop stops at the input budget and hands over to the form", async () => {
+  const call = (id: string): Part[] => [{
+    functionCall: { name: "estimate_price_band", args: { category_key: "document_delivery" }, id },
+  }];
+  const h = harness([call("c1"), call("c2"), call("c3"), turn({ reply: "unused" })], {
+    limits: { max_input_tokens_per_turn: 150 },
+  });
+  const body = await (await h.send("How much?")).json();
+  assertEquals(h.llm.requests.length, 2);
+  assertEquals(body.proposed_action, "handoff_to_form");
+  assertEquals(h.recorded().p_tokens_in, 200);
+});
+
+Deno.test("old turns are dropped to keep the prompt inside the per-call budget", async () => {
+  const history = Array.from({ length: 8 }, (_, i) => ({
+    role: i % 2 ? "assistant" : "user",
+    body: `turn ${i} `.repeat(600),
+  }));
+  const h = harness([turn({ reply: "OK" })], { history, limits: { max_input_tokens_per_call: 4000 } });
+  await h.send("And now?");
+  const sent = h.llm.requests[0].contents;
+  assert(sent.length < history.length + 1, "some history was dropped");
+  assertMatch(sent.at(-1)!.parts[0].text!, /<user_content>And now\?<\/user_content>/);
+  assert(JSON.stringify(sent).includes("turn 7"), "the newest turns stay");
 });

@@ -50,7 +50,7 @@ class MessagesPage extends ConsumerWidget {
               return ListTile(
                 leading: const Icon(Icons.chat_bubble_outline),
                 title: Text(
-                  categoryLabel(l10n, _categoryKey(categories, job)),
+                  serviceNameById(l10n, categories, job.categoryId),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -72,12 +72,5 @@ class MessagesPage extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  String _categoryKey(List<ServiceCategory> categories, JobRequest job) {
-    for (final c in categories) {
-      if (c.id == job.categoryId) return c.labelKey;
-    }
-    return 'catCustom';
   }
 }

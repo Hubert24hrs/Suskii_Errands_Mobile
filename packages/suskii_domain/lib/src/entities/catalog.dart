@@ -29,6 +29,18 @@ abstract class ServiceCategory with _$ServiceCategory {
     /// values ('photo', 'receipt', 'signature'), values the required count.
     /// Server-owned; empty map = no proofs required.
     @Default(<String, int>{}) Map<String, int> proofRequirements,
+
+    /// Stored names by language code (`service_categories.display_names`,
+    /// 20261103120100). Always has `en` on a real backend; empty in fixtures
+    /// that predate it, where [labelKey] names the translation instead.
+    @Default(<String, String>{}) Map<String, String> displayNames,
+
+    /// Short descriptions for the service picker, by language code.
+    @Default(<String, String>{}) Map<String, String> descriptions,
+
+    /// False for a service no longer offered. It stays in the catalogue so
+    /// requests that used it keep its name; pickers list active ones only.
+    @Default(true) bool active,
   }) = _ServiceCategory;
 
   factory ServiceCategory.fromJson(Map<String, dynamic> json) =>

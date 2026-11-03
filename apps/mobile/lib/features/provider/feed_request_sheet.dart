@@ -131,10 +131,7 @@ class _FeedRequestSheetState extends ConsumerState<FeedRequestSheet> {
 
     final categories =
         ref.watch(categoriesProvider).value ?? const <ServiceCategory>[];
-    var labelKey = 'catCustom';
-    for (final category in categories) {
-      if (category.id == job.categoryId) labelKey = category.labelKey;
-    }
+    final serviceLabel = serviceNameById(l10n, categories, job.categoryId);
 
     final myOffers = ref.watch(myOffersProvider).value ?? const <Offer>[];
     final ownOffer = _ownLiveOffer(myOffers);
@@ -154,10 +151,7 @@ class _FeedRequestSheetState extends ConsumerState<FeedRequestSheet> {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(
-                    categoryLabel(l10n, labelKey),
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  child: Text(serviceLabel, style: theme.textTheme.titleMedium),
                 ),
                 Text(
                   MaterialLocalizations.of(context)

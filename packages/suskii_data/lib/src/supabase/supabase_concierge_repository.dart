@@ -77,4 +77,10 @@ class SupabaseConciergeRepository implements ConciergeRepository {
     final reply = answer['reply'];
     if (reply is String && reply.isNotEmpty) yield reply;
   }
+
+  @override
+  Future<AiUsage> getUsage() async {
+    final raw = await _gateway.rpc('my_ai_usage');
+    return aiUsageFromJson(Map<String, dynamic>.from(raw as Map));
+  }
 }

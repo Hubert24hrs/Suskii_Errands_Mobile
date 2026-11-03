@@ -2,6 +2,29 @@ import type { Dictionary } from './en';
 import providerPcm from './provider.pcm';
 
 const pcm = {
+  lang: 'pcm',
+  roleSelection: {
+    title: 'How you wan take use Suskii Errands?',
+    subtitle: 'You fit add the other one later for your profile.',
+    customerTitle: 'Customer',
+    customerBody: 'Ask for errand and service, book am, and follow your order.',
+    providerTitle: 'Service Provider',
+    providerBody: 'Offer your service, collect job request, and make money.',
+    providerNote: 'We go set up your provider profile next. You fit start to take job once dem approve you.',
+    continue: 'Continue',
+  },
+  servicePicker: {
+    heading: 'All services available',
+    placeholder: 'Choose the service wey you need',
+    search: 'Find service',
+    empty: 'No service match wetin you find',
+  },
+  conciergeUsage: {
+    left: '{remaining} out of {limit} messages remain for today',
+    noneToday: 'Your messages for today don finish. E go come back on {time}.',
+    noneMonth: 'Your messages for this month don finish. E go come back on {date}.',
+    unavailable: 'Suskii AI dey rest small. The form still dey work.',
+  },
   meta: {
     title: 'Suskii — make we handle your errand',
     description: 'Request errand, track delivery and manage your wallet for Suskii.',

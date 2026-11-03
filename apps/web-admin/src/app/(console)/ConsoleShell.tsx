@@ -21,6 +21,7 @@ const NAV: ReadonlyArray<{
   { href: '/verification', label: dict.nav.verification, group: dict.nav.groups.operations, action: 'verification.read' },
   { href: '/jobs', label: dict.nav.jobs, group: dict.nav.groups.operations, action: 'jobs.read' },
   { href: '/sos', label: dict.nav.sos, group: dict.nav.groups.operations, action: 'sos.read' },
+  { href: '/services', label: dict.nav.services, group: dict.nav.groups.operations, action: 'services.read' },
   { href: '/payments', label: dict.nav.payments, group: dict.nav.groups.money, action: 'payments.read' },
   { href: '/referrals', label: dict.nav.referrals, group: dict.nav.groups.money, action: 'referrals.read' },
   { href: '/promos', label: dict.nav.promos, group: dict.nav.groups.money, action: 'promos.read' },
@@ -29,6 +30,7 @@ const NAV: ReadonlyArray<{
   { href: '/risk', label: dict.nav.risk, group: dict.nav.groups.trustSafety, action: 'risk.read' },
   { href: '/config', label: dict.nav.config, group: dict.nav.groups.system, action: 'config.read' },
   { href: '/analytics', label: dict.nav.analytics, group: dict.nav.groups.system, action: 'analytics.read' },
+  { href: '/ai-usage', label: dict.nav.aiUsage, group: dict.nav.groups.system, action: 'aiUsage.people' },
   { href: '/audit', label: dict.nav.auditLog, group: dict.nav.groups.system, action: 'audit.read' },
   { href: '/admin-users', label: dict.nav.adminUsers, group: dict.nav.groups.system, action: 'adminUsers.read' },
 ];

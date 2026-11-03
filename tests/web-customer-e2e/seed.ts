@@ -36,8 +36,16 @@ export async function signedIn(email: string): Promise<SupabaseClient> {
   return c;
 }
 
-/** A Nigerian account with a password, as only the service role may make one. */
-export async function createUser(email: string, name: string): Promise<string> {
+/**
+ * A Nigerian account with a password, as only the service role may make one. It has already
+ * answered "How would you like to use Suskii Errands?" (20261103120000), as the people these tests
+ * play have: a fresh account is asked first, and the question would cover the page under test.
+ */
+export async function createUser(
+  email: string,
+  name: string,
+  role: 'customer' | 'provider' = 'customer',
+): Promise<string> {
   const service = client(SERVICE_KEY);
   const created = await service.auth.admin.createUser({
     email,
@@ -47,14 +55,18 @@ export async function createUser(email: string, name: string): Promise<string> {
   });
   if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
   const id = created.data.user.id;
-  await must('profile', service.from('profiles').update({ display_name: name }).eq('user_id', id));
+  await must('profile', service.from('profiles').update({
+    display_name: name,
+    role_selected_at: new Date().toISOString(),
+    signup_role: role,
+  }).eq('user_id', id));
   return id;
 }
 
 /** A provider the KYC vendor has already verified, not yet onboarded. */
 export async function createProvider(email: string, name: string): Promise<string> {
   const service = client(SERVICE_KEY);
-  const id = await createUser(email, name);
+  const id = await createUser(email, name, 'provider');
   await must('verify', service.from('profiles').update({ provider_verification: 'verified' }).eq('user_id', id));
   await must('provider', service.from('provider_profiles').insert({ user_id: id }));
   return id;

@@ -14,6 +14,7 @@ import {
   ProviderPage,
   btnPrimary,
   card,
+  categoryDescription,
   categoryLabel,
   errorText,
   inputClass,
@@ -36,6 +37,7 @@ export function OnboardingClient({ locale, dict }: { locale: Locale; dict: Dicti
   const [kind, setKind] = useState<ProviderKind>('individual');
   const [businessName, setBusinessName] = useState('');
   const [services, setServices] = useState<string[]>([]);
+  const [serviceQuery, setServiceQuery] = useState('');
   const [state, setState] = useState('');
   const [vehicle, setVehicle] = useState<VehicleType | ''>('');
   const [busy, setBusy] = useState(false);
@@ -85,6 +87,21 @@ export function OnboardingClient({ locale, dict }: { locale: Locale; dict: Dicti
     );
   }
 
+  const words = serviceQuery.trim().toLowerCase().split(/\s+/).filter((w) => w !== '');
+  // Chosen services stay listed whatever the search, so a provider never loses one from view.
+  const shownServices = (categories.data ?? []).filter((c) => {
+    if (services.includes(c.id) || words.length === 0) return true;
+    const haystack = [
+      categoryLabel(dict, categories.data ?? [], c.id),
+      categoryDescription(dict, c) ?? '',
+      ...Object.values(c.displayNames ?? {}),
+      c.id.replace(/_/g, ' '),
+    ]
+      .join(' ')
+      .toLowerCase();
+    return words.every((w) => haystack.includes(w));
+  });
+
   return (
     <ProviderPage locale={locale} dict={dict}>
       <h1 className={pageTitle}>{t.title}</h1>
@@ -109,21 +126,41 @@ export function OnboardingClient({ locale, dict }: { locale: Locale; dict: Dicti
 
         <fieldset className="flex flex-col gap-xs" data-testid="onboarding-services">
           <legend className={labelClass}>{t.services}</legend>
+          {/* The customer's list, choosing several: one catalogue for both sides. */}
+          <input
+            type="search"
+            aria-label={dict.servicePicker.search}
+            placeholder={dict.servicePicker.search}
+            value={serviceQuery}
+            onChange={(e) => setServiceQuery(e.target.value)}
+            className={inputClass}
+          />
           <div className="grid gap-xs sm:grid-cols-2">
-            {(categories.data ?? []).map((c) => (
-              <label key={c.id} className="flex items-center gap-xs text-body-medium">
+            {shownServices.map((c) => (
+              <label key={c.id} className="flex items-start gap-xs text-body-medium">
                 <input
                   type="checkbox"
+                  className="mt-[3px]"
                   data-testid={`onboarding-service-${c.id}`}
                   checked={services.includes(c.id)}
                   onChange={(e) =>
                     setServices((current) => (e.target.checked ? [...current, c.id] : current.filter((id) => id !== c.id)))
                   }
                 />
-                {categoryLabel(dict, categories.data ?? [], c.id)}
+                <span className="flex flex-col">
+                  {categoryLabel(dict, categories.data ?? [], c.id)}
+                  {categoryDescription(dict, c) ? (
+                    <span className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+                      {categoryDescription(dict, c)}
+                    </span>
+                  ) : null}
+                </span>
               </label>
             ))}
           </div>
+          {shownServices.length === 0 ? (
+            <p className="text-body-small text-ink-secondary dark:text-ink-dark-secondary">{dict.servicePicker.empty}</p>
+          ) : null}
         </fieldset>
 
         <label className="flex flex-col gap-xs">

@@ -57,6 +57,9 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'Suskii Meet: join a meet-up, then host one': _suskiiMeet,
   'the provider dashboard hides the balance until asked, then pays out':
       _providerDashboard,
+  'first run asks how the account will be used, once': _chooseRole,
+  'the service picker finds a service by search': _servicePickerSearch,
+  'Ask Suskii shows what is left of the allowance': _conciergeUsage,
 };
 
 // ---------------------------------------------------------------------------
@@ -75,6 +78,15 @@ Future<TestApp> _signedInApp(
   await signInThroughUi(tester);
   expect(find.byKey(const ValueKey<String>('home.newRequest')), findsOneWidget);
   return app;
+}
+
+/// Opens the service picker on the current screen and chooses [id].
+Future<void> _pickService(WidgetTester tester, String id) async {
+  await _reveal(tester, find.byKey(const Key('service-picker-field')));
+  await tester.tap(find.byKey(const Key('service-picker-field')));
+  await settle(tester);
+  await tester.tap(find.byKey(Key('service-option-$id')));
+  await settle(tester);
 }
 
 Future<void> _go(WidgetTester tester, TestApp app, String route) async {
@@ -250,8 +262,8 @@ Future<void> _createRequest(WidgetTester tester) async {
   await tester.tap(find.byKey(const ValueKey<String>('home.newRequest')));
   await settle(tester);
   expect(find.text(l10n.createTitle), findsOneWidget);
-  await tester.tap(find.byType(ChoiceChip).first);
-  await settle(tester);
+  expect(find.text(l10n.servicesAllAvailable), findsOneWidget);
+  await _pickService(tester, 'errands_delivery');
   await _enter(
     tester,
     l10n.createDescriptionLabel,
@@ -663,7 +675,12 @@ Future<void> _suskiiMeet(WidgetTester tester) async {
 Future<void> _providerState(WidgetTester tester) async {
   final app = await _signedInApp(tester);
   await _go(tester, app, AppRoutes.providerOnboarding);
-  await _tap(tester, find.byType(FilterChip).first);
+  // The same picker as the request form, choosing several.
+  await _tap(tester, find.byKey(const Key('service-picker-field')));
+  await _tap(tester, find.byKey(const Key('service-option-errands_delivery')));
+  await _tap(tester, find.byKey(const Key('service-option-shopping')));
+  await _tap(tester, find.byKey(const Key('service-picker-done')));
+  expect(find.text(l10n.servicePickerSelectedCount(2)), findsOneWidget);
   final field = find.byKey(const ValueKey<String>('onboarding.state'));
   await _reveal(tester, field);
   await tester.tap(field);
@@ -738,5 +755,81 @@ Future<void> _providerDashboard(WidgetTester tester) async {
     find.byKey(const ValueKey<String>('providerDash.instantPayout')),
   );
   expect(find.text(l10n.toolsInstantPayoutBody), findsOneWidget);
+  await app.dispose(tester);
+}
+
+Future<void> _chooseRole(WidgetTester tester) async {
+  final app = await TestApp.pump(
+    tester,
+    prefs: const <String, Object>{'welcome_seen': true},
+  );
+  // An account created after the role screen shipped, not yet answered.
+  final me = app.behavior.currentUserId;
+  app.database.users[me] = app.database.users[me]!.copyWith(
+    roleSelected: false,
+  );
+  await signInThroughUi(tester);
+  expect(find.text(l10n.roleTitle), findsOneWidget);
+  expect(find.text(l10n.roleCustomerBody), findsOneWidget);
+  expect(find.text(l10n.roleProviderBody), findsOneWidget);
+  await _tap(tester, find.byKey(const Key('role-provider')));
+  expect(find.text(l10n.roleProviderNote), findsOneWidget);
+  await _tap(tester, find.byKey(const Key('role-continue')));
+  // Into provider onboarding, still in customer mode: approval comes first.
+  expect(
+    app.container.read(routerProvider).state.uri.path,
+    AppRoutes.providerOnboarding,
+  );
+  final user = app.database.users[me]!;
+  expect(user.roleSelected, isTrue);
+  expect(user.signupRole, UserMode.provider);
+  expect(user.activeMode, UserMode.customer);
+  // Not asked again.
+  await _go(tester, app, AppRoutes.customerHome);
+  expect(find.text(l10n.roleTitle), findsNothing);
+  await app.dispose(tester);
+}
+
+Future<void> _servicePickerSearch(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await tester.tap(find.byKey(const ValueKey<String>('home.newRequest')));
+  await settle(tester);
+  expect(find.text(l10n.servicePickerPlaceholder), findsOneWidget);
+  await tester.tap(find.byKey(const Key('service-picker-field')));
+  await settle(tester);
+  final search = find.byKey(const Key('service-picker-search'));
+  await tester.enterText(search, 'document');
+  await settle(tester);
+  expect(
+    find.byKey(const Key('service-option-document_delivery')),
+    findsOneWidget,
+  );
+  expect(find.byKey(const Key('service-option-shopping')), findsNothing);
+  await tester.enterText(search, 'zzzz');
+  await settle(tester);
+  expect(find.text(l10n.servicePickerEmpty('zzzz')), findsOneWidget);
+  await tester.enterText(search, 'document');
+  await settle(tester);
+  await tester.tap(find.byKey(const Key('service-option-document_delivery')));
+  await settle(tester);
+  // Chosen, shown with its name, and removable.
+  expect(find.text(l10n.servicePickerPlaceholder), findsNothing);
+  await tester.tap(find.byKey(const Key('service-picker-remove')));
+  await settle(tester);
+  expect(find.text(l10n.servicePickerPlaceholder), findsOneWidget);
+  await app.dispose(tester);
+}
+
+Future<void> _conciergeUsage(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  await _go(tester, app, AppRoutes.customerConcierge);
+  expect(find.text(l10n.conciergeUsageLeft(10, 10)), findsOneWidget);
+  await tester.enterText(
+    find.widgetWithText(TextField, l10n.conciergeHint),
+    'Deliver a parcel to Yaba',
+  );
+  await tester.tap(find.byTooltip(l10n.conciergeSend));
+  await settle(tester, timeout: const Duration(seconds: 5));
+  expect(find.text(l10n.conciergeUsageLeft(9, 10)), findsOneWidget);
   await app.dispose(tester);
 }

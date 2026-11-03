@@ -21,35 +21,10 @@ class CustomerHomePage extends ConsumerWidget {
     String categoryId,
   ) {
     for (final ServiceCategory category in categories) {
-      if (category.id == categoryId)
-        return categoryLabel(l10n, category.labelKey);
+      if (category.id == categoryId) return serviceName(l10n, category);
     }
     return l10n.catCustom;
   }
-
-  IconData _categoryIcon(String iconKey) => switch (iconKey) {
-    'package' => Icons.local_shipping_outlined,
-    'cart' || 'basket' => Icons.shopping_cart_outlined,
-    'sparkles' || 'sparkle' => Icons.auto_awesome_outlined,
-    'truck' => Icons.local_shipping_outlined,
-    'wrench' || 'tools' => Icons.build_outlined,
-    'mechanic' => Icons.car_repair_outlined,
-    'fashion' => Icons.checkroom_outlined,
-    'beauty' => Icons.content_cut_rounded,
-    'plumbing' => Icons.plumbing_outlined,
-    'electric' => Icons.electrical_services_outlined,
-    'carpentry' => Icons.carpenter_outlined,
-    'catering' => Icons.restaurant_menu_outlined,
-    'camera' => Icons.photo_camera_outlined,
-    'school' => Icons.school_outlined,
-    'person' => Icons.person_outline,
-    'document' => Icons.description_outlined,
-    'food' => Icons.restaurant_outlined,
-    'car' => Icons.directions_car_outlined,
-    'laptop' => Icons.laptop_outlined,
-    'calendar' => Icons.event_outlined,
-    _ => Icons.auto_fix_high_outlined,
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -166,12 +141,12 @@ class CustomerHomePage extends ConsumerWidget {
                     childAspectRatio: 0.9,
                     children: <Widget>[
                       for (final (int i, ServiceCategory category)
-                          in data.indexed)
+                          in data.where((c) => c.active).indexed)
                         SFadeSlideIn(
                           index: i,
                           child: _CategoryTile(
-                            icon: _categoryIcon(category.iconKey),
-                            label: categoryLabel(l10n, category.labelKey),
+                            icon: serviceIcon(category.iconKey),
+                            label: serviceName(l10n, category),
                             onTap: () => context.push(
                               '${AppRoutes.customerRequestsNew}'
                               '?categoryId=${category.id}',

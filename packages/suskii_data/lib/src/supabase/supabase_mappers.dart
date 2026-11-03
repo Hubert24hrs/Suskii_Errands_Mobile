@@ -55,6 +55,43 @@ AppUser appUserFromProfileRow(
   email: email,
   // avatar_path is a storage path, not a URL — signed URLs are a later M9
   // slice (storage gateway), so photoUrl stays null for now.
+  // get_bootstrap says `role_selected`; a profiles row has the timestamp. A
+  // source with neither predates the role screen, so it counts as answered.
+  roleSelected: row.containsKey('role_selected')
+      ? row['role_selected'] != false
+      : !row.containsKey('role_selected_at') || row['role_selected_at'] != null,
+  signupRole: row['signup_role'] == null
+      ? null
+      : userModeFromWire(row['signup_role']),
+  providerStatus: providerStatusFromWire(row['provider_status']),
+);
+
+/// `get_bootstrap().user.provider_status`; null when the source has none.
+ProviderStatus? providerStatusFromWire(Object? value) => switch (value) {
+  'not_registered' => ProviderStatus.notRegistered,
+  'pending_verification' => ProviderStatus.pendingVerification,
+  'pending_approval' => ProviderStatus.pendingApproval,
+  'approved' => ProviderStatus.approved,
+  'rejected' => ProviderStatus.rejected,
+  'suspended' => ProviderStatus.suspended,
+  _ => null,
+};
+
+/// `my_ai_usage()`, and the `usage` object on a concierge reply.
+AiUsage aiUsageFromJson(Map<String, dynamic> json) => AiUsage(
+  dailyLimit: (json['daily_limit'] as num?)?.toInt() ?? 0,
+  usedToday: (json['used_today'] as num?)?.toInt() ?? 0,
+  remainingToday: (json['remaining_today'] as num?)?.toInt() ?? 0,
+  monthlyLimit: (json['monthly_limit'] as num?)?.toInt() ?? 0,
+  usedThisMonth: (json['used_this_month'] as num?)?.toInt() ?? 0,
+  remainingThisMonth: (json['remaining_this_month'] as num?)?.toInt() ?? 0,
+  dayResetsAt: SupabaseGateway.asTimestamp(json['day_resets_at']),
+  monthResetsAt: SupabaseGateway.asTimestamp(json['month_resets_at']),
+  credits: (json['credits'] as num?)?.toInt() ?? 0,
+  suspendedUntil: json['suspended_until'] == null
+      ? null
+      : SupabaseGateway.asTimestamp(json['suspended_until']),
+  available: json['available'] != false,
 );
 
 /// The `country_pack` object inside `get_bootstrap`'s payload. Fields the
@@ -162,8 +199,19 @@ ServiceCategory serviceCategoryFromRow(Map<String, dynamic> row) {
     offerTtlSeconds: (row['offer_ttl_seconds'] as num?)?.toInt() ?? 600,
     maxCounterRounds: (row['max_counter_rounds'] as num?)?.toInt() ?? 5,
     proofRequirements: requirements,
+    displayNames: _texts(row['display_names']),
+    active: row['active'] as bool? ?? true,
+    descriptions: _texts(row['descriptions']),
   );
 }
+
+/// A `{language: text}` object from the catalogue; anything else is dropped.
+Map<String, String> _texts(Object? raw) => <String, String>{
+  if (raw is Map)
+    for (final entry in raw.entries)
+      if (entry.key is String && entry.value is String && entry.value != '')
+        entry.key as String: entry.value as String,
+};
 
 JobStatus jobStatusFromWire(Object? value) => switch (value) {
   'draft' => JobStatus.draft,
