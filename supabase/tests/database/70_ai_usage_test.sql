@@ -5,7 +5,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(57);
+SELECT plan(58);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('a1000000-0000-4000-8000-000000000001', '2348000007001'),   -- the customer
@@ -260,7 +260,14 @@ RESET ROLE;
 SELECT is((SELECT count(*)::int FROM audit.log WHERE action = 'admin.ai_users'), 1,
   'listing people is audited');
 
--- The super admin's controls.
+-- The super admin's controls, each behind a code entered in the last five minutes.
+SELECT set_config('request.jwt.claims', jsonb_build_object('sub', 'a1000000-0000-4000-8000-000000000003',
+  'role', 'authenticated', 'aal', 'aal2', 'amr', jsonb_build_array(jsonb_build_object('method', 'totp',
+  'timestamp', extract(epoch FROM now() - interval '10 minutes')::bigint)))::text, true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT public.admin_set_ai_enabled(false, 'Stale session')$$,
+  'P0001', 'ERR_REAUTH_REQUIRED', 'a second factor from ten minutes ago is not enough');
+RESET ROLE;
 SELECT pg_temp.act('a1000000-0000-4000-8000-000000000003', 'aal2');
 SET LOCAL ROLE authenticated;
 SELECT is((public.admin_set_ai_budget(3000000, 30000000, 'Pilot week') ->> 'day_exceeded'), 'false',

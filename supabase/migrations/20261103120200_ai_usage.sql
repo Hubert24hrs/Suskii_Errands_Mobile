@@ -727,6 +727,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = p_user) THEN
     RAISE EXCEPTION 'ERR_PROFILE_NOT_FOUND' USING ERRCODE = 'P0001';
   END IF;
+  -- Each of these changes what one person may do: a code entered in the last five minutes.
+  PERFORM private.require_recent_mfa();
   INSERT INTO public.ai_usage_accounts (user_id) VALUES (p_user) ON CONFLICT DO NOTHING;
 END $$;
 
@@ -840,6 +842,7 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  PERFORM private.require_recent_mfa();
   IF p_daily_micros IS NULL OR p_monthly_micros IS NULL
      OR p_daily_micros NOT BETWEEN 0 AND 1000000000 OR p_monthly_micros NOT BETWEEN 0 AND 10000000000
      OR p_daily_micros > p_monthly_micros
@@ -870,6 +873,7 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  PERFORM private.require_recent_mfa();
   IF p_tier IS NULL OR p_tier !~ '^[a-z_]{2,30}$'
      OR p_daily IS NULL OR p_daily NOT BETWEEN 0 AND 10000
      OR p_monthly IS NULL OR p_monthly NOT BETWEEN 0 AND 100000 OR p_daily > p_monthly
@@ -899,6 +903,7 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  PERFORM private.require_recent_mfa();
   IF p_enabled IS NULL OR p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 3 AND 300 THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;

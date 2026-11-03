@@ -118,6 +118,9 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  -- A code entered in the last five minutes, like the other admin verbs that change what
+  -- customers and providers can do (20261013120200).
+  PERFORM private.require_recent_mfa();
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'admin_save_service',
     jsonb_build_object('key', p_key, 'names', p_display_names, 'descriptions', p_descriptions,
                        'icon', p_icon_key, 'vehicle', p_requires_vehicle, 'sort', p_sort_order));
@@ -191,6 +194,7 @@ BEGIN
   IF NOT private.has_admin_role(ARRAY['super_admin']::public.admin_role[]) THEN
     RAISE EXCEPTION 'ERR_PERMISSION_DENIED' USING ERRCODE = '42501';
   END IF;
+  PERFORM private.require_recent_mfa();
   IF p_active IS NULL OR p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 3 AND 300 THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;

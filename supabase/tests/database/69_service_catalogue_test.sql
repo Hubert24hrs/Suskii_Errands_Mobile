@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(27);
+SELECT plan(28);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('5c000000-0000-4000-8000-000000000001', '2348000006901'),   -- super admin
@@ -53,6 +53,12 @@ SELECT ok((SELECT count(*) FROM public.admin_service_catalogue()) > 0, 'but can 
 SELECT pg_temp.act('5c000000-0000-4000-8000-000000000001', 'aal1');
 SELECT throws_ok($$SELECT public.admin_save_service('key-svc-save-0000000001', 'pet_care',
                    '{"en": "Pet care"}')$$, '42501', 'ERR_PERMISSION_DENIED', 'nor can a super admin without MFA');
+SELECT set_config('request.jwt.claims', jsonb_build_object('sub', '5c000000-0000-4000-8000-000000000001',
+  'role', 'authenticated', 'aal', 'aal2', 'amr', jsonb_build_array(jsonb_build_object('method', 'totp',
+  'timestamp', extract(epoch FROM now() - interval '10 minutes')::bigint)))::text, true);
+SELECT throws_ok($$SELECT public.admin_save_service('key-svc-save-0000000001', 'pet_care',
+                   '{"en": "Pet care"}')$$, 'P0001', 'ERR_REAUTH_REQUIRED',
+  'or with a code entered more than five minutes ago');
 
 -- Adding one: no app release needed, because the name travels with it.
 SELECT pg_temp.act('5c000000-0000-4000-8000-000000000001');
