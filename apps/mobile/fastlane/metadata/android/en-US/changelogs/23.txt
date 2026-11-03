@@ -1,0 +1,6 @@
+What's new
+- Choose how you use Suskii Errands: as a customer, a service provider, or both
+- All services in one searchable list when you request an errand
+- Providers pick the services they offer from the same list
+- Your provider status is shown on your profile
+- Ask Suskii shows how many messages you have left today
