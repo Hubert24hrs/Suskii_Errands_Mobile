@@ -170,6 +170,10 @@ test.describe('customer: sign-in, home and Suskii Meet', () => {
     await page.waitForURL(`${base}/en`);
     await expect(page.getByText('Ask Suskii for any service')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Suskii Meet' })).toBeVisible();
+    // The home dropdown starts a request with the chosen service already selected.
+    await page.getByLabel('All services available').selectOption('shopping');
+    await page.waitForURL(`${base}/en/requests/new?service=shopping`);
+    await expect(page.locator('#category')).toHaveValue('shopping');
     expect(errors).toEqual([]);
   });
 

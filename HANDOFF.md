@@ -5,6 +5,17 @@ Each agent appends a dated entry at the end of every milestone/phase. Newest fir
 
 ---
 
+## 2026-11-04 (part 27) — Claude Code — the home screen's services become the dropdown
+
+The owner looked at build 22 on a phone and asked for the home screen's service tiles to become the
+"All services available" dropdown too (part 26 had changed only the request form and provider
+onboarding). `customer_home_page.dart` now shows the heading and the same `ServicePickerField`;
+choosing a service opens the request form with it already selected. `_CategoryTile` and the grid are
+gone, and `homeQuickCategories` is no longer used. The website, a replica by the owner's rule, gets
+`HomeServicePicker` on its home page, and the request form reads `?service=<key>`. New journey: "the
+home dropdown starts a request with the service chosen"; the web smoke test covers the website's
+version. Release 1.3.1, build 24.
+
 ## 2026-11-03 (part 26) — Claude Code — roles, the service picker and Ask Suskii usage: the screens
 
 The screens for part 25. **The owner asked Claude Code to build them** (decision 1 of the 2026-11-03

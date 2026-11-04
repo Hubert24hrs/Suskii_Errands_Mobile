@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -63,6 +63,11 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
 
   const [categoryId, setCategoryId] = useState('');
   const [serviceQuery, setServiceQuery] = useState('');
+  // A service chosen on the home page arrives as ?service=<key> and starts selected.
+  useEffect(() => {
+    const preset = new URLSearchParams(window.location.search).get('service');
+    if (preset) setCategoryId(preset);
+  }, []);
   const [description, setDescription] = useState('');
   const [pickupLabel, setPickupLabel] = useState('');
   // Where the pickup is on the map: matching finds the nearest providers to
