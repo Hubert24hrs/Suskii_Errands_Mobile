@@ -60,6 +60,7 @@ final Map<String, Flow> appFlows = <String, Flow>{
   'first run asks how the account will be used, once': _chooseRole,
   'the service picker finds a service by search': _servicePickerSearch,
   'Ask Suskii shows what is left of the allowance': _conciergeUsage,
+  'the home dropdown starts a request with the service chosen': _homeService,
 };
 
 // ---------------------------------------------------------------------------
@@ -831,5 +832,28 @@ Future<void> _conciergeUsage(WidgetTester tester) async {
   await tester.tap(find.byTooltip(l10n.conciergeSend));
   await settle(tester, timeout: const Duration(seconds: 5));
   expect(find.text(l10n.conciergeUsageLeft(9, 10)), findsOneWidget);
+  await app.dispose(tester);
+}
+
+Future<void> _homeService(WidgetTester tester) async {
+  final app = await _signedInApp(tester);
+  expect(find.text(l10n.servicesAllAvailable), findsOneWidget);
+  await tester.tap(find.byKey(const ValueKey<String>('home.services')));
+  await settle(tester);
+  await tester.enterText(
+    find.byKey(const Key('service-picker-search')),
+    'shop',
+  );
+  await settle(tester);
+  await tester.tap(find.byKey(const Key('service-option-shopping')));
+  await settle(tester);
+  expect(
+    app.container.read(routerProvider).state.uri.path,
+    AppRoutes.customerRequestsNew,
+  );
+  // The request form opens with the service already chosen.
+  expect(find.text(l10n.createTitle), findsOneWidget);
+  expect(find.text(l10n.servicePickerPlaceholder), findsNothing);
+  expect(find.byKey(const Key('service-picker-remove')), findsOneWidget);
   await app.dispose(tester);
 }

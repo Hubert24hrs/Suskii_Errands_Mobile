@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,7 @@ import '../../app/labels.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../shared/job_card.dart';
+import '../shared/service_picker.dart';
 
 /// Customer home: greeting, active jobs, quick category grid.
 class CustomerHomePage extends ConsumerWidget {
@@ -112,48 +115,31 @@ class CustomerHomePage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: SSpacing.xxl),
-                SSectionHeader(title: l10n.homeQuickCategories),
+                // One dropdown of every service (owner, 2026-11-04), the same
+                // picker as the request form: choosing a service starts a
+                // request with it already selected.
+                SSectionHeader(title: l10n.servicesAllAvailable),
                 const SizedBox(height: SSpacing.md),
                 categories.when(
-                  loading: () => GridView.count(
-                    crossAxisCount: 3,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: SSpacing.md,
-                    crossAxisSpacing: SSpacing.md,
-                    children: List<Widget>.generate(
-                      6,
-                      (_) => const SSkeletonCard(height: 96),
-                    ),
-                  ),
+                  loading: () => const SSkeletonCard(height: 56),
                   error: (Object error, _) => SErrorState(
                     title: l10n.stateErrorGeneric,
                     message: localizedError(l10n, error),
                     retryLabel: l10n.actionRetry,
                     onRetry: () => ref.invalidate(categoriesProvider),
                   ),
-                  data: (List<ServiceCategory> data) => GridView.count(
-                    crossAxisCount: 3,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: SSpacing.md,
-                    crossAxisSpacing: SSpacing.md,
-                    childAspectRatio: 0.9,
-                    children: <Widget>[
-                      for (final (int i, ServiceCategory category)
-                          in data.where((c) => c.active).indexed)
-                        SFadeSlideIn(
-                          index: i,
-                          child: _CategoryTile(
-                            icon: serviceIcon(category.iconKey),
-                            label: serviceName(l10n, category),
-                            onTap: () => context.push(
-                              '${AppRoutes.customerRequestsNew}'
-                              '?categoryId=${category.id}',
-                            ),
-                          ),
+                  data: (List<ServiceCategory> data) => ServicePickerField(
+                    key: const ValueKey<String>('home.services'),
+                    categories: data,
+                    selectedId: null,
+                    onChanged: (String? id) {
+                      if (id == null) return;
+                      unawaited(
+                        context.push(
+                          '${AppRoutes.customerRequestsNew}?categoryId=$id',
                         ),
-                    ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: SSpacing.xxl),
@@ -197,53 +183,6 @@ class CustomerHomePage extends ConsumerWidget {
                       ],
                     );
                   },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A quick-category tile: gradient icon orb over a raised surface.
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SPressable(
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(SSpacing.sm),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                SIconOrb(icon: icon, size: 44),
-                const SizedBox(height: SSpacing.sm),
-                // At large text sizes two lines do not fit the fixed tile;
-                // Flexible lets the label ellipsize instead of overflowing.
-                Flexible(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.labelMedium,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ),
               ],
             ),

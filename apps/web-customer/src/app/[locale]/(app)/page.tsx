@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n';
+import { HomeServicePicker } from './HomeServicePicker';
 import { ProviderModeCard } from './ProviderModeCard';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -29,6 +30,7 @@ export default async function DashboardPage({ params }: Props) {
       <p className="mt-md text-body-large text-ink-secondary dark:text-ink-dark-secondary">
         {dict.dashboard.subtitle}
       </p>
+      <HomeServicePicker locale={locale as Locale} dict={dict} />
       <div className="mt-xxl grid gap-xl sm:grid-cols-2">
         {dict.dashboard.cards.slice(0, cardHrefs.length).map((card, i) => (
           <Link
