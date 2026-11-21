@@ -1032,6 +1032,39 @@
       "client_action": "Do not show the receipt screen unless the job has a float."
     },
     {
+      "code": "ERR_DIRECT_PAYMENT_ONLY",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Nothing is paid through the app here: the request's country takes payment directly (countries.config.client.payment_mode = 'direct', ADR-0025), or the job was hired that way. Raised when a payment, tip, float top-up or dispute would be created.",
+      "client_action": "Do not show Pay, tips, promo codes or disputes when the country pack's payment_mode is 'direct'. Show Confirm hire, and send complaints to support."
+    },
+    {
+      "code": "ERR_PAYMENT_REQUIRED",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "confirm_hire was called in a country that takes payment in the app. Only a direct-payment country hires without paying.",
+      "client_action": "Show Pay (start_payment) instead of Confirm hire; read payment_mode from the country pack."
+    },
+    {
+      "code": "ERR_GOODS_OVER_CAP",
+      "status": "implemented",
+      "category": "money",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The goods recorded on a direct-payment job cost more than the cap the customer set on the request (item_float_minor).",
+      "client_action": "Tell the provider the customer agreed to at most the cap; they should agree a new cap with the customer in chat before buying more."
+    },
+    {
       "code": "ERR_ITEM_FLOAT_PENDING",
       "status": "implemented",
       "category": "money",

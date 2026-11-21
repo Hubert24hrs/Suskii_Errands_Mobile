@@ -3,7 +3,7 @@
   "machine": "job",
   "subject": "public.requests.status",
   "enum": "job_status",
-  "note": "A client never assigns a status. It requests an action; the server runs the machine inside the row lock and returns the new state or a stable error code.",
+  "note": "A client never assigns a status. It requests an action; the server runs the machine inside the row lock and returns the new state or a stable error code. Direct payment (ADR-0025): in a country whose payment_mode is 'direct', transition 32 replaces 7, 8 and 11 and transition 33 replaces 18 to 21; the money-bearing transitions are never reached, payments and disputes refuse with ERR_DIRECT_PAYMENT_ONLY, and cancelling a direct job (24, 25) refunds and charges nothing and stops at in_progress.",
   "actors": {
     "C": "customer",
     "P": "provider, or the worker assigned by a business dispatcher",
@@ -63,7 +63,9 @@
     { "id": 28, "from": ["disputed"], "to": "confirmed", "actor": "A (dispute_officer)", "rpc": "resolve_dispute", "guard": "Resolved in the provider's favour", "effects": ["resume the settlement path"] },
     { "id": 29, "from": ["disputed"], "to": "refunded", "actor": "A (dispute_officer)", "rpc": "resolve_dispute", "guard": "Resolved in the customer's favour, full or partial", "effects": ["ledger posting 6a, which recalculates rather than reverses because the job still happened", "referral reversed"] },
     { "id": 30, "from": ["cancelled", "disputed"], "to": "refunded", "actor": "S", "rpc": null, "guard": "Refund confirmed by a gateway webhook", "effects": ["ledger: held_funds to refunds_payable to customer"] },
-    { "id": 31, "from": ["refunded", "cancelled", "expired"], "to": "closed", "actor": "S", "rpc": null, "guard": "Terminal bookkeeping complete", "effects": [] }
+    { "id": 31, "from": ["refunded", "cancelled", "expired"], "to": "closed", "actor": "S", "rpc": null, "guard": "Terminal bookkeeping complete", "effects": [] },
+    { "id": 32, "from": ["agreed"], "to": "assigned", "actor": "C", "rpc": "confirm_hire", "guard": "Direct-payment country only (countries.config.client.payment_mode = 'direct', ADR-0025). Nothing is charged", "effects": ["write jobs.direct_payment, which every later step reads instead of the country", "issue the pickup PIN", "set jobs.assigned_at, which opens the provider's read of the request, the chat and the call window"] },
+    { "id": 33, "from": ["confirmed"], "to": "closed", "actor": "S", "rpc": null, "guard": "A direct-payment job whose chat window after confirmation (chat_window_hours_after_confirm) has passed", "effects": ["none: no settlement, payout or referral, because no money went through the platform"] }
   ],
   "timeouts": [
     { "timer": "offer_ttl", "starts": "offer created", "default": "10 minutes", "configurable": "service_categories.offer_ttl_seconds", "on_expiry": "offer expires; transition 5 if others remain" },

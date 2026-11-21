@@ -6,6 +6,33 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**MINOR**: direct payment (ADR-0025, `20261121120000_direct_payment_mode`). Additive: nothing an app
+reads today changed shape, and a country without `payment_mode` behaves exactly as before.
+
+### Added
+- **`country_pack.client.payment_mode`** in `get_bootstrap()`: `in_app` (also what absence means) or
+  `direct`. In `direct`, show **Confirm hire** instead of Pay, and hide tips, promo codes, disputes,
+  the wallet and withdrawals. Nigeria is `direct` from this migration.
+- **`country_pack.client.sign_in_methods`**: some of `phone`, `email`, `google`, `apple`. Absent
+  means every method the app has. Nigeria is `["email", "google"]`: hide phone sign-in.
+- **`confirm_hire(p_idempotency_key, p_request_id)`** → `assigned`. Customer only, from `agreed`, in
+  a direct country; nothing is charged. Transition 32.
+- **`record_goods_receipt(p_idempotency_key, p_request_id, p_spent_minor, p_storage_path)`** →
+  `{spent_minor, cap_minor, agreed_minor, total_due_minor, currency}`. Provider or worker, while
+  `in_progress`, on a direct job whose request has `item_float_minor` (the goods cap). `0` needs no
+  receipt; anything else needs a path under `job-proofs/<request_id>/`. Until it is called,
+  `completed_by_provider` refuses with `ERR_PROOF_REQUIRED` (detail `goods_receipt`). The customer
+  is notified with `notifGoodsReceiptTitle` / `notifGoodsReceiptBody`.
+- **`jobs.direct_payment`**, **`goods_spent_minor`**, **`goods_receipt_path`**, **`goods_recorded_at`**.
+- Transition 33: a confirmed direct job closes after `chat_window_hours_after_confirm`.
+- Errors **`ERR_DIRECT_PAYMENT_ONLY`** (a payment, tip, float top-up or dispute in a direct country or
+  on a direct job), **`ERR_PAYMENT_REQUIRED`** (`confirm_hire` in an in-app country) and
+  **`ERR_GOODS_OVER_CAP`**.
+
+### Changed
+- `cancel_job` on a direct job returns `refund_minor = 0, fee_minor = 0`, and refuses from
+  `completed_by_provider` on.
+
 **MINOR**: first-run role selection, the service catalogue as data, and Ask Suskii usage control
 (20261103120000–120200). Additive for every app: no column, function or field an app reads today
 changed shape or meaning.

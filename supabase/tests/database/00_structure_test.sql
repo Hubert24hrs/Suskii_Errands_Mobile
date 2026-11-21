@@ -72,7 +72,7 @@ SELECT is(
        'public.update_provider_service_areas', 'public.heartbeat',
        'public.provider_feed',
        'public.set_job_status', 'public.verify_pin', 'public.reveal_job_pin',
-       'public.confirm_completion',
+       'public.confirm_completion', 'public.confirm_hire', 'public.record_goods_receipt',
        'public.submit_proof', 'public.rate_job',
        'public.send_message', 'public.mark_read',
        'public.block_user', 'public.unblock_user', 'public.favorite_provider',
