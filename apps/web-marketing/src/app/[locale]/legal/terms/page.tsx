@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n';
-import { Container } from '@/components/Container';
+import { PolicyDocument } from '@/components/PolicyDocument';
+import { termsOfService } from '@/content/terms-of-service';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -11,26 +12,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: dict.legal.termsTitle };
 }
 
+/** The published terms (src/content/terms-of-service.ts); English for every locale. */
 export default async function TermsPage({ params }: Props) {
   const { locale } = await params;
   const dict = await getDictionary(locale as Locale);
 
   return (
-    <Container className="max-w-3xl py-xxxl">
-      <h1 className="text-display-small text-ink-primary dark:text-ink-dark-primary">
-        {dict.legal.termsTitle}
-      </h1>
-      <p className="mt-lg inline-block rounded-sm bg-surface-muted px-md py-sm text-body-small font-semibold text-ink-secondary dark:bg-surface-dark-muted dark:text-ink-dark-secondary">
-        {dict.legal.placeholderNote}
-      </p>
-      {dict.legal.termsBody.map((paragraph) => (
-        <p
-          key={paragraph.slice(0, 32)}
-          className="mt-lg text-body-large text-ink-secondary dark:text-ink-dark-secondary"
-        >
-          {paragraph}
-        </p>
-      ))}
-    </Container>
+    <PolicyDocument
+      title={dict.legal.termsTitle}
+      updated={termsOfService.updated}
+      sections={termsOfService.sections}
+    />
   );
 }
