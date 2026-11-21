@@ -31,8 +31,8 @@ BEGIN
   END IF;
 
   -- Nigeria launches paying providers directly and signing in by email and Google (ADR-0025),
-  -- so it needs no payment, payout or SMS provider. What is left before it can go live is the
-  -- legal pages, which counsel and the client supply, nothing the migrations could have provided.
+  -- so it needs no payment, payout or SMS provider, and its legal pages are published
+  -- (20261121120100). Nothing is left but the four-eyes approval itself (RB-08).
   IF (SELECT config -> 'client' ->> 'payment_mode' FROM public.countries WHERE code = 'NG')
        IS DISTINCT FROM 'direct'
      OR (SELECT config -> 'client' -> 'sign_in_methods' FROM public.countries WHERE code = 'NG')
@@ -40,8 +40,13 @@ BEGIN
     RAISE EXCEPTION 'Nigeria is not set to direct payment with email and Google sign-in';
   END IF;
   v_gaps := private.country_pack_gaps('NG');
-  IF v_gaps IS DISTINCT FROM ARRAY['legal.privacy', 'legal.terms'] THEN
+  IF v_gaps IS DISTINCT FROM '{}'::text[] THEN
     RAISE EXCEPTION 'unexpected go-live gaps for NG: %', v_gaps;
+  END IF;
+  IF (SELECT count(*) FROM public.legal_documents
+      WHERE country_code = 'NG' AND type IN ('terms', 'privacy')
+        AND url LIKE 'https://suskiierrand.com/en/legal/%') <> 2 THEN
+    RAISE EXCEPTION 'Nigeria''s terms and privacy policy are not the published pages';
   END IF;
   -- The other four still take payment in the app, so they still need every provider.
   IF NOT private.country_pack_gaps('KE') @> ARRAY['config.server.payment_providers',
