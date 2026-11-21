@@ -2410,6 +2410,39 @@
           },
           "nullable": true,
           "server_default": false
+        },
+        {
+          "name": "direct_payment",
+          "type": {
+            "type": "boolean"
+          },
+          "nullable": false,
+          "server_default": true
+        },
+        {
+          "name": "goods_spent_minor",
+          "type": {
+            "type": "integer"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "goods_receipt_path",
+          "type": {
+            "type": "string"
+          },
+          "nullable": true,
+          "server_default": false
+        },
+        {
+          "name": "goods_recorded_at",
+          "type": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nullable": true,
+          "server_default": false
         }
       ],
       "privileges": {

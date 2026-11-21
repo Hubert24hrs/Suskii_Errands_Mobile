@@ -50,6 +50,24 @@ Legend — **Status:** `Open` (awaiting an answer) · `Proposed` (Claude Code re
 | OD-28 | Minimum age, store audience and age rating | Adults only (18+) for both customers and providers; Play target audience 18+, not designed for children; answer Apple's age-rating questions accordingly (user-generated content and chat with strangers, moderated). Counsel confirms per country with the terms (OD-24) | Proposed | Client + counsel | Store submission | RB-15 action 26 |
 | OD-29 | Play developer account type before payments go live | Register the business (CAC), get a free D-U-N-S number, open an **organisation** Play developer account and transfer the app to it before any build takes payments. Google rejected the first submission because a personal account declared a financial feature (2026-10-25, RB-15); the same registration unblocks the gateway merchant accounts (OD-12, client action 4) and a branded SMS sender ID (Termii needs a CAC certificate). Until then the app declares no financial features and must not ship payments on Play | Proposed | Client | Before payments are enabled in a Play build | RB-15; `docs/store/play-data-safety.md`; [Play Console Requirements](https://support.google.com/googleplay/android-developer/answer/10788890) [V] |
 
+## Raised by the launch route (OD-30 … OD-36, 2026-11-21)
+
+Google granted production access on 2026-11-21. The owner, answering for the client, chose the
+direct-payment route the same day ([ADR-0025](adr/0025-direct-payment-launch.md)). OD-30 … OD-34 are
+their answers. OD-35 is a default Claude Code took so the build could continue, and can change
+without rework; OD-36 is needed on launch day.
+
+| ID | Topic | Answer or default | Status | Owner | Needed by | Evidence |
+|---|---|---|---|---|---|---|
+| OD-30 | How customers pay at launch | **Directly to the provider**, cash or transfer, on completion. Confirm hire replaces Pay; payments, tips, promos, refunds, disputes and the wallet are off | **Decided** 2026-11-21 (owner) | Client | Launch | ADR-0025; `…20261121120000_direct_payment_mode` |
+| OD-31 | Sign-in at launch | **Email and Google only**; phone sign-in waits for an SMS provider (Termii needs CAC for a "Suskii" sender, and charges per message) | **Decided** 2026-11-21 (owner) | Client | Launch | `config.client.sign_in_methods`; `country_pack_gaps` |
+| OD-32 | Shopping errands without in-app payment | **Allowed with a goods cap** the customer sets; the provider records the receipt before marking the job done; the customer repays it with the agreed price. A provider can lose up to the cap | **Decided** 2026-11-21 (owner) | Client | Launch | `record_goods_receipt`; `requests.item_float_minor` |
+| OD-33 | Production database plan | **Supabase Free**: at launch the testers' sandbox (`slfbtdwzoijgzqszfufp`) is shut down and the production project takes its slot; upgrade later. No Supabase daily backups on Free, so the backup worker (`services/workers`) carries that | **Decided** 2026-11-21 (owner) | Owner | Launch | RB-15 §3.4; RB-14 |
+| OD-34 | Terms of service before counsel | **Publish the draft now**, updated for direct payment; counsel reviews afterwards (as the privacy policy was, 2026-10-25) | **Decided** 2026-11-21 (owner) | Owner; counsel | Launch | OD-12 |
+| OD-35 | Revenue while payments are off | Free for everyone; no fee of any kind | Proposed (default taken) | Client | Before charging anything | ADR-0025 |
+| OD-36 | Who signs Nigeria's go-live | Three admin accounts with two-factor sign-in: one proposes, two approve (RB-08) | Open | Owner | Launch day | RB-08 |
+
+
 ### Store release — client actions
 
 Everything the stores need from the client is listed, with what to hand over, in

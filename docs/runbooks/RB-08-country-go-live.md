@@ -26,10 +26,12 @@ SELECT * FROM public.country_pack_readiness('NG');
 | `legal.terms` | No terms document for the country |
 | `legal.privacy` | No privacy policy for the country |
 | `config.client.accepted_id_types` | Verification does not know what ID to accept |
-| `config.server.sms_providers` | No OTP route |
-| `config.server.payment_providers` | No way to take money |
-| `config.server.payout_providers` | No way to pay providers |
+| `config.server.sms_providers` | No OTP route. **Asked only where phone sign-in is offered**: a country whose `config.client.sign_in_methods` leaves out `phone` (Nigeria at launch: email and Google, OD-31) does not need one |
+| `config.server.payment_providers` | No way to take money. **Not asked of a direct-payment country** (`config.client.payment_mode = 'direct'`, ADR-0025), where customers pay providers themselves |
+| `config.server.payout_providers` | No way to pay providers. Not asked of a direct-payment country either |
 | `config.server.payment_providers.console_only` | **The pack routes only to the development provider.** A live country on the console provider would report a customer as paid when nobody paid. The Edge Function refuses it too; refusing it here means nobody has to find out that way |
+
+**Direct payment (ADR-0025, 2026-11-21).** `payment_mode` and `sign_in_methods` live under `config.client`, so the app reads them from bootstrap. Set them **in an earlier approved change than the one that proposes `live`**: the gap check reads the country as it is, not as the proposal would leave it. Nigeria already has both from migration `20261121120000_direct_payment_mode` (`direct`; `["email", "google"]`), so its go-live proposal only needs `status`.
 
 The status change itself goes through `propose_config_change` / `review_config_change` and needs
 **two signatures** — a country going live is on the two-approver list, alongside commission and
