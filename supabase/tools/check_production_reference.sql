@@ -30,15 +30,24 @@ BEGIN
     RAISE EXCEPTION 'proof requirements are missing';
   END IF;
 
-  -- What is left before Nigeria can go live is configuration the client supplies, nothing the
-  -- migrations could have provided.
-  v_gaps := private.country_pack_gaps('NG');
-  IF v_gaps && ARRAY['cities', 'config.client.accepted_id_types'] THEN
-    RAISE EXCEPTION 'reference data still missing for NG: %', v_gaps;
+  -- Nigeria launches paying providers directly and signing in by email and Google (ADR-0025),
+  -- so it needs no payment, payout or SMS provider. What is left before it can go live is the
+  -- legal pages, which counsel and the client supply, nothing the migrations could have provided.
+  IF (SELECT config -> 'client' ->> 'payment_mode' FROM public.countries WHERE code = 'NG')
+       IS DISTINCT FROM 'direct'
+     OR (SELECT config -> 'client' -> 'sign_in_methods' FROM public.countries WHERE code = 'NG')
+       IS DISTINCT FROM '["email", "google"]'::jsonb THEN
+    RAISE EXCEPTION 'Nigeria is not set to direct payment with email and Google sign-in';
   END IF;
-  IF NOT v_gaps @> ARRAY['legal.privacy', 'legal.terms', 'config.server.sms_providers',
-                         'config.server.payment_providers', 'config.server.payout_providers'] THEN
+  v_gaps := private.country_pack_gaps('NG');
+  IF v_gaps IS DISTINCT FROM ARRAY['legal.privacy', 'legal.terms'] THEN
     RAISE EXCEPTION 'unexpected go-live gaps for NG: %', v_gaps;
+  END IF;
+  -- The other four still take payment in the app, so they still need every provider.
+  IF NOT private.country_pack_gaps('KE') @> ARRAY['config.server.payment_providers',
+                                                  'config.server.sms_providers'] THEN
+    RAISE EXCEPTION 'an in-app country lost its payment or SMS gap: %',
+      private.country_pack_gaps('KE');
   END IF;
 
   -- Dev-only rows must not reach production.
