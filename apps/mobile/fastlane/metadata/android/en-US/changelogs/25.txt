@@ -1,0 +1,5 @@
+What's new
+- Hire a provider with Confirm hire, then pay them directly in cash or by transfer when the job is done
+- Shopping errands: set the most you'll spend on goods; the provider records the cost and the receipt before delivery
+- All services available in one searchable dropdown on the home screen
+- Sign in with email or Google
