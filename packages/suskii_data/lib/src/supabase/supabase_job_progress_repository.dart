@@ -44,6 +44,28 @@ class SupabaseJobProgressRepository implements JobProgressRepository {
     'p_request_id': jobId,
   }, jobId);
 
+  @override
+  Future<JobRequest> confirmHire(
+    String jobId, {
+    required String idempotencyKey,
+  }) => _reloadAfter('confirm_hire', <String, Object?>{
+    'p_idempotency_key': idempotencyKey,
+    'p_request_id': jobId,
+  }, jobId);
+
+  @override
+  Future<JobRequest> recordGoodsReceipt({
+    required String jobId,
+    required Money spent,
+    required String idempotencyKey,
+    String? storagePath,
+  }) => _reloadAfter('record_goods_receipt', <String, Object?>{
+    'p_idempotency_key': idempotencyKey,
+    'p_request_id': jobId,
+    'p_spent_minor': spent.minorUnits,
+    'p_storage_path': storagePath,
+  }, jobId);
+
   Future<JobRequest> _reloadAfter(
     String function,
     Map<String, Object?> args,

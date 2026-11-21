@@ -33,6 +33,7 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
   String? _publishKey;
   String? _cancelKey;
   String? _confirmKey;
+  String? _hireKey;
 
   static const List<JobStatus> _milestones = <JobStatus>[
     JobStatus.published,
@@ -166,6 +167,29 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
     });
   }
 
+  /// Direct payment (ADR-0025): the customer commits to the provider instead
+  /// of paying. The address, chat and calls open from here.
+  Future<void> _confirmHire(JobRequest request) async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final amount = request.agreedPrice?.format(locale: locale) ?? '';
+    final confirmed = await showSConfirmDialog(
+      context: context,
+      title: l10n.directConfirmHireTitle,
+      message:
+          '${l10n.directConfirmHireBody(amount)}\n\n${l10n.directPayNotice}',
+      confirmLabel: l10n.directConfirmHire,
+      cancelLabel: l10n.actionCancel,
+    );
+    if (!confirmed || !mounted) return;
+    await _run(() async {
+      _hireKey ??= newIdempotencyKey();
+      await ref
+          .read(jobProgressRepositoryProvider)
+          .confirmHire(widget.jobId, idempotencyKey: _hireKey!);
+    });
+  }
+
   Future<void> _cancel() async {
     final l10n = AppLocalizations.of(context);
     final reason = await showModalBottomSheet<String>(
@@ -231,6 +255,12 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
     final theme = Theme.of(context);
     final reached = _milestoneReached(request.status);
     final terminal = request.status.isTerminal;
+    final locale = Localizations.localeOf(context).languageCode;
+    // A job hired directly stays direct; before the hire, the country decides.
+    final direct =
+        request.directPayment ||
+        (ref.watch(bootstrapProvider).value?.countryPack.paysDirectly ?? false);
+    final amountDue = request.directAmountDue?.format(locale: locale) ?? '';
     return ListView(
       padding: const EdgeInsets.all(SSpacing.lg),
       children: <Widget>[
@@ -258,7 +288,13 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             steps: <SStatusStep>[
               for (var i = 0; i < _milestones.length; i++)
                 SStatusStep(
-                  label: jobStatusLabel(l10n, _milestones[i]),
+                  // A direct job is hired, not paid: no "paid" step.
+                  label: jobStatusLabel(
+                    l10n,
+                    direct && _milestones[i] == JobStatus.paidHeld
+                        ? JobStatus.assigned
+                        : _milestones[i],
+                  ),
                   state: i < reached
                       ? STimelineStepState.done
                       : i == reached
@@ -286,7 +322,14 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         if (request.agreedPrice != null)
           _row(l10n.detailAgreedPriceLabel, request.agreedPrice!.format()),
         if (request.itemFloat != null)
-          _row(l10n.detailItemFloatLabel, request.itemFloat!.format()),
+          _row(
+            direct ? l10n.directGoodsCapDetailLabel : l10n.detailItemFloatLabel,
+            request.itemFloat!.format(),
+          ),
+        if (request.goodsSpent != null)
+          _row(l10n.directGoodsSpentLabel, request.goodsSpent!.format()),
+        if (direct && request.directPayment && request.agreedPrice != null)
+          _row(l10n.directAmountDueLabel, amountDue),
         if (request.declaredValue != null)
           _row(l10n.detailDeclaredValueLabel, request.declaredValue!.format()),
         const SizedBox(height: SSpacing.lg),
@@ -300,11 +343,25 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(SSpacing.md),
-              child: Text(l10n.offersAcceptedNote),
+              child: Text(
+                direct
+                    ? '${l10n.directAcceptedNote}\n\n${l10n.directPayNotice}'
+                    : l10n.offersAcceptedNote,
+              ),
             ),
           ),
-        if (request.status == JobStatus.agreed ||
-            request.status == JobStatus.paymentPending) ...<Widget>[
+        if (direct && request.status == JobStatus.agreed) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          SButton(
+            label: l10n.directConfirmHire,
+            icon: Icons.handshake_outlined,
+            loading: _busy,
+            onPressed: _busy ? null : () => unawaited(_confirmHire(request)),
+          ),
+        ],
+        if (!direct &&
+            (request.status == JobStatus.agreed ||
+                request.status == JobStatus.paymentPending)) ...<Widget>[
           const SizedBox(height: SSpacing.md),
           SButton(
             label: l10n.detailPayNow,
@@ -371,6 +428,18 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
             ],
           ),
         ],
+        if (direct &&
+            request.directPayment &&
+            _contactStates.contains(request.status) &&
+            request.status != JobStatus.completedByProvider) ...<Widget>[
+          const SizedBox(height: SSpacing.md),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.md),
+              child: Text(l10n.directPayNotice),
+            ),
+          ),
+        ],
         if (_contactStates.contains(request.status)) ...<Widget>[
           const SizedBox(height: SSpacing.md),
           _HandoverPinCard(
@@ -383,7 +452,11 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(SSpacing.md),
-              child: Text(l10n.detailCompletedByProvider),
+              child: Text(
+                request.directPayment
+                    ? l10n.directPayOnCompletion(amountDue)
+                    : l10n.detailCompletedByProvider,
+              ),
             ),
           ),
           const SizedBox(height: SSpacing.sm),
@@ -395,7 +468,19 @@ class _RequestDetailPageState extends ConsumerState<RequestDetailPage> {
         ],
         if (_rateableStates.contains(request.status))
           _RatingSection(jobId: widget.jobId),
-        if (_disputableStates.contains(request.status) ||
+        if (request.directPayment && _disputableStates.contains(request.status))
+          // No held money to adjudicate: a complaint goes to support.
+          Padding(
+            padding: const EdgeInsets.only(top: SSpacing.md),
+            child: SButton(
+              label: l10n.directSupportInstead,
+              variant: SButtonVariant.secondary,
+              icon: Icons.support_agent_outlined,
+              onPressed: () =>
+                  unawaited(context.push(AppRoutes.customerSupport)),
+            ),
+          )
+        else if (_disputableStates.contains(request.status) ||
             request.status == JobStatus.disputed ||
             request.status == JobStatus.refunded)
           _DisputeSection(jobId: widget.jobId, status: request.status),

@@ -25,6 +25,7 @@ ALIASES = {
     ("providerJob", "getProofs"): ("jobProgress", "getProofs"),
     ("providerJob", "requestStatusChange"): ("jobProgress", "requestStatusChange"),
     ("providerJob", "submitProof"): ("jobProgress", "submitProof"),
+    ("providerJob", "recordGoodsReceipt"): ("jobProgress", "recordGoodsReceipt"),
     ("providerJob", "verifyHandoverPin"): ("jobProgress", "verifyHandoverPin"),
     ("providerJob", "publishProviderLocation"): ("tracking", "publishProviderLocation"),
     ("provider", "reportPosition"): ("tracking", "reportPosition"),

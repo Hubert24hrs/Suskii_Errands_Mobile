@@ -107,10 +107,31 @@ abstract class CountryPack with _$CountryPack {
     /// Where a provider can work: in Nigeria the 36 states and the FCT.
     /// [ServiceArea.code] is what `update_provider_service_areas` takes.
     @Default(<ServiceArea>[]) List<ServiceArea> serviceAreas,
+
+    /// How customers pay in this country (ADR-0025). In [PaymentMode.direct]
+    /// the customer confirms the hire instead of paying, and pays the
+    /// provider in person; Pay, tips, promo codes, disputes and the wallet
+    /// are not offered.
+    @Default(PaymentMode.inApp) PaymentMode paymentMode,
+
+    /// The ways this country signs people in: some of `phone`, `email`,
+    /// `google`, `apple`. Empty means every way the app has.
+    @Default(<String>[]) List<String> signInMethods,
   }) = _CountryPack;
 
   factory CountryPack.fromJson(Map<String, dynamic> json) =>
       _$CountryPackFromJson(json);
+}
+
+/// `countries.config.client.payment_mode`.
+enum PaymentMode { inApp, direct }
+
+extension CountryPackSignIn on CountryPack {
+  /// Whether [method] (`phone`, `email`, `google`, `apple`) is offered here.
+  bool offersSignIn(String method) =>
+      signInMethods.isEmpty || signInMethods.contains(method);
+
+  bool get paysDirectly => paymentMode == PaymentMode.direct;
 }
 
 /// One blurred area on the "providers near you" map: the centre of a grid

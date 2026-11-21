@@ -75,6 +75,10 @@ class _ProviderJobExecutionPageState
   ({ProofKind kind, String path, String key, DateTime capturedAt})?
   _pendingProof;
 
+  /// Goods recorded on a direct job (see [_recordGoods]): kept until the
+  /// server accepts them, so a retry reuses the upload and the key.
+  ({int minor, String? path, String key})? _pendingGoods;
+
   /// The mock keeps verified PINs repo-internal, so a successful delivery-PIN
   /// verification is remembered here for the rest of this page session.
   bool _deliveryPinVerified = false;
@@ -320,6 +324,73 @@ class _ProviderJobExecutionPageState
     });
   }
 
+  /// Direct payment with a goods cap (OD-32): the provider says what the goods
+  /// cost, with a receipt photo, before marking the job done, so the customer
+  /// knows what to repay. The photo is filed as a receipt proof as well.
+  Future<void> _recordGoods(JobRequest request) async {
+    final cap = request.itemFloat;
+    if (cap == null) return;
+    var pending = _pendingGoods;
+    if (pending == null) {
+      final minor = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (BuildContext sheetContext) => _GoodsSheet(cap: cap),
+      );
+      if (minor == null || !mounted) return;
+      if (minor > cap.minorUnits) {
+        showSToast(
+          context,
+          AppLocalizations.of(context).errGoodsOverCap,
+          isError: true,
+        );
+        return;
+      }
+      String? path;
+      if (minor > 0) {
+        final media = await captureImage(context);
+        if (media == null || !mounted) return;
+        await _run(() async {
+          path = await ref
+              .read(mediaUploadRepositoryProvider)
+              .upload(
+                bucket: UploadBucket.jobProofs,
+                requestId: widget.jobId,
+                bytes: media.bytes,
+                contentType: media.contentType,
+              );
+        });
+        if (path == null || !mounted) return;
+      }
+      _pendingGoods = (minor: minor, path: path, key: newIdempotencyKey());
+      pending = _pendingGoods;
+    }
+    final goods = pending!;
+    await _run(() async {
+      final repo = ref.read(jobProgressRepositoryProvider);
+      await repo.recordGoodsReceipt(
+        jobId: widget.jobId,
+        spent: Money(goods.minor, cap.currencyCode),
+        storagePath: goods.path,
+        idempotencyKey: goods.key,
+      );
+      final receipt = goods.path;
+      if (receipt != null) {
+        await repo.submitProof(
+          jobId: widget.jobId,
+          kind: ProofKind.receipt,
+          storagePath: receipt,
+          idempotencyKey: '${goods.key}-proof',
+          capturedAt: DateTime.now(),
+        );
+        ref.invalidate(jobProofsProvider(widget.jobId));
+      }
+      _pendingGoods = null;
+      unawaited(HapticFeedback.lightImpact());
+    });
+  }
+
   String _proofActionLabel(AppLocalizations l10n, ProofKind kind) =>
       switch (kind) {
         ProofKind.photo => l10n.jobActionAddProofPhoto,
@@ -390,7 +461,14 @@ class _ProviderJobExecutionPageState
             steps: <SStatusStep>[
               for (var i = 0; i < _milestones.length; i++)
                 SStatusStep(
-                  label: jobStatusLabel(l10n, _milestones[i]),
+                  // A direct job is hired, not paid: no "paid" step.
+                  label: jobStatusLabel(
+                    l10n,
+                    request.directPayment &&
+                            _milestones[i] == JobStatus.paidHeld
+                        ? JobStatus.assigned
+                        : _milestones[i],
+                  ),
                   state: i < reached
                       ? STimelineStepState.done
                       : i == reached
@@ -420,10 +498,31 @@ class _ProviderJobExecutionPageState
           ),
         if (request.itemFloat != null)
           _row(
-            l10n.detailItemFloatLabel,
+            request.directPayment
+                ? l10n.directGoodsCapDetailLabel
+                : l10n.detailItemFloatLabel,
             request.itemFloat!.format(locale: locale),
           ),
-        if (request.agreedBreakdown != null)
+        if (request.goodsSpent != null)
+          _row(
+            l10n.directGoodsSpentLabel,
+            request.goodsSpent!.format(locale: locale),
+          ),
+        if (request.directPayment &&
+            _contactStates.contains(request.status)) ...<Widget>[
+          const SizedBox(height: SSpacing.sm),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.md),
+              child: Text(
+                l10n.directProviderCollect(
+                  request.directAmountDue?.format(locale: locale) ?? '',
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (!request.directPayment && request.agreedBreakdown != null)
           _row(
             l10n.detailAgreedPriceLabel,
             l10n.toolsInstantPayoutQuote(
@@ -555,6 +654,30 @@ class _ProviderJobExecutionPageState
             onPressed: _busy ? null : () => _addProof(kind),
           ),
         ],
+        if (request.awaitsGoodsReceipt) ...<Widget>[
+          const SizedBox(height: SSpacing.sm),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(SSpacing.md),
+              child: Text(
+                l10n.directGoodsRecordBody(
+                  request.itemFloat!.format(
+                    locale: Localizations.localeOf(context).languageCode,
+                  ),
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ),
+          const SizedBox(height: SSpacing.sm),
+          SButton(
+            label: l10n.directGoodsRecordTitle,
+            variant: SButtonVariant.secondary,
+            icon: Icons.receipt_long_outlined,
+            loading: _busy,
+            onPressed: _busy ? null : () => _recordGoods(request),
+          ),
+        ],
         if (needsDeliveryPin) ...<Widget>[
           const SizedBox(height: SSpacing.sm),
           SButton(
@@ -574,6 +697,8 @@ class _ProviderJobExecutionPageState
           loading: _busy,
           onPressed: _busy
               ? null
+              : request.awaitsGoodsReceipt
+              ? () => showSToast(context, l10n.directGoodsNeeded, isError: true)
               : () => _transition(JobStatus.completedByProvider),
         ),
       ],
@@ -737,4 +862,67 @@ class _LivePositionPublisherState
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Asks what the goods cost, up to the customer's cap. Returns minor units.
+class _GoodsSheet extends StatefulWidget {
+  const _GoodsSheet({required this.cap});
+
+  final Money cap;
+
+  @override
+  State<_GoodsSheet> createState() => _GoodsSheetState();
+}
+
+class _GoodsSheetState extends State<_GoodsSheet> {
+  final TextEditingController _controller = TextEditingController();
+  int? _minor;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final spends = (_minor ?? 0) > 0;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: SSpacing.lg,
+        right: SSpacing.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + SSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(l10n.directGoodsRecordTitle, style: theme.textTheme.titleMedium),
+          const SizedBox(height: SSpacing.sm),
+          Text(
+            l10n.directGoodsRecordBody(widget.cap.format(locale: locale)),
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: SSpacing.md),
+          SMoneyField(
+            label: l10n.directGoodsSpentLabel,
+            currencyCode: widget.cap.currencyCode,
+            controller: _controller,
+            onChangedMinorUnits: (int? minor) => setState(() => _minor = minor),
+          ),
+          const SizedBox(height: SSpacing.md),
+          SButton(
+            label: spends ? l10n.directGoodsReceiptPhoto : l10n.directGoodsSave,
+            icon: spends ? Icons.photo_camera_outlined : Icons.check_outlined,
+            onPressed: _minor == null
+                ? null
+                : () => Navigator.of(context).pop(_minor),
+          ),
+        ],
+      ),
+    );
+  }
 }

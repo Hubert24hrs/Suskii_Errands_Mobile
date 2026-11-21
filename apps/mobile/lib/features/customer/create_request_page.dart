@@ -261,6 +261,8 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
 
   Widget _buildForm(AppLocalizations l10n, List<ServiceCategory> cats) {
     final theme = Theme.of(context);
+    final paysDirectly =
+        ref.watch(bootstrapProvider).value?.countryPack.paysDirectly ?? false;
     return ListView(
       padding: const EdgeInsets.all(SSpacing.lg),
       children: <Widget>[
@@ -362,8 +364,12 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
         if (_categoryId != null)
           _PriceBandHint(categoryId: _categoryId!, urgency: _urgency),
         const SizedBox(height: SSpacing.md),
+        // In a direct-payment country the same field is the most the customer
+        // will repay for goods the provider buys (OD-32), not money prepaid.
         SMoneyField(
-          label: l10n.createItemFloatLabel,
+          label: paysDirectly
+              ? l10n.directGoodsCapLabel
+              : l10n.createItemFloatLabel,
           currencyCode: _currency,
           controller: _itemFloatController,
           onChangedMinorUnits: (int? minor) => _itemFloatMinor = minor,
@@ -371,7 +377,7 @@ class _CreateRequestPageState extends ConsumerState<CreateRequestPage> {
         Padding(
           padding: const EdgeInsets.only(top: SSpacing.xs),
           child: Text(
-            l10n.createItemFloatHint,
+            paysDirectly ? l10n.directGoodsCapHint : l10n.createItemFloatHint,
             style: theme.textTheme.bodySmall,
           ),
         ),

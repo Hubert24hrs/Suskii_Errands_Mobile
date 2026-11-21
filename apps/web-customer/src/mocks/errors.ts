@@ -59,6 +59,11 @@ export const ErrorCodes = {
 
   // Provider mode: job execution, KYC, business console
   proofRequired: 'ERR_PROOF_REQUIRED',
+  // Direct payment (ADR-0025)
+  directPaymentOnly: 'ERR_DIRECT_PAYMENT_ONLY',
+  paymentRequired: 'ERR_PAYMENT_REQUIRED',
+  goodsOverCap: 'ERR_GOODS_OVER_CAP',
+  noItemFloat: 'ERR_NO_ITEM_FLOAT',
   notAtPickup: 'ERR_NOT_AT_PICKUP',
   pinAttemptsExceeded: 'ERR_PIN_ATTEMPTS_EXCEEDED',
   illegalTransition: 'ERR_ILLEGAL_TRANSITION',

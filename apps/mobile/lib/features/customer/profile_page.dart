@@ -116,6 +116,10 @@ class ProfilePage extends ConsumerWidget {
     final themeMode = ref.watch(themeModeControllerProvider);
     final config = ref.watch(appConfigProvider);
     final version = ref.watch(appVersionProvider);
+    // Direct payment (ADR-0025): nothing is paid or earned through the app, so
+    // the wallet, referral rewards, promo codes and disputes have nothing in them.
+    final paysDirectly =
+        ref.watch(bootstrapProvider).value?.countryPack.paysDirectly ?? false;
     final providerVerified =
         user?.providerVerification == VerificationStatus.verified;
 
@@ -248,34 +252,36 @@ class ProfilePage extends ConsumerWidget {
           ],
 
           // M5: account surfaces
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.account_balance_wallet_outlined),
-            title: Text(l10n.profileWallet),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.customerWallet),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.group_add_outlined),
-            title: Text(l10n.profileReferrals),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.customerReferrals),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.local_offer_outlined),
-            title: Text(l10n.profilePromos),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.customerPromos),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.gavel_outlined),
-            title: Text(l10n.profileDisputes),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.customerDisputes),
-          ),
+          if (!paysDirectly) ...<Widget>[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: Text(l10n.profileWallet),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.customerWallet),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.group_add_outlined),
+              title: Text(l10n.profileReferrals),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.customerReferrals),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.local_offer_outlined),
+              title: Text(l10n.profilePromos),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.customerPromos),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.gavel_outlined),
+              title: Text(l10n.profileDisputes),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.customerDisputes),
+            ),
+          ],
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.support_agent_outlined),

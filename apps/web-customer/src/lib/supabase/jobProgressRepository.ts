@@ -27,6 +27,18 @@ export class SupabaseJobProgressRepository {
     return updated;
   }
 
+  /** Direct payment (ADR-0025): the customer commits to the provider instead
+   * of paying (`confirm_hire`, AGREED → ASSIGNED, nothing charged). */
+  async confirmHire(jobId: string, idempotencyKey: string): Promise<JobRequest> {
+    await this.gateway.rpc('confirm_hire', {
+      p_idempotency_key: idempotencyKey,
+      p_request_id: jobId,
+    });
+    const updated = await loadJobRequestRow(this.gateway, jobId);
+    if (updated === null) throw new AppError(ErrorCodes.unknown);
+    return updated;
+  }
+
   /** Reveal-on-demand handover PIN. The server rotates on every reveal —
    * show it once, never cache it. */
   async revealHandoverPin(jobId: string, kind: HandoverPinKind): Promise<string> {

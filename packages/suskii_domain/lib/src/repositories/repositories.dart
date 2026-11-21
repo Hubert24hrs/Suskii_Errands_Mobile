@@ -327,6 +327,27 @@ abstract interface class JobProgressRepository {
 
   /// Proofs attached to a job, visible to its two participants.
   Future<List<Proof>> getProofs(String jobId);
+
+  /// Customer commits to the provider in a direct-payment country instead
+  /// of paying (`confirm_hire`, ADR-0025): AGREED → ASSIGNED, nothing
+  /// charged. Throws AppError(ERR_PAYMENT_REQUIRED) where the country takes
+  /// payment in the app.
+  Future<JobRequest> confirmHire(
+    String jobId, {
+    required String idempotencyKey,
+  });
+
+  /// Provider records what the goods cost on a direct job with a goods cap
+  /// (`record_goods_receipt`), while IN_PROGRESS and before marking it done.
+  /// [spent] may be zero; anything more needs [storagePath], a receipt
+  /// already uploaded under `<jobId>/`. Throws AppError(ERR_GOODS_OVER_CAP)
+  /// above the customer's cap.
+  Future<JobRequest> recordGoodsReceipt({
+    required String jobId,
+    required Money spent,
+    required String idempotencyKey,
+    String? storagePath,
+  });
 }
 
 abstract interface class TrackingRepository {

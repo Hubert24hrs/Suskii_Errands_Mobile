@@ -9,11 +9,13 @@ import { authRepository } from '@/lib/repositories';
 import { ModeSwitchButton } from './ModeSwitch';
 import type { AuthState } from '@/mocks/types';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { useShowsMoneyLink } from './MoneyLinksFilter';
 import Image from 'next/image';
 
 export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ status: 'unknown' });
+  const showsLink = useShowsMoneyLink();
 
   useEffect(() => authRepository.authStateChanges(setAuth), []);
 
@@ -44,7 +46,9 @@ export function AppHeader({ locale, dict }: { locale: Locale; dict: Dictionary }
               [dict.wallet.title, '/wallet'],
               [dict.settings.title, '/settings'],
             ] as const
-          ).map(([label, href]) => (
+          )
+            .filter(([, href]) => showsLink(href))
+            .map(([label, href]) => (
             <Link
               key={href}
               href={`/${locale}${href}`}

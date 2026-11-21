@@ -220,6 +220,12 @@ export function countryPackFromBootstrap(
     offerTtlSeconds: intOr(client['offer_ttl_seconds'], 600),
     maxNegotiationRounds: intOr(client['max_counter_rounds'], 5),
     serviceAreas,
+    paymentMode: client['payment_mode'] === 'direct' ? 'direct' : 'in_app',
+    signInMethods: Array.isArray(client['sign_in_methods'])
+      ? (client['sign_in_methods'] as unknown[]).filter(
+          (m): m is string => typeof m === 'string',
+        )
+      : [],
   };
 }
 
@@ -479,6 +485,11 @@ export function jobRequestFromRow(row: Row, mediaPaths: string[] = []): JobReque
       row['expires_at'] == null
         ? undefined
         : SupabaseGateway.asTimestamp(row['expires_at']),
+    directPayment: (jobRow?.['direct_payment'] as boolean | null) ?? false,
+    goodsSpent:
+      jobRow === null
+        ? undefined
+        : moneyOrNull(jobRow['goods_spent_minor'], currency),
     // handoverPin deliberately stays undefined: the contract hands PINs out
     // on demand via `reveal_job_pin` (job-progress slice), never on the row.
   };

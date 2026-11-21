@@ -92,6 +92,9 @@ String? _specific(AppLocalizations l10n, String code) => switch (code) {
   'ERR_SAVED_PLACE_LIMIT' => l10n.errSavedPlaceLimit,
   'ERR_FLOAT_TOP_UP_EXISTS' => l10n.errFloatTopUpExists,
   'ERR_FLOAT_TOP_UP_TOO_LARGE' => l10n.errFloatTopUpTooLarge,
+  'ERR_DIRECT_PAYMENT_ONLY' => l10n.errDirectPaymentOnly,
+  'ERR_PAYMENT_REQUIRED' => l10n.errPaymentRequired,
+  'ERR_GOODS_OVER_CAP' => l10n.errGoodsOverCap,
   _ => null,
 };
 

@@ -328,6 +328,24 @@ export class SupabaseProviderJobRepository {
     return proofFromRow(row);
   }
 
+  /** Direct payment with a goods cap (`record_goods_receipt`): what the goods
+   * cost, at most the cap, before the job is marked done. Zero needs no
+   * receipt; anything more needs one already uploaded under `<jobId>/`. */
+  async recordGoodsReceipt(options: {
+    jobId: string;
+    spent: Money;
+    idempotencyKey: string;
+    storagePath?: string;
+  }): Promise<JobRequest> {
+    await this.gateway.rpc('record_goods_receipt', {
+      p_idempotency_key: options.idempotencyKey,
+      p_request_id: options.jobId,
+      p_spent_minor: options.spent.amountMinor,
+      p_storage_path: options.storagePath,
+    });
+    return this.reload(options.jobId);
+  }
+
   async getProofs(jobId: string): Promise<Proof[]> {
     const rows = await this.gateway.selectList('proofs', proofColumns, {
       column: 'request_id',

@@ -138,6 +138,13 @@ CountryPack countryPackFromBootstrap(
     ],
     offerTtlSeconds: (client['offer_ttl_seconds'] as num?)?.toInt() ?? 600,
     maxNegotiationRounds: (client['max_counter_rounds'] as num?)?.toInt() ?? 5,
+    paymentMode: client['payment_mode'] == 'direct'
+        ? PaymentMode.direct
+        : PaymentMode.inApp,
+    signInMethods: <String>[
+      for (final m in client['sign_in_methods'] as List<dynamic>? ?? const [])
+        if (m is String) m,
+    ],
   );
 }
 
@@ -388,6 +395,10 @@ JobRequest jobRequestFromRow(
     expiresAt: row['expires_at'] == null
         ? null
         : SupabaseGateway.asTimestamp(row['expires_at']),
+    directPayment: jobRow?['direct_payment'] as bool? ?? false,
+    goodsSpent: jobRow == null
+        ? null
+        : moneyOrNull(jobRow['goods_spent_minor'], currency),
   );
 }
 

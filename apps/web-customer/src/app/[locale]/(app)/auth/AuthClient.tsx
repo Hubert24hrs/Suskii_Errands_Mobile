@@ -8,10 +8,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { resolveSignUpCountry } from '@/lib/deviceCountry';
-import { authRepository, supabaseGateway } from '@/lib/repositories';
+import { authRepository, bootstrapRepository, supabaseGateway } from '@/lib/repositories';
+import { offersSignIn } from '@/mocks/types';
 import type { AuthState, SocialProvider } from '@/mocks/types';
 import { errorText } from '../requests/_shared';
 
@@ -35,7 +37,15 @@ export function AuthClient({
 }) {
   const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ status: 'unknown' });
-  const [method, setMethod] = useState<Method>('phone');
+  const [chosenMethod, setMethod] = useState<Method>('phone');
+  // Phone sign-in needs an SMS provider; a country without one signs people
+  // in by email and Google only (OD-31).
+  const bootstrap = useQuery({
+    queryKey: ['bootstrap'],
+    queryFn: () => bootstrapRepository.getBootstrap(),
+  });
+  const phoneOffered = offersSignIn(bootstrap.data?.countryPack, 'phone');
+  const method: Method = phoneOffered ? chosenMethod : 'email';
   const [destination, setDestination] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState('');
@@ -138,7 +148,7 @@ export function AuthClient({
         {dict.auth.subtitle}
       </p>
 
-      {!codeSent && (
+      {!codeSent && phoneOffered && (
         <div className="mt-md flex rounded-md border border-outline p-xs dark:border-outline-dark">
           {(['phone', 'email'] as const).map((m) => (
             <button
