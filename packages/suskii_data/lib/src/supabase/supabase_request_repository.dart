@@ -17,7 +17,7 @@ const String requestRowColumns =
     'created_at, service_categories(key), '
     'jobs(provider_id, agreed_amount_minor, currency, commission_rate_bps, '
     'commission_minor, net_minor, estimated_gateway_fee_minor, '
-    'actual_gateway_fee_minor, tip_minor)';
+    'actual_gateway_fee_minor, tip_minor, direct_payment, goods_spent_minor)';
 
 /// Loads one request row (with embeds) and its media paths, mapped to the
 /// domain entity. Shared with the job-progress repository, whose status

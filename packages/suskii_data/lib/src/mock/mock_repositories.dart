@@ -1060,6 +1060,69 @@ class MockJobProgressRepository extends _MockRepo
     }, argsHash: '$target');
   }
 
+  /// Mirrors `confirm_hire` (ADR-0025): only the customer, only from AGREED,
+  /// and only where the country pays directly.
+  @override
+  Future<JobRequest> confirmHire(
+    String jobId, {
+    required String idempotencyKey,
+  }) async {
+    await gate();
+    return idempotent('confirmHire:$jobId', idempotencyKey, () async {
+      final request = db.requests[jobId];
+      if (request == null || request.customerId != currentUser.id) {
+        throw const AppError(ErrorCodes.requestNotFound);
+      }
+      if (request.status != JobStatus.agreed) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      final pack = db.countryPacks[currentUser.countryCode];
+      if (pack == null || !pack.paysDirectly) {
+        throw const AppError('ERR_PAYMENT_REQUIRED');
+      }
+      final updated = request.copyWith(
+        status: JobStatus.assigned,
+        directPayment: true,
+      );
+      db.requests[jobId] = updated;
+      db.jobEvents.add(updated);
+      return updated;
+    });
+  }
+
+  /// Mirrors `record_goods_receipt`: a direct job with a goods cap, while
+  /// IN_PROGRESS, at most the cap, with a receipt for anything spent.
+  @override
+  Future<JobRequest> recordGoodsReceipt({
+    required String jobId,
+    required Money spent,
+    required String idempotencyKey,
+    String? storagePath,
+  }) async {
+    await gate();
+    return idempotent('recordGoodsReceipt:$jobId', idempotencyKey, () async {
+      final request = db.requests[jobId];
+      if (request == null) throw const AppError(ErrorCodes.requestNotFound);
+      final cap = request.itemFloat;
+      if (!request.directPayment) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      if (cap == null) throw const AppError('ERR_NO_ITEM_FLOAT');
+      if (request.status != JobStatus.inProgress) {
+        throw const AppError(ErrorCodes.invalidState);
+      }
+      if (spent.isNegative) throw const AppError(ErrorCodes.invalidArgument);
+      if (spent > cap) throw const AppError('ERR_GOODS_OVER_CAP');
+      if (!spent.isZero &&
+          (storagePath == null || !storagePath.startsWith('$jobId/'))) {
+        throw const AppError(ErrorCodes.invalidArgument);
+      }
+      final updated = request.copyWith(goodsSpent: spent);
+      db.requests[jobId] = updated;
+      return updated;
+    }, argsHash: '${spent.minorUnits}:$storagePath');
+  }
+
   /// Completion gate (spec: job_lifecycle.proof, mirrors the backend's
   /// `submit_proof` rules): every proof kind the category requires must have
   /// enough submissions, and a job with a destination needs its delivery PIN
@@ -1083,6 +1146,7 @@ class MockJobProgressRepository extends _MockRepo
         !_verifiedPins.contains('${request.id}:delivery')) {
       missing.add('delivery_pin');
     }
+    if (request.awaitsGoodsReceipt) missing.add('goods_receipt');
     if (missing.isNotEmpty) {
       throw AppError(ErrorCodes.proofRequired, details: missing);
     }

@@ -257,8 +257,44 @@ export class MockProviderJobRepository extends MockRepo {
           if (job.destination && !this.deliveryPinVerified[jobId]) {
             throw new AppError(ErrorCodes.proofRequired);
           }
+          if (job.directPayment && job.itemFloat && !job.goodsSpent) {
+            throw new AppError(ErrorCodes.proofRequired);
+          }
         }
         return this.save({ ...job, status: target });
+      },
+    );
+  }
+
+  /** Mirrors `record_goods_receipt` (ADR-0025). */
+  async recordGoodsReceipt(options: {
+    jobId: string;
+    spent: Money;
+    idempotencyKey: string;
+    storagePath?: string;
+  }): Promise<JobRequest> {
+    await this.gate();
+    return this.idempotent(
+      `recordGoodsReceipt:${options.jobId}`,
+      options.idempotencyKey,
+      `${options.spent.amountMinor}|${options.storagePath ?? ''}`,
+      () => {
+        const job = this.myJob(options.jobId);
+        if (!job.directPayment || job.status !== 'in_progress') {
+          throw new AppError(ErrorCodes.illegalTransition);
+        }
+        if (!job.itemFloat) throw new AppError(ErrorCodes.noItemFloat);
+        if (options.spent.amountMinor < 0) throw new AppError(ErrorCodes.invalidArgument);
+        if (options.spent.amountMinor > job.itemFloat.amountMinor) {
+          throw new AppError(ErrorCodes.goodsOverCap);
+        }
+        if (
+          options.spent.amountMinor > 0 &&
+          !(options.storagePath ?? '').startsWith(`${options.jobId}/`)
+        ) {
+          throw new AppError(ErrorCodes.invalidArgument);
+        }
+        return this.save({ ...job, goodsSpent: options.spent });
       },
     );
   }

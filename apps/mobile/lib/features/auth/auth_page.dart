@@ -220,6 +220,14 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final theme = Theme.of(context);
     final config = ref.watch(appConfigProvider);
     final error = _error;
+    // Phone sign-in needs an SMS provider; a country without one signs people
+    // in by email and Google only (OD-31).
+    final phoneOffered =
+        ref.watch(bootstrapProvider).value?.countryPack.offersSignIn('phone') ??
+        true;
+    if (!phoneOffered && _method == _AuthMethod.phone) {
+      _method = _AuthMethod.email;
+    }
     final dial =
         countryDialCodes[ref
                 .watch(bootstrapProvider)
@@ -255,25 +263,26 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   ),
                 ),
                 const SizedBox(height: SSpacing.xl),
-                SegmentedButton<_AuthMethod>(
-                  segments: <ButtonSegment<_AuthMethod>>[
-                    ButtonSegment<_AuthMethod>(
-                      value: _AuthMethod.phone,
-                      label: Text(l10n.authMethodPhone),
-                      icon: const Icon(Icons.phone_outlined),
-                    ),
-                    ButtonSegment<_AuthMethod>(
-                      value: _AuthMethod.email,
-                      label: Text(l10n.authMethodEmail),
-                      icon: const Icon(Icons.mail_outline),
-                    ),
-                  ],
-                  selected: <_AuthMethod>{_method},
-                  onSelectionChanged: _busy
-                      ? null
-                      : (Set<_AuthMethod> selection) =>
-                            _selectMethod(selection.first),
-                ),
+                if (phoneOffered)
+                  SegmentedButton<_AuthMethod>(
+                    segments: <ButtonSegment<_AuthMethod>>[
+                      ButtonSegment<_AuthMethod>(
+                        value: _AuthMethod.phone,
+                        label: Text(l10n.authMethodPhone),
+                        icon: const Icon(Icons.phone_outlined),
+                      ),
+                      ButtonSegment<_AuthMethod>(
+                        value: _AuthMethod.email,
+                        label: Text(l10n.authMethodEmail),
+                        icon: const Icon(Icons.mail_outline),
+                      ),
+                    ],
+                    selected: <_AuthMethod>{_method},
+                    onSelectionChanged: _busy
+                        ? null
+                        : (Set<_AuthMethod> selection) =>
+                              _selectMethod(selection.first),
+                  ),
                 const SizedBox(height: SSpacing.lg),
                 TextField(
                   key: const ValueKey<String>('auth.identity'),

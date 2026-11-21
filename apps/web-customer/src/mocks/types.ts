@@ -310,6 +310,26 @@ export interface JobRequest {
   agreedBreakdown?: PriceBreakdown;
   providerId?: string;
   expiresAt?: Date;
+  /** Hired with Confirm hire, not paid on the site (ADR-0025). */
+  directPayment?: boolean;
+  /** On a direct job with a goods cap (`itemFloat`): what the provider
+   * recorded the goods cost. Undefined until recorded. */
+  goodsSpent?: Money;
+}
+
+/** What the customer pays the provider in person on a direct job. */
+export function directAmountDue(job: JobRequest): Money | undefined {
+  if (!job.agreedPrice) return undefined;
+  if (!job.goodsSpent) return job.agreedPrice;
+  return {
+    amountMinor: job.agreedPrice.amountMinor + job.goodsSpent.amountMinor,
+    currency: job.agreedPrice.currency,
+  };
+}
+
+/** A direct job with a goods cap whose goods are not recorded yet. */
+export function awaitsGoodsReceipt(job: JobRequest): boolean {
+  return Boolean(job.directPayment && job.itemFloat && !job.goodsSpent);
 }
 
 /** Which handover PIN — jobs with a destination have both. PINs are never
@@ -667,6 +687,24 @@ export interface CountryPack {
   /** Where a provider can work: Nigeria's 36 states and the FCT. The code
    * goes over the wire (`update_provider_service_areas`); the name is shown. */
   serviceAreas?: ServiceArea[];
+  /** How customers pay here (ADR-0025). In `direct` the customer confirms the
+   * hire instead of paying, and pays the provider in person; Pay, tips, promo
+   * codes, disputes and the wallet are not offered. Absent means `in_app`. */
+  paymentMode?: PaymentMode;
+  /** The ways this country signs people in (`phone`, `email`, `google`,
+   * `apple`). Empty or absent means every way the site has. */
+  signInMethods?: string[];
+}
+
+export type PaymentMode = 'in_app' | 'direct';
+
+export function paysDirectly(pack: CountryPack | undefined | null): boolean {
+  return pack?.paymentMode === 'direct';
+}
+
+export function offersSignIn(pack: CountryPack | undefined | null, method: string): boolean {
+  const methods = pack?.signInMethods ?? [];
+  return methods.length === 0 || methods.includes(method);
 }
 
 export interface ServiceArea {

@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { getDictionary, isLocale, type Locale } from '@/lib/i18n';
+import { DashboardCards } from '@/components/DashboardCards';
 import { HomeServicePicker } from './HomeServicePicker';
 import { ProviderModeCard } from './ProviderModeCard';
 
@@ -32,20 +32,14 @@ export default async function DashboardPage({ params }: Props) {
       </p>
       <HomeServicePicker locale={locale as Locale} dict={dict} />
       <div className="mt-xxl grid gap-xl sm:grid-cols-2">
-        {dict.dashboard.cards.slice(0, cardHrefs.length).map((card, i) => (
-          <Link
-            key={card.title}
-            href={`/${locale}${cardHrefs[i]}`}
-            className="rounded-lg border border-outline bg-surface-raised p-xl transition-colors duration-normal ease-standard hover:border-brand-primary dark:border-outline-dark dark:bg-surface-dark-raised dark:hover:border-brand-secondary"
-          >
-            <h2 className="text-title-large text-ink-primary dark:text-ink-dark-primary">
-              {card.title}
-            </h2>
-            <p className="mt-sm text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
-              {card.body}
-            </p>
-          </Link>
-        ))}
+        <DashboardCards
+          locale={locale as Locale}
+          cards={dict.dashboard.cards.slice(0, cardHrefs.length).map((card, i) => ({
+            title: card.title,
+            body: card.body,
+            path: cardHrefs[i],
+          }))}
+        />
         <ProviderModeCard locale={locale as Locale} dict={dict} />
       </div>
     </div>

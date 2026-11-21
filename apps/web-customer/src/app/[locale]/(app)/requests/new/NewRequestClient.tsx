@@ -15,6 +15,7 @@ import {
 } from '@/lib/repositories';
 import type { CreateRequestInput, GeoPoint, Urgency } from '@/mocks/types';
 import { MoneyField } from '@/components/MoneyField';
+import { paysDirectly } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { categoryDescription, categoryLabel, errorText, mediaName } from '../_shared';
@@ -60,6 +61,7 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
     queryFn: () => bootstrapRepository.getBootstrap(),
   });
   const currency = bootstrapQuery.data?.countryPack.currencyCode ?? 'NGN';
+  const direct = paysDirectly(bootstrapQuery.data?.countryPack);
 
   const [categoryId, setCategoryId] = useState('');
   const [serviceQuery, setServiceQuery] = useState('');
@@ -424,12 +426,14 @@ export function NewRequestClient({ locale, dict }: { locale: Locale; dict: Dicti
           ) : null}
         </div>
 
+        {/* In a direct-payment country the same field is the most the customer
+            will repay for goods the provider buys (OD-32), not money prepaid. */}
         <MoneyField
-          label={dict.newRequest.itemFloatLabel}
+          label={direct ? dict.direct.goodsCapLabel : dict.newRequest.itemFloatLabel}
           currency={currency}
           valueMinor={itemFloatMinor}
           onChange={setItemFloatMinor}
-          hint={dict.newRequest.itemFloatHint}
+          hint={direct ? dict.direct.goodsCapHint : dict.newRequest.itemFloatHint}
         />
 
         <MoneyField

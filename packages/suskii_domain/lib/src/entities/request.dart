@@ -46,8 +46,34 @@ abstract class JobRequest with _$JobRequest {
     PriceBreakdown? agreedBreakdown,
     String? providerId,
     DateTime? expiresAt,
+
+    /// Hired with Confirm hire, not paid in the app (ADR-0025): the customer
+    /// pays the provider in person when the work is done.
+    @Default(false) bool directPayment,
+
+    /// On a direct job with a goods cap ([itemFloat]): what the provider
+    /// recorded the goods cost, which the customer repays with the agreed
+    /// price. Null until recorded.
+    Money? goodsSpent,
   }) = _JobRequest;
 
   factory JobRequest.fromJson(Map<String, dynamic> json) =>
       _$JobRequestFromJson(json);
+}
+
+extension JobRequestDirectPayment on JobRequest {
+  /// What the customer pays the provider in person on a direct job: the
+  /// agreed price plus the goods, once recorded. Null before a price is
+  /// agreed.
+  Money? get directAmountDue {
+    final agreed = agreedPrice;
+    if (agreed == null) return null;
+    final goods = goodsSpent;
+    return goods == null ? agreed : agreed + goods;
+  }
+
+  /// A direct job with a goods cap whose goods have not been recorded yet:
+  /// the provider cannot mark it done until they are.
+  bool get awaitsGoodsReceipt =>
+      directPayment && itemFloat != null && goodsSpent == null;
 }

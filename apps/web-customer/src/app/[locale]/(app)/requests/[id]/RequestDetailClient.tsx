@@ -7,11 +7,14 @@ import type { Dictionary } from '@/lib/i18n/en';
 import type { Locale } from '@/lib/i18n';
 import { newIdempotencyKey } from '@/lib/idempotency';
 import {
+  bootstrapRepository,
   catalogRepository,
   isAppError,
   jobProgressRepository,
   requestRepository,
 } from '@/lib/repositories';
+import { formatMoney } from '@/lib/money';
+import { directAmountDue, paysDirectly } from '@/mocks/types';
 import type { JobRequest, JobStatus } from '@/mocks/types';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
@@ -266,6 +269,75 @@ function ConfirmCompletionSection({ job, dict }: { job: JobRequest; dict: Dictio
   );
 }
 
+/** Direct payment (ADR-0025): the customer commits to the provider instead of
+ * paying. The address, chat and calls open from here. */
+function ConfirmHireSection({ job, dict }: { job: JobRequest; dict: Dictionary }) {
+  const [key, setKey] = useState(() => newIdempotencyKey());
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const amount = job.agreedPrice
+    ? formatMoney(job.agreedPrice)
+    : '';
+
+  const hire = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await jobProgressRepository.confirmHire(job.id, key);
+      setKey(newIdempotencyKey());
+      setArmed(false);
+    } catch (e) {
+      setError(errorText(dict, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="mt-xxl rounded-lg border border-outline bg-surface-raised p-xl dark:border-outline-dark dark:bg-surface-dark-raised">
+      <p className="text-body-medium text-ink-primary dark:text-ink-dark-primary">{dict.direct.acceptedNote}</p>
+      <p className="mt-sm text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+        {dict.direct.payNotice}
+      </p>
+      {armed ? (
+        <>
+          <p className="mt-md text-body-medium text-ink-primary dark:text-ink-dark-primary">
+            {dict.direct.confirmHireBody.replace('{amount}', amount)}
+          </p>
+          <div className="mt-md flex flex-wrap gap-md">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void hire()}
+              className="rounded-md bg-brand-primary px-xl py-md text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50"
+            >
+              {dict.direct.confirmHire}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setArmed(false)}
+              className="rounded-md border border-outline px-xl py-md text-label-large text-ink-primary transition-colors duration-normal ease-standard hover:bg-surface-muted dark:border-outline-dark dark:text-ink-dark-primary dark:hover:bg-surface-dark-muted"
+            >
+              {dict.common.cancel}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="button" onClick={() => setArmed(true)} className="mt-md rounded-md bg-brand-primary px-xl py-md text-label-large text-brand-on-primary transition-colors duration-normal ease-standard hover:bg-brand-primary-strong disabled:opacity-50">
+          {dict.direct.confirmHire}
+        </button>
+      )}
+      {error ? (
+        <p role="alert" className="mt-sm text-body-small text-error dark:text-error-dark">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function RequestDetailClient({
   locale,
   jobId,
@@ -292,6 +364,11 @@ export function RequestDetailClient({
   const categoriesQuery = useQuery({
     queryKey: ['catalog', 'categories'],
     queryFn: () => catalogRepository.getCategories(),
+  });
+
+  const bootstrapQuery = useQuery({
+    queryKey: ['bootstrap'],
+    queryFn: () => bootstrapRepository.getBootstrap(),
   });
 
   const job = live ?? mineQuery.data?.find((r) => r.id === jobId);
@@ -338,6 +415,9 @@ export function RequestDetailClient({
   const milestone = milestoneIndex(job.status);
   const allDone = job.status === 'settled' || job.status === 'closed';
   const categories = categoriesQuery.data ?? [];
+  // A job hired directly stays direct; before the hire, the country decides.
+  const direct = Boolean(job.directPayment) || paysDirectly(bootstrapQuery.data?.countryPack);
+  const amountDue = directAmountDue(job);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-lg py-xxxl">
@@ -415,12 +495,36 @@ export function RequestDetailClient({
           {job.itemFloat ? (
             <div className="flex flex-wrap justify-between gap-md py-sm">
               <span className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
-                {dict.requests.detail.itemFloat}
+                {direct ? dict.direct.goodsCapDetailLabel : dict.requests.detail.itemFloat}
               </span>
               <MoneyText
                 amountMinor={job.itemFloat.amountMinor}
                 currency={job.itemFloat.currency}
                 className="text-body-medium text-ink-primary dark:text-ink-dark-primary"
+              />
+            </div>
+          ) : null}
+          {job.goodsSpent ? (
+            <div className="flex flex-wrap justify-between gap-md py-sm">
+              <span className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.direct.goodsSpentLabel}
+              </span>
+              <MoneyText
+                amountMinor={job.goodsSpent.amountMinor}
+                currency={job.goodsSpent.currency}
+                className="text-body-medium text-ink-primary dark:text-ink-dark-primary"
+              />
+            </div>
+          ) : null}
+          {job.directPayment && amountDue ? (
+            <div className="flex flex-wrap justify-between gap-md py-sm">
+              <span className="text-body-medium text-ink-secondary dark:text-ink-dark-secondary">
+                {dict.direct.amountDueLabel}
+              </span>
+              <MoneyText
+                amountMinor={amountDue.amountMinor}
+                currency={amountDue.currency}
+                className="text-body-medium font-semibold text-ink-primary dark:text-ink-dark-primary"
               />
             </div>
           ) : null}
@@ -472,7 +576,9 @@ export function RequestDetailClient({
 
       {COLLECTING.has(job.status) ? <OffersBoard job={job} dict={dict} /> : null}
 
-      {job.status === 'agreed' || job.status === 'payment_pending' ? (
+      {direct && job.status === 'agreed' ? <ConfirmHireSection job={job} dict={dict} /> : null}
+
+      {!direct && (job.status === 'agreed' || job.status === 'payment_pending') ? (
         <section className="mt-xxl">
           <Link
             href={`/${locale}/requests/${job.id}/pay`}
@@ -504,6 +610,12 @@ export function RequestDetailClient({
         </section>
       ) : null}
 
+      {job.directPayment && IN_CONTACT.has(job.status) && job.status !== 'completed_by_provider' ? (
+        <p className="mt-lg text-body-small text-ink-secondary dark:text-ink-dark-secondary">
+          {dict.direct.payNotice}
+        </p>
+      ) : null}
+
       {PIN_STATES.has(job.status) ? (
         <div className="mt-xxl">
           <HandoverPinCard
@@ -512,6 +624,15 @@ export function RequestDetailClient({
             dict={dict}
           />
         </div>
+      ) : null}
+
+      {job.status === 'completed_by_provider' && job.directPayment ? (
+        <p className="mt-xxl text-body-medium text-ink-primary dark:text-ink-dark-primary">
+          {dict.direct.payOnCompletion.replace(
+            '{amount}',
+            amountDue ? formatMoney(amountDue) : '',
+          )}
+        </p>
       ) : null}
 
       {job.status === 'completed_by_provider' ? (
@@ -526,7 +647,16 @@ export function RequestDetailClient({
         </section>
       ) : null}
 
-      {DISPUTABLE.has(job.status) ? <DisputeSection jobId={job.id} dict={dict} /> : null}
+      {DISPUTABLE.has(job.status) && job.directPayment ? (
+        // No held money to adjudicate: a complaint goes to support.
+        <section className="mt-xxl">
+          <Link href={`/${locale}/support`} className="inline-block rounded-md border border-outline px-xl py-md text-label-large text-ink-primary transition-colors duration-normal ease-standard hover:bg-surface-muted dark:border-outline-dark dark:text-ink-dark-primary dark:hover:bg-surface-dark-muted">
+            {dict.direct.supportInstead}
+          </Link>
+        </section>
+      ) : DISPUTABLE.has(job.status) ? (
+        <DisputeSection jobId={job.id} dict={dict} />
+      ) : null}
 
       {CANCELLABLE.has(job.status) ? (
         <section className="mt-xxl">

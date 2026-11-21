@@ -15,7 +15,10 @@ import {
 } from '@/lib/repositories';
 import { newIdempotencyKey } from '@/lib/idempotency';
 import type { GeoPoint, HandoverPinKind, JobRequest, JobStatus, ProofKind } from '@/mocks/types';
+import { awaitsGoodsReceipt, directAmountDue } from '@/mocks/types';
+import { formatMoney } from '@/lib/money';
 import { Modal } from '@/components/Modal';
+import { MoneyField } from '@/components/MoneyField';
 import { MoneyText } from '@/components/MoneyText';
 import { StateBlock } from '@/components/StateBlock';
 import { StatusChip } from '@/components/StatusChip';
@@ -39,6 +42,15 @@ import {
 } from '../../_shared';
 
 const MANUAL_REASONS = ['gps_unavailable', 'customer_moved', 'building_access'] as const;
+
+/** States in which a direct-payment provider is reminded what to collect. */
+const DIRECT_COLLECT_STATES: ReadonlySet<JobStatus> = new Set([
+  'assigned',
+  'en_route',
+  'arrived',
+  'in_progress',
+  'completed_by_provider',
+]);
 
 function currentPosition(): Promise<{ point: GeoPoint; accuracy?: number } | undefined> {
   return new Promise((resolve) => {
@@ -157,9 +169,19 @@ export function JobExecutionClient({ locale, jobId, dict }: { locale: Locale; jo
           ) : null}
           {job.itemFloat ? (
             <>
-              <dt className={mutedText}>{dict.requests.detail.itemFloat}</dt>
+              <dt className={mutedText}>
+                {job.directPayment ? dict.direct.goodsCapDetailLabel : dict.requests.detail.itemFloat}
+              </dt>
               <dd>
                 <MoneyText amountMinor={job.itemFloat.amountMinor} currency={job.itemFloat.currency} />
+              </dd>
+            </>
+          ) : null}
+          {job.goodsSpent ? (
+            <>
+              <dt className={mutedText}>{dict.direct.goodsSpentLabel}</dt>
+              <dd>
+                <MoneyText amountMinor={job.goodsSpent.amountMinor} currency={job.goodsSpent.currency} />
               </dd>
             </>
           ) : null}
@@ -171,7 +193,7 @@ export function JobExecutionClient({ locale, jobId, dict }: { locale: Locale; jo
               </dd>
             </>
           ) : null}
-          {job.agreedBreakdown ? (
+          {job.agreedBreakdown && !job.directPayment ? (
             <>
               <dt className={mutedText}>{t.payout}</dt>
               <dd>
@@ -191,6 +213,18 @@ export function JobExecutionClient({ locale, jobId, dict }: { locale: Locale; jo
       </section>
 
       <section className="flex flex-col gap-md" data-testid="job-actions">
+        {job.directPayment && DIRECT_COLLECT_STATES.has(job.status) ? (
+          <p className={`${card} text-body-medium`} data-testid="job-direct-collect">
+            {dict.direct.providerCollect.replace(
+              '{amount}',
+              (() => {
+                const due = directAmountDue(job);
+                return due ? formatMoney(due) : '';
+              })(),
+            )}
+          </p>
+        ) : null}
+
         {job.status === 'paid_held' || job.status === 'assigned' ? (
           <button type="button" data-testid="job-start" disabled={busy} onClick={() => void transition('en_route')} className={btnPrimary}>
             {t.startJourney}
@@ -224,6 +258,9 @@ export function JobExecutionClient({ locale, jobId, dict }: { locale: Locale; jo
               }}
               editable={job.status === 'in_progress'}
             />
+            {job.status === 'in_progress' && awaitsGoodsReceipt(job) ? (
+              <GoodsSection job={job} dict={dict} onRecorded={setJob} />
+            ) : null}
             {job.status === 'in_progress' && job.destination ? (
               <PinForm jobId={job.id} kind="delivery" dict={dict} />
             ) : null}
@@ -232,7 +269,11 @@ export function JobExecutionClient({ locale, jobId, dict }: { locale: Locale; jo
                 type="button"
                 data-testid="job-complete"
                 disabled={busy}
-                onClick={() => void transition('completed_by_provider')}
+                onClick={() =>
+                  awaitsGoodsReceipt(job)
+                    ? setNotice({ text: dict.direct.goodsNeeded, tone: 'error' })
+                    : void transition('completed_by_provider')
+                }
                 className={btnPrimary}
               >
                 {t.markComplete}
@@ -431,6 +472,120 @@ function ProofSection({
           ))}
         </div>
       ) : null}
+      <Notice text={notice?.text} tone={notice?.tone} />
+    </div>
+  );
+}
+
+/**
+ * Direct payment with a goods cap (OD-32): what the goods cost, at most the
+ * customer's cap, with a receipt photo, before the job is marked done. The
+ * photo is filed as a receipt proof as well. Upload and key are kept across a
+ * retry so a failure never uploads twice or looks like a new operation.
+ */
+function GoodsSection({
+  job,
+  dict,
+  onRecorded,
+}: {
+  job: JobRequest;
+  dict: Dictionary;
+  onRecorded: (job: JobRequest) => void;
+}) {
+  const cap = job.itemFloat;
+  const [minor, setMinor] = useState<number | null>(null);
+  const [file, setFile] = useState<File | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; tone: 'success' | 'error' }>();
+  const key = useRef<string | null>(null);
+  const uploaded = useRef<string | undefined>(undefined);
+  if (!cap) return null;
+  const spends = (minor ?? 0) > 0;
+
+  async function save() {
+    if (minor === null || !cap) return;
+    if (minor > cap.amountMinor) {
+      setNotice({ text: dict.errors.ERR_GOODS_OVER_CAP, tone: 'error' });
+      return;
+    }
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      if (spends && !uploaded.current && file) {
+        uploaded.current = await mediaUploadRepository.upload({
+          bucket: 'job-proofs',
+          file,
+          requestId: job.id,
+        });
+      }
+      key.current ??= newIdempotencyKey();
+      const updated = await providerJobRepository.recordGoodsReceipt({
+        jobId: job.id,
+        spent: { amountMinor: minor, currency: cap.currency },
+        storagePath: spends ? uploaded.current : undefined,
+        idempotencyKey: key.current,
+      });
+      if (spends && uploaded.current) {
+        await providerJobRepository.submitProof({
+          jobId: job.id,
+          kind: 'receipt',
+          storagePath: uploaded.current,
+          idempotencyKey: `${key.current}-proof`,
+          capturedAt: new Date(file?.lastModified || Date.now()),
+        });
+      }
+      key.current = null;
+      uploaded.current = undefined;
+      onRecorded(updated);
+    } catch (error) {
+      setNotice({ text: errorText(dict, error), tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`${card} flex flex-col gap-sm`} data-testid="job-goods">
+      <span className={sectionTitle}>{dict.direct.goodsRecordTitle}</span>
+      <p className={mutedText}>
+        {dict.direct.goodsRecordBody.replace('{amount}', formatMoney(cap))}
+      </p>
+      <MoneyField
+        label={dict.direct.goodsSpentLabel}
+        currency={cap.currency}
+        valueMinor={minor}
+        onChange={setMinor}
+      />
+      {spends ? (
+        <label className={`${btnSecondary} cursor-pointer`}>
+          {file ? file.name : dict.direct.goodsReceiptPhoto}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            data-testid="goods-receipt-input"
+            disabled={busy}
+            onChange={(e) => {
+              const picked = e.target.files?.[0];
+              e.target.value = '';
+              if (picked) {
+                uploaded.current = undefined;
+                setFile(picked);
+              }
+            }}
+          />
+        </label>
+      ) : null}
+      <button
+        type="button"
+        data-testid="goods-save"
+        disabled={busy || minor === null || (spends && !file && !uploaded.current)}
+        onClick={() => void save()}
+        className={btnPrimary}
+      >
+        {dict.direct.goodsSave}
+      </button>
       <Notice text={notice?.text} tone={notice?.tone} />
     </div>
   );

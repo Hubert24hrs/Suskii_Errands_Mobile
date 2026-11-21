@@ -519,6 +519,25 @@ export class MockJobProgressRepository extends MockRepo {
     return '428135';
   }
 
+  /** Mirrors `confirm_hire` (ADR-0025): the customer, from AGREED, where the
+   * country pays directly. */
+  async confirmHire(jobId: string, idempotencyKey: string): Promise<JobRequest> {
+    await this.gate();
+    return this.idempotent(`confirmHire:${jobId}`, idempotencyKey, '', () => {
+      const request = this.db.requests[jobId];
+      if (!request || request.customerId !== this.currentUser.id) {
+        throw new AppError(ErrorCodes.requestNotFound);
+      }
+      if (request.status !== 'agreed') throw new AppError(ErrorCodes.invalidState);
+      const pack = this.db.countryPacks[this.currentUser.countryCode];
+      if (pack?.paymentMode !== 'direct') throw new AppError(ErrorCodes.paymentRequired);
+      const updated: JobRequest = { ...request, status: 'assigned', directPayment: true };
+      this.db.requests[jobId] = updated;
+      this.db.jobEvents.emit(updated);
+      return updated;
+    });
+  }
+
   /**
    * Customer confirms completion (mirrors the Dart mock): customer-only,
    * only from COMPLETED_BY_PROVIDER. The Dart mock releases no funds here —
