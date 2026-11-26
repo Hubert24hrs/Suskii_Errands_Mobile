@@ -15,8 +15,7 @@ and 1.4.0 calls nothing here.
   urgent); `admin_role` gains `meet_moderator`; `consent_kind` gains `meet_terms` and
   `meet_sensitive_data`. Regenerated into `enums.json`, `notifications.kind`, `record_consent`'s
   `p_kind` and `admin_staff_list`'s `roles`. No row carries a new notification kind until M1-PR5.
-  The Meet RPCs record the two consents from M1-PR3; `record_consent` already accepts them, as it
-  accepts every `consent_kind`, and no check reads them yet.
+  The Meet RPCs record the two consents from M1-PR3, and `record_consent` refuses them (below).
 
 ### Changed
 - **`meet_moderator` is refused by every "any admin" read**: the `countries`, `feature_flags`,
@@ -27,6 +26,10 @@ and 1.4.0 calls nothing here.
   shown only the super admin and finance roles its money columns test), `config_change_queue` and
   `country_pack_readiness`. A console must not offer the dashboard, config pages or the admin
   assistant to an account whose only role is `meet_moderator`.
+- **`record_consent` refuses `meet_terms` and `meet_sensitive_data`**, granted or withdrawn, with
+  `ERR_INVALID_ARGUMENT` (an error it already raised). Only the Meet RPCs record them: `meet_terms`
+  stands for a passed 18+ check, so a client must not be able to write one for itself. Every other
+  kind behaves as before, and no app passes either value.
 
 **PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
 can call changed: no function, table, enum value or error code was added.

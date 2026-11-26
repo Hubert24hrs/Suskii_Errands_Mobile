@@ -1,5 +1,5 @@
--- Meet v5 M1-PR1 (20261126120000): the new enum values, and the any-admin gates held to the
--- inventory in that migration's header.
+-- Meet v5 M1-PR1 (20261126120000): the new enum values, `record_consent` refusing the two Meet
+-- consent kinds, and the any-admin gates held to the inventory in that migration's header.
 --
 -- `is_any_admin()` grows with `admin_role`, so adding meet_moderator widened every gate written
 -- with it. Ten were restated to name the five roles they admitted before, and one, the role-name
@@ -12,7 +12,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(41);
+SELECT plan(45);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b8911111-1111-4111-8111-898989898989', '2348000008901'),   -- meet moderator, scoped NG
@@ -21,7 +21,8 @@ INSERT INTO auth.users (id, phone) VALUES
   ('b8944444-4444-4444-8444-898989898989', '2348000008904'),   -- meet moderator and support
   ('b8955555-5555-4555-8555-898989898989', '2348000008905'),   -- super admin A
   ('b8966666-6666-4666-8666-898989898989', '2348000008906'),   -- super admin B
-  ('b8977777-7777-4777-8777-898989898989', '2348000008907');   -- nobody, not staff yet
+  ('b8977777-7777-4777-8777-898989898989', '2348000008907'),   -- nobody, not staff yet
+  ('b8988888-8888-4888-8888-898989898989', '2348000008908');   -- an ordinary user
 UPDATE public.profiles SET country_code = 'NG'
 WHERE user_id::text LIKE 'b89%-898989898989';
 INSERT INTO public.admin_users (user_id, roles, country_scope) VALUES
@@ -78,6 +79,21 @@ SELECT ok('meet_moderator' = ANY (enum_range(NULL::public.admin_role)::text[]),
   'admin_role gains meet_moderator');
 SELECT ok(enum_range(NULL::public.consent_kind)::text[] @> ARRAY['meet_terms', 'meet_sensitive_data'],
   'consent_kind gains meet_terms and meet_sensitive_data');
+
+-- Only the Meet RPCs record those two (design §4): meet_terms stands for a passed 18+ check.
+SELECT pg_temp.act('b8988888-8888-4888-8888-898989898989', 'aal1');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT public.record_consent('meet_terms', true, 'key-89-consent-000001')$$,
+  '22023', 'ERR_INVALID_ARGUMENT',
+  'a client cannot record meet_terms for itself, so no row claims an 18+ check that never ran');
+SELECT throws_ok(
+  $$SELECT public.record_consent('meet_sensitive_data', true, 'key-89-consent-000002')$$,
+  '22023', 'ERR_INVALID_ARGUMENT', 'nor meet_sensitive_data');
+SELECT throws_ok($$SELECT public.record_consent('meet_terms', false, 'key-89-consent-000003')$$,
+  '22023', 'ERR_INVALID_ARGUMENT', 'nor a withdrawal, which arrives with M1-PR3');
+SELECT is((public.record_consent('location', true, 'key-89-consent-000004') ->> 'granted')::boolean,
+  true, 'every other consent kind is still recorded');
+RESET ROLE;
 
 -- ---------------------------------------------------------------------------
 -- is_any_admin() admits the new role, and still only with MFA.

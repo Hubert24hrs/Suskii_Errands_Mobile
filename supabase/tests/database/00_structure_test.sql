@@ -162,11 +162,12 @@ SELECT is(
 -- A gate written with `is_any_admin()` or `enum_range(NULL::public.admin_role)` admits every
 -- role the enum will ever have. meet_moderator (20261126120000) was the first role that must not
 -- pass most of them, so those were restated with their roles named. A new one is added here in
--- the same change, with the reason the next role should pass it too.
+-- the same change, with the reason the next role should pass it too. Every schema but the
+-- system ones, so a gate in a schema added later (`meet_econ`, M2) is caught without a list here.
 SELECT is(
   (SELECT coalesce(array_agg(n.nspname || '.' || p.proname ORDER BY n.nspname, p.proname), '{}')
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname IN ('public', 'private', 'ledger', 'kyc', 'audit', 'analytics')
+   WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
      AND p.prosrc ~* 'is_any_admin|enum_range\s*\(\s*NULL::(public\.)?admin_role'),
   ARRAY[
     -- Checks role names in a staff change; it is how meet_moderator is granted at all.

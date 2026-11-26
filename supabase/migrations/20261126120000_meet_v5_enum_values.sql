@@ -12,7 +12,8 @@
 --                      the push gate for 1.4.0 come with M1-PR5.
 --   admin_role         meet_moderator (D25, OD-41): Meet trust and safety, in country scope.
 --   consent_kind       meet_terms (recorded with the 18+ gate) and meet_sensitive_data (the first
---                      time gender or "show me" is set, D5). Both written server-side in M1-PR3.
+--                      time gender or "show me" is set, D5). Both written server-side in M1-PR3,
+--                      and `record_consent` is restated at the end of this file to refuse them.
 
 ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'meet_like';
 ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'meet_match';
@@ -293,4 +294,72 @@ BEGIN
     AND (p_category_id IS NULL OR r.category_id = p_category_id)
   GROUP BY 1, 2
   ORDER BY 1, 2;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- record_consent refuses the two Meet kinds.
+--
+-- It records any `consent_kind` with any `legal_document_id`, so without this a client could write
+-- a `meet_terms` row that no 18+ check stands behind, a minor's included, and a later reader of the
+-- latest row, such as `private.has_consent`, would trust it. Both kinds belong to the Meet RPCs
+-- (§4): `meet_check_in` writes `meet_terms` linked to the NG `meet_guidelines` document, and
+-- `meet_save_profile` / `meet_set_discovery_prefs` write `meet_sensitive_data`. Withdrawals are
+-- refused too: a `granted = false` row here would record the consent as withdrawn while gender
+-- and "show me" were still stored and still filtering. Withdrawing either arrives with the Meet
+-- profile in M1-PR3. Nothing could record either kind before this file, so nothing is stranded.
+--
+-- Restated whole from 20260916120600_identity, its only definition; only the second check is new.
+-- The comparison is on text, so the new values are not used in the transaction that adds them.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.record_consent(
+  p_kind public.consent_kind,
+  p_granted boolean,
+  p_idempotency_key text,
+  p_legal_document_id uuid DEFAULT NULL,
+  p_device_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_uid     uuid := private.require_user();
+  v_request jsonb := jsonb_build_object('kind', p_kind, 'granted', p_granted,
+                       'legal_document_id', p_legal_document_id, 'device_id', p_device_id);
+  v_replay  jsonb;
+  v_row     public.consents%ROWTYPE;
+  v_result  jsonb;
+BEGIN
+  IF p_kind IS NULL OR p_granted IS NULL THEN
+    RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
+  END IF;
+  IF p_kind::text IN ('meet_terms', 'meet_sensitive_data') THEN
+    RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
+  END IF;
+
+  v_replay := private.idempotency_claim(v_uid, p_idempotency_key, 'record_consent', v_request);
+  IF v_replay IS NOT NULL THEN
+    RETURN v_replay;
+  END IF;
+
+  IF p_device_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.user_devices d WHERE d.id = p_device_id AND d.user_id = v_uid
+  ) THEN
+    RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.consents (user_id, kind, granted, legal_document_id, device_id, country_code)
+  VALUES (v_uid, p_kind, p_granted, p_legal_document_id, p_device_id,
+          (SELECT p.country_code FROM public.profiles p WHERE p.user_id = v_uid))
+  RETURNING * INTO v_row;
+
+  PERFORM private.emit_event('consent', v_uid::text,
+    CASE WHEN p_granted THEN 'consent.granted' ELSE 'consent.withdrawn' END,
+    jsonb_build_object('kind', p_kind, 'consent_id', v_row.id));
+
+  v_result := jsonb_build_object('id', v_row.id, 'kind', v_row.kind, 'granted', v_row.granted,
+                                 'recorded_at', v_row.recorded_at);
+  PERFORM private.idempotency_complete(v_uid, p_idempotency_key, v_result);
+  RETURN v_result;
 END $$;
