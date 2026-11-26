@@ -110,6 +110,7 @@ ROLE_COLUMNS = {
     "dispute": "dispute_officer",
     "verification officer": "verification_officer",
     "verification": "verification_officer",
+    "meet moderator": "meet_moderator",
 }
 # Helpers that admit a role without naming it in the policy text.
 IMPLIED_ROLES = {

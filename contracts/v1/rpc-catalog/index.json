@@ -849,12 +849,15 @@
       "requires": {
         "authenticated": true,
         "admin_roles": [
+          "dispute_officer",
           "finance_officer",
-          "super_admin"
+          "super_admin",
+          "support_agent",
+          "verification_officer"
         ],
         "mfa": "aal2"
       },
-      "defined_in": "20261013120000_admin_console.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "admin_promo_codes",
@@ -1648,7 +1651,8 @@
                   "verification_officer",
                   "support_agent",
                   "finance_officer",
-                  "dispute_officer"
+                  "dispute_officer",
+                  "meet_moderator"
                 ],
                 "enum_name": "admin_role"
               }
@@ -3475,9 +3479,17 @@
         "authenticated"
       ],
       "requires": {
-        "authenticated": false
+        "authenticated": false,
+        "admin_roles": [
+          "dispute_officer",
+          "finance_officer",
+          "super_admin",
+          "support_agent",
+          "verification_officer"
+        ],
+        "mfa": "aal2"
       },
-      "defined_in": "20260922120000_admin_config.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "confirm_completion",
@@ -3739,9 +3751,17 @@
         "authenticated"
       ],
       "requires": {
-        "authenticated": false
+        "authenticated": false,
+        "admin_roles": [
+          "dispute_officer",
+          "finance_officer",
+          "super_admin",
+          "support_agent",
+          "verification_officer"
+        ],
+        "mfa": "aal2"
       },
-      "defined_in": "20260922120000_admin_config.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "create_meetup",
@@ -6659,7 +6679,7 @@
       "requires": {
         "authenticated": false
       },
-      "defined_in": "20260922121200_ai_admin_kpis.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "kpi_gmv",
@@ -6828,7 +6848,7 @@
       "requires": {
         "authenticated": false
       },
-      "defined_in": "20260922121200_ai_admin_kpis.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "kpi_payout_failures",
@@ -7060,7 +7080,7 @@
       "requires": {
         "authenticated": false
       },
-      "defined_in": "20260922121200_ai_admin_kpis.sql"
+      "defined_in": "20261126120000_meet_v5_enum_values.sql"
     },
     {
       "name": "kpi_verification_queue",
@@ -9667,7 +9687,9 @@
               "criminal_record_check",
               "location",
               "marketing",
-              "voice_processing"
+              "voice_processing",
+              "meet_terms",
+              "meet_sensitive_data"
             ],
             "enum_name": "consent_kind"
           },

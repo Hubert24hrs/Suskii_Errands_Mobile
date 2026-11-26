@@ -21,7 +21,8 @@ S-13's headline finding: **RLS does not protect a column.** A policy decides *wh
 | Provider (acting) | `authenticated` | Same JWT; **not a separate DB role** — mode is a UI concern, eligibility is data | `private.is_active_provider()` reads `provider_profiles` + verification |
 | Job participant | `authenticated` | Relationship: customer of the request, or assigned provider/worker | `private.is_participant(request_id)` |
 | Business owner / dispatcher | `authenticated` | Row in `organization_members` | `private.org_role(org_id)` |
-| Admin roles (5) | `authenticated` | Custom Access Token Hook adds `admin_roles` claim | `private.has_admin_role(role)` **re-reads `admin_users` and requires `aal2`** (MFA) — the claim alone is never trusted for sensitive data (spec) |
+| Admin roles (6) | `authenticated` | Custom Access Token Hook adds `admin_roles` claim | `private.has_admin_role(role)` **re-reads `admin_users` and requires `aal2`** (MFA) — the claim alone is never trusted for sensitive data (spec) |
+| (rev. 2026-11-26) Meet moderator | `authenticated` | `admin_role` `meet_moderator` (Meet v5 D25, OD-41), granted through the four-eyes staff change | Meet trust and safety only, through `admin_meet_*` functions in country scope. Like every other role, it has a column only in the sections where it has access: §1 below, and the Meet v5 rows as they land. Everywhere else it has none. `is_any_admin()` admits it, so since `20261126120000` that helper gates nothing |
 | Backend | `service_role` | Edge Functions and Cloud Run only | `BYPASSRLS` — but still needs table grants (S-13 finding 3). Never in any client |
 
 ### Helper functions
@@ -58,19 +59,23 @@ Every table below has `ENABLE ROW LEVEL SECURITY` **and** `FORCE ROW LEVEL SECUR
 
 ## 1. Reference and configuration
 
-| Table | anon | User | Support | Verification | Finance | Dispute | Super admin |
-|---|---|---|---|---|---|---|---|
-| `currencies` | R | R | R | R | R | R | R + F |
-| `countries` | — | — | R | R | R | R | R + F (four-eyes) |
-| `cities`, `zones` | R | R | R | R | R | R | R + F |
-| `service_categories` | R | R | R | R | R | R | R + F (`admin_save_service()`, `admin_set_service_active()`; no delete) |
-| (rev. 2026-11-03) `service_categories` rows are readable when inactive, so a past request keeps its service's name; pickers filter `active`. Support and verification read the admin list through `admin_service_catalogue()` | | | | | | | |
-| per-country category settings: `countries.config` and the country pack, not a table (rev. 2026-10-13) | — | R | R | R | R | R | R + F (four-eyes, via `propose_config_change()`) |
-| `feature_flags` | — | — | R | R | R | R | R + F (four-eyes) |
-| `legal_documents` | R | R | R | R | R | R | R + F |
-| `prohibited_items`, `price_bands` | — | — | R | — | — | R | R + F |
+| Table | anon | User | Support | Verification | Finance | Dispute | Meet moderator | Super admin |
+|---|---|---|---|---|---|---|---|---|
+| `currencies` | R | R | R | R | R | R | R | R + F |
+| `countries` | — | — | R | R | R | R | — | R + F (four-eyes) |
+| `cities`, `zones` | R | R | R | R | R | R | R | R + F |
+| `service_categories` | R | R | R | R | R | R | R | R + F (`admin_save_service()`, `admin_set_service_active()`; no delete) |
+| (rev. 2026-11-03) `service_categories` rows are readable when inactive, so a past request keeps its service's name; pickers filter `active`. Support and verification read the admin list through `admin_service_catalogue()` | | | | | | | | |
+| per-country category settings: `countries.config` and the country pack, not a table (rev. 2026-10-13) | — | R | R | R | R | R | R (as a user, via `get_bootstrap()`) | R + F (four-eyes, via `propose_config_change()`) |
+| `feature_flags` | — | — | R | R | R | R | — | R + F (four-eyes) |
+| `remote_config` (rev. 2026-11-26: the row was missing) | — | — (client-visible keys via `get_bootstrap()`) | R | R | R | R | — | R + F (four-eyes, via `propose_config_change()`) |
+| `config_changes` (rev. 2026-11-26: the row was missing) | — | — | R | R | R | R | — | R + F (`propose_config_change()`, `review_config_change()`) |
+| `legal_documents` | R | R | R | R | R | R | R | R + F |
+| `prohibited_items`, `price_bands` | — | — | R | — | — | R | — | R + F |
 
 Clients get country configuration through `get_bootstrap()`, which returns the **client-safe subset** — not by selecting `countries`, whose `config` holds vendor routing and thresholds (draft review 1.7).
+
+(rev. 2026-11-26, `20261126120000_meet_v5_enum_values`) The Meet moderator column is `—` on every read in this section that only staff have. `countries`, `feature_flags`, `remote_config` and `config_changes`, and the functions `config_change_queue()`, `country_pack_readiness()`, `admin_overview()`, `kpi_jobs_by_state()`, `kpi_funnel()` and `kpi_supply_demand()`, all admitted "any admin" through `is_any_admin()` or an `enum_range` over `admin_role`, which grows with the enum. They now name the five roles they admitted before, so nothing changed for those roles. Meet moderation is its own world (D25) in both directions: errands staff do not read Meet, and a Meet moderator does not read errands configuration, staff grants, promo budgets or operations. The one any-admin check left open is the role-name validation in a staff change, because that is how the role is granted.
 
 ## 2. Identity and relationships
 
@@ -258,6 +263,8 @@ For each table: one **allow** test per non-`—` cell and one **deny** test per 
 | Admin claim present but `aal1` → denied | MFA mandatory for admins |
 
 ## Revisions
+
+**2026-11-26** (Meet v5 M1-PR1, `20261126120000_meet_v5_enum_values`). A sixth admin role, `meet_moderator`, and a Meet moderator column in §1. `remote_config` and `config_changes` gain the rows they never had; who may read them did not change for the five existing roles. Nothing in §§2–10 admits the new role.
 
 **2026-10-13** (audit 2026-10-13, part 2). The rows below described a system that changed underneath
 them; each had a waiver in `supabase/tools/rls-matrix-waivers.json` naming the correction, and the
