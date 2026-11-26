@@ -1,5 +1,5 @@
 {
-  "$comment": "A new member's photos waiting for a person (design §2.7, §8.5; ADR-0026 D3; OD-41, decided: every photo is approved by a person before anyone else sees it). The owner sees every state; nobody else sees anything but approved photos, and the storage policy enforces it, not the client.",
+  "$comment": "A new member's photos waiting for a person (design §2.7, §8.5; ADR-0026 D3; OD-41, decided: every photo is approved by a person before anyone else sees it). The owner sees every state; nobody else sees anything but approved photos, and the storage policy enforces it, not the client. M1-PR3 (photos and the storage policy) and M1-PR4 (the moderator's queue) implement it.",
   "meet_get_my_profile": {
     "profile": {
       "id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",

@@ -28,11 +28,11 @@ The console's Meet queues are ordered by priority, then by `sla_due_at`:
 
 | Priority | What | SLA (`meet.moderation.sla_hours`) |
 |---|---|---|
-| 1 | Child safety or underage: a report with reason `underage` or `child_safety`, a photo rejected as `underage_appearance`, an underage text hold | **2 hours** |
+| 1 | Child safety or underage: a report with reason `underage` or `child_safety`, a photo rejected as `underage_appearance`, an `underage` text hold on any surface, chat included | **2 hours** |
 | 2 | Reports with evidence (every other reason) | 24 hours |
 | 3 | First-photo pre-moderation, which blocks a new member's onboarding | 12 hours |
 | 4 | Other photos and photo statuses | 12 hours |
-| 5 | Text holds (bio, prompts, chat holds for `sexual` and `underage`) | 48 hours |
+| 5 | Text holds (bio, prompts, chat holds for `sexual`) | 48 hours |
 
 "Asking for money or gifts" reports are priority 2 with a 24-hour SLA; an upheld one means a
 suspension of at least 30 days, and a repeat goes to a permanent-ban request (design §8.8).
@@ -41,8 +41,9 @@ suspension of at least 30 days, and a repeat goes to a permanent-ban request (de
 `private.record_health_check`; it warns when any item passes its `sla_due_at`. `meet_media_backlog`
 warns when photos sit in `processing` (the media worker is behind or failing).
 
-**Dashboard SQL** until `kpi_meet_safety` exists (M3). Run as a staff role through the console's
-SQL access, never with personal data exported:
+**Dashboard SQL** until `kpi_meet_safety` exists (M3). Run it in the Supabase SQL editor for the
+right project, as the database owner: no Meet table is granted to any client role (design §2.2), and
+the console has no SQL access. Counts only; never export rows:
 
 ```sql
 -- Open work by priority, and how much is past its SLA.
@@ -104,9 +105,9 @@ The system has already, at report time:
    - **An adult who looks young, or a false report.** Lift the hold, dismiss with a note. If the
      report looks malicious, a pattern of them from one reporter is itself a signal (`meet_report_cluster`).
    - **A probable minor** (they say so, the photos show it, the bio names a school year): suspend
-     with reason `underage` and an end date now, then request a permanent ban (section 5). Their
-     devices are barred. The account's errands side is untouched unless a separate errands report
-     says otherwise.
+     now with reason `underage`, for the longest your role allows, then have a `super_admin` request
+     a permanent ban (section 5). Their devices are barred. The account's errands side is untouched
+     unless a separate errands report says otherwise.
    - **Sexual content involving a minor, grooming, or a minor in danger:** go to section 4 now.
 3. Write the outcome. The reporter is not told who or what; their confirmation already said "Our
    team reviews within 2 hours".
@@ -122,7 +123,8 @@ The system has already, at report time:
 3. **Preserve.** The evidence snapshot is already copied. Make sure the report is not closed: an open
    report keeps `retain_until` from starting, so the purge cannot reach it.
 4. **Remove and ban.** Uphold the case (the content comes down and its files are erased, except the
-   evidence copies), suspend with reason `child_safety`, and request the permanent ban (section 5).
+   evidence copies), suspend with reason `child_safety`, and have a `super_admin` request the
+   permanent ban (section 5).
 5. **Report through the confirmed route.** `[PENDING OD-42]` Counsel has not yet confirmed which
    Nigerian authority receives CSAM reports from a platform like this one, what evidence to send, or
    how long the law requires it kept. Until counsel answers: the owner contacts counsel **the same
@@ -145,16 +147,19 @@ The system has already, at report time:
 |---|---|
 | `meet_moderator` | Suspend up to 30 days; lift their own suspensions of up to 30 days |
 | `super_admin` | Suspend up to 365 days; lift any suspension |
-| Two people | A **permanent** ban, only for `child_safety`, `underage` or `ban_evasion` |
+| Two different people, each a `super_admin` | A **permanent** ban, only for `child_safety`, `underage` or `ban_evasion` |
 
-A permanent ban is `admin_meet_suspend` with no end date, which creates an `approvals` row
-(`meet_ban`); it applies only when a second admin approves it with `admin_meet_approve_ban`. The
-four-eyes rule refuses the same person twice.
+A permanent ban is `admin_meet_suspend` with no end date, which only a `super_admin` can request
+(a `meet_moderator` is capped at 30 days). It creates an `approvals` row (`meet_ban`) and applies
+only when a **different** `super_admin` approves it with `admin_meet_approve_ban`, which no other
+role can call (design §4.3). The four-eyes rule refuses the same person twice.
 
-**While the owner is the only reviewer** there is no second approver. Suspend for the longest the
-role allows (365 days as `super_admin`) so the person is off Meet at once, leave the ban request
-pending, and have it approved when the second admin exists. Do not create a second account to
-approve your own ban.
+**Nobody can approve a permanent ban until a second `super_admin` exists.** A `meet_moderator`
+cannot approve one, and the M1 readiness item adds two `meet_moderator` accounts, not a second
+`super_admin`, so meeting readiness does not change this. Until there is one, suspend for the
+longest the role allows (365 days as `super_admin`) so the person is off Meet at once, leave the
+ban request pending, and have it approved once a second person holds a `super_admin` account. Do
+not create a second account for yourself to approve your own ban.
 
 Every suspension is an explicit, bounded, audited decision by a person (OD-25). Nothing in the
 system suspends anyone automatically: strikes only rate-limit, and holds only hide.

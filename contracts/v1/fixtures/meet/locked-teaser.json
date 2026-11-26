@@ -1,5 +1,5 @@
 {
-  "$comment": "M2. A badge-locked profile (meet_set_profile_lock) seen by a caller whose card is below the lock. The teaser carries the first name, card, tick and photo 0 only: no prompts, no bio, no daily answer (design §4.2, §6.3). Unlocking is the privilege to reach, never a guaranteed reply and never a meeting; the copy must say exactly that (ADR-0027).",
+  "$comment": "M2. A badge-locked profile (meet_set_profile_lock) seen by a caller whose card is below the lock. The teaser carries photo 0 only and no prompts, bio or daily answer (design §4.2, §6.3); the rest of the card comes through as usual. Unlocking is the privilege to reach, never a guaranteed reply and never a meeting; the copy must say exactly that (ADR-0027). M2-PR8 implements it, and M2-PR12 draws it.",
   "caller": {
     "profile_id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
     "card": "silver"

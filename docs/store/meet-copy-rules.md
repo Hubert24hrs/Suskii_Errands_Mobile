@@ -84,12 +84,32 @@ The CI grep enforces exactly this list (below). The words to use instead:
   nothing from InMessage (owner decision 1: layout patterns only, never their name, logo, icons or
   imagery).
 
-## Safety copy may name what it forbids
+## Exceptions: copy that names what it forbids or denies
 
-Guidelines, safety tips and report reasons sometimes have to name a forbidden practice to forbid it:
-"Never send money or gift cards to someone you haven't met", "Asking for money or gifts". That is
-allowed, and only there. The checker carries an exception list of such keys, each with a reason; a
-string is added to it only when it warns against the thing it names.
+Two kinds of copy have to use a forbidden word to say the opposite of what the word suggests, and
+only these two:
+
+- **Safety copy.** Guidelines, safety tips and report reasons sometimes have to name a forbidden
+  practice to forbid it: "Never send money or gift cards to someone you haven't met", "Asking for
+  money or gifts".
+- **Disclosures that deny the forbidden thing.** The statement that Cowries have no cash value and
+  cannot be withdrawn is required (ADR-0027, OD-44), and it cannot be written without "cash" and
+  "withdrawn". Rewording it to get past the grep would weaken a consumer disclosure.
+
+The checker's exception list is built from this table, and each entry carries its reason. Keys
+that do not exist yet are named by the string they carry; the PR that adds the key writes its
+name into this table in the same change.
+
+| Where | Words it needs | Why it is allowed |
+|---|---|---|
+| The Cowries page disclosure, en and pcm ARB (its key arrives with the M2 economy client, M2-PR10 or M2-PR12): "Cowries have no cash value. They can't be withdrawn, transferred or exchanged, and refunds go through Google Play." | cash, withdrawn | Required disclosure (design §6.3, CowriesPage; OD-44). It denies the thing the words name |
+| `/legal/meet-terms` in web-marketing (M2-PR14), the whole page and the content module behind it | cash, withdraw, wallet if counsel uses it | The Cowrie terms: no cash value, no transfer or withdrawal, refunds through Google Play, forfeiture on deletion, negative balances after refunds (OD-44). Counsel's wording governs, not this list |
+| `/legal/meet-daily-reward-rules` in web-marketing (M2-PR14), the whole page and the content module behind it | cash, withdraw | The official rules of the daily surprise, which must be able to say that perks have no cash value and cannot be withdrawn or exchanged (D7) |
+| `/legal/meet-guidelines` in web-marketing (M1-PR13), the whole page and the content module behind it | sugar, sponsor, allowance, generous | The community guidelines forbid sugar dating by naming it (design §8.8) |
+| Safety tips and report reasons in the app and on the website, listed by key as M1-PR10 and M1-PR11 add them | sugar, allowance, sponsor | Each warns against the thing it names |
+
+A new entry is added only when the copy forbids or denies the thing it names, never to get a
+string past the grep. A whole page is exempt only when it is a legal page counsel reviews.
 
 ## Enforcement
 

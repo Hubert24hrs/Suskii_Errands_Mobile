@@ -1,5 +1,5 @@
 {
-  "$comment": "Today's faces: what meet_daily_set() returns on the first call of the caller's local day (design §4.2). The set is generated lazily under an advisory lock and is finite: no endless scroll. Paths are object names in the private meet-media bucket, never URLs; the app fetches each through the authenticated object endpoint, so a block applies on the next fetch and nothing shareable exists (design §2.7).",
+  "$comment": "Today's faces: what meet_daily_set() returns on the first call of the caller's local day (design §4.2). The set is generated lazily under an advisory lock and is finite: no endless scroll. Paths are object names in the private meet-media bucket, never URLs; the app fetches each through the authenticated object endpoint, so a block applies on the next fetch and nothing shareable exists (design §2.7). M1-PR5 implements it.",
   "caller": {
     "profile_id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
     "set_date": "2026-12-03",

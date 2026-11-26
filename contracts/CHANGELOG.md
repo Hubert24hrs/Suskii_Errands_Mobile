@@ -17,7 +17,7 @@ can call changed: no function, table, enum value or error code was added.
   `verified` → `granted` → `completed`, or `rejected`, and a void takes it to `voided` or
   `partially_voided`. Server-side only; apps see the `meet-purchase-verify` result.
 - **`fixtures/meet/`**: the daily set, a locked teaser, a blocked message, an expiring match, a held
-  photo, a negative Cowrie balance and a pending purchase, plus `contact_filter_cases.json`, the 340
+  photo, a negative Cowrie balance and a pending purchase, plus `contact_filter_cases.json`, the 349
   vectors and 7 sequences that pgTAP 75 and both mock ports will run.
 
 **MINOR**: direct payment (ADR-0025, `20261121120000_direct_payment_mode`). Additive: nothing an app

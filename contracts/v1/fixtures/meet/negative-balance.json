@@ -1,5 +1,5 @@
 {
-  "$comment": "M2. A buyer whose purchase was refunded by Google Play after they had spent most of it (ADR-0028 clawback; contracts/v1/state-machines/meet_play_purchase.json transition 7). The void debits the purchased balance, which may go negative; every spend is refused until it is back to zero, but buying is allowed so the person can repay. Bonus Cowries cannot be spent meanwhile either. Cowries have no cash value: the copy says 'Cowries', never 'wallet' (docs/store/meet-copy-rules.md).",
+  "$comment": "M2. A buyer whose purchase was refunded by Google Play after they had spent most of it (ADR-0028 clawback; contracts/v1/state-machines/meet_play_purchase.json transition 7). The void debits the purchased balance, which may go negative; every spend is refused until it is back to zero, but buying is allowed so the person can repay. Bonus Cowries cannot be spent meanwhile either. Cowries have no cash value: the copy says 'Cowries', never 'wallet' (docs/store/meet-copy-rules.md). M2-PR4 (the spend refusal) and M2-PR5 (the clawback) implement it.",
   "meet_get_state_wallet": {
     "total": -385,
     "purchased": -400,
@@ -14,6 +14,14 @@
       "description_key": "meetCowrieHistoryRefunded",
       "ref_kind": "play_purchase",
       "created_at": "2026-12-09T10:02:00+01:00"
+    },
+    {
+      "id": 90162,
+      "kind": "bonus_grant",
+      "delta": 15,
+      "description_key": "meetCowrieHistoryStreak",
+      "ref_kind": "streak",
+      "created_at": "2026-12-08T08:01:00+01:00"
     },
     {
       "id": 90107,
@@ -32,14 +40,6 @@
       "created_at": "2026-12-06T18:40:00+01:00"
     },
     {
-      "id": 89990,
-      "kind": "bonus_grant",
-      "delta": 15,
-      "description_key": "meetCowrieHistoryStreak",
-      "ref_kind": "streak",
-      "created_at": "2026-12-06T08:01:00+01:00"
-    },
-    {
       "id": 89902,
       "kind": "purchase",
       "delta": 520,
@@ -48,7 +48,7 @@
       "created_at": "2026-12-05T19:30:00+01:00"
     }
   ],
-  "arithmetic": "520 bought, 400 spent from purchased, then the 520 voided: 520 - 400 - 520 = -400 purchased. 15 bonus is untouched but cannot be spent while purchased is negative. History keys are illustrative; M2-PR4 fixes them.",
+  "arithmetic": "520 bought; 400 spent while the bonus balance was 0, so all of it came from purchased (design §5.3 step 5 spends bonus first, and there was none); 15 bonus granted after both spends; then the 520 voided: 520 - 400 - 520 = -400 purchased. The 15 bonus is untouched because nothing was spent after it arrived, and it cannot be spent while purchased is negative. History keys are illustrative; M2-PR4 fixes them.",
   "spend_refused": {
     "rpc": "meet_send_signal",
     "request": {
@@ -83,5 +83,5 @@
     },
     "note": "-400 + 520 = 120. The restriction clears itself at zero."
   },
-  "copy": "Explain it plainly: 'Google Play refunded a Cowrie purchase, so your balance is below zero. Paid actions are paused until it's back above zero.' Never mention cash or withdrawal."
+  "copy": "Explain it plainly: 'Google Play refunded a Cowrie purchase, so your balance is below zero. Paid actions are paused until it's back to zero.' Never mention cash or withdrawal."
 }

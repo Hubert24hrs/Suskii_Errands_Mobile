@@ -1,5 +1,5 @@
 {
-  "$comment": "M2. A Cowrie pack bought with a slow payment method, so Google Play reports it PENDING (ADR-0028; contracts/v1/state-machines/meet_play_purchase.json transitions 1-4). Nothing is credited until Play says PURCHASED; the server then grants, consumes and tells the app. The purchase token below is a placeholder, not the shape of a real one.",
+  "$comment": "M2. A Cowrie pack bought with a slow payment method, so Google Play reports it PENDING (ADR-0028; contracts/v1/state-machines/meet_play_purchase.json transitions 1-4). Nothing is credited until Play says PURCHASED; the server then grants, consumes and tells the app. The purchase token below is a placeholder, not the shape of a real one. M2-PR5 and M2-PR6 implement it.",
   "meet_billing_context": {
     "purchases_enabled": true,
     "vip_enabled": false,

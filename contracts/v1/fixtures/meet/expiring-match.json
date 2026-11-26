@@ -1,5 +1,5 @@
 {
-  "$comment": "Matches and their 24-hour timer (design §3.2.4, §4.2; contracts/v1/state-machines/meet_match.json). A pending match expires if nobody writes before expires_at; the first delivered message makes it active and stops the timer. The countdown is drawn from expires_at; never extend it on the client.",
+  "$comment": "Matches and their 24-hour timer (design §3.2.4, §4.2; contracts/v1/state-machines/meet_match.json). A pending match expires if nobody writes before expires_at; the first delivered message makes it active and stops the timer. The countdown is drawn from expires_at; never extend it on the client. M1-PR5 implements it.",
   "meet_swipe_mutual_like": {
     "request": {
       "p_profile_id": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5",
