@@ -162,6 +162,8 @@ The AI layer's deterministic half (Phase 7, `…20260922121100` and `…20260922
 
 What is not built is the FastAPI service that would call them: Vertex AI and GCP billing (action 1). `services/ai/tools/allowlist.json` is §4.2's structural containment made real ahead of it — fifteen functions the concierge and assistant may reach, fifty they must never, and `check_allowlist.py` in `backend-db.yaml` fails when an allowed function does not exist **or when a denied one does not**, because a denial naming a renamed function has quietly stopped protecting anything.
 
+Outbox pruning (Meet v5 M0, `…20261125120000`): **nothing had ever deleted an outbox row.** `private.prune_outbox()` runs daily as `outbox-prune` (03:47) and deletes two kinds of row: `ledger` and `call` events older than 30 days, because no worker claims either aggregate and they would otherwise never leave, and any row dispatched more than 30 days ago, counted from dispatch so a permanent failure stays visible for a month. A worker added for `ledger` or `call` must take it out of that list first. `dispute.sla_breached` is kept whatever its state, because `escalate_overdue_disputes` reads it back to escalate a case once.
+
 ## Platform assumptions: what CI has confirmed
 
 ADR-0013 lists assumptions the no-Docker fallback cannot prove. Status on the Supabase CLI 2.117.0 local stack (CI run 35132940770, 2026-09-16):

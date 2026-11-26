@@ -1,8 +1,8 @@
--- Idempotency keys (S-10), the outbox and partition management.
+-- Idempotency keys (S-10), the outbox, its pruning and partition management.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(12);
+SELECT plan(21);
 
 SELECT is(
   private.idempotency_claim('00000000-0000-4000-8000-000000000001', 'key-aaaaaaaaaaaaaaaa', 'op_a', '{"x": 1}'),
@@ -48,6 +48,38 @@ SET LOCAL ROLE authenticated;
 SELECT throws_ok($$SELECT * FROM private.outbox$$, '42501', NULL, 'authenticated cannot read the outbox');
 SELECT throws_ok($$SELECT private.emit_event('a', 'b', 'c', '{}')$$, '42501', NULL,
   'authenticated cannot emit events directly');
+RESET ROLE;
+
+-- Pruning. Every row is backdated against the transaction's now(), and tagged so the assertions
+-- read only these rows.
+INSERT INTO private.outbox (aggregate, aggregate_id, event_type, created_at, dispatched_at) VALUES
+  ('ledger',  'prune-old-ledger',  'ledger.posted',        now() - interval '31 days', NULL),
+  ('call',    'prune-old-call',    'call.ended',           now() - interval '31 days', NULL),
+  ('ledger',  'prune-new-ledger',  'ledger.posted',        now() - interval '29 days', NULL),
+  ('payment', 'prune-old-payment', 'refund.requested',     now() - interval '90 days', NULL),
+  ('user',    'prune-done-user',   'notification.created', now() - interval '40 days', now() - interval '31 days'),
+  ('user',    'prune-late-user',   'notification.created', now() - interval '40 days', now() - interval '10 days'),
+  ('dispute', 'prune-sla-dispute', 'dispute.sla_breached', now() - interval '90 days', now() - interval '60 days');
+
+SELECT is(private.prune_outbox(), 3, 'prune_outbox deletes the three rows it should and reports them');
+SELECT ok(NOT EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-old-ledger'),
+  'an unclaimed ledger row older than 30 days is pruned: nothing will ever dispatch it');
+SELECT ok(NOT EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-old-call'),
+  'and so is an unclaimed call row');
+SELECT ok(EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-new-ledger'),
+  'an unclaimed row younger than 30 days is kept');
+SELECT ok(EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-old-payment'),
+  'an undispatched row of a claimed aggregate is kept however old: a worker may still take it');
+SELECT ok(NOT EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-done-user'),
+  'a row dispatched more than 30 days ago is pruned');
+SELECT ok(EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-late-user'),
+  'the 30 days run from dispatch, not creation, so a late failure stays visible for a month');
+SELECT ok(EXISTS (SELECT 1 FROM private.outbox WHERE aggregate_id = 'prune-sla-dispute'),
+  'a dispute''s SLA marker is kept, because escalate_overdue_disputes reads it to escalate once');
+
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT private.prune_outbox()$$, '42501', NULL,
+  'authenticated cannot prune the outbox');
 RESET ROLE;
 
 SELECT * FROM finish();
