@@ -20,8 +20,9 @@ name: contracts
 # must then not call at all.
 #
 # check_preview.py also greps Meet copy (the Meet keys of the ARB files, the website's
-# meet.*.ts dictionaries, web-marketing's Meet pages) for the terms docs/store/meet-copy-rules.md
-# forbids. Legal pages are exempt: they must say what Cowries are not.
+# meet.*.ts dictionaries, web-marketing's Meet pages, legal pages included) for the terms
+# docs/store/meet-copy-rules.md forbids. A disclosure that must say what Cowries are not is
+# exempted one key or one phrase at a time, with a reason (MEET_COPY_EXEMPT), never by folder.
 on:
   push:
     branches: [main]
@@ -32,6 +33,7 @@ on:
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
       - 'packages/suskii_l10n/lib/l10n/**'
+      - 'docs/store/meet-copy-rules.md'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
       - 'apps/mobile/lib/**'
@@ -44,6 +46,7 @@ on:
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
       - 'packages/suskii_l10n/lib/l10n/**'
+      - 'docs/store/meet-copy-rules.md'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
       - 'apps/mobile/lib/**'
