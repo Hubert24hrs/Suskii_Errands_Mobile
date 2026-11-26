@@ -1776,7 +1776,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "A guarded Meet flag was switched on beyond what the readiness checklist allows (design D23): meet.v5 for anybody but testers before every m1 item is done, or meet.purchases / meet.vip before the m2_testers (testers-only) or m2 items are. Raised by the trigger on feature_flags, so it catches a review_config_change apply too, which leaves the proposal pending. The detail lists the missing items. Switching a flag off is never refused.",
+      "description": "A guarded Meet flag was switched on beyond what the readiness checklist allows (design D23): meet.v5 for anybody but testers before every m1 item is done, or meet.purchases / meet.vip before the m2_testers (testers-only) or m2 items are. Raised by the trigger on feature_flags, so it catches a review_config_change apply too, which leaves the proposal pending. The detail lists the missing items. Only a widening is checked: switching a flag off is never refused, and nor is a change to a flag already on that admits nobody new (a lower rollout_pct, back to testers-only, a client_visible edit).",
       "client_action": "Console: show the missing items from the detail and the /meet/readiness checklist; keep the proposal for when they are done."
     }
   ]

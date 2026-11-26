@@ -11,6 +11,8 @@
 --   Readiness   `private.meet_readiness` and a guard on `public.feature_flags` (D23, OD-53): Meet
 --               does not leave testers, and purchases (M2) do not start, until the checklist is
 --               complete. The database refuses, so no console, script or service key can skip it.
+--               A change that admits nobody new (a lower rollout, back to testers-only) passes.
+--   Lifecycle   `collect_personal_data` and `erase_account` restated to carry the tester row.
 --   Flags       the seven M1 flags, all off, and the M1 remote config (§3.3).
 --   RPCs        46 client and 18 admin functions. 60 are stubs that raise ERR_FEATURE_UNAVAILABLE
 --               until the PR named above each group replaces the body. The four readiness and
@@ -30,9 +32,10 @@
 -- check the role and the step-up the finished function will, so the generated catalogue lists
 -- them and the console can be wired to the right permissions now.
 --
--- **The public app 1.4.0 calls nothing here.** No existing function or enum changes; the one
--- change to an existing table is the readiness trigger on `feature_flags`, which looks at three
--- Meet keys and nothing else. The new flags appear in `get_bootstrap()`'s map, which 1.4.0
+-- **The public app 1.4.0 calls nothing here.** No enum and no client-callable function changes.
+-- The one change to an existing table is the readiness trigger on `feature_flags`, which looks at
+-- three Meet keys and nothing else, and the two restated functions are private and gain one line
+-- each. The new flags appear in `get_bootstrap()`'s map, which 1.4.0
 -- ignores; note that map evaluates each row on its own (no testers-only, no `meet.v5` umbrella),
 -- so an app reads Meet's state from `meet_get_state()`, never from bootstrap (§6.2). Until M1-PR3
 -- builds it, `meet_get_state()` is a stub too, and ERR_FEATURE_UNAVAILABLE from it means Meet v5
@@ -151,9 +154,16 @@ $$;
 -- The guard (D23). It runs on every write path into `feature_flags`, a `review_config_change`
 -- apply included: that apply runs inside the reviewer's transaction, so the raise aborts the
 -- review and the proposal stays pending with its signature unspent. Disabling never reaches it
--- (the trigger's WHEN), so the RB-13 kill switch always works. An update that keeps a flag on
--- beyond testers is checked again, so unticking an item later blocks a rollout change but switches
--- nothing off; switching off is the flag's job.
+-- (the trigger's WHEN), so the RB-13 kill switch always works.
+--
+-- What it checks is a widening of who the flag admits. An update to a row that was already on,
+-- under the same key and country, that neither leaves testers-only nor raises the rollout admits
+-- nobody new, so it passes even with an item open: lowering the percentage is the brake RB-17
+-- reaches for when moderation falls behind, and `meet_moderators_staffed` goes open by itself at
+-- exactly that moment (a moderator disabled or losing their factor). Anything that widens (an
+-- insert, off to on, testers-only to general, a higher rollout, a key or country move) is checked
+-- against the checklist as it stands now, and unticking an item switches nothing off; that is the
+-- flag's job. `flag_on_for` is monotonic in the percentage, which is what makes a lower one safe.
 --
 -- AFTER, where the design says BEFORE. `apply_config_change` writes a flag with
 -- `INSERT ... ON CONFLICT DO UPDATE`, and a BEFORE INSERT trigger fires on the row the INSERT
@@ -173,6 +183,14 @@ DECLARE
   v_tier    text;
   v_missing text[];
 BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.enabled AND OLD.key = NEW.key
+       AND OLD.country_code IS NOT DISTINCT FROM NEW.country_code
+       AND NEW.rollout_pct <= OLD.rollout_pct
+       AND (v_testers OR NOT coalesce(OLD.payload ->> 'testers_only' = 'true', false)) THEN
+      RETURN NULL;
+    END IF;
+  END IF;
   v_tier := CASE
     WHEN NEW.key = 'meet.v5' AND v_testers THEN NULL
     WHEN NEW.key = 'meet.v5' THEN 'm1'
@@ -497,6 +515,152 @@ BEGIN
   v_result := jsonb_build_object('user_id', p_user_id, 'tester', p_on);
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key, v_result);
   RETURN v_result;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Export and erasure learn about testers (§3 conventions: every personal table is in both).
+-- `private.meet_testers` holds a staff note about a named account, and an erasure updates
+-- `auth.users` rather than deleting it, so without this the row and its note outlive the account.
+-- Both functions are replaced whole from their latest versions (`collect_personal_data` from
+-- 20261024120100_suskii_meet, `erase_account` from 20261026190000_concierge), with only the
+-- marked lines added. M1-PR8 restates both again, from these, with the Meet tables.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION private.collect_personal_data(p_user uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT jsonb_build_object(
+    'generated_at', now(),
+    'account', (SELECT jsonb_build_object('id', u.id, 'phone', u.phone, 'email', u.email,
+                                          'created_at', u.created_at)
+                FROM auth.users u WHERE u.id = p_user),
+    'profile', (SELECT to_jsonb(p) - 'version' FROM public.profiles p WHERE p.user_id = p_user),
+    'consents', (SELECT coalesce(jsonb_agg(jsonb_build_object('kind', c.kind, 'granted', c.granted,
+                                                              'recorded_at', c.recorded_at)
+                                           ORDER BY c.id), '[]'::jsonb)
+                 FROM public.consents c WHERE c.user_id = p_user),
+    'devices', (SELECT coalesce(jsonb_agg(jsonb_build_object('platform', d.platform,
+                                                             'app_version', d.app_version,
+                                                             'created_at', d.created_at,
+                                                             'last_seen_at', d.last_seen_at)
+                                          ORDER BY d.created_at), '[]'::jsonb)
+                FROM public.user_devices d WHERE d.user_id = p_user),
+    'saved_places', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+                                       'label', sp.label,
+                                       'lat', extensions.ST_Y(sp.point::extensions.geometry),
+                                       'lng', extensions.ST_X(sp.point::extensions.geometry),
+                                       'landmark_note', sp.landmark_note,
+                                       'access_note', private.open('access_note',
+                                          sp.access_note_ciphertext, 'saved_place:' || sp.id),
+                                       'created_at', sp.created_at)
+                                     ORDER BY sp.created_at), '[]'::jsonb)
+                     FROM public.saved_places sp WHERE sp.user_id = p_user),
+    'trusted_contacts', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+                                           'name', tc.name,
+                                           -- Rows written before this migration carried bytes
+                                           -- nothing can open; they export masked or empty.
+                                           'phone', CASE WHEN tc.phone_masked IS NOT NULL THEN
+                                             private.open('trusted_contact_phone',
+                                               tc.phone_ciphertext, 'trusted_contact:' || tc.id)
+                                           END,
+                                           'relationship_key', tc.relationship_key,
+                                           'created_at', tc.created_at)
+                                         ORDER BY tc.created_at), '[]'::jsonb)
+                         FROM public.trusted_contacts tc WHERE tc.user_id = p_user),
+    'requests', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'status', r.status,
+                                                              'created_at', r.created_at)
+                                           ORDER BY r.created_at), '[]'::jsonb)
+                 FROM public.requests r WHERE r.customer_id = p_user),
+    'jobs_as_provider', (SELECT coalesce(jsonb_agg(jsonb_build_object('request_id', j.request_id,
+                                                                      'assigned_at', j.assigned_at)
+                                                   ORDER BY j.assigned_at), '[]'::jsonb)
+                         FROM public.jobs j WHERE j.provider_id = p_user OR j.worker_id = p_user),
+    'payments', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', pm.id, 'status', pm.status,
+                                                              'amount_minor', pm.amount_minor,
+                                                              'currency', pm.currency,
+                                                              'created_at', pm.created_at)
+                                           ORDER BY pm.created_at), '[]'::jsonb)
+                 FROM public.payments pm WHERE pm.payer_id = p_user),
+    'ratings_given', (SELECT coalesce(jsonb_agg(jsonb_build_object('request_id', rt.request_id,
+                                                                   'stars', rt.stars,
+                                                                   'comment', rt.comment)), '[]'::jsonb)
+                      FROM public.ratings rt WHERE rt.rater_id = p_user),
+    'support_tickets', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'category', t.category,
+                                                                     'status', t.status,
+                                                                     'created_at', t.created_at)
+                                                  ORDER BY t.created_at), '[]'::jsonb)
+                        FROM public.support_tickets t WHERE t.user_id = p_user),
+    'meetups_hosted', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'title', m.title,
+                                                                    'description', m.description,
+                                                                    'venue_name', m.venue_name,
+                                                                    'starts_at', m.starts_at,
+                                                                    'status', m.status)
+                                                 ORDER BY m.starts_at), '[]'::jsonb)
+                       FROM public.meetups m WHERE m.host_id = p_user),
+    'meetups_joined', (SELECT coalesce(jsonb_agg(jsonb_build_object('meetup_id', a.meetup_id,
+                                                                    'joined_at', a.joined_at)
+                                                 ORDER BY a.joined_at), '[]'::jsonb)
+                       FROM public.meetup_attendees a WHERE a.user_id = p_user),
+    -- Meet v5 M1-PR2: whether the account is a Meet tester, and since when. The note is the
+    -- staff's working note and stays out.
+    'meet_tester', (SELECT jsonb_build_object('tester', true, 'added_at', mt.added_at)
+                    FROM private.meet_testers mt WHERE mt.user_id = p_user)
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION private.erase_account(p_user uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  UPDATE public.profiles
+  SET display_name = '', avatar_path = NULL, timezone = NULL
+  WHERE user_id = p_user;
+
+  DELETE FROM public.trusted_contacts WHERE user_id = p_user;
+  DELETE FROM public.saved_places WHERE user_id = p_user;
+  -- Concierge history goes with the account; its turns were redacted, and nothing needs them.
+  DELETE FROM public.ai_conversations WHERE user_id = p_user;
+  -- Meet-ups the person hosted are their words and their chosen place; attendance is who they
+  -- met. Both go, and anybody still going to an upcoming one is told it is off.
+  PERFORM private.notify(a.user_id, 'system', 'notification.meetup.cancelled.title',
+    'notification.meetup.cancelled.body', jsonb_build_object('meetup_id', m.id))
+  FROM public.meetups m JOIN public.meetup_attendees a ON a.meetup_id = m.id
+  WHERE m.host_id = p_user AND m.status = 'published' AND m.ends_at > now();
+  DELETE FROM public.meetups WHERE host_id = p_user;
+  DELETE FROM public.meetup_attendees WHERE user_id = p_user;
+  -- Meet v5 M1-PR2: the tester row and its staff note. `auth.users` is updated below, never
+  -- deleted, so the row's ON DELETE CASCADE would not fire.
+  DELETE FROM private.meet_testers WHERE user_id = p_user;
+  DELETE FROM private.request_access_notes n
+  USING public.requests r
+  WHERE r.id = n.request_id AND r.customer_id = p_user;
+  DELETE FROM public.favorites WHERE customer_id = p_user OR provider_id = p_user;
+  -- Device rows are referenced by consents, which are the record of what was agreed; the
+  -- addresses a push could still reach are what identify the handset, so those go.
+  UPDATE public.user_devices SET push_token = NULL, voip_token = NULL WHERE user_id = p_user;
+  UPDATE public.provider_profiles SET online = false WHERE user_id = p_user;
+
+  DELETE FROM auth.sessions WHERE user_id = p_user;
+  DELETE FROM auth.identities WHERE user_id = p_user;
+  DELETE FROM auth.mfa_factors WHERE user_id = p_user;
+  UPDATE auth.users
+  SET phone = NULL, email = NULL, encrypted_password = NULL,
+      raw_user_meta_data = '{}'::jsonb,
+      banned_until = 'infinity', deleted_at = now()
+  WHERE id = p_user;
+
+  -- The user's folder in `avatars` (one folder per user, named by id).
+  PERFORM private.emit_event('storage', p_user::text, 'storage.erase_prefix',
+    jsonb_build_object('bucket', 'avatars', 'prefix', p_user::text || '/'));
+
+  PERFORM private.audit_write('account.erased', 'auth.users', p_user::text, NULL, NULL,
+    'deletion_grace_elapsed');
 END $$;
 
 -- ---------------------------------------------------------------------------

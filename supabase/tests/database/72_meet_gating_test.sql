@@ -4,12 +4,12 @@
 -- What has to hold before any Meet feature is built: every M1 RPC exists with its final
 -- signature, none does anything yet, nobody signed out can reach one, the flags start off, only
 -- testers pass a testers-only flag, and Meet cannot leave testers (by any write path, the
--- four-eyes config change included) until the checklist is complete, while switching it off
--- always works.
+-- four-eyes config change included) until the checklist is complete, while switching it off or
+-- narrowing it always works. Export and erasure carry the tester row.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(93);
+SELECT plan(104);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b7211111-1111-4111-8111-727272727272', '2348000007201'),   -- T: tester, NG
@@ -462,12 +462,46 @@ SELECT lives_ok($$SELECT public.admin_meet_set_readiness('key-72-ready-untick01'
     'backups_running', false, 'nightly restore failed')$$,
   'an item can be unticked later');
 RESET ROLE;
-SELECT throws_ok(
+-- An open item stops Meet widening, never narrowing: the rollout is the brake RB-17 reaches for
+-- when moderation falls behind, which is also when the staffing item goes open by itself.
+SELECT lives_ok(
   $$UPDATE public.feature_flags SET rollout_pct = 50 WHERE key = 'meet.v5' AND country_code IS NULL$$,
-  'P0001', 'ERR_MEET_NOT_READY', 'which blocks any further change that keeps Meet general');
+  'with an item open, the rollout can still come down');
+SELECT pg_temp.act('b7244444-4444-4444-8444-727272727272');
+SET LOCAL ROLE authenticated;
+INSERT INTO scratch VALUES ('lower', to_jsonb(public.propose_config_change('key-72-propose-00002',
+  'feature_flag', 'meet.v5', '{"rollout_pct": 25}')));
+RESET ROLE;
+SELECT pg_temp.act('b7255555-5555-4555-8555-727272727272');
+SET LOCAL ROLE authenticated;
+SELECT is(public.review_config_change('key-72-review-000003',
+    (SELECT (value #>> '{}')::uuid FROM scratch WHERE name = 'lower'), true),
+  'applied', 'through the four-eyes flow too, whose upsert reaches the guard as an update');
+RESET ROLE;
+SELECT is((SELECT rollout_pct::int FROM public.feature_flags
+           WHERE key = 'meet.v5' AND country_code IS NULL), 25, 'so Meet is general at 25%');
+SELECT throws_ok(
+  $$UPDATE public.feature_flags SET rollout_pct = 100 WHERE key = 'meet.v5' AND country_code IS NULL$$,
+  'P0001', 'ERR_MEET_NOT_READY', 'but cannot go back up while the item is open');
+SELECT lives_ok(
+  $$UPDATE public.feature_flags SET client_visible = false
+    WHERE key = 'meet.v5' AND country_code IS NULL$$,
+  'an edit that admits nobody new passes');
+SELECT lives_ok(
+  $$UPDATE public.feature_flags SET payload = '{"testers_only": true}'
+    WHERE key = 'meet.v5' AND country_code IS NULL$$,
+  'and so does going back to testers-only');
+SELECT throws_ok(
+  $$UPDATE public.feature_flags SET payload = '{}' WHERE key = 'meet.v5' AND country_code IS NULL$$,
+  'P0001', 'ERR_MEET_NOT_READY', 'while leaving testers again, at the same 25%, is checked');
+SELECT throws_ok(
+  $$UPDATE public.feature_flags SET key = 'meet.vip'
+    WHERE key = 'meet.discovery' AND country_code IS NULL$$,
+  'P0001', 'ERR_MEET_NOT_READY',
+  'a row that was on, renamed into a guarded key, is judged as new rather than as narrowing');
 SELECT lives_ok(
   $$UPDATE public.feature_flags SET enabled = false WHERE key = 'meet.v5' AND country_code IS NULL$$,
-  'and never blocks switching it off');
+  'and nothing ever blocks switching it off');
 
 -- ---------------------------------------------------------------------------
 -- The four admin functions built here.
@@ -557,6 +591,25 @@ SELECT throws_ok($$SELECT public.admin_meet_set_readiness('key-72-ready-support1
     'license_tests_passed', true, NULL)$$,
   '42501', 'ERR_PERMISSION_DENIED', 'a support agent cannot tick an item');
 RESET ROLE;
+
+-- ---------------------------------------------------------------------------
+-- Export and erasure carry the tester row. An erasure updates `auth.users` rather than deleting
+-- it, so the row's ON DELETE CASCADE never fires and only `erase_account` removes it.
+-- ---------------------------------------------------------------------------
+UPDATE private.meet_testers SET note = 'internal QA'
+WHERE user_id = 'b7233333-3333-4333-8333-727272727272';
+SELECT ok(
+  (SELECT x ->> 'tester' = 'true' AND x ->> 'added_at' IS NOT NULL AND NOT x ? 'note'
+   FROM (SELECT private.collect_personal_data('b7233333-3333-4333-8333-727272727272')
+                  -> 'meet_tester' AS x) e),
+  'the export says a tester is one, and since when, and leaves the staff note out');
+SELECT is(private.collect_personal_data('b7222222-2222-4222-8222-727272727272') -> 'meet_tester',
+  'null'::jsonb, 'somebody who is not a tester exports a null tester line');
+SELECT lives_ok($$SELECT private.erase_account('b7233333-3333-4333-8333-727272727272')$$,
+  'a tester is erased');
+SELECT is((SELECT count(*)::int FROM private.meet_testers
+           WHERE user_id = 'b7233333-3333-4333-8333-727272727272'), 0,
+  'and neither the tester row nor its note outlives the account');
 
 SELECT * FROM finish();
 ROLLBACK;

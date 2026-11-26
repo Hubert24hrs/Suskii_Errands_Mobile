@@ -60,9 +60,16 @@ and 1.4.0 calls nothing here.
   stands for a passed 18+ check, so a client must not be able to write one for itself. Every other
   kind behaves as before, and no app passes either value.
 - **Switching `meet.v5`, `meet.purchases` or `meet.vip` on is checked by the database** (design
-  D23): on beyond testers-only before the checklist is complete is refused with
-  `ERR_MEET_NOT_READY` on every write path, a `review_config_change` apply included (the proposal
-  stays pending, its signature unspent). Switching any flag off is never refused.
+  D23): `meet.v5` on beyond testers-only before every m1 item is done, and `meet.purchases` /
+  `meet.vip` on at all before the m2_testers items (testers-only) or the m2 items (general) are
+  done, is refused with `ERR_MEET_NOT_READY` on every write path, a `review_config_change` apply
+  included (the proposal stays pending, its signature unspent). What is checked is a widening: a
+  change to a flag that is already on and admits nobody new (a lower rollout, back to
+  testers-only, `client_visible`) is never refused, so the rollout stays a brake while an item has
+  lapsed. Switching any flag off is never refused.
+- **`private.collect_personal_data` and `private.erase_account`** are restated whole, one line
+  each: the export carries `meet_tester` (`{tester, added_at}`, or null; the staff note is not
+  exported) and an erasure deletes the tester row. Service role only; nothing an app calls.
 - **`rpc-catalog/index.json`** entries may carry `"not_built": true` (generator), and a stub lists
   `ERR_FEATURE_UNAVAILABLE` among its errors.
 

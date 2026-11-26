@@ -201,6 +201,9 @@ The filter blocks before delivery (OD-40), so innocent messages are refused. Onc
 4. Only then switch `meet.v5` to general at `rollout_pct` 5, then 25, then 100. Between each step
    watch the SLA breaches, reports per 1,000 active profiles (section 1) and the filter's false
    positives (section 7). Hold the percentage if reviews fall behind: the rollout is the brake.
+   Lowering it, or putting `meet.v5` back to testers-only, is never refused, even while a
+   readiness item has lapsed (the staffing item lapses by itself when a moderator is disabled or
+   loses their second factor); only a change that admits somebody new waits for the checklist.
 5. **To stop Meet:** disable `meet.v5` (RB-13). The guard never refuses a disable.
 
 ## 9. The 1.4.0 inbox note
