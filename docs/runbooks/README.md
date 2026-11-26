@@ -62,6 +62,9 @@ not exist yet and mark those steps inline: **RB-05** (`[VENDOR]`, no identity ve
 | [RB-14](RB-14-backend-deploy-and-rollback.md) | Backend deploy failed or release rollback | 2 | Red deploy run, unhealthy release, failed migration; one-time environment setup checklist. **Written** |
 | [RB-15](RB-15-store-release.md) | Mobile store release, and a broken release in the field | 10 | Signing, building and uploading to Play and the App Store; halting a rollout. **Written 2026-09-28**; cannot be rehearsed until the store accounts exist (client action 9). The native release builds compile in CI (`mobile-native`, `mobile-ios`, since 2026-09-28) |
 | [RB-16](RB-16-field-encryption-keys.md) | Field-encryption keys: escrow, rotation, a missing key, a failed integrity check | 2 | Vault KEK and wrapped data keys (ADR-0018). **Written 2026-09-29**; escrow needs GCP Secret Manager (action 1), and the whole procedure must be rehearsed on staging before any real access note exists |
+| [RB-17](RB-17-meet-moderation-child-safety.md) | Meet moderation and child safety | Meet v5 M1 | The review queues and SLAs, the photo checklist, a child-safety report, suspected CSAM, two-person bans, appeals, the filter's monthly false-positive review, the tester rollout (ADR-0026). **Draft 2026-11-26**, written before M1 exists; the CSAM reporting route waits on counsel (OD-42) |
+| RB-18 | Play Billing, RTDN, clawback and monthly reconciliation | Meet v5 M2 | Not written; lands in M2-PR1 with ADR-0028's acceptance |
+| RB-19 | Meet call billing and disconnect | Meet v5 M3 | Not written; lands in M3-PR1 with spike S-16 and ADR-0029 |
 
 ## Template
 

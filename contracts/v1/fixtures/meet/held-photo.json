@@ -1,0 +1,96 @@
+{
+  "$comment": "A new member's photos waiting for a person (design §2.7, §8.5; ADR-0026 D3; OD-41, decided: every photo is approved by a person before anyone else sees it). The owner sees every state; nobody else sees anything but approved photos, and the storage policy enforces it, not the client.",
+  "meet_get_my_profile": {
+    "profile": {
+      "id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
+      "first_name": "Ifeoma",
+      "status": "pending_review",
+      "discoverable": false,
+      "paused": false,
+      "verified": false,
+      "held": false
+    },
+    "photos": [
+      {
+        "id": "ca6b4a5c-a4e9-42a9-a1af-8dea9b4bf2db",
+        "position": 0,
+        "status": "approved",
+        "reason_code": null,
+        "media_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/p/ca6b4a5c-a4e9-42a9-a1af-8dea9b4bf2db.jpg",
+        "thumb_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/pt/ca6b4a5c-a4e9-42a9-a1af-8dea9b4bf2db.jpg"
+      },
+      {
+        "id": "7873e38f-618c-4e78-a92c-920410f7f8aa",
+        "position": 1,
+        "status": "pending_review",
+        "reason_code": null,
+        "media_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/p/7873e38f-618c-4e78-a92c-920410f7f8aa.jpg",
+        "thumb_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/pt/7873e38f-618c-4e78-a92c-920410f7f8aa.jpg"
+      },
+      {
+        "id": "fd8840ca-f31c-4275-a8f3-05c9704fc251",
+        "position": 2,
+        "status": "processing",
+        "reason_code": null,
+        "media_path": null,
+        "thumb_path": null
+      },
+      {
+        "id": "90d7f75d-2f7b-479d-ae17-1832b33f46b7",
+        "position": 3,
+        "status": "rejected",
+        "reason_code": "contact_details",
+        "media_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/p/90d7f75d-2f7b-479d-ae17-1832b33f46b7.jpg",
+        "thumb_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/pt/90d7f75d-2f7b-479d-ae17-1832b33f46b7.jpg"
+      }
+    ]
+  },
+  "states": {
+    "processing": "Uploaded to meet-inbox; the media worker has not yet stripped metadata, checked the bytes and moved it. No path yet.",
+    "pending_review": "In the moderation queue. Visible to its owner only.",
+    "approved": "Visible to anyone meet_may_view admits.",
+    "rejected": "Visible to its owner with the reason, so they can replace it. Reasons: not_a_person, not_you, explicit, contact_details, violence, low_quality, reused, other.",
+    "removed": "Taken down after an upheld case or deleted by the owner; its files are erased. Not returned.",
+    "failed": "The worker could not process it (wrong type, too small, corrupt). Ask for another photo."
+  },
+  "quick_win": "While the first photo waits: 'Your photos are in review, usually within 12 hours.' Browsing needs an active profile, so show today's question and the ladder until then.",
+  "meet_submit_photo": {
+    "response": {
+      "photo_id": "fd8840ca-f31c-4275-a8f3-05c9704fc251",
+      "status": "processing"
+    }
+  },
+  "meet_set_discoverable_too_early": {
+    "error": "ERR_MEET_PROFILE_INCOMPLETE",
+    "note": "Turning discovery on needs a clean first name, at least one approved photo and an area."
+  },
+  "photo_status_m1": {
+    "meet_post_status": {
+      "response": {
+        "status_id": "1fddc9d1-0a5b-4fe8-ad4c-a479798f8f8d",
+        "state": "processing"
+      }
+    },
+    "note": "A photo status needs photo verification and goes through the same review; a text status goes live after screening."
+  },
+  "admin_meet_moderation_queue_row": {
+    "case_id": "28bef23a-daf3-42eb-a2b8-e536925a0d18",
+    "subject_kind": "meet_photo",
+    "subject_id": "7873e38f-618c-4e78-a92c-920410f7f8aa",
+    "priority": 3,
+    "labels": [
+      "first_photo_pending"
+    ],
+    "sla_due_at": "2026-12-03T22:10:00+01:00",
+    "author_profile_id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
+    "content": {
+      "media_path": "ac98cb56-429f-47c0-a8a2-04681d1b0974/p/7873e38f-618c-4e78-a92c-920410f7f8aa.jpg"
+    },
+    "context": {
+      "profile_status": "pending_review",
+      "approved_photos": 1
+    },
+    "note": "Staff only (meet_moderator, super_admin, in country scope). Priority 1 is child safety or underage, 2 reports with evidence, 3 first-photo pre-moderation, 4 other photos and statuses, 5 text holds. The console reads the image through a signed URL of at most 300 seconds. Labels are illustrative; M1-PR4 fixes them."
+  },
+  "never_shown_to_the_owner": "Proposed here for M1-PR4 to confirm: that a rejection was for 'underage_appearance'. That decision places a discovery hold and opens a child-safety review (RB-17), and naming it would tell the person what was noticed, so the owner sees reason 'other'."
+}

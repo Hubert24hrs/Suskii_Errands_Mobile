@@ -78,6 +78,48 @@ Connect API key, the privacy policy and terms, a review sign-in number, the stor
 and a Firebase project for push. None has started. **Signing material is never committed and never
 sent to anyone**: it goes straight into the GitHub environment's secrets.
 
+## Raised by Meet v5 (OD-37 … OD-53, 2026-11-26)
+
+The owner's spec v5 for Suskii Meet, with its binding decisions of 2026-11-25, is built to
+[`docs/plan/meet-v5-design.md`](plan/meet-v5-design.md) and recorded in
+[ADR-0026](adr/0026-meet-v5-social-layer.md) (the social layer, D1–D25),
+[ADR-0027](adr/0027-cowries-sealed-spend-only-economy.md) (Cowries) and
+[ADR-0028](adr/0028-play-billing-verification-rtdn-clawback.md) (Play Billing). Where the plan chose
+safety over the spec or the 2026-10-24 parity rule, each choice carries a decision below. Defaults
+are what the build ships. Meet can open to testers before these are answered, but the database
+refuses to switch it on for anyone else until its milestone's readiness checklist is complete, and
+that checklist includes counsel's answers to OD-37, OD-38 and OD-42 (M1) and OD-44 (M2).
+
+**Owner decisions recorded with this section.** These are answers, not open questions:
+
+| Decision | Answer | Date | Recorded in |
+|---|---|---|---|
+| What gifts give | **Status, not cash.** Gifts raise the receiver's popularity, XP and card progress. Cowries are spend-only for everyone, purchased or free, and never withdrawable, transferable or exchangeable. Never framed as payment for attention, company or meetings | 2026-11-25 (owner) | ADR-0027; design §5.12 |
+| Cash-out | **Not built.** There is no Earnings balance, conversion or withdrawal. It could return only after counsel review and an organisation Play account (OD-29) | 2026-11-25 (owner) | ADR-0027 |
+| Today's group meet-ups | **Stay, as the Events tab** inside the Meet shell. The meetup backend (tables, RPCs, enums, `ERR_MEETUP_*`) is not renamed, because the public app 1.4.0 calls it | 2026-11-25 (owner) | ADR-0026 D12; ADR-0020 |
+| Purchases | **Build Google Play Billing now**: packs are consumables, VIP is a subscription, server verification, RTDN and voided-purchase clawback, all behind server flags that stay off until the payments profile is fixed and the products exist | 2026-11-25 (owner) | ADR-0028 |
+| Who builds Meet | **Claude Code builds every Meet v5 PR**, frontend included (app, website, admin console), logging each in `HANDOFF.md` | 2026-11-26 (owner) | ADR-0026; design §1.6 |
+
+| ID | Topic | Answer or default | Status | Owner | Needed by | Evidence |
+|---|---|---|---|---|---|---|
+| OD-37 | Age assurance for Meet | A self-declared date of birth, set once and computed server-side in the user's time zone; Play's Restrict Minor Access; a refused minor's devices barred for 365 days; device integrity required; immediate discovery holds on underage reports; Play's Age Signals API when available (S-17). A self-declared date alone may be judged "easily circumvented", which is why the other layers exist | Open | Counsel | m1 readiness | Design §8.1; ADR-0026 |
+| OD-38 | Store an optional "show me" (orientation-revealing) preference in Nigeria? | **Yes**: optional, consented (`meet_sensitive_data`), stored apart from the profile, applied one way, never displayed, never visible to staff, never in analytics or any aggregate. If counsel says no, `seeking` is dropped and discovery runs on intent and age; the client change is hiding one control | Open | Counsel | m1 readiness | Design §8.7; ADR-0026 D5; Same Sex Marriage (Prohibition) Act 2013 `[S]` |
+| OD-39 | 18+ surfaces app-only, as an exception to the 2026-10-24 web-parity rule | **App-only.** Discovery, photos, chat, statuses, games and Cowries are Android-app-only; the website keeps meet-ups, the Meet privacy controls and Meet notification settings, through written `PLATFORM` exemptions | **Decided** 2026-11-26 (owner) | Owner | M1-PR11 | ADR-0026 D1 |
+| OD-40 | The Meet chat filter fails closed (an exception to OD-21) | **Block before delivery.** Contact details, handles, links and solicitation are never delivered; any error in the screen aborts the send. Errands moderation stays fail-open | **Decided** 2026-11-26 (owner) | Owner | M1-PR4 | ADR-0026 D2; design §8.2 |
+| OD-41 | Photo pre-moderation, the `meet_moderator` role and staffing | **Every photo is human-approved** before anyone else sees it. The owner reviews at first and adds `meet_moderator` accounts as Meet grows; Meet stays testers-only until reviews keep up. Two moderators with MFA remain an automatic readiness item before Meet leaves testers | **Decided** 2026-11-26 (owner) | Owner | m1 readiness | ADR-0026 D3, D25; RB-17 |
+| OD-42 | The child-safety escalation route (which authority), the CSAE contact and the evidence-retention law | `childsafety@suskiierrand.com` as the published point of contact, plus the reporting route counsel confirms. Until then RB-17 preserves evidence, bans and escalates to the owner the same day | Open | Counsel | m1 readiness | Design §8.3, §8.11; RB-17 |
+| OD-43 | Ship Meet as a separate Play package before general purchases? | **Recommended: yes**, as `com.suskiierrands.meet`, before `meet.purchases` goes beyond testers, so a Meet strike cannot take errands with it. The module is self-contained and `play_purchases.package_name` already allows it | Proposed | Owner | Before `meet.purchases` general | Design §10.1 risk 1 |
+| OD-44 | Cowrie terms | No cash value; forfeited on account deletion (which a balance never blocks); balances may go negative after a refund; refunds go through Google Play; purchase records kept after erasure for accounting, for a period counsel sets `[A]` | Open | Counsel | m2 readiness | ADR-0027; ADR-0028; design §5.4.8 |
+| OD-45 | Economy numbers: spend costs, packs, VIP, card thresholds, the XP curve, caps | As design §5.5–§5.15, every number `[A]`. All are `meet.*` remote config, changed with two signatures | Proposed | Owner | M2-PR8 | ADR-0027 |
+| OD-46 | Free-Cowrie volume and the welcome grant | A daily cap of 20 free Cowries; a welcome grant of 20 once, after photo approval and 72 hours, counted under the cap | Proposed | Owner | M2-PR9 | Design §5.14 |
+| OD-47 | Video calls (the `CAMERA` permission) | **Not built until answered.** Voice ships first; video would need both people photo-verified and a match at least 72 hours old, and adds `CAMERA` in its own PR | Open | Owner + counsel | M3-PR9 | ADR-0026 D11 |
+| OD-48 | Text statuses for Members in M1, before VIP exists? | **Yes, text only.** Photo statuses need photo verification and pre-moderation. Posting becomes a Silver (VIP) perk when `meet.vip` is on | Proposed | Owner | M1-PR7 | ADR-0026 D13 |
+| OD-49 | An automatic discovery hold on underage and child-safety reports, against OD-25's "nothing automatic" | **Yes**: a reversible visibility hold, not a sanction. Suspensions stay human decisions | Proposed | Owner | M1-PR4 | ADR-0026 D16 |
+| OD-50 | The Meet restricted-terms list and the Pidgin, Yoruba, Igbo and Hausa number words in the contact filter | Seeded as data, every term `[A]`, until counsel signs the terms (as OD-24) and native speakers review the number words. The filter's test vectors mark each such word `[A]` | Open | Counsel + native speakers | m1 readiness | Design §8.2; `contracts/v1/fixtures/meet/contact_filter_cases.json` |
+| OD-51 | Revenue on the personal payments profile before OD-29 is settled | Decision 4 supersedes OD-29 **for in-app digital goods only**; the financial-features declaration stays "none". Either accept revenue on the personal profile with monthly report downloads (RB-18), or wait for the organisation account | Open | Owner | m2 readiness | ADR-0028; design §10.1 risk 4 |
+| OD-52 | Does a block made in Meet also apply to errands? | **Yes.** `is_blocked_pair` is unchanged and applies everywhere; `blocks.source` records where the block was made | Proposed | Owner | M1-PR4 | Design §8.4 |
+| OD-53 | A Supabase plan upgrade and working backups before Meet leaves testers (revisits OD-33) | **Required.** Both are readiness items the database enforces before `meet.v5` goes beyond testers and before purchases: photos fill the Free plan's storage at about 600 profiles, and balances and purchase tokens are money-equivalent records | Proposed (enforced by the readiness guard) | Owner | m1 readiness | ADR-0026 D23; design §2.11 |
+
 ## Resolved
 
 Answered by the client in session on 2026-10-12, each by choosing between the built default and
@@ -100,5 +142,6 @@ finished the same day (OD-04's top-up); OD-13's still waits on the identity vend
 | OD-19 | The cancellation fee goes to the provider, net of commission | 2026-10-12 | Money-flows 5a; `…20260921121100_refunds_and_cancellations` |
 | OD-25 | Nothing automatic: suspension and payout holds stay explicit, audited human decisions | 2026-10-12 | `…20260921120300_risk` raises flags only; `suspend_provider` and `suspend_organization` require a person and an end date |
 
-Still owed: **OD-24** (counsel signs the restricted list), **OD-12** (counsel on funds holding) and
-the remaining proposed rows, where silence means the default is built.
+Still owed: **OD-24** (counsel signs the restricted list), **OD-12** (counsel on funds holding),
+the Meet v5 counsel rows **OD-37, OD-38, OD-42, OD-44 and OD-50**, and the remaining proposed rows,
+where silence means the default is built.

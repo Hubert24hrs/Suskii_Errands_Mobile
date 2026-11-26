@@ -1,0 +1,79 @@
+{
+  "$comment": "M2. A badge-locked profile (meet_set_profile_lock) seen by a caller whose card is below the lock. The teaser carries the first name, card, tick and photo 0 only: no prompts, no bio, no daily answer (design §4.2, §6.3). Unlocking is the privilege to reach, never a guaranteed reply and never a meeting; the copy must say exactly that (ADR-0027).",
+  "caller": {
+    "profile_id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
+    "card": "silver"
+  },
+  "card": {
+    "profile_id": "3f5751ea-f25e-49dc-ac13-eea38c105fc6",
+    "first_name": "Zainab",
+    "age": 29,
+    "intent": "open",
+    "interests": [
+      "travel",
+      "fitness"
+    ],
+    "shared_interests": [
+      "travel"
+    ],
+    "distance_band": "5_10",
+    "area_label": "Wuse, Abuja",
+    "active": "this_week",
+    "photos": [
+      {
+        "photo_id": "29dc33c9-90e7-4dd9-a210-4914800c7ce4",
+        "path": "3f5751ea-f25e-49dc-ac13-eea38c105fc6/p/29dc33c9-90e7-4dd9-a210-4914800c7ce4.jpg",
+        "thumb_path": "3f5751ea-f25e-49dc-ac13-eea38c105fc6/pt/29dc33c9-90e7-4dd9-a210-4914800c7ce4.jpg",
+        "w": 1080,
+        "h": 1350
+      }
+    ],
+    "prompts": [],
+    "daily_answer": null,
+    "verified": true,
+    "tags": [
+      "verified",
+      "popular"
+    ],
+    "super_interest_from_them": false,
+    "card": "captain",
+    "frame_key": null,
+    "locked": {
+      "min_card": "gold",
+      "ways": [
+        "reach_card",
+        "unlock",
+        "reach_request"
+      ]
+    },
+    "spotlight": false
+  },
+  "ways": {
+    "reach_card": "Hold a Gold card or higher. The ladder page shows both paths to it: pay up (VIP days or purchased Cowries spent) and play up (level).",
+    "unlock": "meet_unlock_profile for 30 days. Its cost comes from meet_economy_catalogue().spend_costs, never from this card, and is sent back as p_expected_cost.",
+    "reach_request": "meet_send_reach_request, offered only when the owner accepts requests. Declining is silent: the sender learns only 'not accepted'."
+  },
+  "meet_unlock_profile": {
+    "request": {
+      "p_profile_id": "3f5751ea-f25e-49dc-ac13-eea38c105fc6",
+      "p_expected_cost": 50
+    },
+    "response": {
+      "expires_at": "2027-01-02T20:15:00+01:00",
+      "wallet": {
+        "total": 310,
+        "purchased": 290,
+        "bonus": 20,
+        "version": 18
+      }
+    },
+    "note": "Every spend returns the wallet so the Cowrie pill can animate the change without a second call. Bonus Cowries are spent first."
+  },
+  "storage": "Positions 1 and up of a locked profile are excluded from meet_media_visible_to until the caller's card meets the lock or an unlock is active, so fetching them fails like a missing object. The client must not rely on hiding them.",
+  "errors_a_client_will_see": {
+    "ERR_MEET_PROFILE_LOCKED": "Returned only to explain a teaser, for example when meet_get_profile is called on a locked profile. Render the teaser, not an error.",
+    "ERR_MEET_INSUFFICIENT_COWRIES": "Detail {\"needed\":50,\"total\":35}. Open the Get Cowries sheet at the smallest pack that covers the shortfall; after a granted purchase, replay the same intent with the same idempotency key.",
+    "ERR_MEET_PRICE_CHANGED": "The cost changed since the catalogue was read. Nothing was charged: refresh the catalogue and show the new price before trying again (ADR-0026 D18).",
+    "ERR_MEET_WALLET_RESTRICTED": "A negative balance after a refund, or a fraud hold: see negative-balance.json."
+  }
+}

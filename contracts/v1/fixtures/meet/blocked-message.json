@@ -1,0 +1,82 @@
+{
+  "$comment": "The Meet contact filter refusing a message (design §8.2; ADR-0026 D2; OD-40, decided: block before delivery). A blocked message is never delivered, so there is no bubble and the other person sees nothing. The refusal writes a strike, which is why it is returned as a status and never raised: a raise would roll the strike back (D24). The test vectors behind these outcomes are in contact_filter_cases.json.",
+  "conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+  "blocked": {
+    "request": {
+      "p_conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+      "p_body": "my number is 0803 123 4567",
+      "p_kind": "text"
+    },
+    "response": {
+      "status": "blocked",
+      "message_id": null,
+      "reason": "contact",
+      "restricted_until": null
+    },
+    "show": "An inline safety banner, 'Phone numbers, emails, links and social handles can't be shared in Meet', with no bubble. Keep the draft in the composer so the sender can edit it."
+  },
+  "third_strike": {
+    "response": {
+      "status": "blocked",
+      "message_id": null,
+      "reason": "contact",
+      "restricted_until": "2026-12-04T21:40:00+01:00"
+    },
+    "show": "Three strikes in 24 hours restrict new messages for 24 hours. Disable the composer and show when it reopens. This is a rate limit, not a ban; five strikes in 7 days open a case for a person."
+  },
+  "while_restricted": {
+    "error": "ERR_MEET_RESTRICTED",
+    "meet_get_state_restrictions": [
+      {
+        "scope": "messages",
+        "ends_at": "2026-12-04T21:40:00+01:00"
+      }
+    ]
+  },
+  "solicitation": {
+    "response": {
+      "status": "blocked",
+      "message_id": null,
+      "reason": "solicitation",
+      "restricted_until": null
+    },
+    "show": "A banner naming the category, for example 'Asking for money or gifts isn't allowed in Meet' (wording is M1-PR11's). The same strike counting applies."
+  },
+  "platform_mention": {
+    "request": {
+      "p_conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+      "p_body": "I don't use WhatsApp",
+      "p_kind": "text"
+    },
+    "response": {
+      "status": "sent",
+      "message_id": 48211,
+      "reason": "platform_mention",
+      "restricted_until": null
+    },
+    "show": "Delivered, with a one-time tip to the sender about keeping the conversation in Meet (wording is M1-PR11's). No strike."
+  },
+  "profile_surface": {
+    "request": {
+      "rpc": "meet_save_profile",
+      "p_bio": "IG: @ada_x"
+    },
+    "error": "ERR_MEET_CONTACT_NOT_ALLOWED",
+    "note": "On first_name, bio, prompts, statuses and game answers the filter raises instead: nothing is written and nothing is recorded, so raising is safe. Solicitation raises ERR_MEET_SOLICITATION_NOT_ALLOWED."
+  },
+  "reach_note_m2": {
+    "response": {
+      "status": "blocked",
+      "request_id": null,
+      "wallet": {
+        "total": 345,
+        "purchased": 325,
+        "bonus": 20,
+        "version": 22
+      }
+    },
+    "note": "A reach request whose note is blocked is not sent and costs nothing: the wallet is unchanged."
+  },
+  "what_the_sender_never_sees": "The matched text. Only the category comes back, because echoing the span would teach evasion.",
+  "message_ids": "meet_messages.id is a bigint, as for errands chat: treat it as an opaque value, not an int that fits in a double."
+}

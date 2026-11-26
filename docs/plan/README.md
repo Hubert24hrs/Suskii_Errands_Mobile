@@ -21,5 +21,6 @@ Start with [PHASE-1-PLAN.md](PHASE-1-PLAN.md), which explains the staging, the o
 | [test-strategy.md](test-strategy.md) | Test layers and catalogue (pgTAP, concurrency, money properties, webhooks, integration, load, security), device and network matrix, quality gates |
 | [prd/](prd/README.md) | PRD: personas, non-functional requirements, 147 user stories with acceptance criteria across shared, customer, provider, business, web, marketing and admin |
 | [timeline.md](timeline.md) | Revised timeline to a single full release: schedule, critical path, client action list with start-by weeks, fixed external dates, schedule risks |
+| [meet-v5-design.md](meet-v5-design.md) | **Suskii Meet v5 (2026-11-25, owner's answers applied 2026-11-26)**: the build plan for the 18+ social layer, the Cowrie economy and Play Billing — decisions D1–D25, architecture, data model, API, economy, client, safety and Play policy, the ordered PR list for M0–M3, risks and OD-37 … OD-53. Recorded by ADR-0026, ADR-0027 and ADR-0028 |
 
 Conventions match the rest of `docs/`: decisions are append-only, evidence tags `[V]`/`[S]`/`[A]`, and every document names its owner and date.

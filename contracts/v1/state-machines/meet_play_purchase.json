@@ -1,0 +1,55 @@
+{
+  "$comment": "Authored from docs/plan/meet-v5-design.md §3.4 and §5.4 and ADR-0028, before any of it is built. The state is a text CHECK on meet_econ.play_purchases, which no client role can read: apps see it only as the state field of the meet-purchase-verify response ('granted' | 'pending' | 'rejected', or 202 'queued') and as a pending row on the Cowries page. contracts/tools/generate_v1.py does not cross-check this file. M2-PR5 implements it; if the SQL disagrees, this file changes in the same PR. The Play Developer API facts here are [S] until spike S-15 confirms them.",
+  "machine": "meet_play_purchase",
+  "subject": "meet_econ.play_purchases.state",
+  "enum": null,
+  "check": "text CHECK IN ('received','pending','verified','granted','completed','rejected','voided','partially_voided')",
+  "note": "One row per Play purchase token, for Cowrie packs (consumables) and the meet_vip subscription alike. This machine tracks the token's grant and completion only. A subscription's entitlement (active, grace period, cancelled, expired, revoked) lives in meet_econ.play_subscriptions and is synced from subscriptionsv2; it is not this machine. Starting a purchase is gated by meet.purchases / meet.vip; nothing in this machine is, so a paid token always reaches granted or rejected.",
+  "actors": {
+    "S": "system: meet-purchase-verify on the app's call, meet-billing-worker, or play-rtdn after verifying the Pub/Sub OIDC token"
+  },
+  "states": [
+    { "name": "received", "terminal": false, "meaning": "The token is bound to one account and product; Play has not been asked yet, or could not be reached" },
+    { "name": "pending", "terminal": false, "meaning": "Play reports PENDING (a slow payment method). Nothing granted" },
+    { "name": "verified", "terminal": false, "meaning": "Play reports PURCHASED and every check passed. Transient: the grant is written in the same transaction, so no committed row is expected to rest here" },
+    { "name": "granted", "terminal": false, "meaning": "Cowries credited to purchased (packs) or the entitlement recorded (VIP). Not yet consumed or acknowledged at Play" },
+    { "name": "completed", "terminal": false, "meaning": "Consumed (packs) or acknowledged (VIP) at Play. Healthy, and still voidable" },
+    { "name": "rejected", "terminal": true, "meaning": "Never granted. A paid token is refunded and revoked by the worker" },
+    { "name": "voided", "terminal": true, "meaning": "Refunded or charged back for the whole quantity, and clawed back" },
+    { "name": "partially_voided", "terminal": false, "meaning": "Part of the quantity refunded and clawed back; the rest stands" }
+  ],
+  "transitions": [
+    { "id": 1, "from": null, "to": "received", "actor": "S", "rpc": "gateway_meet_purchase_begin", "guard": "The token is not bound to another account. The app's own call carries the user's JWT; a token the app never submitted (it died after paying) arrives by RTDN or the sweep and is bound to the owner resolved from obfuscatedExternalAccountId (gateway_meet_resolve_account)", "effects": ["user, product and billing_account_ref bound once", "attempts and next_attempt_at start"] },
+    { "id": 2, "from": ["received"], "to": "pending", "actor": "S", "rpc": "gateway_meet_purchase_verified", "guard": "Play purchaseState PENDING", "effects": ["nothing granted", "the app shows 'Payment pending'", "RTDN oneTimeProductNotification PURCHASED later re-runs verification"] },
+    { "id": 3, "from": ["received", "pending"], "to": "verified", "actor": "S", "rpc": "gateway_meet_purchase_verified", "guard": "packageName in PLAY_PACKAGE_NAMES; productId equals the bound product and is an active cowrie_packs row or meet_vip; purchaseState PURCHASED; obfuscatedExternalAccountId equals the account's billing_account_ref (absent: binding 'first_claim' and a low-severity fraud flag); no fraud_hold and no active purchase_hold_until; a testPurchaseContext is accepted only while meet.billing.accept_test_purchases, and sets is_test", "effects": ["verified_at set", "the trimmed API response kept in verification"] },
+    { "id": 4, "from": ["verified"], "to": "granted", "actor": "S", "rpc": "gateway_meet_purchase_verified", "guard": "Same transaction as transition 3", "effects": ["packs: one 'purchase' entry of units x quantity to purchased, which first pays back a negative balance and clears negative_balance at zero", "VIP: the entitlement synced into play_subscriptions", "is_test also marks the wallet test_funds", "returns next = 'consume' or 'acknowledge'"] },
+    { "id": 5, "from": ["received", "pending"], "to": "rejected", "actor": "S", "rpc": "gateway_meet_purchase_verified", "guard": "reject_reason: wrong_package, unknown_product, not_purchased (CANCELLED, or RTDN oneTimeProductNotification CANCELED for a pending purchase), account_mismatch or wallet_hold", "effects": ["nothing granted", "a token that was paid for gets refund_requested_at; the worker calls orders.refund with revoke (packs) or subscriptionsv2 revoke (VIP), so nobody pays for nothing", "the app receives ERR_MEET_PURCHASE_REJECTED or ERR_MEET_PRODUCT_UNKNOWN"] },
+    { "id": 6, "from": ["granted"], "to": "completed", "actor": "S", "rpc": "gateway_meet_purchase_completed", "guard": "Play accepted the server's consume (packs) or acknowledge (VIP)", "effects": ["completed_at set", "the app's later completePurchase is expected to be a no-op (S-15 confirms)"] },
+    { "id": 7, "from": ["granted", "completed"], "to": "voided", "actor": "S", "rpc": "gateway_meet_purchase_voided", "guard": "A voided purchase covering the whole quantity: refundType 1, or quantity-partial voids reaching the full quantity; reported by RTDN voidedPurchaseNotification or the hourly voidedpurchases sweep. Includes Play's auto-refund of an unacknowledged purchase (voidedReason 8)", "effects": ["a 'purchase_void' entry debits units per item x voided quantity from purchased (pack bonus units included), which may go negative and sets restricted 'negative_balance'", "fraud, friendly fraud or chargeback (voidedReason 5, 6, 7): purchase_hold_until = now + meet.billing.fraud_void_hold_days, popularity the person's gifts conferred since the purchase is reversed up to the voided units, and a fraud flag is raised", "a second void within 90 days sets fraud_hold, which only a person lifts", "VIP: the entitlement ends at once and the voided period leaves vip_paid_days"] },
+    { "id": 8, "from": ["granted", "completed"], "to": "partially_voided", "actor": "S", "rpc": "gateway_meet_purchase_voided", "guard": "A quantity-partial void (refundType 2) for less than the whole quantity", "effects": ["units_voided grows and the matching units are clawed back as in transition 7"] },
+    { "id": 9, "from": ["partially_voided"], "to": "voided", "actor": "S", "rpc": "gateway_meet_purchase_voided", "guard": "Later voids reach the whole quantity. A further partial void that does not stays partially_voided with units_voided grown", "effects": ["as transition 7 for the remaining units"] }
+  ],
+  "invariants": [
+    "A token is granted at most once: purchase_token is a true UNIQUE (the table is not partitioned), the purchase entry's ref is the purchase id, and a replayed verification returns the stored result.",
+    "A second account presenting a bound token is answered {state:'rejected', reason:'token_claimed'} (ERR_MEET_PURCHASE_TOKEN_CLAIMED at the Edge Function). The attempt is recorded and a 'pair' fraud flag raised; the bound row's state does not change. It returns rather than raises, so the record survives (ADR-0026 D24).",
+    "Nothing is granted on PENDING, CANCELLED, a wrong package or product, or a mismatched account.",
+    "The client never consumes: packs are bought with autoConsume false, and the server consumes or acknowledges only after the grant.",
+    "Verification is never gated by meet.purchases or meet.vip, so no paid token is stranded. meet.purchases_verify_paused keeps tokens in received for up to 48 hours and the Edge Function answers 202 'queued'.",
+    "Every RTDN re-reads the purchase from the API; the notification body is never trusted for state.",
+    "A staff refund (admin_meet_refund_purchase, finance_officer or super_admin with recent MFA) sets refund_requested_at and emits a meet_billing outbox event, and the worker calls orders.refund with revoke. The state changes only when Play reports the void (transitions 7 to 9), never at the request.",
+    "reported_price_micros and reported_currency are informational only and never used for anything that grants.",
+    "Test purchases (is_test) are granted like any other and excluded from revenue analytics, the card spend path and VIP-day accrual.",
+    "Account erasure sets user_id to NULL and keeps the row for accounting; an active VIP is cancelled at Play by the worker."
+  ],
+  "timeouts": [
+    { "timer": "verify_retry", "starts": "received, when Play is unreachable or verification is paused", "default": "1 min, 5 min, 30 min, 2 h, 6 h, up to 48 h", "configurable": "meet-billing-worker backoff", "on_expiry": "retried by the worker for up to 48 h; RB-18 (M2-PR1) covers a token still received after that" },
+    { "timer": "completion_retry", "starts": "granted, when consume or acknowledge fails", "default": "the same backoff, well inside Play's 3-day auto-refund window [S]", "configurable": "meet-billing-worker backoff", "on_expiry": "health check meet_billing_unacknowledged warns after 24 h and fails after 48 h; if Play auto-refunds, transition 7" },
+    { "timer": "voided_sweep", "starts": "always", "default": "hourly, from the stored cursor minus 2 h; Play keeps 30 days of voided history [S]", "configurable": "remote_config meet.billing.void_lookback_hours", "on_expiry": "transitions 7 to 9 for any void RTDN missed" }
+  ],
+  "errors_a_client_will_see": {
+    "ERR_MEET_PURCHASE_REJECTED": "The token failed a check (wrong package, not purchased, account mismatch, wallet hold). Nothing granted; a paid token is refunded by Play.",
+    "ERR_MEET_PURCHASE_TOKEN_CLAIMED": "The token belongs to another account.",
+    "ERR_MEET_PRODUCT_UNKNOWN": "The product is not an active pack or meet_vip.",
+    "ERR_MEET_WALLET_RESTRICTED": "Not from this machine: any spend while purchased is negative after a void. Buying is still allowed, so the person can repay."
+  }
+}

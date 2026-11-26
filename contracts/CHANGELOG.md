@@ -6,6 +6,20 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
+can call changed: no function, table, enum value or error code was added.
+
+### Added
+- **`state-machines/meet_match.json`**: a match is `pending` for `meet.match.ttl_hours` (24), becomes
+  `active` on the first delivered message, and otherwise ends `expired`, `unmatched`, `closed_block`
+  or `closed_moderation`.
+- **`state-machines/meet_play_purchase.json`**: a Play purchase token goes `received` → `pending` →
+  `verified` → `granted` → `completed`, or `rejected`, and a void takes it to `voided` or
+  `partially_voided`. Server-side only; apps see the `meet-purchase-verify` result.
+- **`fixtures/meet/`**: the daily set, a locked teaser, a blocked message, an expiring match, a held
+  photo, a negative Cowrie balance and a pending purchase, plus `contact_filter_cases.json`, the 340
+  vectors and 7 sequences that pgTAP 75 and both mock ports will run.
+
 **MINOR**: direct payment (ADR-0025, `20261121120000_direct_payment_mode`). Additive: nothing an app
 reads today changed shape, and a country without `payment_mode` behaves exactly as before.
 

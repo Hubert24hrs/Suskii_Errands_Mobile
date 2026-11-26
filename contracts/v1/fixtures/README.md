@@ -28,6 +28,7 @@ monotonic key is what makes that work. On the wire it arrives as a JSON number t
 | [`disputed-job.json`](disputed-job.json) | A job frozen mid-settlement with evidence from both sides | `frozen_from` is the field people miss: withdrawing restores the exact prior status, not `confirmed` |
 | [`suspended-provider.json`](suspended-provider.json) | A provider suspended with an end date, and what a customer sees of them | Suspension is bounded and audited by design (OD-25); there is no permanent-ban payload because one function call cannot do that |
 | [`money.json`](money.json) | The spec's own worked example, posted end to end | The only fixture with arithmetic in it, and the numbers are the ones `28_ledger_test.sql` proves |
+| [`meet/`](meet/README.md) | Suskii Meet v5, authored in M0 before it is built: the daily set, a locked teaser, a blocked message, an expiring match, a held photo, a negative Cowrie balance, a pending Play purchase, and the contact filter's test vectors | One shape for the backend, both mocks and the tests from day one |
 
 ## Rules these obey
 
