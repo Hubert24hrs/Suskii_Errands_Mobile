@@ -1,0 +1,84 @@
+{
+  "$comment": "Matches and their 24-hour timer (design §3.2.4, §4.2; contracts/v1/state-machines/meet_match.json). A pending match expires if nobody writes before expires_at; the first delivered message makes it active and stops the timer. The countdown is drawn from expires_at; never extend it on the client. M1-PR5 implements it.",
+  "meet_swipe_mutual_like": {
+    "request": {
+      "p_profile_id": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5",
+      "p_action": "like",
+      "p_like_kind": "like",
+      "p_expected_cost": 0
+    },
+    "response": {
+      "matched": true,
+      "match_id": "7b3dc018-ca9d-4db6-a8a7-b7b081935da1",
+      "conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+      "expires_at": "2026-12-04T19:05:00+01:00",
+      "wallet": null
+    },
+    "note": "wallet is null until the M2 economy is on. A like that does not complete a pair returns matched false and null ids."
+  },
+  "meet_matches": [
+    {
+      "match_id": "7b3dc018-ca9d-4db6-a8a7-b7b081935da1",
+      "conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+      "profile": {
+        "profile_id": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5",
+        "first_name": "Ada",
+        "age": 27,
+        "verified": true,
+        "photo": {
+          "photo_id": "00b6fc80-58cf-4932-ad29-24f5f2d0a8b2",
+          "thumb_path": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5/pt/00b6fc80-58cf-4932-ad29-24f5f2d0a8b2.jpg"
+        }
+      },
+      "status": "pending",
+      "expires_at": "2026-12-04T19:05:00+01:00",
+      "engaged": false
+    },
+    {
+      "match_id": "93649847-c9b7-42ce-a82e-2935fd8e4e8c",
+      "conversation_id": "3e17f589-1434-43e4-af8e-9d3ede6a3617",
+      "profile": {
+        "profile_id": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c",
+        "first_name": "Kemi",
+        "age": 24,
+        "verified": true,
+        "photo": {
+          "photo_id": "9e7692de-bdd8-4c78-ac52-ba8e0867ff74",
+          "thumb_path": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c/pt/9e7692de-bdd8-4c78-ac52-ba8e0867ff74.jpg"
+        }
+      },
+      "status": "active",
+      "expires_at": "2026-12-03T11:20:00+01:00",
+      "engaged": true
+    }
+  ],
+  "rendering": {
+    "pending": "A draining ring to expires_at and the '24h to say hi' pill.",
+    "active": "No ring. expires_at is historical once engaged and must not be shown.",
+    "expired_or_closed": "Not returned by meet_matches(). A card the caller had open fails with ERR_MEET_MATCH_NOT_FOUND."
+  },
+  "reminder": {
+    "inbox_row": {
+      "kind": "meet_reminder",
+      "title_key": "notifMeetMatchReminderTitle",
+      "body_key": "notifMeetMatchReminderBody",
+      "params": {
+        "match_id": "7b3dc018-ca9d-4db6-a8a7-b7b081935da1"
+      },
+      "deep_link": "/meet/matches/7b3dc018-ca9d-4db6-a8a7-b7b081935da1"
+    },
+    "note": "Sent once, 3 hours before expiry (meet.match.reminder_hours_before). The push carries ids only: no name, photo or amount reaches a lock screen. The key names here are illustrative; M1-PR5 fixes them."
+  },
+  "after_expiry": {
+    "meet_send_message_error": "ERR_MEET_CONVERSATION_CLOSED",
+    "conversation": {
+      "conversation_id": "1626e4e0-043f-419c-a21e-d28e8e6b2e6e",
+      "status": "closed",
+      "closed_reason": "expired"
+    }
+  },
+  "errors_a_client_will_see": {
+    "ERR_MEET_MATCH_NOT_FOUND": "Unmatching a match that has closed or that the caller is not in.",
+    "ERR_MEET_CONVERSATION_CLOSED": "Writing after expiry, unmatch, block or a moderation decision. The reason is not given to the other side."
+  }
+}

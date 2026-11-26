@@ -1,0 +1,87 @@
+{
+  "$comment": "M2. A buyer whose purchase was refunded by Google Play after they had spent most of it (ADR-0028 clawback; contracts/v1/state-machines/meet_play_purchase.json transition 7). The void debits the purchased balance, which may go negative; every spend is refused until it is back to zero, but buying is allowed so the person can repay. Bonus Cowries cannot be spent meanwhile either. Cowries have no cash value: the copy says 'Cowries', never 'wallet' (docs/store/meet-copy-rules.md). M2-PR4 (the spend refusal) and M2-PR5 (the clawback) implement it.",
+  "meet_get_state_wallet": {
+    "total": -385,
+    "purchased": -400,
+    "bonus": 15,
+    "restricted": "negative_balance"
+  },
+  "meet_cowrie_history": [
+    {
+      "id": 90214,
+      "kind": "purchase_void",
+      "delta": -520,
+      "description_key": "meetCowrieHistoryRefunded",
+      "ref_kind": "play_purchase",
+      "created_at": "2026-12-09T10:02:00+01:00"
+    },
+    {
+      "id": 90162,
+      "kind": "bonus_grant",
+      "delta": 15,
+      "description_key": "meetCowrieHistoryStreak",
+      "ref_kind": "streak",
+      "created_at": "2026-12-08T08:01:00+01:00"
+    },
+    {
+      "id": 90107,
+      "kind": "spend",
+      "delta": -100,
+      "description_key": "meetCowrieHistoryGift",
+      "ref_kind": "gift",
+      "created_at": "2026-12-07T21:15:00+01:00"
+    },
+    {
+      "id": 90031,
+      "kind": "spend",
+      "delta": -300,
+      "description_key": "meetCowrieHistoryBoost",
+      "ref_kind": "boost",
+      "created_at": "2026-12-06T18:40:00+01:00"
+    },
+    {
+      "id": 89902,
+      "kind": "purchase",
+      "delta": 520,
+      "description_key": "meetCowrieHistoryPurchase",
+      "ref_kind": "play_purchase",
+      "created_at": "2026-12-05T19:30:00+01:00"
+    }
+  ],
+  "arithmetic": "520 bought; 400 spent while the bonus balance was 0, so all of it came from purchased (design §5.3 step 5 spends bonus first, and there was none); 15 bonus granted after both spends; then the 520 voided: 520 - 400 - 520 = -400 purchased. The 15 bonus is untouched because nothing was spent after it arrived, and it cannot be spent while purchased is negative. History keys are illustrative; M2-PR4 fixes them.",
+  "spend_refused": {
+    "rpc": "meet_send_signal",
+    "request": {
+      "p_profile_id": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5",
+      "p_kind": "wink",
+      "p_expected_cost": 5
+    },
+    "error": "ERR_MEET_WALLET_RESTRICTED"
+  },
+  "still_free": "Likes, passes, chat with matches, free allowances and every safety control keep working.",
+  "remorse_refund": {
+    "meet_billing_context": {
+      "purchases_enabled": true,
+      "hold_until": null
+    },
+    "note": "A refund for a non-fraud reason: buying stays open, and the next purchase pays the negative balance back first."
+  },
+  "fraud_refund": {
+    "meet_billing_context": {
+      "purchases_enabled": false,
+      "hold_until": "2027-03-09T10:02:00+01:00"
+    },
+    "note": "A void for fraud, friendly fraud or a chargeback holds purchases for 90 days and reverses the popularity the person's gifts conferred. Nobody who received those gifts loses anything else."
+  },
+  "after_repaying": {
+    "purchase": "meet_cowries_520 granted",
+    "meet_get_state_wallet": {
+      "total": 135,
+      "purchased": 120,
+      "bonus": 15,
+      "restricted": null
+    },
+    "note": "-400 + 520 = 120. The restriction clears itself at zero."
+  },
+  "copy": "Explain it plainly: 'Google Play refunded a Cowrie purchase, so your balance is below zero. Paid actions are paused until it's back to zero.' Never mention cash or withdrawal."
+}

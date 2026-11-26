@@ -17,11 +17,12 @@ This is the agreement between the backend and every frontend. [`../README.md`](.
 | [`realtime-events/channels.json`](realtime-events/channels.json) | **5** topics and the events on each | Generated from the `private.broadcast` calls |
 | [`realtime-events/client-events.json`](realtime-events/client-events.json) | Events clients send: `provider.location` on `job:{id}` | Authored (ADR-0009) |
 | [`state-machines/job.json`](state-machines/job.json), [`offer.json`](state-machines/offer.json) | States, all 31 job transitions with actor, guard and effects, and the timeouts | **Authored**, cross-checked: a literal from/to pair in SQL that is missing here fails CI |
+| [`state-machines/meet_match.json`](state-machines/meet_match.json), [`meet_play_purchase.json`](state-machines/meet_play_purchase.json) | Meet v5 (ADR-0026, ADR-0028): a match's 24-hour timer, and a Play purchase token from bound to granted, completed or voided | **Authored** in M0, before the tables exist. Text CHECKs rather than enums, and not cross-checked by `generate_v1.py` |
 | [`error-codes/codes.json`](error-codes/codes.json) | **109** codes — 94 implemented, 9 planned, 6 app-side — with SQLSTATE, HTTP status, retryability and what the app should do | Authored, cross-checked against every `ERR_` the backend raises |
 | [`error-codes/auth-mapping.json`](error-codes/auth-mapping.json) | Supabase Auth's own codes mapped to app codes | Authored |
 | [`money.schema.json`](money.schema.json) | `{ "amount_minor": integer, "currency": "NGN" }` | JSON Schema |
 | [`edge-functions.openapi.yaml`](edge-functions.openapi.yaml) | The eight Edge Functions. **One is callable by the mobile app (`device-integrity`) and one by the admin console (`kyc-document-url`)** | Authored |
-| [`fixtures/`](fixtures/) | Realistic data for the awkward screens: an expired offer, a failed payment, a disputed job, a suspended provider | Authored |
+| [`fixtures/`](fixtures/) | Realistic data for the awkward screens: an expired offer, a failed payment, a disputed job, a suspended provider; [`fixtures/meet/`](fixtures/meet/README.md) for Meet v5, including the contact filter's test vectors | Authored |
 
 Regenerate: `python contracts/tools/generate_v1.py . --write`. CI runs it without `--write` and
 fails on any difference, which is rule 3.

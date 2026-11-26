@@ -1,0 +1,155 @@
+{
+  "$comment": "Today's faces: what meet_daily_set() returns on the first call of the caller's local day (design §4.2). The set is generated lazily under an advisory lock and is finite: no endless scroll. Paths are object names in the private meet-media bucket, never URLs; the app fetches each through the authenticated object endpoint, so a block applies on the next fetch and nothing shareable exists (design §2.7). M1-PR5 implements it.",
+  "caller": {
+    "profile_id": "ac98cb56-429f-47c0-a8a2-04681d1b0974",
+    "set_date": "2026-12-03",
+    "time_zone": "Africa/Lagos"
+  },
+  "meet_daily_set": [
+    {
+      "profile_id": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5",
+      "first_name": "Ada",
+      "age": 27,
+      "intent": "friendship",
+      "interests": [
+        "afrobeats",
+        "cooking",
+        "travel"
+      ],
+      "shared_interests": [
+        "afrobeats"
+      ],
+      "distance_band": "under_5",
+      "area_label": "Lekki, Lagos",
+      "active": "today",
+      "photos": [
+        {
+          "photo_id": "00b6fc80-58cf-4932-ad29-24f5f2d0a8b2",
+          "path": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5/p/00b6fc80-58cf-4932-ad29-24f5f2d0a8b2.jpg",
+          "thumb_path": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5/pt/00b6fc80-58cf-4932-ad29-24f5f2d0a8b2.jpg",
+          "w": 1080,
+          "h": 1350
+        },
+        {
+          "photo_id": "a323f316-5d53-4c30-a77d-cd86d5822f28",
+          "path": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5/p/a323f316-5d53-4c30-a77d-cd86d5822f28.jpg",
+          "thumb_path": "47e03ee3-9bb7-4521-aef3-c4bc4da674f5/pt/a323f316-5d53-4c30-a77d-cd86d5822f28.jpg",
+          "w": 1080,
+          "h": 1080
+        }
+      ],
+      "prompts": [
+        {
+          "key": "sunday",
+          "answer": "Suya, a long walk and an old Nollywood film"
+        }
+      ],
+      "daily_answer": {
+        "prompt": "Beach or mountains?",
+        "answer": "Beach, every time"
+      },
+      "verified": true,
+      "tags": [
+        "verified",
+        "new_here"
+      ],
+      "super_interest_from_them": false
+    },
+    {
+      "profile_id": "bdb480bf-4797-4e1b-a3f2-69371c960b67",
+      "first_name": "Tobi",
+      "age": 31,
+      "intent": "love",
+      "interests": [
+        "football",
+        "tech",
+        "reading"
+      ],
+      "shared_interests": [],
+      "distance_band": "10_25",
+      "area_label": "Ikeja, Lagos",
+      "active": "this_week",
+      "photos": [
+        {
+          "photo_id": "98260d07-e302-48f2-af56-a6170699c7dd",
+          "path": "bdb480bf-4797-4e1b-a3f2-69371c960b67/p/98260d07-e302-48f2-af56-a6170699c7dd.jpg",
+          "thumb_path": "bdb480bf-4797-4e1b-a3f2-69371c960b67/pt/98260d07-e302-48f2-af56-a6170699c7dd.jpg",
+          "w": 1080,
+          "h": 1350
+        }
+      ],
+      "prompts": [],
+      "daily_answer": null,
+      "verified": false,
+      "tags": [],
+      "super_interest_from_them": true
+    },
+    {
+      "profile_id": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c",
+      "first_name": "Kemi",
+      "age": 24,
+      "intent": "open",
+      "interests": [
+        "dancing",
+        "photography"
+      ],
+      "shared_interests": [
+        "photography"
+      ],
+      "distance_band": "over_50",
+      "area_label": "Ibadan, Oyo",
+      "active": "today",
+      "photos": [
+        {
+          "photo_id": "9e7692de-bdd8-4c78-ac52-ba8e0867ff74",
+          "path": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c/p/9e7692de-bdd8-4c78-ac52-ba8e0867ff74.jpg",
+          "thumb_path": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c/pt/9e7692de-bdd8-4c78-ac52-ba8e0867ff74.jpg",
+          "w": 1080,
+          "h": 1350
+        },
+        {
+          "photo_id": "db4e928b-4355-4bb7-acaf-6f7876315052",
+          "path": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c/p/db4e928b-4355-4bb7-acaf-6f7876315052.jpg",
+          "thumb_path": "af9abbc4-d2b0-48f8-af3f-6b6c1c865f9c/pt/db4e928b-4355-4bb7-acaf-6f7876315052.jpg",
+          "w": 1080,
+          "h": 1350
+        }
+      ],
+      "prompts": [
+        {
+          "key": "green_flag",
+          "answer": "Remembers what I said last week"
+        }
+      ],
+      "daily_answer": null,
+      "verified": true,
+      "tags": [
+        "verified",
+        "popular"
+      ],
+      "super_interest_from_them": false
+    }
+  ],
+  "rendering": {
+    "distance_band": "One of under_5, 5_10, 10_25, 25_50, over_50, with area_label. Never a distance in metres, never a position, never sorted by distance (ADR-0026 D21).",
+    "active": "'today', 'this_week' or null. There is no 'online now' (D20).",
+    "tags": "A subset of new_here, popular, verified. 'popular' never comes with a number: there is no leaderboard.",
+    "super_interest_from_them": "Tobi sent a super interest; the card says so. A plain like is never shown on a card.",
+    "age": "Always present in M1, computed on the server from the birth date set once at check-in. The birth date itself never leaves the server."
+  },
+  "end_of_set": {
+    "meet_daily_set": [],
+    "note": "An empty result once today's set has been acted on: show 'That's today's faces, new ones tomorrow' and count down to the caller's local midnight. A new set is generated on the first call of the next local day."
+  },
+  "m2_additions": {
+    "card": "member | silver | gold | platinum | captain",
+    "frame_key": "null or a cosmetic frame key",
+    "locked": "null, or {min_card, ways[]} for a badge-locked profile: see locked-teaser.json",
+    "spotlight": "true for a boosted profile shown as a spotlight card (at most 2 per viewer per day)"
+  },
+  "errors_a_client_will_see": {
+    "ERR_MEET_PROFILE_INCOMPLETE": "The caller has no active profile yet (no approved photo). Browsing needs one: show today's question and the ladder until the first photo is approved.",
+    "ERR_FEATURE_UNAVAILABLE": "meet.discovery is off for this caller, or meet.v5 is off or testers-only and the caller is not a tester.",
+    "ERR_MEET_PROFILE_NOT_FOUND": "Opening a card whose person has since blocked the caller, paused, been held or suspended. Indistinguishable on purpose: there is no oracle."
+  }
+}

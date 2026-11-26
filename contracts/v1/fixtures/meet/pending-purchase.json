@@ -1,0 +1,120 @@
+{
+  "$comment": "M2. A Cowrie pack bought with a slow payment method, so Google Play reports it PENDING (ADR-0028; contracts/v1/state-machines/meet_play_purchase.json transitions 1-4). Nothing is credited until Play says PURCHASED; the server then grants, consumes and tells the app. The purchase token below is a placeholder, not the shape of a real one. M2-PR5 and M2-PR6 implement it.",
+  "meet_billing_context": {
+    "purchases_enabled": true,
+    "vip_enabled": false,
+    "billing_account_ref": "1e9912593f1c1a030795c2e5fc3d33d5",
+    "packs": [
+      {
+        "product_id": "meet_cowries_200",
+        "units": 200,
+        "best_value": false
+      },
+      {
+        "product_id": "meet_cowries_520",
+        "units": 520,
+        "best_value": false
+      },
+      {
+        "product_id": "meet_cowries_1100",
+        "units": 1100,
+        "best_value": false
+      },
+      {
+        "product_id": "meet_cowries_6000",
+        "units": 6000,
+        "best_value": true
+      }
+    ],
+    "vip": {
+      "product_id": "meet_vip",
+      "base_plans": [
+        "vip-weekly",
+        "vip-monthly"
+      ]
+    },
+    "wallet": {
+      "total": 35,
+      "purchased": 20,
+      "bonus": 15,
+      "version": 9
+    },
+    "hold_until": null
+  },
+  "mock_store_product_details": [
+    {
+      "id": "meet_cowries_520",
+      "price": "₦500.00",
+      "note": "What MockStoreBillingService returns. The app shows ProductDetails.price verbatim and never builds a price; no naira figure is hard-coded anywhere"
+    }
+  ],
+  "buy": {
+    "call": "buyConsumable with GooglePlayPurchaseParam(applicationUserName: billing_account_ref) and autoConsume: false",
+    "note": "billing_account_ref is minted by the server, 32 hex characters, never an email, phone number or user id. autoConsume false keeps the client from consuming before the server grants."
+  },
+  "verify_pending": {
+    "request": {
+      "method": "POST",
+      "path": "/meet-purchase-verify",
+      "body": {
+        "purchase_token": "fixture-token-0000000000000000000000000000000001",
+        "product_id": "meet_cowries_520",
+        "reported_price_micros": 500000000,
+        "reported_currency": "NGN"
+      }
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "state": "pending",
+        "wallet": {
+          "total": 35,
+          "purchased": 20,
+          "bonus": 15,
+          "version": 9
+        }
+      }
+    },
+    "show": "A 'Payment pending' row on the Cowries page, from the purchase stream. Nothing is credited and nothing should look credited."
+  },
+  "later_granted": {
+    "how": "Play reports PURCHASED by RTDN; the server verifies, grants 520 to purchased, consumes, and broadcasts meet.wallet {version} on user:{uid}. On the next resume the app's restorePurchases posts the token again and gets the stored result.",
+    "response": {
+      "status": 200,
+      "body": {
+        "state": "granted",
+        "wallet": {
+          "total": 555,
+          "purchased": 540,
+          "bonus": 15,
+          "version": 10
+        }
+      }
+    },
+    "then": "completePurchase, which is expected to be a no-op because the server already consumed (spike S-15 confirms)."
+  },
+  "queued": {
+    "response": {
+      "status": 202,
+      "body": {
+        "state": "queued"
+      }
+    },
+    "note": "Play could not be reached, or verification is paused. The worker retries for up to 48 hours; nothing for the app to do but refresh later."
+  },
+  "rejected": {
+    "response": {
+      "status": 409,
+      "body": {
+        "code": "ERR_MEET_PURCHASE_REJECTED"
+      }
+    },
+    "note": "Never granted. If it was paid for, the worker refunds and revokes it at Play, so nobody pays for nothing. The HTTP status is illustrative until edge-functions.openapi.yaml lists the function (M2-PR6)."
+  },
+  "never_trusted": "reported_price_micros and reported_currency are recorded for information only; nothing that grants reads them.",
+  "errors_a_client_will_see": {
+    "ERR_MEET_PURCHASE_REJECTED": "A check failed: wrong package, not purchased, account mismatch or a purchase hold.",
+    "ERR_MEET_PURCHASE_TOKEN_CLAIMED": "The token is bound to another account.",
+    "ERR_MEET_PRODUCT_UNKNOWN": "The product is not an active pack or meet_vip."
+  }
+}

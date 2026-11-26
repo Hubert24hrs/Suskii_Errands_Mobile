@@ -1,0 +1,47 @@
+{
+  "$comment": "Authored from docs/plan/meet-v5-design.md (§3.2.4, §4.2, §8.4) before any of it is built: M0-PR1 publishes it so the M1 backend, the app and the tests share one table. The status is a text CHECK on public.meet_matches, not an enum, so contracts/v1/enums.json never lists it and contracts/tools/generate_v1.py does not cross-check this file (its literal-pair check reads job.json only). M1-PR5 implements it; if the SQL disagrees, this file changes in the same PR.",
+  "machine": "meet_match",
+  "subject": "public.meet_matches.status",
+  "enum": null,
+  "check": "text CHECK IN ('pending','active','expired','unmatched','closed_block','closed_moderation')",
+  "note": "A match is a pair, stored low/high (CHECK profile_low < profile_high), between two opaque meet_profiles ids. A client never assigns a status: it calls a verb and reads the result. Every client sees profile ids only, never auth uids (ADR-0026 D15). Erasing a Meet profile deletes its matches by ON DELETE CASCADE, which is not a transition.",
+  "actors": {
+    "M": "either member of the pair",
+    "S": "system: a cron sweep or a server-side side effect",
+    "A": "admin, meet_moderator or super_admin in country scope"
+  },
+  "states": [
+    { "name": "pending", "terminal": false, "meaning": "Matched, nobody has written yet. The 24-hour timer is running" },
+    { "name": "active", "terminal": false, "meaning": "Engaged: the first message has been delivered. No timer" },
+    { "name": "expired", "terminal": true, "meaning": "The timer ran out before either member wrote" },
+    { "name": "unmatched", "terminal": true, "meaning": "A member unmatched. The pair is never shown to each other again" },
+    { "name": "closed_block", "terminal": true, "meaning": "A member blocked the other. Never restored, even after an unblock" },
+    { "name": "closed_moderation", "terminal": true, "meaning": "Closed by a moderation decision about either member" }
+  ],
+  "transitions": [
+    { "id": 1, "from": null, "to": "pending", "actor": "M", "rpc": "meet_swipe", "milestone": "M1", "guard": "A like (or super interest) on a profile that already liked the caller; the target is in the caller's daily set or nearby list, a revealed liker or a super-interest sender; neither has blocked the other; no live match exists for the pair. The pair advisory lock serialises simultaneous mutual likes", "effects": ["origin 'mutual_like'", "expires_at = matched_at + meet.match.ttl_hours", "the pair's conversation is opened, or reopened if one exists (one per pair)", "both are notified with meet_match, deep link /meet/matches/<id>", "the swipe result returns {matched: true, match_id, conversation_id, expires_at}"] },
+    { "id": 2, "from": null, "to": "pending", "actor": "M", "rpc": "meet_respond_reach_request", "milestone": "M2", "guard": "The recipient accepts a pending reach request", "effects": ["origin 'reach_accepted'", "the conversation opens with origin 'reach'", "the recipient's profile is unlocked for the sender"], "open": "Authored as pending so every new match carries the same 24-hour rule. M2-PR8 confirms or changes this when it builds reach requests" },
+    { "id": 3, "from": ["pending"], "to": "active", "actor": "M", "rpc": "meet_send_message", "milestone": "M1", "guard": "The first message of either member is delivered. A send the contact filter blocks is not delivered and does not engage the match", "effects": ["engaged_at set", "the timer stops"] },
+    { "id": 4, "from": ["pending"], "to": "expired", "actor": "S", "rpc": null, "milestone": "M1", "guard": "expires_at has passed with engaged_at still NULL (the meet-sweeps job, every 5 minutes)", "effects": ["the conversation closes with closed_reason 'expired'", "nobody is notified"] },
+    { "id": 5, "from": ["pending", "active"], "to": "unmatched", "actor": "M", "rpc": "meet_unmatch", "milestone": "M1", "guard": "The caller is a member of the match", "effects": ["closed_at and closed_by_profile set", "the conversation closes with closed_reason 'unmatched'", "both swipes get pass_until = 'infinity', so neither is shown the other again"] },
+    { "id": 6, "from": ["pending", "active"], "to": "closed_block", "actor": "M", "rpc": "meet_block", "milestone": "M1", "guard": "Either member blocks the other, directly or through meet_report with p_block (the default)", "effects": ["public.blocks row with source 'meet', which applies to errands too (OD-52)", "the conversation and its open game rounds close, and each stops seeing the other's statuses","M2: pending reach requests between the pair close", "the blocked member is never told"] },
+    { "id": 7, "from": ["pending", "active"], "to": "closed_moderation", "actor": "A", "rpc": null, "milestone": "M1", "guard": "A moderation decision removes either member from Meet: a suspension or ban (admin_meet_suspend, admin_meet_approve_ban), or the profile set to 'removed'", "effects": ["the conversation closes with closed_reason 'moderation'", "nothing tells the other member why"], "open": "Which decisions close matches, and whether a lifted suspension leaves them closed, is settled in M1-PR4. A discovery hold (D16) is reversible and is not one of them" }
+  ],
+  "invariants": [
+    "At most one live match per pair: a partial UNIQUE (profile_low, profile_high) WHERE status IN ('pending','active'), plus the pair advisory lock in meet_swipe, so two simultaneous mutual likes produce exactly one match and one meet_match notification each.",
+    "Only pending expires. An active match has no timer.",
+    "A block wins from any live state, and an unblock never restores a match or reopens its conversation.",
+    "Closed states are terminal. A later match between the same pair is a new row with a new id; the conversation row is reused because there is one per pair.",
+    "Every read re-checks blocks, holds and suspensions: a closed or hidden counterpart reads as ERR_MEET_MATCH_NOT_FOUND or ERR_MEET_PROFILE_NOT_FOUND, never as a reason.",
+    "No presence: a match never shows whether the other person is online (ADR-0026 D20)."
+  ],
+  "timeouts": [
+    { "timer": "match_ttl", "starts": "pending", "default": "24 hours", "configurable": "remote_config meet.match.ttl_hours", "on_expiry": "transition 4" },
+    { "timer": "match_reminder", "starts": "pending", "default": "3 hours before expires_at", "configurable": "remote_config meet.match.reminder_hours_before", "on_expiry": "one meet_reminder notification to both members, reminded_at set; no transition" }
+  ],
+  "errors_a_client_will_see": {
+    "ERR_MEET_MATCH_NOT_FOUND": "meet_unmatch on a match the caller is not in, or one already closed or hidden. Indistinguishable on purpose.",
+    "ERR_MEET_CONVERSATION_CLOSED": "Sending into the conversation of an expired, unmatched or closed match.",
+    "ERR_MEET_DAILY_LIMIT": "meet_swipe over the day's like or super-interest allowance."
+  }
+}
