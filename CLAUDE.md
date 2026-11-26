@@ -85,7 +85,7 @@ Documentation is part of the definition of done, not a postscript. Update on the
 | A phase ends | Phase checkpoint file + `HANDOFF.md` entry + this file's Status table; re-list unresolved ODs |
 | A vendor price, API or country rule changes | `docs/research/REPORT.md` (with the source), `cost-model.md`, the affected `country-packs/*.yaml` field and its `_status` |
 | A new risk appears or one changes score | `docs/research/risk-register.md` |
-| A feature is built | Its runbook, contract entry, and the commands section below. A new or removed `ERR_` code updates `contracts/v1-preview/error-codes.json`; a new enum value regenerates `enums.json` (`python contracts/tools/check_preview.py . --write`) |
+| A feature is built | Its runbook, contract entry, and the commands section below. A new or removed `ERR_` code updates `contracts/v1/error-codes/codes.json`; a new enum value, whether by `CREATE TYPE` or `ALTER TYPE ... ADD VALUE`, regenerates `enums.json` (`python contracts/tools/generate_v1.py . --write`) |
 | An audit runs | `docs/audit/AUDIT-<date>.md` + findings for Kimi in `HANDOFF.md` |
 | Contracts change | `contracts/CHANGELOG.md` (semver) + a migration note in `HANDOFF.md` for breaking changes |
 | An account, a secret, an environment or an alert changes | `docs/HANDOVER.md` (names and places only, never a value) |
@@ -118,7 +118,9 @@ bash supabase/local-fallback/run-plain-postgres.sh # no-Docker fallback (PSQL, P
 cd supabase/functions && npx deno@2.9.6 test --allow-env   # Edge Functions (also fmt --check, lint, check */index.ts)
 terraform -chdir=infra/terraform/envs/dev init -backend=false && terraform -chdir=infra/terraform/envs/dev validate
 python3 contracts/tools/check_frontend_calls.py .      # every call the apps make, against contracts/v1
-python3 contracts/tools/check_screen_parity.py .       # the website's screens against the app's: same features
+python3 contracts/tools/check_screen_parity.py .       # the website's screens against the app's: same features, bar PLATFORM / PLATFORM_REPOSITORIES
+python3 contracts/tools/check_preview.py .             # error catalogue drift, and the Meet copy rules (docs/store/meet-copy-rules.md)
+cd contracts/tools && python3 -m unittest test_check_preview test_generate_v1 test_check_frontend_calls test_check_screen_parity
 cd services/workers && uv sync && uv run ruff check . && uv run pytest -q -m "not integration"   # workers
 ```
 

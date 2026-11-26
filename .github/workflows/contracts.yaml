@@ -15,7 +15,13 @@ name: contracts
 # check_frontend_calls.py checks the other direction: every RPC, argument, table and column the
 # apps' data layers use must exist in contracts/v1 and be granted. It runs when either side changes.
 # check_screen_parity.py holds the website to the app: every repository method one app's screens
-# call, the other's must too, unless the difference is a listed platform one.
+# call, the other's must too, unless the difference is a listed platform one, or the whole
+# repository is app-only by an owner decision (PLATFORM_REPOSITORIES, OD-39), which the website
+# must then not call at all.
+#
+# check_preview.py also greps Meet copy (the Meet keys of the ARB files, the website's
+# meet.*.ts dictionaries, web-marketing's Meet pages) for the terms docs/store/meet-copy-rules.md
+# forbids. Legal pages are exempt: they must say what Cowries are not.
 on:
   push:
     branches: [main]
@@ -25,6 +31,7 @@ on:
       - 'supabase/functions/**'
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
+      - 'packages/suskii_l10n/lib/l10n/**'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
       - 'apps/mobile/lib/**'
@@ -36,6 +43,7 @@ on:
       - 'supabase/functions/**'
       - 'services/**'
       - 'packages/suskii_core/lib/src/errors.dart'
+      - 'packages/suskii_l10n/lib/l10n/**'
       - 'packages/suskii_data/lib/src/supabase/**'
       - 'apps/web-*/src/**'
       - 'apps/mobile/lib/**'
@@ -52,12 +60,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Checker unit tests
         working-directory: contracts/tools
-        run: python3 -m unittest -v test_check_preview test_generate_v1 test_check_frontend_calls
+        run: python3 -m unittest -v test_check_preview test_generate_v1 test_check_frontend_calls test_check_screen_parity
       - name: Validate JSON files
         run: |
           set -euo pipefail
           find contracts/v1 -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool > /dev/null
-      - name: Error-code drift against backend code
+      - name: Error-code drift against backend code; the Meet copy rules
         run: python3 contracts/tools/check_preview.py .
       - name: Frontend calls against the contract
         run: python3 contracts/tools/check_frontend_calls.py .

@@ -5,6 +5,8 @@ Errors (exit 1):
   * an ERR_ code raised by backend code is missing from error-codes.json, or not marked implemented
   * a code marked implemented is no longer raised anywhere
   * error-codes.json is malformed (duplicate codes, bad names, unknown status)
+  * Meet copy uses a term docs/store/meet-copy-rules.md forbids: the Meet keys of every app_*.arb,
+    the website's lib/i18n/meet.*.ts, and web-marketing files whose path names Meet
 
 Warnings (reported, never failing, because they concern Kimi Code's files):
   * a code in packages/suskii_core/lib/src/errors.dart that the catalogue does not know
@@ -26,6 +28,30 @@ from pathlib import Path
 CODE = re.compile(r"\bERR_[A-Z0-9_]*[A-Z0-9]\b")
 ENUM = re.compile(r"CREATE\s+TYPE\s+public\.(\w+)\s+AS\s+ENUM\s*\((.*?)\)\s*;", re.IGNORECASE | re.DOTALL)
 STATUSES = {"implemented", "planned", "client"}
+
+# docs/store/meet-copy-rules.md. Gifts give status, not cash, and Cowries are spend-only (owner
+# decision 2), so Meet copy must never read as paying for attention, company or meetings, which is
+# what Play's sugar-dating clause describes. Whole words in any case, spaces or a hyphen between a
+# term's words, and the common endings on its last: "withdrawals", "earned" and "sponsorship" count.
+MEET_COPY_TERMS = (
+    "wallet", "earn", "earnings", "cash", "cash out", "withdraw", "get paid", "sponsor", "sugar",
+    "generous", "allowance", "pay to chat", "gifts for dates", "discreet affairs",
+)
+MEET_COPY = re.compile(
+    r"\b(?:"
+    + "|".join(r"[\s-]+".join(map(re.escape, t.split())) for t in sorted(MEET_COPY_TERMS, key=len, reverse=True))
+    + r")(?:al|ship|ly|ing|ed|n)?(?:s|es)?\b",
+    re.IGNORECASE,
+)
+# Meet copy whose job is to say what Meet is not. Keyed by a path prefix ending in "/", a path, or
+# `<arb path>#<key>`; every entry carries the reason it was accepted.
+MEET_COPY_EXEMPT: dict[str, str] = {
+    "apps/web-marketing/src/app/[locale]/legal/": (
+        "legal pages must state what Cowries are not (no cash value, no transfer or withdrawal) and "
+        "name what the Meet guidelines forbid"
+    ),
+    "apps/web-marketing/src/content/": "the legal documents the legal pages render, for the same reason",
+}
 
 
 @dataclass(frozen=True)
@@ -71,6 +97,61 @@ def client_codes(root: Path) -> set[str]:
     return set(CODE.findall(path.read_text(encoding="utf-8"))) if path.exists() else set()
 
 
+def _words(identifier: str) -> list[str]:
+    return re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", identifier)
+
+
+def is_meet_key(key: str) -> bool:
+    """`meetTitle`, `errMeetupFull`, `notifMeetLikeTitle`; not `meetingPoint`."""
+    return any(w.lower() in {"meet", "meetup", "meetups"} for w in _words(key))
+
+
+def _exempt(where: str) -> bool:
+    return any(where == k or (k.endswith("/") and where.startswith(k)) for k in MEET_COPY_EXEMPT)
+
+
+def _meet_copy_files(root: Path) -> list[Path]:
+    files = sorted((root / "apps" / "web-customer" / "src" / "lib" / "i18n").glob("meet.*.ts"))
+    marketing = root / "apps" / "web-marketing" / "src"
+    if marketing.is_dir():
+        files += sorted(
+            p for p in marketing.rglob("*")
+            if p.suffix in {".ts", ".tsx"}
+            and any(part.lower().startswith("meet") for part in p.relative_to(marketing).parts)
+        )
+    return files
+
+
+def meet_copy_findings(root: Path) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def hits(text: str) -> list[str]:
+        # Identifiers are camelCase, so `meetCashOut` reads as "meet Cash Out".
+        return [m.group(0) for m in MEET_COPY.finditer(re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", text))]
+
+    for arb in sorted((root / "packages" / "suskii_l10n" / "lib" / "l10n").glob("app_*.arb")):
+        rel = arb.relative_to(root).as_posix()
+        for key, value in json.loads(arb.read_text(encoding="utf-8")).items():
+            if key.startswith("@") or not is_meet_key(key) or _exempt(f"{rel}#{key}"):
+                continue
+            for term in hits(f"{key}\n{value}"):
+                findings.append(Finding("error", f"Meet copy: {key} says {term!r}, which "
+                                                 "docs/store/meet-copy-rules.md forbids", rel))
+
+    for path in _meet_copy_files(root):
+        rel = path.relative_to(root).as_posix()
+        if _exempt(rel):
+            continue
+        text = path.read_text(encoding="utf-8")
+        # Comments are for developers; blank them but keep their newlines so line numbers hold.
+        text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.DOTALL)
+        for number, line in enumerate(text.splitlines(), 1):
+            for term in hits(re.sub(r"(?<!:)//.*", "", line)):
+                findings.append(Finding("error", f"Meet copy: line {number} says {term!r}, which "
+                                                 "docs/store/meet-copy-rules.md forbids", rel))
+    return findings
+
+
 def check(root: Path) -> list[Finding]:
     preview = root / "contracts" / "v1" / "error-codes"
     findings: list[Finding] = []
@@ -107,6 +188,8 @@ def check(root: Path) -> list[Finding]:
         findings.append(Finding("warning", f"{code} is used by the app but not in the preview catalogue "
                                            "(add it to error-codes.json or rename it in the app)",
                                 "packages/suskii_core/lib/src/errors.dart"))
+
+    findings += meet_copy_findings(root)
     return findings
 
 

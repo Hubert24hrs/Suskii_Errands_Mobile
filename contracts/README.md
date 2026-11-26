@@ -11,7 +11,7 @@ four decisions it made.
 | Path | Owner | State |
 |---|---|---|
 | `v1/` | Claude Code | **Binding.** Read-only for Kimi Code |
-| `tools/` | Claude Code | `generate_v1.py` regenerates the derived half; `check_preview.py` checks the error catalogue. Both run in CI |
+| `tools/` | Claude Code | `generate_v1.py` regenerates the derived half; `check_preview.py` checks the error catalogue and the Meet copy rules; `check_frontend_calls.py` holds the apps to the contract and `check_screen_parity.py` holds them to each other. All run in CI |
 | `draft/ui-data-requirements.md` | Kimi Code | Live — the frontend records every data need, action, realtime event and error state here. Input, not authority |
 | `CHANGE_REQUESTS.md` | Kimi Code writes, Claude Code resolves | **Open now that v1 exists** |
 | `v1-preview/` | Claude Code | Superseded |

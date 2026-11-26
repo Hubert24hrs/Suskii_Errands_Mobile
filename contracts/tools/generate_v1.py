@@ -14,7 +14,8 @@ Generated here:
                             reach `private`, so these are NOT callable -- they are listed because
                             an RLS policy calls them as the invoking role, and a reader who finds
                             the grant deserves to know why it is there
-  enums.json                every Postgres enum and its wire values, in order
+  enums.json                every Postgres enum and its wire values, in order, including values
+                            added later by ALTER TYPE ... ADD VALUE [BEFORE|AFTER]
   storage/buckets.json      buckets, their path conventions and who may read or write
   realtime-events/channels.json  channel names, authorisation and payload shape
 
@@ -37,6 +38,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pgparse  # noqa: E402
 
 ENUM = re.compile(r"CREATE\s+TYPE\s+public\.(\w+)\s+AS\s+ENUM\s*\((.*?)\)\s*;", re.IGNORECASE | re.DOTALL)
+ADD_VALUE = re.compile(
+    r"ALTER\s+TYPE\s+public\.(\w+)\s+ADD\s+VALUE\s+(IF\s+NOT\s+EXISTS\s+)?'([^']*)'"
+    r"(?:\s+(BEFORE|AFTER)\s+'([^']*)')?\s*;",
+    re.IGNORECASE,
+)
 ERR = re.compile(r"\bERR_[A-Z0-9_]*[A-Z0-9]\b")
 ADMIN_ROLES = re.compile(r"has_admin_role\s*\(\s*ARRAY\[([^\]]*)\]", re.IGNORECASE)
 
@@ -197,12 +203,40 @@ def describe(fn: pgparse.Function, enums: dict[str, list[str]]) -> dict:
     }
 
 
+def add_enum_value(enums: dict[str, list[str]], match: re.Match, source: str) -> None:
+    """`ALTER TYPE ... ADD VALUE`, applied the way Postgres applies it.
+
+    Where the value lands is the wire order, so BEFORE and AFTER are honoured. Anything Postgres
+    would refuse (an unknown type, an unknown neighbour, a duplicate without IF NOT EXISTS) is
+    raised rather than guessed at: a contract describing a migration that cannot run is wrong.
+    """
+    name, if_not_exists, value, position, neighbour = match.groups()
+    if name not in enums:
+        raise ValueError(f"{source}: ALTER TYPE public.{name} ADD VALUE, but no migration creates that enum")
+    values = enums[name]
+    if value in values:
+        if if_not_exists:
+            return
+        raise ValueError(f"{source}: public.{name} already has {value!r}; Postgres refuses this without IF NOT EXISTS")
+    if position is None:
+        values.append(value)
+        return
+    if neighbour not in values:
+        raise ValueError(f"{source}: public.{name} has no value {neighbour!r} to add {value!r} {position.upper()}")
+    values.insert(values.index(neighbour) + (position.upper() == "AFTER"), value)
+
+
 def declared_enums(root: Path) -> dict[str, list[str]]:
     enums: dict[str, list[str]] = {}
     for path in sorted((root / "supabase" / "migrations").glob("*.sql")):
         text = pgparse.strip_line_comments(path.read_text(encoding="utf-8"))
-        for name, body in ENUM.findall(text):
-            enums[name] = re.findall(r"'([^']*)'", body)
+        # One file may create a type and then add to it, so both statements replay in file order.
+        statements = sorted([*ENUM.finditer(text), *ADD_VALUE.finditer(text)], key=lambda m: m.start())
+        for m in statements:
+            if m.re is ENUM:
+                enums[m.group(1)] = re.findall(r"'([^']*)'", m.group(2))
+            else:
+                add_enum_value(enums, m, path.name)
     return dict(sorted(enums.items()))
 
 

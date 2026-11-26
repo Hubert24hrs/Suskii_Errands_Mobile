@@ -3177,7 +3177,9 @@
               "job_status",
               "chat_message",
               "rating_received",
-              "system"
+              "system",
+              "call_incoming",
+              "call_missed"
             ],
             "enum_name": "notification_kind"
           },

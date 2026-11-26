@@ -20,6 +20,16 @@ can call changed: no function, table, enum value or error code was added.
   photo, a negative Cowrie balance and a pending purchase, plus `contact_filter_cases.json`, the 349
   vectors and 7 sequences that pgTAP 75 and both mock ports will run.
 
+**PATCH**: `enums.json` and `db-types/tables.json` regenerated (Meet v5 M0); the values already
+existed. Nothing in the database changed.
+
+### Fixed
+- **`notification_kind`** now lists `call_incoming` and `call_missed`, after `system`, which is
+  where `20260921120400_notification_kinds_for_calls` put them and what 1.0.0-preview.4 announced.
+  The generator did not replay `ALTER TYPE ... ADD VALUE`, so both files had described the enum as
+  it was before that migration. The same list appears on `notifications.kind`. No other artefact
+  changed: no client-callable function takes or returns this enum.
+
 **MINOR**: direct payment (ADR-0025, `20261121120000_direct_payment_mode`). Additive: nothing an app
 reads today changed shape, and a country without `payment_mode` behaves exactly as before.
 

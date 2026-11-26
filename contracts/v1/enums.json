@@ -194,7 +194,9 @@
       "job_status",
       "chat_message",
       "rating_received",
-      "system"
+      "system",
+      "call_incoming",
+      "call_missed"
     ],
     "offer_status": [
       "pending",
