@@ -208,6 +208,25 @@ Support reads a conversation only when a ticket references it, not by browsing. 
 | `ai_usage`, `ai_usage_accounts` | No client role (rev. 2026-11-03). The person reads their own allowance through `my_ai_usage()`; the concierge reserves and settles through `concierge_begin_turn()`, `concierge_record_turn()` and `concierge_release_turn()`. Finance and super admin read the spend through `admin_ai_usage_summary()`; support, finance and super admin list people through `admin_ai_users()` (audited, country-scoped); support and super admin change one person's allowance, credits or suspension (`admin_set_ai_quota()`, `admin_grant_ai_credits()`, `admin_set_ai_suspension()`); super admin alone moves the budget, the tiers and the switch (`admin_set_ai_budget()`, `admin_set_ai_tier()`, `admin_set_ai_enabled()`) |
 | `audit.log`, `audit.kyc_access` | Super admin R via F (`audit_search`). **No role has `UPDATE` or `DELETE`, including `service_role`** — revoked explicitly, so the hash chain cannot be rewritten through the API |
 
+## 11. Meet v5 (rev. 2026-11-26)
+
+Design: [meet-v5-design.md](meet-v5-design.md) §2.2, §2.3, §4. **No Meet table is granted to a client role**: every read is a `SECURITY DEFINER` projection and every write a keyed verb (D15, D25), so a client cell here names functions, never a table. Each row lands in the PR that creates its objects. A function marked *stub* exists with its final signature, return shape and grants and raises `ERR_FEATURE_UNAVAILABLE` until the PR named builds it (`20261126120100_meet_v5_contract`); an admin stub already applies its roles and step-up. Every client function sits behind `private.meet_require_access` (the Meet flag, testers-only aware, then the caller's country, eligibility, guidelines, suspension and profile), and every admin function behind `has_admin_role` (aal2), with a TOTP code from the last five minutes for a change. Support has no Meet cell except the user summary's three fields.
+
+| Table / function | anon | User | Support | Verification | Meet moderator | Super admin |
+|---|---|---|---|---|---|---|
+| `meet_testers` (schema `private`) | — | — | — | — | — | F (`admin_meet_testers()`, `admin_meet_set_tester()`), audited |
+| `meet_readiness` (schema `private`) | — | — | — | — | — | F (`admin_meet_readiness()`, `admin_meet_set_readiness()`), audited. The `feature_flags_meet_readiness` trigger reads it on every write to `feature_flags` |
+| `meet_get_state()`, `meet_check_in()`, `meet_accept_guidelines()`, `meet_save_profile()`, `meet_set_area()`, `meet_set_discovery_prefs()`, `meet_get_my_profile()`, `meet_submit_photo()`, `meet_remove_photo()`, `meet_reorder_photos()`, `meet_save_prompt()`, `meet_remove_prompt()`, `meet_set_discoverable()`, `meet_pause()`, `meet_set_privacy()`, `meet_delete_profile()` | — | F, own (stub until M1-PR3) | — | — | — | — |
+| `meet_daily_set()`, `meet_get_profile()`, `meet_nearby()`, `meet_swipe()`, `meet_send_signal()`, `meet_likes_summary()`, `meet_matches()`, `meet_unmatch()` | — | F (stub until M1-PR5) | — | — | — | — |
+| `meet_conversations()`, `meet_messages()`, `meet_send_message()`, `meet_mark_read()`, `meet_react_to_message()` | — | F, members only (stub until M1-PR6) | — | — | — | — |
+| `meet_post_status()`, `meet_delete_status()`, `meet_status_ring()`, `meet_view_status()`, `meet_status_viewers()`, `meet_game_catalogue()`, `meet_start_game()`, `meet_answer_game()`, `meet_get_round()`, `meet_daily_question()`, `meet_answer_daily_question()` | — | F (stub until M1-PR7) | — | — | — | — |
+| `meet_report()`, `meet_block()`, `meet_unblock()`, `meet_blocked_profiles()` | — | F, also while suspended (stub until M1-PR4) | — | — | — | — |
+| `meet_verification_pose()`, `meet_submit_verification()` | — | F, own (stub until M1-PR9) | — | — | — | — |
+| `admin_meet_moderation_queue()`, `admin_meet_decide_case()`, `admin_meet_decide_photo()`, `admin_meet_report_queue()`, `admin_meet_report_detail()`, `admin_meet_resolve_report()`, `admin_meet_suspend()`, `admin_meet_lift_suspension()` | — | — | — | — | R:scope + F, suspensions up to 30 days (stub until M1-PR4) | R + F |
+| `admin_meet_approve_ban()`, `admin_meet_correct_birth_date()` | — | — | — | — | — | F, the ban as the second person (stub until M1-PR4) |
+| `admin_meet_user_summary()` | — | — | R:scope, three fields only (stub until M1-PR4) | — | R:scope | R |
+| `admin_meet_verification_queue()`, `admin_meet_decide_verification()`, `admin_meet_verification_access()` | — | — | — | R:scope + F, never their own (stub until M1-PR9) | R:scope + F | R + F |
+
 ## Storage bucket policies
 
 | Bucket | Client upload | Client read | Staff read |
@@ -263,6 +282,8 @@ For each table: one **allow** test per non-`—` cell and one **deny** test per 
 | Admin claim present but `aal1` → denied | MFA mandatory for admins |
 
 ## Revisions
+
+**2026-11-26** (Meet v5 M1-PR2, `20261126120100_meet_v5_contract`). §11 is new: the two gating tables (testers and the readiness checklist, both private and super-admin only) and every M1 client and admin function, most of them stubs. Nothing in §§1–10 changed.
 
 **2026-11-26** (Meet v5 M1-PR1, `20261126120000_meet_v5_enum_values`). A sixth admin role, `meet_moderator`, and a Meet moderator column in §1. `remote_config` and `config_changes` gain the rows they never had; who may read them did not change for the five existing roles. Nothing in §§2–10 admits the new role.
 

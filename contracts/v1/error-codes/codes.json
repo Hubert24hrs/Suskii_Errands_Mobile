@@ -269,8 +269,8 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Feature switched off by a flag or not configured (RB-13). Raised by concierge_start when concierge.text is off for the caller's country.",
-      "client_action": "Hide the entry point; offer the fallback flow."
+      "description": "Feature switched off by a flag or not configured (RB-13). Raised by concierge_start when concierge.text is off for the caller's country, and by every Meet v5 client RPC through private.meet_require_access when the Meet flag it needs is off for the caller (meet.v5 testers-only admits private.meet_testers alone, and every meet.* sub-flag also needs meet.v5). Until its own PR lands, every Meet v5 RPC is a skeleton stub that raises this and does nothing else; the catalogue marks those entries not_built.",
+      "client_action": "Hide the entry point; offer the fallback flow. From a Meet function, meet_get_state included, it means Meet v5 is off for this person: show today's meet-ups page."
     },
     {
       "code": "ERR_CONVERSATION_NOT_FOUND",
@@ -1413,7 +1413,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The profile has no country yet (a Google or Apple sign-up that skipped the country step).",
+      "description": "The profile has no country yet (a Google or Apple sign-up that skipped the country step). Also raised by private.meet_require_access, the check at the top of every Meet v5 client RPC, which the per-RPC error lists in the catalogue do not show.",
       "client_action": "Send the person to the country step, then retry."
     },
     {
@@ -1470,6 +1470,314 @@
       "retryable": false,
       "description": "Start less than 30 minutes or more than 90 days ahead, or longer than 24 hours.",
       "client_action": "Point at the time fields with the rule."
+    },
+    {
+      "code": "ERR_MEET_ELIGIBILITY_REQUIRED",
+      "status": "implemented",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The caller has not passed Meet's 18+ check-in (meet_check_in), so no Meet feature is open to them. Raised by private.meet_require_access, which every Meet v5 client RPC calls first; the generated per-RPC error lists omit it. Until M1-PR3 builds the eligibility record it refuses everybody the flag admits, so the check fails closed.",
+      "client_action": "Send the person to the Meet welcome and check-in screen."
+    },
+    {
+      "code": "ERR_MEET_UNDER_AGE",
+      "status": "client",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": null,
+      "http_status": null,
+      "retryable": false,
+      "description": "Produced by the apps, never raised: meet_check_in returns {status: 'refused'} for somebody under 18, because the refusal is recorded and a raise would roll the record back (design D24).",
+      "client_action": "Show the under-18 screen and the way back to errands. Do not offer to re-enter the date."
+    },
+    {
+      "code": "ERR_MEET_UNAVAILABLE",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Meet is not available on this account or device: a device barred after an under-18 refusal or a ban, or failed device integrity. Indistinguishable on purpose.",
+      "client_action": "Show that Meet is not available and point to support; never say why."
+    },
+    {
+      "code": "ERR_MEET_AGE_ALREADY_SET",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The birth date is set once. A second meet_check_in is refused; corrections go through support and admin_meet_correct_birth_date.",
+      "client_action": "Refresh meet_get_state and continue from where it says the person is."
+    },
+    {
+      "code": "ERR_MEET_GUIDELINES_OUTDATED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The Meet guidelines changed (remote_config meet.guidelines_version) and the caller has not accepted the current version.",
+      "client_action": "Show the guidelines and call meet_accept_guidelines with the version shown, then retry."
+    },
+    {
+      "code": "ERR_MEET_SUSPENDED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The caller is suspended from Meet. The safety functions (report, block, unblock, the blocked list) stay open.",
+      "client_action": "Show the suspension screen with its end date from meet_get_state; keep the safety centre reachable."
+    },
+    {
+      "code": "ERR_MEET_RESTRICTED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A temporary restriction on one scope (messages, new conversations, likes, statuses), for example after three contact-filter strikes in 24 hours. A rate limit, not a ban.",
+      "client_action": "Disable the action and show when it reopens (meet_get_state restrictions)."
+    },
+    {
+      "code": "ERR_MEET_RATE_LIMITED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": true,
+      "description": "Too many of one action in a short window: messages per minute, reports per day, or moving the Meet area more often than every 6 hours.",
+      "client_action": "Ask the person to wait and try again later."
+    },
+    {
+      "code": "ERR_MEET_DAILY_LIMIT",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Today's allowance for this action is used up (likes, winks, pokes, new conversations, game rounds). It resets at the caller's local midnight.",
+      "client_action": "Show the limit and when it resets."
+    },
+    {
+      "code": "ERR_MEET_PROFILE_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No Meet profile with that id is visible to the caller: missing, paused, held, suspended, or blocked either way. Indistinguishable on purpose, so there is no oracle.",
+      "client_action": "Show not found and go back."
+    },
+    {
+      "code": "ERR_MEET_PROFILE_INCOMPLETE",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The action needs an active Meet profile (a clean first name, at least one approved photo, an area). Browsing, and turning discovery on, need one.",
+      "client_action": "Send the person to finish their profile; while the first photo is in review show today's question."
+    },
+    {
+      "code": "ERR_MEET_PHOTO_LIMIT",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Six photos at most (remote_config meet.photos.max), or that position is taken.",
+      "client_action": "Ask the person to remove or replace a photo first."
+    },
+    {
+      "code": "ERR_MEET_PHOTO_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No photo with that id belongs to the caller.",
+      "client_action": "Refresh meet_get_my_profile."
+    },
+    {
+      "code": "ERR_MEET_CONTACT_NOT_ALLOWED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Profile text (first name, bio, prompt, status, game answer) contains a phone number, email, link or social handle. Nothing is written. A chat refusal is a returned status instead, never this error.",
+      "client_action": "Keep the text and show the category message; never highlight the matched words."
+    },
+    {
+      "code": "ERR_MEET_SOLICITATION_NOT_ALLOWED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Profile text asks for money or gifts, or offers paid company. Nothing is written. A chat refusal is a returned status instead.",
+      "client_action": "Keep the text and show the category message."
+    },
+    {
+      "code": "ERR_MEET_MATCH_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No open match with that id includes the caller: expired, unmatched, closed by a block or a moderation decision, or never theirs.",
+      "client_action": "Remove the match from the list and refresh meet_matches."
+    },
+    {
+      "code": "ERR_MEET_CONVERSATION_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No Meet conversation with that id includes the caller.",
+      "client_action": "Go back to the chat list and refresh it."
+    },
+    {
+      "code": "ERR_MEET_CONVERSATION_CLOSED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The conversation is closed: the match expired, somebody unmatched or blocked, or a moderation decision closed it. The reason is not given.",
+      "client_action": "Show the conversation as closed and disable the composer."
+    },
+    {
+      "code": "ERR_MEET_STATUS_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No status with that id is visible to the caller, or the caller is not its poster.",
+      "client_action": "Close the status viewer and refresh the ring."
+    },
+    {
+      "code": "ERR_MEET_STATUS_LIMIT",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Too many statuses today (remote_config meet.status.max_per_day).",
+      "client_action": "Show the limit and when it resets."
+    },
+    {
+      "code": "ERR_MEET_VERIFICATION_REQUIRED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The action needs a photo-verified profile, for example a photo status.",
+      "client_action": "Offer photo verification."
+    },
+    {
+      "code": "ERR_MEET_VERIFICATION_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No verification attempt with that id belongs to the caller, or its pose has expired.",
+      "client_action": "Start a new verification with meet_verification_pose."
+    },
+    {
+      "code": "ERR_MEET_CARD_REQUIRED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The action needs a higher card tier than the caller holds (remote_config meet.status.post_min_card, game and privacy perks).",
+      "client_action": "Explain what unlocks it."
+    },
+    {
+      "code": "ERR_MEET_ROUND_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "No game round with that id belongs to a conversation the caller is in.",
+      "client_action": "Refresh the conversation."
+    },
+    {
+      "code": "ERR_MEET_ROUND_CLOSED",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "The game round has been revealed or has expired.",
+      "client_action": "Show the round's final state from meet_get_round."
+    },
+    {
+      "code": "ERR_MEET_REPORT_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Staff: no Meet report with that id is in the caller's scope.",
+      "client_action": "Refresh the report queue."
+    },
+    {
+      "code": "ERR_MEET_SUSPENSION_NOT_FOUND",
+      "status": "planned",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "Staff: no Meet suspension with that id is in the caller's scope, or a meet moderator is lifting one they may not.",
+      "client_action": "Refresh the person's Meet summary."
+    },
+    {
+      "code": "ERR_MEET_NOT_READY",
+      "status": "implemented",
+      "category": "meet",
+      "surface": "client",
+      "sqlstate": "P0001",
+      "http_status": 400,
+      "retryable": false,
+      "description": "A guarded Meet flag was switched on beyond what the readiness checklist allows (design D23): meet.v5 for anybody but testers before every m1 item is done, or meet.purchases / meet.vip before the m2_testers (testers-only) or m2 items are. Raised by the trigger on feature_flags, so it catches a review_config_change apply too, which leaves the proposal pending. The detail lists the missing items. Switching a flag off is never refused.",
+      "client_action": "Console: show the missing items from the detail and the /meet/readiness checklist; keep the proposal for when they are done."
     }
   ]
 }

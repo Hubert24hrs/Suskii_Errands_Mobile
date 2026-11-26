@@ -184,6 +184,23 @@ class RequirementsTest(unittest.TestCase):
         self.assertEqual(generate_v1.requirements(fn)["recent_mfa"], "totp within 5 minutes")
         self.assertIn("ERR_REAUTH_REQUIRED", generate_v1.describe(fn, {})["errors"])
 
+    def test_a_skeleton_stub_raises_feature_unavailable_and_says_it_is_not_built(self):
+        body = (
+            "BEGIN PERFORM private.require_user(); "
+            "PERFORM private.meet_not_built('meet_pause', jsonb_build_object('p_paused', p_paused));"
+            " END"
+        )
+        fn = pgparse.Function("public", "meet_pause", [], "void", "plpgsql", True, body, "x.sql")
+        entry = generate_v1.describe(fn, {})
+        self.assertEqual(entry["errors"], ["ERR_FEATURE_UNAVAILABLE"])
+        self.assertIs(entry["not_built"], True)
+        self.assertTrue(entry["requires"]["authenticated"])
+
+    def test_a_built_function_carries_no_not_built_key(self):
+        body = "BEGIN PERFORM private.require_user(); END"
+        fn = pgparse.Function("public", "f", [], "void", "plpgsql", True, body, "x.sql")
+        self.assertNotIn("not_built", generate_v1.describe(fn, {}))
+
 
 class EnumTest(unittest.TestCase):
     """Moved from test_check_preview.py when enums.json moved to this generator."""

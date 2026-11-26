@@ -248,6 +248,11 @@ web-admin: Meet moderation, reports, verifications, readiness and testers (M1); 
   - `meet.purchases`/`meet.vip`: with `testers_only` the m2_testers items must be done, else every m2 item.
   - A refusal raises a catchable `P0001 'ERR_MEET_NOT_READY'` with DETAIL listing the missing items, so a `review_config_change` apply aborts and the proposal stays pending.
   - **Disabling is never checked**, so the RB-13 kill switch always works.
+- **As built (rev. 2026-11-26, M1-PR2, `20261126120100_meet_v5_contract`).** Four refinements, each tested in pgTAP 72:
+  - The guard is an **AFTER** row trigger, not BEFORE. `apply_config_change` writes flags with `INSERT … ON CONFLICT DO UPDATE`, and a BEFORE INSERT trigger fires on the insert row even when the conflict turns it into an update. A proposal of `{"enabled": true}` builds that row with an empty payload, so a BEFORE guard refused the release step "switch `meet.v5` on, testers-only". An AFTER row trigger sees only what was written and still raises inside the statement.
+  - `meet_readiness` gains `gates text[]`: the enables an item holds back (`m1`, `m2_testers`, `m2`). The plan upgrade and backups are `m1` items gating `m1` and `m2`, which the table above says in words.
+  - `meet.v5` is seeded at `rollout_pct` 0. Testers pass whatever the percentage, and leaving testers takes a deliberate one.
+  - `meet_require_access` answers the flag and the country, then refuses everybody with `ERR_MEET_ELIGIBILITY_REQUIRED` until M1-PR3 restates it with the eligibility record, so it fails closed if called early.
 
 ### 2.4 Edge Functions and workers
 

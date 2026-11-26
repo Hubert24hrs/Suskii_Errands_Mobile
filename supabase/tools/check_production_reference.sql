@@ -55,6 +55,16 @@ BEGIN
       private.country_pack_gaps('KE');
   END IF;
 
+  -- Meet v5 arrives dark (20261126120100): every Meet flag off, meet.v5 testers-only, nobody a
+  -- tester, and the checklist open, so the only way on is the release steps of RB-17.
+  IF EXISTS (SELECT 1 FROM public.feature_flags WHERE key LIKE 'meet.%' AND enabled)
+     OR (SELECT payload ->> 'testers_only' FROM public.feature_flags
+         WHERE key = 'meet.v5' AND country_code IS NULL) IS DISTINCT FROM 'true'
+     OR EXISTS (SELECT 1 FROM private.meet_testers)
+     OR cardinality(private.meet_readiness_missing('m1')) = 0 THEN
+    RAISE EXCEPTION 'Meet v5 is not dark on a fresh database';
+  END IF;
+
   -- Dev-only rows must not reach production.
   IF EXISTS (SELECT 1 FROM public.legal_documents WHERE url LIKE '%.invalid%') THEN
     RAISE EXCEPTION 'a placeholder legal document is in the migrations';
