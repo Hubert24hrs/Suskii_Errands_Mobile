@@ -214,6 +214,77 @@ class EnumTest(unittest.TestCase):
         self.assertEqual(self.enums()["user_mode"], ["customer", "provider"])
 
 
+class AlterTypeTest(unittest.TestCase):
+    """`ALTER TYPE ... ADD VALUE`, which the generator ignored until Meet v5 M0: notification_kind's
+    `call_incoming` and `call_missed` existed in the database for two months and not in enums.json."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        write(self.root, "supabase/migrations/1_init.sql",
+              "CREATE TYPE public.user_mode AS ENUM ('customer', 'provider');\n")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def enums(self):
+        return generate_v1.declared_enums(self.root)
+
+    def test_an_added_value_goes_at_the_end(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "ALTER TYPE public.user_mode ADD VALUE IF NOT EXISTS 'admin';\n")
+        self.assertEqual(self.enums()["user_mode"], ["customer", "provider", "admin"])
+
+    def test_before_and_after_place_the_value_where_postgres_does(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "ALTER TYPE public.user_mode ADD VALUE 'guest' BEFORE 'customer';\n"
+              "ALTER TYPE public.user_mode ADD VALUE 'worker' AFTER 'customer';\n"
+              "alter type public.user_mode add value if not exists 'admin' after 'provider';\n")
+        self.assertEqual(self.enums()["user_mode"], ["guest", "customer", "worker", "provider", "admin"])
+
+    def test_if_not_exists_on_a_present_value_changes_nothing(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "ALTER TYPE public.user_mode ADD VALUE IF NOT EXISTS 'customer' AFTER 'provider';\n")
+        self.assertEqual(self.enums()["user_mode"], ["customer", "provider"])
+
+    def test_migrations_replay_in_filename_order_and_statements_in_file_order(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "ALTER TYPE public.user_mode ADD VALUE 'admin';\n"
+              "CREATE TYPE public.urgency AS ENUM ('standard');\n"
+              "ALTER TYPE public.urgency ADD VALUE 'flexible' BEFORE 'standard';\n")
+        write(self.root, "supabase/migrations/3_more.sql",
+              "ALTER TYPE public.user_mode ADD VALUE 'worker' BEFORE 'admin';\n")
+        enums = self.enums()
+        self.assertEqual(enums["user_mode"], ["customer", "provider", "worker", "admin"])
+        self.assertEqual(enums["urgency"], ["flexible", "standard"])
+
+    def test_a_commented_out_statement_is_not_replayed(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "-- ALTER TYPE public.user_mode ADD VALUE 'admin';\n")
+        self.assertEqual(self.enums()["user_mode"], ["customer", "provider"])
+
+    def test_what_postgres_refuses_is_refused(self):
+        cases = {
+            "ALTER TYPE public.nope ADD VALUE 'x';": "no migration creates that enum",
+            "ALTER TYPE public.user_mode ADD VALUE 'x' AFTER 'nope';": "has no value 'nope'",
+            "ALTER TYPE public.user_mode ADD VALUE 'provider';": "without IF NOT EXISTS",
+        }
+        for statement, message in cases.items():
+            with self.subTest(statement=statement):
+                write(self.root, "supabase/migrations/2_add.sql", statement + "\n")
+                with self.assertRaisesRegex(ValueError, message):
+                    self.enums()
+
+    def test_an_added_value_reaches_every_artefact_that_names_the_enum(self):
+        write(self.root, "supabase/migrations/2_add.sql",
+              "ALTER TYPE public.user_mode ADD VALUE 'admin';\n"
+              "CREATE TABLE public.t (id uuid, mode public.user_mode NOT NULL);\n"
+              "GRANT SELECT ON public.t TO authenticated;\n")
+        tables = generate_v1.build(self.root)["db-types/tables.json"]["tables"]
+        mode = next(c for c in tables[0]["columns"] if c["name"] == "mode")
+        self.assertEqual(mode["type"]["enum"], ["customer", "provider", "admin"])
+
+
 class StateMachineCrossCheckTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
