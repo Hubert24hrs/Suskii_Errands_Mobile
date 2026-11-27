@@ -4,7 +4,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(16);
+SELECT plan(18);
 
 -- Internal schemas are unreachable for client roles.
 SELECT is(
@@ -158,6 +158,30 @@ SELECT is(
        'private.path_request_id',
        'private.has_admin_role', 'private.is_any_admin')),
   '{}'::text[], 'authenticated can execute only allowlisted functions');
+
+-- A gate written with `is_any_admin()` or `enum_range(NULL::public.admin_role)` admits every
+-- role the enum will ever have. meet_moderator (20261126120000) was the first role that must not
+-- pass most of them, so those were restated with their roles named. A new one is added here in
+-- the same change, with the reason the next role should pass it too. Every schema but the
+-- system ones, so a gate in a schema added later (`meet_econ`, M2) is caught without a list here.
+SELECT is(
+  (SELECT coalesce(array_agg(n.nspname || '.' || p.proname ORDER BY n.nspname, p.proname), '{}')
+   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
+     AND p.prosrc ~* 'is_any_admin|enum_range\s*\(\s*NULL::(public\.)?admin_role'),
+  ARRAY[
+    -- Checks role names in a staff change; it is how meet_moderator is granted at all.
+    'private.config_proposal_problem',
+    'private.is_any_admin'],
+  'only the role-name check and is_any_admin itself admit every admin role');
+
+SELECT is(
+  (SELECT coalesce(array_agg(schemaname || '.' || tablename || '.' || policyname
+                             ORDER BY schemaname, tablename, policyname), '{}')
+   FROM pg_policies
+   WHERE coalesce(qual, '') || coalesce(with_check, '')
+         ~* 'is_any_admin|enum_range\s*\(\s*NULL::(public\.)?admin_role'),
+  '{}'::text[], 'no policy admits every admin role');
 
 -- Money is integer minor units (spec money_rules; S-14).
 SELECT is(

@@ -131,6 +131,8 @@ Runs as a read-only `ai_admin_analytics` role on the **read replica**, never pro
 | `kpi_referral_campaign(campaign_id)` | Super Admin, Finance | Spend against cap, fraud flags |
 | `kpi_supply_demand(city, category, from, to)` | all | Requests vs online providers by hour |
 
+(rev. 2026-11-26) "all" was written when there were five admin roles and means those five: `meet_moderator` (Meet v5, D25) is refused by the three "all" functions, which now name their roles (`20261126120000_meet_v5_enum_values`).
+
 All return aggregates. Any cell below **10** is suppressed to stop re-identification through narrow filters [A — threshold to confirm with the DPIA].
 
 ## 5. Prompts

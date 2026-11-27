@@ -6,6 +6,31 @@ Every MAJOR entry must link a migration note in `HANDOFF.md`.
 
 ## [Unreleased]
 
+**MINOR**: Meet v5 M1 (planned 2.7.0). Additive, and dark: nothing an app reads today changed shape,
+and 1.4.0 calls nothing here.
+
+### Added
+- **Enum values** (`20261126120000_meet_v5_enum_values`): `notification_kind` gains `meet_like`,
+  `meet_match`, `meet_message`, `meet_reminder` and `meet_account` (after `call_missed`; none is
+  urgent); `admin_role` gains `meet_moderator`; `consent_kind` gains `meet_terms` and
+  `meet_sensitive_data`. Regenerated into `enums.json`, `notifications.kind`, `record_consent`'s
+  `p_kind` and `admin_staff_list`'s `roles`. No row carries a new notification kind until M1-PR5.
+  The Meet RPCs record the two consents from M1-PR3, and `record_consent` refuses them (below).
+
+### Changed
+- **`meet_moderator` is refused by every "any admin" read**: the `countries`, `feature_flags`,
+  `remote_config` and `config_changes` policies and `config_change_queue`, `country_pack_readiness`,
+  `admin_overview`, `kpi_jobs_by_state`, `kpi_funnel` and `kpi_supply_demand`, which admitted every
+  value of `admin_role` and now name the five that existed before. Nothing changed for those five.
+  The catalogue now lists those five under `requires.admin_roles` for `admin_overview` (which had
+  shown only the super admin and finance roles its money columns test), `config_change_queue` and
+  `country_pack_readiness`. A console must not offer the dashboard, config pages or the admin
+  assistant to an account whose only role is `meet_moderator`.
+- **`record_consent` refuses `meet_terms` and `meet_sensitive_data`**, granted or withdrawn, with
+  `ERR_INVALID_ARGUMENT` (an error it already raised). Only the Meet RPCs record them: `meet_terms`
+  stands for a passed 18+ check, so a client must not be able to write one for itself. Every other
+  kind behaves as before, and no app passes either value.
+
 **PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
 can call changed: no function, table, enum value or error code was added.
 

@@ -114,7 +114,8 @@
                 "verification_officer",
                 "support_agent",
                 "finance_officer",
-                "dispute_officer"
+                "dispute_officer",
+                "meet_moderator"
               ],
               "enum_name": "admin_role"
             }
@@ -1001,7 +1002,9 @@
               "criminal_record_check",
               "location",
               "marketing",
-              "voice_processing"
+              "voice_processing",
+              "meet_terms",
+              "meet_sensitive_data"
             ],
             "enum_name": "consent_kind"
           },
@@ -3179,7 +3182,12 @@
               "rating_received",
               "system",
               "call_incoming",
-              "call_missed"
+              "call_missed",
+              "meet_like",
+              "meet_match",
+              "meet_message",
+              "meet_reminder",
+              "meet_account"
             ],
             "enum_name": "notification_kind"
           },
