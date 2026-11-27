@@ -6,10 +6,13 @@
 -- returned rather than raised, so it survives; another account on a barred phone, or a phone
 -- that failed integrity, gets "unavailable"; the guidelines version is enforced and can be
 -- brought up to date; the record outlives the Meet profile; and with the flag off nothing works.
+-- Review of PR #121: an under-18 date is recorded even on a barred phone or one that failed
+-- integrity, a phone the refused account registers later is barred too, and an infinite date is
+-- an invalid argument rather than an unmapped error.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(69);
+SELECT plan(82);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b7311111-1111-4111-8111-737373737373', '2348000007301'),   -- A: adult, tester
@@ -19,7 +22,9 @@ INSERT INTO auth.users (id, phone) VALUES
   ('b7355555-5555-4555-8555-737373737373', '2348000007305'),   -- K: lives at UTC+14
   ('b7366666-6666-4666-8666-737373737373', '2348000007306'),   -- P: lives at UTC-11
   ('b7377777-7777-4777-8777-737373737373', '2348000007307'),   -- N: not a tester
-  ('b7399999-9999-4999-8999-737373737373', '2348000007309');   -- O: the oldest
+  ('b7399999-9999-4999-8999-737373737373', '2348000007309'),   -- O: the oldest
+  ('b73aaaaa-aaaa-4aaa-8aaa-737373737373', '2348000007310'),   -- L: adult on a phone M adds later
+  ('b73bbbbb-bbbb-4bbb-8bbb-737373737373', '2348000007311');   -- J: 16, on a phone that failed integrity
 UPDATE public.profiles SET country_code = 'NG' WHERE user_id::text LIKE 'b73%-737373737373';
 INSERT INTO auth.users (id, email)
 VALUES ('b7388888-8888-4888-8888-737373737373', 'meet.c@suskii.test');   -- C: no country yet
@@ -34,6 +39,9 @@ INSERT INTO public.user_devices (user_id, platform, device_fingerprint_hash, int
   ('b7322222-2222-4222-8222-737373737373', 'android', sha256('phone-m2'), NULL),
   ('b7333333-3333-4333-8333-737373737373', 'android', sha256('phone-m1'), NULL),
   ('b7344444-4444-4444-8444-737373737373', 'android', sha256('phone-i'),
+   '{"status": "fail", "platform": "android", "reasons": ["device_not_recognised"]}'),
+  ('b73aaaaa-aaaa-4aaa-8aaa-737373737373', 'android', sha256('phone-m3'), NULL),
+  ('b73bbbbb-bbbb-4bbb-8bbb-737373737373', 'android', sha256('phone-j'),
    '{"status": "fail", "platform": "android", "reasons": ["device_not_recognised"]}');
 
 UPDATE public.feature_flags SET enabled = true WHERE key = 'meet.v5' AND country_code IS NULL;
@@ -114,6 +122,10 @@ SELECT throws_ok(
   format('SELECT public.meet_check_in(%L, %L, 1)', 'key-73-a-0000000002',
          (SELECT d + 1 FROM dates WHERE name = 'lagos_today')),
   '22023', 'ERR_INVALID_ARGUMENT', 'so is a date in the future');
+SELECT throws_ok($$SELECT public.meet_check_in('key-73-a-0000000004', '-infinity', 1)$$,
+  '22023', 'ERR_INVALID_ARGUMENT', 'and -infinity, which has no age, rather than an unmapped error');
+SELECT throws_ok($$SELECT public.meet_check_in('key-73-a-0000000005', 'infinity', 1)$$,
+  '22023', 'ERR_INVALID_ARGUMENT', 'and infinity');
 SELECT throws_ok(
   format('SELECT public.meet_check_in(%L, %L, 2)', 'key-73-a-0000000003',
          (SELECT d FROM dates WHERE name = 'adult')),
@@ -237,8 +249,34 @@ RESET ROLE;
 SELECT is((SELECT count(*)::int FROM public.meet_eligibility
            WHERE user_id = 'b7333333-3333-4333-8333-737373737373'), 0,
   'with no record written for it: nothing is known about that person');
+
+-- A phone the refused account signs in on afterwards. The refusal could only list the phones it
+-- saw, so this one is barred because the refused account uses it.
+INSERT INTO public.user_devices (user_id, platform, device_fingerprint_hash)
+VALUES ('b7322222-2222-4222-8222-737373737373', 'android', sha256('phone-m3'));
+SELECT ok(NOT EXISTS (SELECT 1 FROM public.meet_age_refusal_devices
+                      WHERE device_fingerprint_hash = sha256('phone-m3')),
+  'a phone M registers after the refusal is not in the refusal''s list');
+SELECT pg_temp.act('b73aaaaa-aaaa-4aaa-8aaa-737373737373');
+SET LOCAL ROLE authenticated;
+SELECT is(public.meet_get_state() ->> 'eligibility', 'unavailable',
+  'yet another account on it sees unavailable');
+SELECT is(public.meet_check_in('key-73-l-0000000001', (SELECT d FROM dates WHERE name = 'adult'), 1),
+  '{"status": "unavailable", "age": null}'::jsonb, 'and gets unavailable when it checks in');
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM public.meet_eligibility
+           WHERE user_id = 'b73aaaaa-aaaa-4aaa-8aaa-737373737373'), 0, 'with nothing recorded about it');
+
 UPDATE public.meet_age_refusal_devices SET expires_at = now() - interval '1 minute'
 WHERE device_fingerprint_hash = sha256('phone-m1');
+SELECT ok(private.meet_device_refused('b7333333-3333-4333-8333-737373737373'),
+  'the listed bar lapsing is not enough while M, refused less than a year ago, still uses the phone');
+ALTER TABLE public.meet_eligibility DISABLE TRIGGER meet_eligibility_touch;
+UPDATE public.meet_eligibility SET updated_at = now() - interval '366 days'
+WHERE user_id = 'b7322222-2222-4222-8222-737373737373';
+ALTER TABLE public.meet_eligibility ENABLE TRIGGER meet_eligibility_touch;
+SELECT ok(NOT private.meet_device_refused('b73aaaaa-aaaa-4aaa-8aaa-737373737373'),
+  'a year after the refusal, the phones the refused account registered later are free too');
 SELECT pg_temp.act('b7333333-3333-4333-8333-737373737373');
 SET LOCAL ROLE authenticated;
 SELECT is(public.meet_check_in('key-73-s-0000000002', (SELECT d FROM dates WHERE name = 'adult'), 1)
@@ -270,6 +308,30 @@ SELECT is(public.meet_check_in('key-73-i-0000000002', (SELECT d FROM dates WHERE
 RESET ROLE;
 UPDATE public.remote_config SET value = 'true'
 WHERE key = 'meet.require_device_integrity' AND country_code IS NULL;
+
+-- Under 18 on a phone that failed integrity: the refusal is recorded all the same, and the
+-- answer is the one that phone gives for any date.
+SELECT pg_temp.act('b73bbbbb-bbbb-4bbb-8bbb-737373737373');
+SET LOCAL ROLE authenticated;
+SELECT is(public.meet_check_in('key-73-j-0000000001', (SELECT d FROM dates WHERE name = 'minor'), 1),
+  '{"status": "unavailable", "age": null}'::jsonb,
+  'an under-18 date on a phone that failed integrity gets unavailable, as any date there would');
+RESET ROLE;
+SELECT is(
+  (SELECT status || coalesce(birth_date::text, '') FROM public.meet_eligibility
+   WHERE user_id = 'b73bbbbb-bbbb-4bbb-8bbb-737373737373'),
+  'refused_minor', 'but the account is marked refused_minor, with no date: the declaration is not lost');
+SELECT is((SELECT count(*)::int FROM public.meet_age_refusal_devices
+           WHERE device_fingerprint_hash = sha256('phone-j')), 1, 'and its phone is barred');
+UPDATE public.user_devices SET integrity_verdict = '{"status": "pass", "platform": "android"}'
+WHERE user_id = 'b73bbbbb-bbbb-4bbb-8bbb-737373737373';
+SELECT pg_temp.act('b73bbbbb-bbbb-4bbb-8bbb-737373737373');
+SET LOCAL ROLE authenticated;
+SELECT is(public.meet_check_in('key-73-j-0000000002', (SELECT d FROM dates WHERE name = 'adult'), 1),
+  '{"status": "unavailable", "age": null}'::jsonb,
+  'so once the verdict passes, an adult''s date from the same account is still unavailable');
+SELECT is(public.meet_get_state() ->> 'eligibility', 'refused', 'and meet_get_state says refused');
+RESET ROLE;
 
 -- ---------------------------------------------------------------------------
 -- Time zones and the edges of the range.

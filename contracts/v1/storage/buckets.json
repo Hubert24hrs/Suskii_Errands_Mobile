@@ -115,6 +115,11 @@
       "public": false,
       "defined_in": "20261126120200_meet_v5_identity.sql",
       "max_bytes": 8388608,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
       "policies": [
         {
           "policy": "meet_inbox_own_insert",
@@ -129,6 +134,11 @@
       "public": false,
       "defined_in": "20261126120200_meet_v5_identity.sql",
       "max_bytes": 5242880,
+      "allowed_mime_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
       "policies": [
         {
           "policy": "meet_media_read",

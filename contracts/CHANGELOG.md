@@ -96,6 +96,34 @@ and 1.4.0 calls nothing here.
   `ERR_MEET_PHOTO_NOT_FOUND`, `ERR_MEET_CONTACT_NOT_ALLOWED` and `ERR_MEET_SOLICITATION_NOT_ALLOWED`
   move from planned to implemented. Several come from the access check or the screening trigger,
   so the per-RPC lists do not show them; each code's description says where it is raised.
+- **From the review of M1-PR3** (same migration, before release), what an app must know:
+  - **The ways out stay open.** `meet_pause(true)`, `meet_set_discoverable(false)`,
+    `meet_set_privacy`, `meet_remove_photo`, `meet_remove_prompt` and `meet_delete_profile` work for
+    somebody every other Meet function refuses with `ERR_MEET_UNAVAILABLE` or
+    `ERR_MEET_GUIDELINES_OUTDATED`. Offer them on those screens (and on the website, D1). Coming
+    back (`meet_pause(false)`, `meet_set_discoverable(true)`) still needs full access. Meanwhile
+    that person is shown to nobody and fetches nobody's photos, so **a new guidelines version hides
+    everybody until they accept it**.
+  - **`meet_check_in` on a barred phone, or one that failed integrity, answers `unavailable` for
+    every date**, an under-18 one included; the refusal is still recorded, so `meet_get_state` then
+    says `refused`. `-infinity` and `infinity` are `ERR_INVALID_ARGUMENT`.
+  - **A signed URL for `meet-media` is refused** to everybody but Meet staff in scope: Storage's
+    sign endpoints answer as if the object did not exist. Read through
+    `/storage/v1/object/authenticated/meet-media/<path>` as before.
+  - **The inbox holds at most `2 × (meet.photos.max + 1)` files per person** (14 by default); a
+    further upload is refused by the bucket policy (Storage's 403). Submit what you upload, and
+    re-use an uploaded path on retry rather than uploading again. Files left unsubmitted are erased
+    after a day.
+  - **A first name may carry up to two combining accents per letter**, so a Yoruba name with a
+    tone over ọ or ẹ is accepted after NFC.
+  - **The interim contact screen** also removes every invisible (default-ignorable) character and
+    treats any punctuation, symbol or emoji between digits as part of the run.
+  - **`storage/buckets.json`** now publishes `allowed_mime_types` for `meet-inbox` and `meet-media`
+    (jpeg, png, webp); the buckets always had them.
+  - **`fixtures/meet/contact_filter_cases.json`** gains 18 vectors (367): invisible characters
+    inside numbers, emails and links (`digits-obfuscated-027` … `-038`, `email-020`, `email-021`,
+    `link-025`), commas and a look-alike letter inside a run (`-039`, `-040`), and one guard
+    (`negative-068`). The mock ports should run them.
 ### Changed
 - **`meet_moderator` is refused by every "any admin" read**: the `countries`, `feature_flags`,
   `remote_config` and `config_changes` policies and `config_change_queue`, `country_pack_readiness`,
@@ -130,6 +158,9 @@ and 1.4.0 calls nothing here.
   (`ERR_MEET_GUIDELINES_OUTDATED`) and, where needed, a profile that is not active
   (`ERR_MEET_PROFILE_INCOMPLETE`). The suspension check arrives with M1-PR4.
 - **`private.invoke_edge_worker`** (M1-PR3) adds `meet-media-worker` to its list. Service side only.
+- **`private.erase_account`** (M1-PR3) is restated again, from M1-PR2's version: an erasure now
+  removes the Meet profile, its photos, prompts, "show me" and stored files, and an adult's
+  eligibility row with the birth date; a refusal's row (no date) stays. Service role only.
 
 **PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
 can call changed: no function, table, enum value or error code was added.

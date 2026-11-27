@@ -1501,7 +1501,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Meet is not available on this account or device: an earlier under-18 refusal on the account, a device barred after an under-18 refusal on any account (meet_age_refusal_devices, 365 days) or, from M1-PR4, a ban, or failed device integrity at check-in. Indistinguishable on purpose. Raised by private.meet_require_access, the check at the top of every Meet v5 client RPC (so not in the per-RPC lists); meet_check_in returns {status: 'unavailable'} instead of raising, because it records a safety event.",
+      "description": "Meet is not available on this account or device: an earlier under-18 refusal on the account, a device barred after an under-18 refusal on any account (meet_age_refusal_devices, 365 days) or, from M1-PR4, a ban, or failed device integrity at check-in. Indistinguishable on purpose. Raised by private.meet_require_access, the check at the top of every Meet v5 client RPC (so not in the per-RPC lists); meet_check_in returns {status: 'unavailable'} instead of raising, because it records a safety event, and it gives that answer for every date on a barred or failing phone, an under-18 one included (which it still records). The ways out are not refused with it: meet_pause(true), meet_set_discoverable(false), meet_set_privacy, meet_remove_photo, meet_remove_prompt and meet_delete_profile. Somebody refused this way is shown to nobody and reads nobody's photos.",
       "client_action": "Show that Meet is not available and point to support; never say why."
     },
     {
@@ -1523,7 +1523,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The Meet guidelines changed (remote_config meet.guidelines_version) and the caller has not accepted the current version. Raised by private.meet_require_access before any other Meet function runs (so not in the per-RPC lists), and by meet_check_in and meet_accept_guidelines when the version passed is not the current one.",
+      "description": "The Meet guidelines changed (remote_config meet.guidelines_version) and the caller has not accepted the current version. Raised by private.meet_require_access before any other Meet function runs (so not in the per-RPC lists), and by meet_check_in and meet_accept_guidelines when the version passed is not the current one. The ways out (meet_pause(true), meet_set_discoverable(false), meet_set_privacy, meet_remove_photo, meet_remove_prompt, meet_delete_profile) do not raise it. Until they accept, the person is shown to nobody and reads nobody's photos.",
       "client_action": "Show the guidelines and call meet_accept_guidelines with the version shown, then retry."
     },
     {
@@ -1622,7 +1622,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Profile text (first name, bio, prompt, status, game answer) contains a phone number, email, link or social handle. Nothing is written. A chat refusal is a returned status instead, never this error. From M1-PR3 for first name, bio and prompt answers (a table trigger, so on every write path); statuses and game answers from M1-PR7. Until M1-PR4 the screen catches digit runs of seven or more, emails and links; handles and number words arrive with it.",
+      "description": "Profile text (first name, bio, prompt, status, game answer) contains a phone number, email, link or social handle. Nothing is written. A chat refusal is a returned status instead, never this error. From M1-PR3 for first name, bio and prompt answers (table triggers on meet_profiles and meet_prompts, so on every write path); statuses and game answers from M1-PR7. Until M1-PR4 the screen catches digit runs of seven or more (any character that is not a letter or a digit may sit between the digits), emails and links, after removing every invisible (default-ignorable) character; handles and number words arrive with it.",
       "client_action": "Keep the text and show the category message; never highlight the matched words."
     },
     {

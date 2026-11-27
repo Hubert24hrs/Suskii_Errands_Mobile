@@ -40,8 +40,22 @@
 -- M1-PR6). `private.meet_may_view` answers "discoverable to the viewer" until M1-PR5 adds a match,
 -- an open conversation and today's set.
 --
+-- Review of PR #121 (rev. 2026-11-27):
+--   * A declared under-18 age is recorded before anything else is decided, so a barred phone or a
+--     failed integrity verdict cannot swallow it; a refused account bars the phones it registers
+--     later too, for as long as the refusal's bar runs.
+--   * Visibility follows access: somebody Meet refuses (a barred phone, outdated guidelines, out of
+--     the rollout) is shown to nobody and reads nobody's media, and can still leave: pause, hide,
+--     privacy, remove a photo or prompt, delete the profile (`private.meet_require_exit`).
+--   * The interim screen strips every default-ignorable code point and lets any non-alphanumeric
+--     character separate the digits of a run. Prompt answers are screened by a trigger.
+--   * `meet-media` refuses to sign a URL for anybody but staff (`storage.operation`, [S]).
+--   * The inbox is capped per person and swept daily; an underage-appearance rejection keeps its
+--     files; account erasure removes the Meet profile and an adult's birth date.
+--
 -- **1.4.0 calls nothing here.** The only changes to shared objects are the `legal_documents` type
--- CHECK (widened) and `invoke_edge_worker` (one more name on its list).
+-- CHECK (widened), `invoke_edge_worker` (one more name on its list) and `erase_account` (restated
+-- with the Meet profile and eligibility).
 
 -- ---------------------------------------------------------------------------
 -- Legal documents (§2.9): the four Meet page types. Widened from 20260916120500, its only
@@ -125,8 +139,12 @@ CREATE TABLE public.meet_profiles (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                   uuid NOT NULL UNIQUE REFERENCES auth.users (id) ON DELETE CASCADE,
   country_code              char(2) NOT NULL REFERENCES public.countries (code),
-  -- Letters, spaces, apostrophes and hyphens: no digit, @, _ or dot, so no handle fits.
-  first_name                text NOT NULL CHECK (first_name ~ '^[[:alpha:]][[:alpha:] ''-]{0,29}$'),
+  -- Letters, spaces, apostrophes and hyphens: no digit, @, _ or dot, so no handle fits. Up to two
+  -- combining accents (U+0300-U+036F, less the invisible U+034F) may follow each character: NFC
+  -- has no single code point for a tone mark over an underdotted vowel, so Yoruba's Folake
+  -- spelled with its tones needs them; more would be stacking for effect.
+  first_name                text NOT NULL
+                            CHECK (first_name ~ '^[[:alpha:]][\u0300-\u034E\u0350-\u036F]{0,2}([[:alpha:] ''-][\u0300-\u034E\u0350-\u036F]{0,2}){0,29}$'),
   bio                       text CHECK (length(bio) BETWEEN 1 AND 300),
   intent                    text NOT NULL DEFAULT 'open'
                             CHECK (intent IN ('love', 'friendship', 'hangout', 'open')),
@@ -226,6 +244,10 @@ CREATE TABLE public.meet_photos (
     DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX meet_photos_sha256 ON public.meet_photos (sha256) WHERE sha256 IS NOT NULL;
+-- `meet_submit_photo` (an upload is submitted once) and the inbox sweep look photos up by these.
+CREATE INDEX meet_photos_inbox_path ON public.meet_photos (inbox_path) WHERE inbox_path IS NOT NULL;
+CREATE INDEX meet_photos_thumb_inbox_path ON public.meet_photos (thumb_inbox_path)
+  WHERE thumb_inbox_path IS NOT NULL;
 
 CREATE TABLE public.meet_prompts (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -334,7 +356,9 @@ AS $$
   LIMIT 1;
 $$;
 
--- A device this account uses was barred by an under-18 refusal that has not expired. M1-PR4
+-- A device this account uses was barred by an under-18 refusal that has not expired: one of the
+-- phones the refusal came from, or one the refused account registered afterwards, while the
+-- refusal is younger than the bar (`meet_check_in` can only bar the phones it sees). M1-PR4
 -- restates this whole to add `meet_banned_devices`.
 CREATE FUNCTION private.meet_device_refused(p_user uuid)
 RETURNS boolean
@@ -344,7 +368,15 @@ AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_devices d
     JOIN public.meet_age_refusal_devices r ON r.device_fingerprint_hash = d.device_fingerprint_hash
-    WHERE d.user_id = p_user AND r.expires_at > now());
+    WHERE d.user_id = p_user AND r.expires_at > now())
+  OR EXISTS (
+    SELECT 1 FROM public.user_devices d
+    JOIN public.user_devices other ON other.device_fingerprint_hash = d.device_fingerprint_hash
+                                  AND other.user_id <> d.user_id
+    JOIN public.meet_eligibility e ON e.user_id = other.user_id AND e.status = 'refused_minor'
+    WHERE d.user_id = p_user
+      AND e.updated_at > now() - make_interval(
+            days => private.meet_retention_days('age_refusal_device_days', 365)));
 $$;
 
 -- L3 (§8.1): a device of this account failed Play Integrity or App Attest while
@@ -484,12 +516,38 @@ BEGIN
   WHERE mp.user_id = p_user AND mp.last_active_on IS DISTINCT FROM v_today;
 END $$;
 
+-- The check for the verbs that only take somebody out of view: pause, hide, the privacy switches,
+-- removing a photo or a prompt, deleting the profile. Somebody shut out by a barred phone, a
+-- revocation or outdated guidelines must still be able to leave; the flag and the country still
+-- apply, and nothing here counts as being active.
+CREATE FUNCTION private.meet_require_exit(p_user uuid)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_refusal text;
+BEGIN
+  IF p_user IS NULL THEN
+    RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
+  END IF;
+  v_refusal := private.meet_access_refusal(p_user, 'meet.v5', false);
+  IF v_refusal NOT IN ('ERR_MEET_UNAVAILABLE', 'ERR_MEET_GUIDELINES_OUTDATED') THEN
+    RAISE EXCEPTION '%', v_refusal USING ERRCODE = 'P0001';
+  END IF;
+END $$;
+
 -- ---------------------------------------------------------------------------
 -- Text screening (§8.2). The interim screen, replaced whole by M1-PR4; the signature is final.
 -- It blocks what is unambiguous on every surface: a run of seven or more digits (a phone or
 -- account number; times, ages and prices stay shorter), an email address, a link, and the terms
 -- §8.2 blocks everywhere, with the category `contact_filter_cases.json` assigns each. No hold
 -- comes from here yet, and nothing reads the conversation or the sender until the digit tail.
+-- Every Unicode default-ignorable code point is removed first (soft hyphen, the joiners, the
+-- direction marks and isolates, the invisible operators, the fillers, the variation selectors
+-- and the tag characters), because each renders as nothing and would otherwise split a number or
+-- an address that reads whole. Inside a run, anything that is not a letter or a digit is a
+-- separator; a look-alike letter from another script counts as one too, which fails closed.
 -- ---------------------------------------------------------------------------
 CREATE FUNCTION private.meet_screen_text(
   p_text text, p_country char(2), p_surface text, p_conversation_id uuid DEFAULT NULL,
@@ -511,9 +569,11 @@ BEGIN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
   v_text := lower(normalize(coalesce(p_text, ''), NFKC));
-  v_text := regexp_replace(v_text, '[​-‍⁠﻿]', '', 'g');
+  v_text := regexp_replace(v_text,
+    '[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180F\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF0-\uFFF8\U0001BCA0-\U0001BCA3\U0001D173-\U0001D17A\U000E0000-\U000E0FFF]',
+    '', 'g');
 
-  IF v_text ~ '[0-9]([[:space:].()/-]*[0-9]){6,}' THEN
+  IF v_text ~ '[0-9]([^a-z0-9]*[0-9]){6,}' THEN
     v_keys := array_append(v_keys, 'interim_digit_run');
   END IF;
   IF v_text ~ '[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+' THEN
@@ -621,6 +681,27 @@ END $$;
 CREATE TRIGGER meet_profiles_screen
   BEFORE INSERT OR UPDATE OF first_name, bio ON public.meet_profiles
   FOR EACH ROW EXECUTE FUNCTION private.meet_profiles_screen();
+
+-- Prompt answers the same way, on every write path. An answer that did not change keeps the
+-- moderation it has, so re-saving the same words does not undo a moderator's decision on them.
+CREATE FUNCTION private.meet_prompts_screen()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.answer IS NOT DISTINCT FROM OLD.answer THEN
+    NEW.moderation := OLD.moderation;
+    RETURN NEW;
+  END IF;
+  NEW.moderation := private.meet_screen_field(NEW.answer,
+    (SELECT mp.country_code FROM public.meet_profiles mp WHERE mp.id = NEW.profile_id), 'prompt');
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER meet_prompts_screen
+  BEFORE INSERT OR UPDATE OF answer ON public.meet_prompts
+  FOR EACH ROW EXECUTE FUNCTION private.meet_prompts_screen();
 
 -- Every interest is a key that exists and is active when it is added. A key retired later stays
 -- on the profiles that already carry it.
@@ -764,7 +845,10 @@ $$;
 -- viewer's distance; each is within the other's age range; the viewer's "show me" is applied one
 -- way (it narrows what they see and never who sees them); and two people who have done an errand
 -- together see each other only if both have switched "hide me from errand contacts" off.
--- M1-PR4 adds the suspension check; M1-PR5 builds the set-based discovery on the same rules.
+-- Both must also pass the access check as it stands now: somebody Meet refuses (a barred phone,
+-- outdated guidelines, out of the rollout, a revocation) is shown to nobody and sees nobody, so
+-- visibility never outlasts access. M1-PR4 adds the suspension to `meet_access_refusal`, which
+-- this then follows; M1-PR5 builds the set-based discovery on the same rules.
 CREATE FUNCTION private.meet_discoverable_to(p_viewer uuid, p_target uuid)
 RETURNS boolean
 LANGUAGE sql STABLE
@@ -793,7 +877,9 @@ AS $$
            OR (vp.seeking = 'women' AND t.gender = 'woman')
            OR (vp.seeking = 'men' AND t.gender = 'man'))
       AND ((NOT v.hide_from_errand_contacts AND NOT t.hide_from_errand_contacts)
-           OR NOT private.meet_errand_contacts(v.user_id, t.user_id)));
+           OR NOT private.meet_errand_contacts(v.user_id, t.user_id))
+      AND private.meet_access_refusal(v.user_id, 'meet.v5', false) IS NULL
+      AND private.meet_access_refusal(t.user_id, 'meet.v5', false) IS NULL);
 $$;
 
 -- Whether a viewer may see a profile's approved content. M1-PR5 restates this whole: connected
@@ -810,9 +896,18 @@ $$;
 -- The `meet-media` read policy (§2.7). Index lookups only. Admits the owner (pending and rejected
 -- photos too, so they can see what is waiting and why), a moderator or super admin in the
 -- profile's country (signed URLs of at most 300 s in the console), and anybody else only for an
--- approved photo of a profile `meet_may_view` lets them see, with Meet switched on for them.
+-- approved photo of a profile `meet_may_view` lets them see, while Meet would let them in.
 -- Statuses (`s/`) arrive with M1-PR7 and report copies (`e/`) with M1-PR4; until then neither is
 -- readable. The viewer must be the caller: the policy never asks on somebody else's behalf.
+--
+-- Only staff may sign a URL. Storage's sign endpoints need nothing but this SELECT, take an expiry
+-- the caller chooses, and the URL they return works without a session, so a viewer could mint a
+-- link that outlives a block (§8.5: "no shareable URLs"). Storage names the operation it is
+-- running in the `storage.operation` setting [S: supabase/storage `0024-operation-function.sql`
+-- and `src/http/routes/operations.ts`: `storage.object.sign`, `storage.object.sign_many`],
+-- checked against the real Storage API by `supabase/tests/e2e/meet_storage_e2e.sh`. Unset, as
+-- in a plain SQL session, nothing is refused on that ground. The console's 300 s limit on its own
+-- signed URLs is the console's, not the database's.
 CREATE FUNCTION private.meet_media_visible_to(p_name text, p_viewer uuid)
 RETURNS boolean
 LANGUAGE plpgsql STABLE
@@ -824,6 +919,9 @@ DECLARE
   v_profile public.meet_profiles%ROWTYPE;
   v_status  text;
   v_viewer  public.meet_profiles%ROWTYPE;
+  v_signing boolean := coalesce(current_setting('storage.operation', true), '')
+                         IN ('storage.object.sign', 'storage.object.sign_many', 'object.sign',
+                             'object.sign_many');
 BEGIN
   IF p_viewer IS NULL OR p_viewer IS DISTINCT FROM auth.uid()
      OR p_name IS NULL OR p_name !~ '^[0-9a-f-]{36}/(p|pt)/[0-9a-f-]{36}\.(jpg|png|webp)$' THEN
@@ -841,9 +939,14 @@ BEGIN
   IF v_status IS NULL THEN
     RETURN false;
   END IF;
-  IF v_profile.user_id = p_viewer
-     OR private.admin_may_read_country(v_profile.country_code,
-                                       ARRAY['meet_moderator']::public.admin_role[]) THEN
+  IF private.admin_may_read_country(v_profile.country_code,
+                                    ARRAY['meet_moderator']::public.admin_role[]) THEN
+    RETURN v_status IN ('pending_review', 'approved', 'rejected');
+  END IF;
+  IF v_signing THEN
+    RETURN false;
+  END IF;
+  IF v_profile.user_id = p_viewer THEN
     RETURN v_status IN ('pending_review', 'approved', 'rejected');
   END IF;
   IF v_status <> 'approved' THEN
@@ -851,13 +954,17 @@ BEGIN
   END IF;
   SELECT * INTO v_viewer FROM public.meet_profiles mp WHERE mp.user_id = p_viewer;
   RETURN FOUND
-     AND private.meet_flag_on('meet.v5', p_viewer, v_viewer.country_code)
+     AND private.meet_access_refusal(p_viewer, 'meet.v5', false) IS NULL
      AND private.meet_may_view(v_viewer.id, v_profile.id);
 END $$;
 
 -- The upload policies for `meet-inbox` and `meet-verify`: the caller's own folder, a file named
 -- by a uuid in a type the bucket stores, and the caller passes the Meet access check (eligible,
 -- current guidelines, no barred device). Uploading a selfie also needs `meet.photo_verification`.
+-- The inbox holds at most two files (photo and thumbnail) per allowed photo, plus one pair, per
+-- person at a time: the worker empties it within a minute, so only a script reaches the cap, and
+-- on the Free plan's 1 GB an uncapped 8 MB bucket is one script from full. What is abandoned there
+-- the daily sweep removes (`private.meet_sweep_inbox`).
 CREATE FUNCTION private.meet_upload_allowed(p_bucket text, p_name text)
 RETURNS boolean
 LANGUAGE plpgsql STABLE
@@ -872,7 +979,10 @@ BEGIN
   END IF;
   IF p_bucket = 'meet-inbox'
      AND p_name ~ ('^' || v_uid::text || '/[0-9a-f-]{36}\.(jpg|png|webp)$') THEN
-    RETURN private.meet_access_refusal(v_uid, 'meet.v5', false) IS NULL;
+    RETURN private.meet_access_refusal(v_uid, 'meet.v5', false) IS NULL
+       AND (SELECT count(*) FROM storage.objects o
+            WHERE o.bucket_id = 'meet-inbox' AND o.name LIKE v_uid::text || '/%')
+           < 2 * (least(greatest(coalesce(private.remote_config_int('meet.photos.max'), 6), 1), 6) + 1);
   END IF;
   IF p_bucket = 'meet-verify' AND p_name ~ ('^' || v_uid::text || '/[0-9a-f-]{36}\.jpg$') THEN
     RETURN private.meet_access_refusal(v_uid, 'meet.photo_verification', false) IS NULL;
@@ -905,8 +1015,11 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_schema = 'storage' AND table_name = 'buckets'
                AND column_name = 'allowed_mime_types') THEN
+    -- One statement per bucket: `contracts/tools/generate_v1.py` reads `WHERE id = '<bucket>'`.
     UPDATE storage.buckets SET allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp']
-    WHERE id IN ('meet-inbox', 'meet-media');
+    WHERE id = 'meet-inbox';
+    UPDATE storage.buckets SET allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp']
+    WHERE id = 'meet-media';
     UPDATE storage.buckets SET allowed_mime_types = ARRAY['image/jpeg'] WHERE id = 'meet-verify';
   END IF;
 END $$;
@@ -963,20 +1076,69 @@ END $$;
 
 REVOKE ALL ON FUNCTION private.invoke_edge_worker(text) FROM PUBLIC, anon, authenticated;
 
--- Every minute, but only when a photo is waiting: an idle minute costs one index probe rather
--- than an Edge Function invocation, which the Free plan counts.
+-- Every minute, but only when the worker has something it could claim: an idle minute costs one
+-- index probe rather than an Edge Function invocation, which the Free plan counts. The predicate
+-- is `claim_outbox`'s (20260921121600, with `gateway_claim_outbox`'s defaults: 8 attempts, a claim
+-- stale after 5 minutes), so an event that has used its attempts, or one a running worker holds,
+-- does not call the worker every minute for nothing.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
     PERFORM cron.schedule('meet-media-dispatch', '* * * * *',
       $cron$SELECT private.invoke_edge_worker('meet-media-worker')
             WHERE EXISTS (SELECT 1 FROM private.outbox o
-                          WHERE o.aggregate = 'meet_media' AND o.dispatched_at IS NULL)$cron$);
+                          WHERE o.aggregate = 'meet_media' AND o.dispatched_at IS NULL
+                            AND o.attempts < 8
+                            AND (o.claimed_at IS NULL
+                                 OR o.claimed_at < now() - interval '5 minutes'))$cron$);
+  END IF;
+END $$;
+
+-- What is left in the inbox: an upload never submitted, or one whose submission was refused. A
+-- file waiting for the worker belongs to a `processing` photo and stays, however long the worker
+-- is down. Anything else older than a day is queued for the storage worker, a bounded batch a
+-- run; an erase queued twice is harmless.
+CREATE FUNCTION private.meet_sweep_inbox()
+RETURNS integer
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_n integer := 0;
+  v_object record;
+BEGIN
+  FOR v_object IN
+    SELECT o.name FROM storage.objects o
+    WHERE o.bucket_id = 'meet-inbox'
+      AND o.name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp)$'
+      AND o.created_at < now() - interval '24 hours'
+      AND NOT EXISTS (SELECT 1 FROM public.meet_photos ph
+                      WHERE ph.status = 'processing'
+                        AND (ph.inbox_path = o.name OR ph.thumb_inbox_path = o.name))
+    ORDER BY o.created_at
+    LIMIT 1000
+  LOOP
+    PERFORM private.emit_event('storage', split_part(v_object.name, '/', 1), 'storage.erase_object',
+      jsonb_build_object('bucket', 'meet-inbox', 'path', v_object.name));
+    v_n := v_n + 1;
+  END LOOP;
+  RETURN v_n;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule('meet-inbox-sweep', '25 2 * * *',
+      $cron$SELECT private.meet_sweep_inbox()$cron$);
   END IF;
 END $$;
 
 -- What a photo's files are, queued for the storage worker to remove one by one (§2.7): the
--- stored copies under the profile's folder, and the inbox copies under the uploader's.
+-- stored copies under the profile's folder, and the inbox copies under the uploader's. A photo a
+-- person rejected as appearing under 18 is child-safety evidence (§8.3, RB-17): the uploader
+-- removing or replacing it marks the row removed and leaves its files, which M1-PR4 moves into
+-- the evidence it keeps. Deleting the whole profile still empties its folder; M1-PR4's decision
+-- copies such a photo to evidence first, before any deletion can reach it.
 CREATE FUNCTION private.meet_erase_photo_files(p_photo_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -988,6 +1150,9 @@ DECLARE
   v_path  text;
 BEGIN
   SELECT ph.* INTO v_photo FROM public.meet_photos ph WHERE ph.id = p_photo_id;
+  IF v_photo.reason_code = 'underage_appearance' THEN
+    RETURN;
+  END IF;
   SELECT mp.user_id INTO v_owner FROM public.meet_profiles mp WHERE mp.id = v_photo.profile_id;
   FOREACH v_path IN ARRAY array_remove(ARRAY[v_photo.media_path, v_photo.thumb_path], NULL) LOOP
     PERFORM private.emit_event('storage', v_photo.profile_id::text, 'storage.erase_object',
@@ -1173,6 +1338,11 @@ END $$;
 -- raised, so what they record survives (D24). A second check-in on an eligible account is
 -- ERR_MEET_AGE_ALREADY_SET: the date is set once, and a correction is a support decision with
 -- evidence (`admin_meet_correct_birth_date`).
+-- An under-18 date is recorded whatever else is true: on a barred phone, or one that failed
+-- integrity, the account is still marked refused and every phone barred, and the answer is the
+-- `unavailable` that phone gives for any date, so trying dates there teaches nothing. Otherwise
+-- the refusal would be lost, and the same account could come back with an adult's date once the
+-- verdict or the bar changed.
 CREATE OR REPLACE FUNCTION public.meet_check_in(
   p_idempotency_key text, p_birth_date date, p_guidelines_version integer)
 RETURNS jsonb
@@ -1187,6 +1357,7 @@ DECLARE
   v_age     integer;
   v_claim   jsonb;
   v_status  text;
+  v_quiet   boolean;
   v_result  jsonb;
 BEGIN
   SELECT p.country_code INTO v_country FROM public.profiles p WHERE p.user_id = v_uid;
@@ -1196,7 +1367,7 @@ BEGIN
   IF v_country IS NULL THEN
     RAISE EXCEPTION 'ERR_COUNTRY_NOT_SET' USING ERRCODE = 'P0001';
   END IF;
-  IF p_birth_date IS NULL OR p_guidelines_version IS NULL THEN
+  IF p_birth_date IS NULL OR NOT isfinite(p_birth_date) OR p_guidelines_version IS NULL THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
   v_today := private.meet_local_today(v_uid);
@@ -1223,11 +1394,9 @@ BEGIN
     RAISE EXCEPTION 'ERR_MEET_AGE_ALREADY_SET' USING ERRCODE = 'P0001';
   END IF;
 
+  v_quiet := private.meet_device_refused(v_uid) OR private.meet_integrity_failed(v_uid);
   IF v_status IS NOT NULL THEN
     PERFORM private.meet_note_safety_event(v_uid, 'age_refused', 'check_in', '{}'::text[]);
-    v_result := jsonb_build_object('status', 'unavailable', 'age', NULL);
-  ELSIF private.meet_device_refused(v_uid) OR private.meet_integrity_failed(v_uid) THEN
-    PERFORM private.meet_note_safety_event(v_uid, 'device_refused', 'check_in', '{}'::text[]);
     v_result := jsonb_build_object('status', 'unavailable', 'age', NULL);
   ELSIF v_age < private.meet_min_age() THEN
     INSERT INTO public.meet_eligibility (user_id, status, birth_date, guidelines_version)
@@ -1240,7 +1409,11 @@ BEGIN
       SET refused_at = EXCLUDED.refused_at,
           expires_at = greatest(public.meet_age_refusal_devices.expires_at, EXCLUDED.expires_at);
     PERFORM private.meet_note_safety_event(v_uid, 'age_refused', 'check_in', '{}'::text[]);
-    v_result := jsonb_build_object('status', 'refused', 'age', NULL);
+    v_result := jsonb_build_object('status', CASE WHEN v_quiet THEN 'unavailable' ELSE 'refused' END,
+                                   'age', NULL);
+  ELSIF v_quiet THEN
+    PERFORM private.meet_note_safety_event(v_uid, 'device_refused', 'check_in', '{}'::text[]);
+    v_result := jsonb_build_object('status', 'unavailable', 'age', NULL);
   ELSE
     INSERT INTO public.meet_eligibility (user_id, status, birth_date, guidelines_version)
     VALUES (v_uid, 'eligible', p_birth_date, p_guidelines_version);
@@ -1320,7 +1493,7 @@ DECLARE
 BEGIN
   PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
   IF (p_first_name IS NOT NULL AND (v_first IS NULL
-        OR v_first !~ '^[[:alpha:]][[:alpha:] ''-]{0,29}$'))
+        OR v_first !~ '^[[:alpha:]][\u0300-\u034E\u0350-\u036F]{0,2}([[:alpha:] ''-][\u0300-\u034E\u0350-\u036F]{0,2}){0,29}$'))
      OR length(v_bio) > 300
      OR (p_intent IS NOT NULL AND p_intent NOT IN ('love', 'friendship', 'hangout', 'open'))
      OR (v_gender IS NOT NULL AND v_gender NOT IN ('', 'woman', 'man'))
@@ -1647,7 +1820,8 @@ BEGIN
 END $$;
 
 -- Removing a photo queues its files for erasure; the row stays as `removed` and is never
--- returned again. Removing the last approved photo takes the profile out of discovery.
+-- returned again. Removing the last approved photo takes the profile out of discovery. A way
+-- out, so somebody Meet has shut out can still do it.
 CREATE OR REPLACE FUNCTION public.meet_remove_photo(p_idempotency_key text, p_photo_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -1659,7 +1833,7 @@ DECLARE
   v_profile uuid;
   v_claim   jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  PERFORM private.meet_require_exit(v_uid);
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'meet_remove_photo',
     jsonb_build_object('photo_id', p_photo_id));
   IF v_claim IS NOT NULL THEN
@@ -1734,7 +1908,6 @@ DECLARE
   v_answer  text := btrim(p_answer);
   v_profile public.meet_profiles%ROWTYPE;
   v_claim   jsonb;
-  v_state   text;
   v_id      uuid;
 BEGIN
   PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
@@ -1758,18 +1931,22 @@ BEGIN
                AND pr.position <> p_position AND pr.moderation <> 'removed') THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023', DETAIL = 'prompt already used';
   END IF;
-  v_state := private.meet_screen_field(v_answer, v_profile.country_code, 'prompt');
-
-  INSERT INTO public.meet_prompts (profile_id, prompt_key, answer, position, moderation)
-  VALUES (v_profile.id, p_prompt_key, v_answer, p_position, v_state)
-  ON CONFLICT (profile_id, position) DO UPDATE
-    SET prompt_key = EXCLUDED.prompt_key, answer = EXCLUDED.answer,
-        moderation = EXCLUDED.moderation, created_at = now()
-  RETURNING id INTO v_id;
+  -- The table's trigger screens the answer. An update, then an insert, rather than ON CONFLICT,
+  -- so it screens once; the profile row locked above keeps two saves from racing.
+  UPDATE public.meet_prompts pr
+  SET prompt_key = p_prompt_key, answer = v_answer, created_at = now()
+  WHERE pr.profile_id = v_profile.id AND pr.position = p_position
+  RETURNING pr.id INTO v_id;
+  IF v_id IS NULL THEN
+    INSERT INTO public.meet_prompts (profile_id, prompt_key, answer, position)
+    VALUES (v_profile.id, p_prompt_key, v_answer, p_position)
+    RETURNING id INTO v_id;
+  END IF;
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key, to_jsonb(v_id));
   RETURN v_id;
 END $$;
 
+-- A way out, like removing a photo.
 CREATE OR REPLACE FUNCTION public.meet_remove_prompt(p_idempotency_key text, p_prompt_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -1780,7 +1957,7 @@ DECLARE
   v_uid   uuid := private.require_user();
   v_claim jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  PERFORM private.meet_require_exit(v_uid);
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'meet_remove_prompt',
     jsonb_build_object('prompt_id', p_prompt_id));
   IF v_claim IS NOT NULL THEN
@@ -1796,7 +1973,8 @@ BEGIN
 END $$;
 
 -- Visible in discovery or not. Turning it on needs an active profile: a clean first name, at
--- least one approved photo and an area.
+-- least one approved photo and an area. Turning it off is a way out, open to somebody Meet has
+-- shut out; turning it on is not.
 CREATE OR REPLACE FUNCTION public.meet_set_discoverable(p_idempotency_key text, p_discoverable boolean)
 RETURNS void
 LANGUAGE plpgsql
@@ -1808,7 +1986,11 @@ DECLARE
   v_profile public.meet_profiles%ROWTYPE;
   v_claim   jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  IF p_discoverable = false THEN
+    PERFORM private.meet_require_exit(v_uid);
+  ELSE
+    PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  END IF;
   IF p_discoverable IS NULL THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
@@ -1825,7 +2007,8 @@ BEGIN
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key, NULL);
 END $$;
 
--- A break: hidden from discovery until unpaused. Free for everybody (D6).
+-- A break: hidden from discovery until unpaused. Free for everybody (D6). Pausing is a way out;
+-- coming back needs the full access check.
 CREATE OR REPLACE FUNCTION public.meet_pause(p_idempotency_key text, p_paused boolean)
 RETURNS void
 LANGUAGE plpgsql
@@ -1836,7 +2019,11 @@ DECLARE
   v_uid   uuid := private.require_user();
   v_claim jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  IF p_paused THEN
+    PERFORM private.meet_require_exit(v_uid);
+  ELSE
+    PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  END IF;
   IF p_paused IS NULL THEN
     RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
   END IF;
@@ -1856,7 +2043,8 @@ END $$;
 
 -- The M1 privacy switches, each free (D6). A key M1 does not know, or a value that is not a
 -- boolean, is refused rather than ignored, so a client cannot believe it set something it did
--- not. M2 adds `incognito`, `hide_last_active` and `hide_distance` behind a card.
+-- not. M2 adds `incognito`, `hide_last_active` and `hide_distance` behind a card. Open to
+-- somebody Meet has shut out: nobody sees their profile meanwhile, so no switch exposes anything.
 CREATE OR REPLACE FUNCTION public.meet_set_privacy(p_idempotency_key text, p_settings jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1869,7 +2057,7 @@ DECLARE
   v_profile public.meet_profiles%ROWTYPE;
   v_result  jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  PERFORM private.meet_require_exit(v_uid);
   IF p_settings IS NULL OR jsonb_typeof(p_settings) <> 'object'
      OR p_settings = '{}'::jsonb
      OR EXISTS (SELECT 1 FROM jsonb_each(p_settings) s
@@ -1898,12 +2086,35 @@ BEGIN
   RETURN v_result;
 END $$;
 
--- Deleting the Meet profile: the profile, its photos and prompts (by cascade), the discovery
--- preferences, and every stored file, which the storage worker erases by folder: the profile's
--- folder in `meet-media` and the person's inbox folder. The eligibility record stays, so the
--- birth date is still set once and a refusal is still a refusal. Later PRs add their own rows to
--- what goes (swipes, matches, conversations, statuses) and to what stays (suspensions, report
--- evidence).
+-- What deleting a Meet profile removes, for `meet_delete_profile` and for account erasure: the
+-- profile, its photos and prompts (by cascade), the discovery preferences, and every stored file,
+-- which the storage worker erases by folder: the profile's folder in `meet-media` and the
+-- person's inbox folder. The eligibility record is not touched here. Later PRs add their own rows
+-- to what goes (swipes, matches, conversations, statuses) and to what stays (suspensions, report
+-- evidence) in this one place, so both callers follow.
+CREATE FUNCTION private.meet_erase_profile(p_user uuid)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_profile uuid;
+BEGIN
+  IF p_user IS NULL THEN
+    RAISE EXCEPTION 'ERR_INVALID_ARGUMENT' USING ERRCODE = '22023';
+  END IF;
+  DELETE FROM public.meet_profiles mp WHERE mp.user_id = p_user RETURNING mp.id INTO v_profile;
+  DELETE FROM public.meet_discovery_prefs dp WHERE dp.user_id = p_user;
+  IF v_profile IS NOT NULL THEN
+    PERFORM private.emit_event('storage', v_profile::text, 'storage.erase_prefix',
+      jsonb_build_object('bucket', 'meet-media', 'prefix', v_profile::text || '/'));
+  END IF;
+  PERFORM private.emit_event('storage', p_user::text, 'storage.erase_prefix',
+    jsonb_build_object('bucket', 'meet-inbox', 'prefix', p_user::text || '/'));
+END $$;
+
+-- Deleting the Meet profile. The eligibility record stays, so the birth date is still set once
+-- and a refusal is still a refusal. A way out, so somebody Meet has shut out can still do it.
 CREATE OR REPLACE FUNCTION public.meet_delete_profile(p_idempotency_key text)
 RETURNS void
 LANGUAGE plpgsql
@@ -1911,24 +2122,81 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_uid     uuid := private.require_user();
-  v_claim   jsonb;
-  v_profile uuid;
+  v_uid   uuid := private.require_user();
+  v_claim jsonb;
 BEGIN
-  PERFORM private.meet_require_access(v_uid, 'meet.v5', false);
+  PERFORM private.meet_require_exit(v_uid);
   v_claim := private.idempotency_claim(v_uid, p_idempotency_key, 'meet_delete_profile', '{}'::jsonb);
   IF v_claim IS NOT NULL THEN
     RETURN;
   END IF;
-  DELETE FROM public.meet_profiles mp WHERE mp.user_id = v_uid RETURNING mp.id INTO v_profile;
-  DELETE FROM public.meet_discovery_prefs dp WHERE dp.user_id = v_uid;
-  IF v_profile IS NOT NULL THEN
-    PERFORM private.emit_event('storage', v_profile::text, 'storage.erase_prefix',
-      jsonb_build_object('bucket', 'meet-media', 'prefix', v_profile::text || '/'));
-  END IF;
-  PERFORM private.emit_event('storage', v_uid::text, 'storage.erase_prefix',
-    jsonb_build_object('bucket', 'meet-inbox', 'prefix', v_uid::text || '/'));
+  PERFORM private.meet_erase_profile(v_uid);
   PERFORM private.idempotency_complete(v_uid, p_idempotency_key, NULL);
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Account erasure reaches Meet now, not at M1-PR8: the profile, its photos and files, and an
+-- adult's birth date, which are personal data the moment this migration creates the tables. A
+-- refusal's row stays: it holds no date, and it is what bars the phones the refused account
+-- registered after its refusal (`meet_device_refused`). Restated whole from its latest version,
+-- 20261126120100_meet_v5_contract (M1-PR2), with only the marked lines added. M1-PR8 restates it
+-- again, from this one, for the tables M1-PR4 to M1-PR7 create; `collect_personal_data` waits for
+-- M1-PR8 as planned.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION private.erase_account(p_user uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  UPDATE public.profiles
+  SET display_name = '', avatar_path = NULL, timezone = NULL
+  WHERE user_id = p_user;
+
+  DELETE FROM public.trusted_contacts WHERE user_id = p_user;
+  DELETE FROM public.saved_places WHERE user_id = p_user;
+  -- Concierge history goes with the account; its turns were redacted, and nothing needs them.
+  DELETE FROM public.ai_conversations WHERE user_id = p_user;
+  -- Meet-ups the person hosted are their words and their chosen place; attendance is who they
+  -- met. Both go, and anybody still going to an upcoming one is told it is off.
+  PERFORM private.notify(a.user_id, 'system', 'notification.meetup.cancelled.title',
+    'notification.meetup.cancelled.body', jsonb_build_object('meetup_id', m.id))
+  FROM public.meetups m JOIN public.meetup_attendees a ON a.meetup_id = m.id
+  WHERE m.host_id = p_user AND m.status = 'published' AND m.ends_at > now();
+  DELETE FROM public.meetups WHERE host_id = p_user;
+  DELETE FROM public.meetup_attendees WHERE user_id = p_user;
+  -- Meet v5 M1-PR2: the tester row and its staff note. `auth.users` is updated below, never
+  -- deleted, so the row's ON DELETE CASCADE would not fire.
+  DELETE FROM private.meet_testers WHERE user_id = p_user;
+  -- Meet v5 M1-PR3: the Meet profile, its photos, prompts, "show me" and stored files, and an
+  -- adult's eligibility row with its birth date. A refusal (no date) stays.
+  PERFORM private.meet_erase_profile(p_user);
+  DELETE FROM public.meet_eligibility WHERE user_id = p_user AND status = 'eligible';
+  DELETE FROM private.request_access_notes n
+  USING public.requests r
+  WHERE r.id = n.request_id AND r.customer_id = p_user;
+  DELETE FROM public.favorites WHERE customer_id = p_user OR provider_id = p_user;
+  -- Device rows are referenced by consents, which are the record of what was agreed; the
+  -- addresses a push could still reach are what identify the handset, so those go.
+  UPDATE public.user_devices SET push_token = NULL, voip_token = NULL WHERE user_id = p_user;
+  UPDATE public.provider_profiles SET online = false WHERE user_id = p_user;
+
+  DELETE FROM auth.sessions WHERE user_id = p_user;
+  DELETE FROM auth.identities WHERE user_id = p_user;
+  DELETE FROM auth.mfa_factors WHERE user_id = p_user;
+  UPDATE auth.users
+  SET phone = NULL, email = NULL, encrypted_password = NULL,
+      raw_user_meta_data = '{}'::jsonb,
+      banned_until = 'infinity', deleted_at = now()
+  WHERE id = p_user;
+
+  -- The user's folder in `avatars` (one folder per user, named by id).
+  PERFORM private.emit_event('storage', p_user::text, 'storage.erase_prefix',
+    jsonb_build_object('bucket', 'avatars', 'prefix', p_user::text || '/'));
+
+  PERFORM private.audit_write('account.erased', 'auth.users', p_user::text, NULL, NULL,
+    'deletion_grace_elapsed');
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -1952,9 +2220,11 @@ REVOKE ALL ON FUNCTION
   private.meet_record_consent(uuid, public.consent_kind, uuid),
   private.meet_access_refusal(uuid, text, boolean),
   private.meet_require_access(uuid, text, boolean),
+  private.meet_require_exit(uuid),
   private.meet_screen_text(text, char, text, uuid, uuid),
   private.meet_screen_field(text, char, text),
   private.meet_profiles_screen(),
+  private.meet_prompts_screen(),
   private.meet_profiles_check_interests(),
   private.meet_refresh_profile(uuid),
   private.meet_profile_completeness(uuid),
@@ -1965,6 +2235,8 @@ REVOKE ALL ON FUNCTION
   private.meet_media_visible_to(text, uuid),
   private.meet_upload_allowed(text, text),
   private.meet_erase_photo_files(uuid),
+  private.meet_sweep_inbox(),
+  private.meet_erase_profile(uuid),
   private.meet_media_ingested(text, uuid, text, text, text, integer, integer, text),
   private.meet_media_failed(text, uuid, text),
   public.gateway_meet_media_ingested(text, uuid, text, text, text, integer, integer, text),

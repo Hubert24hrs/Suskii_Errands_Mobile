@@ -8,10 +8,17 @@
 -- review, with a limit, and is fetched only through the policy (owner, an eligible viewer in the
 -- same country who may see the profile, a moderator in scope, and nobody else); and no auth uid
 -- appears in any path somebody else's app can read.
+--
+-- Review of PR #121: visibility follows access (a barred phone or outdated guidelines hides the
+-- person and stops them fetching), the ways out stay open to somebody shut out, invisible
+-- characters and any punctuation inside a digit run are caught, prompt answers are screened by a
+-- trigger, only staff can sign a meet-media URL, the inbox is capped and swept, an
+-- underage-appearance rejection keeps its files, account erasure reaches Meet, and a Yoruba name
+-- with its tones is a name.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = extensions, public;
-SELECT plan(162);
+SELECT plan(214);
 
 INSERT INTO auth.users (id, phone) VALUES
   ('b7411111-1111-4111-8111-747474747474', '2348000007401'),   -- A: the owner, NG
@@ -171,7 +178,7 @@ SELECT is(
 SELECT set_eq(
   $$SELECT p.proname::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname IN ('public', 'private') AND p.prosrc ~ 'meet_discovery_prefs'$$,
-  ARRAY['meet_set_discovery_prefs', 'meet_get_my_profile', 'meet_delete_profile',
+  ARRAY['meet_set_discovery_prefs', 'meet_get_my_profile', 'meet_erase_profile',
         'meet_discoverable_to'],
   '"show me" is read by the owner''s own functions and the discovery predicate, and no staff function');
 SELECT ok(
@@ -234,8 +241,19 @@ SELECT is(
   '{}'::text[], 'somebody who never checked in is sent to check in by all fourteen');
 SELECT is(
   (SELECT coalesce(array_agg(fn || ': ' || outcome ORDER BY fn), '{}') FROM outcomes
-   WHERE who = 'minor' AND outcome <> 'P0001 ERR_MEET_UNAVAILABLE'),
-  '{}'::text[], 'somebody refused as under 18 gets unavailable from all fourteen');
+   WHERE who = 'minor' AND outcome <> 'P0001 ERR_MEET_UNAVAILABLE'
+     AND fn NOT IN ('meet_delete_profile', 'meet_remove_photo', 'meet_remove_prompt',
+                    'meet_set_privacy')),
+  '{}'::text[], 'somebody refused as under 18 gets unavailable from every function that lets anybody in');
+SELECT is(
+  (SELECT array_agg(fn || ': ' || outcome ORDER BY fn) FROM outcomes
+   WHERE who = 'minor' AND fn IN ('meet_delete_profile', 'meet_remove_photo', 'meet_remove_prompt',
+                                  'meet_set_privacy')),
+  ARRAY['meet_delete_profile: 22023 ERR_IDEMPOTENCY_KEY_INVALID',
+        'meet_remove_photo: 22023 ERR_IDEMPOTENCY_KEY_INVALID',
+        'meet_remove_prompt: 22023 ERR_IDEMPOTENCY_KEY_INVALID',
+        'meet_set_privacy: 22023 ERR_INVALID_ARGUMENT'],
+  'while the ways out let them through to the argument checks (pause and hide, called with NULL, are not leaving)');
 SELECT set_config('request.jwt.claims', '', true);
 SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT public.meet_save_profile('key-74-anon-000001', 'Ada', NULL, NULL, NULL,
@@ -323,11 +341,60 @@ RESET ROLE;
 SELECT is(
   (SELECT bio || ' v' || version FROM public.meet_profiles WHERE id = (SELECT id FROM ids WHERE name = 'a')),
   'I''m 25 and love jollof v3', 'none of the refusals wrote anything');
+
+SELECT pg_temp.act('b7422222-2222-4222-8222-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT is(public.meet_save_profile('key-74-b-000000002', U&'F\1ECD\0301l\00E1k\1EB9\0301', NULL, NULL,
+                                   NULL, NULL, NULL, NULL) ->> 'first_name',
+  U&'F\1ECD\0301l\00E1k\1EB9\0301',
+  'a Yoruba name with its tones is a name: NFC has no single character for a tone over o or e with a dot below');
+SELECT throws_ok($$SELECT public.meet_save_profile('key-74-b-000000003', U&'Ada\0300\0301\0302\0303',
+                     NULL, NULL, NULL, NULL, NULL, NULL)$$, '22023', 'ERR_INVALID_ARGUMENT',
+  'three accents stacked on one letter are not');
+SELECT throws_ok($$SELECT public.meet_save_profile('key-74-b-000000004', U&'Ad\034Fa', NULL, NULL, NULL,
+                     NULL, NULL, NULL)$$, '22023', 'ERR_INVALID_ARGUMENT',
+  'nor is an invisible grapheme joiner inside one');
+RESET ROLE;
 SELECT throws_ok(
   format($$UPDATE public.meet_profiles SET bio = 'text me 08031234567' WHERE id = %L$$,
          (SELECT id FROM ids WHERE name = 'a')),
   'P0001', 'ERR_MEET_CONTACT_NOT_ALLOWED',
   'the screen is a trigger, so no write path gets around it');
+
+-- The interim screen (review of PR #121; vectors in contact_filter_cases.json).
+SELECT is(
+  (SELECT array_agg(to_hex(c) || ':' || (private.meet_screen_text(
+            '0803' || chr(c) || '123' || chr(c) || '4567', 'NG', 'bio') ->> 'action') ORDER BY c)
+   FROM unnest(ARRAY[x'00AD', x'034F', x'061C', x'115F', x'17B4', x'180B', x'180E', x'200B', x'200E',
+                     x'200F', x'202A', x'202E', x'2060', x'2061', x'2064', x'2066', x'2069', x'3164',
+                     x'FE00', x'FE0F', x'FEFF', x'FFA0', x'E0001', x'E0041']::int[]) c),
+  (SELECT array_agg(to_hex(c) || ':block' ORDER BY c)
+   FROM unnest(ARRAY[x'00AD', x'034F', x'061C', x'115F', x'17B4', x'180B', x'180E', x'200B', x'200E',
+                     x'200F', x'202A', x'202E', x'2060', x'2061', x'2064', x'2066', x'2069', x'3164',
+                     x'FE00', x'FE0F', x'FEFF', x'FFA0', x'E0001', x'E0041']::int[]) c),
+  'every invisible code point between the groups of a phone number is removed before matching: soft hyphen, joiners, direction marks and isolates, invisible operators, fillers, variation selectors, tags');
+SELECT is(
+  ARRAY[private.meet_screen_text('ada.obi@gmail' || chr(x'200E'::int) || '.com', 'NG', 'bio') ->> 'category',
+        private.meet_screen_text('ada.obi' || chr(x'00AD'::int) || '@' || chr(x'2063'::int) || 'yahoo.com',
+                                 'NG', 'bio') ->> 'category',
+        private.meet_screen_text('www' || chr(x'200F'::int) || '.adaobi.ng', 'NG', 'bio') ->> 'category'],
+  ARRAY['contact', 'contact', 'contact'], 'and so is one inside an email address or a link');
+SELECT is(
+  ARRAY(SELECT private.meet_screen_text(t, 'NG', 'bio') ->> 'action'
+        FROM unnest(ARRAY['0803,123,4567', '0803 *** 123 *** 4567', '0803_123_4567',
+                          '0803' || chr(x'1F525'::int) || '123' || chr(x'2764'::int) || '4567',
+                          '0803' || chr(x'043E'::int) || '123' || chr(x'043E'::int) || '4567'])
+             WITH ORDINALITY u (t, n) ORDER BY n),
+  ARRAY['block', 'block', 'block', 'block', 'block'],
+  'inside a run anything that is not a letter or a digit separates digits: commas, stars, underscores, emoji, a look-alike letter');
+SELECT is(
+  ARRAY(SELECT private.meet_screen_text(t, 'NG', 'bio') ->> 'action'
+        FROM unnest(ARRAY['I''m 25, love 2 dogs', 'see you at 7:30', U&'\20A65,000 dinner?', 'flat 12',
+                          'I''m 5''9', 'call me at 9pm',
+                          'Lagos' || chr(x'00AD'::int) || ' girl, flat 12'])
+             WITH ORDINALITY u (t, n) ORDER BY n),
+  ARRAY['allow', 'allow', 'allow', 'allow', 'allow', 'allow', 'allow'],
+  'while the design''s own innocent sentences still pass');
 SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
 SET LOCAL ROLE authenticated;
 SELECT lives_ok($$SELECT public.meet_save_profile('key-74-a-000000020', NULL, 'Class of 2012. 5''7, big smile',
@@ -385,6 +452,31 @@ SET LOCAL ROLE authenticated;
 SELECT lives_ok(format('SELECT public.meet_remove_prompt(%L, %L)', 'key-74-a-000000040',
                        (SELECT id FROM ids WHERE name = 'prompt1')), 'the owner removes their own');
 RESET ROLE;
+
+-- Answers are screened by the table's trigger, on every write path.
+SELECT throws_ok(
+  format($$UPDATE public.meet_prompts SET answer = 'text me 08031234567' WHERE id = %L$$,
+         (SELECT id FROM ids WHERE name = 'prompt0')),
+  'P0001', 'ERR_MEET_CONTACT_NOT_ALLOWED', 'a prompt answer written directly is screened too');
+SELECT throws_ok(
+  format($$INSERT INTO public.meet_prompts (profile_id, prompt_key, answer, position)
+           VALUES (%L, 'red_flag', 'Sugar daddy wanted', 2)$$, (SELECT id FROM ids WHERE name = 'a')),
+  'P0001', 'ERR_MEET_SOLICITATION_NOT_ALLOWED', 'and so is one inserted directly');
+UPDATE public.meet_prompts SET moderation = 'removed' WHERE id = (SELECT id FROM ids WHERE name = 'prompt0');
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$SELECT public.meet_save_prompt('key-74-a-000000041', 'green_flag',
+                    'Replies within 10 minutes', 0)$$, 'the owner saves the same words again');
+RESET ROLE;
+SELECT is((SELECT moderation FROM public.meet_prompts WHERE id = (SELECT id FROM ids WHERE name = 'prompt0')),
+  'removed', 'which does not undo a moderator''s removal of them');
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT is(public.meet_save_prompt('key-74-a-000000042', 'green_flag', 'Replies within the hour', 0),
+  (SELECT id FROM ids WHERE name = 'prompt0'), 'new words at the same position keep the prompt''s id');
+RESET ROLE;
+SELECT is((SELECT moderation FROM public.meet_prompts WHERE id = (SELECT id FROM ids WHERE name = 'prompt0')),
+  'clean', 'and are screened afresh');
 
 -- ---------------------------------------------------------------------------
 -- The area (§8.6).
@@ -533,6 +625,24 @@ SELECT throws_ok(
   $$INSERT INTO storage.objects (bucket_id, name)
     VALUES ('meet-inbox', 'b7466666-6666-4666-8666-747474747474/a0000000-0000-4000-8000-747474747496.jpg')$$,
   '42501', NULL, 'nor can somebody who never checked in');
+RESET ROLE;
+
+-- The inbox cap: two files per allowed photo, plus one pair (14 with meet.photos.max at 6).
+SELECT pg_temp.act('b7422222-2222-4222-8222-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok(
+  $$DO $do$
+    BEGIN
+      FOR i IN 1..14 LOOP
+        INSERT INTO storage.objects (bucket_id, name)
+        VALUES ('meet-inbox', 'b7422222-2222-4222-8222-747474747474/' || gen_random_uuid() || '.jpg');
+      END LOOP;
+    END $do$ $$,
+  'fourteen uploads one after another fill the inbox');
+SELECT throws_ok(
+  $$INSERT INTO storage.objects (bucket_id, name)
+    VALUES ('meet-inbox', 'b7422222-2222-4222-8222-747474747474/' || gen_random_uuid() || '.jpg')$$,
+  '42501', NULL, 'and a fifteenth is refused, so a script cannot fill the bucket');
 RESET ROLE;
 
 SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
@@ -732,6 +842,72 @@ SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0,
   'with Meet off for the viewer, nothing is fetched (the kill switch reaches media too)');
 INSERT INTO private.meet_testers (user_id) VALUES ('b7422222-2222-4222-8222-747474747474');
 
+-- Visibility follows access, and somebody shut out can still leave (review of PR #121).
+INSERT INTO public.user_devices (user_id, platform, device_fingerprint_hash) VALUES
+  ('b7411111-1111-4111-8111-747474747474', 'android', sha256('phone-a-74')),
+  ('b7422222-2222-4222-8222-747474747474', 'android', sha256('phone-b-74'));
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 2, 'B, a tester again, sees A');
+INSERT INTO public.meet_age_refusal_devices (device_fingerprint_hash, expires_at)
+VALUES (sha256('phone-a-74'), now() + interval '1 day');
+SELECT ok(NOT private.meet_discoverable_to((SELECT id FROM ids WHERE name = 'b'),
+                                           (SELECT id FROM ids WHERE name = 'a')),
+  'once A''s phone is barred (a sibling refused on it), A is discoverable to nobody');
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0, 'and nobody fetches A''s photos');
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT public.meet_save_profile('key-74-a-000000071', NULL, 'Back soon', NULL, NULL,
+                     NULL, NULL, NULL)$$, 'P0001', 'ERR_MEET_UNAVAILABLE', 'A, shut out, cannot edit');
+SELECT lives_ok($$SELECT public.meet_pause('key-74-a-000000072', true)$$, 'but can pause');
+SELECT throws_ok($$SELECT public.meet_pause('key-74-a-000000073', false)$$, 'P0001', 'ERR_MEET_UNAVAILABLE',
+  'not unpause');
+SELECT lives_ok($$SELECT public.meet_set_discoverable('key-74-a-000000074', false)$$, 'can hide');
+SELECT throws_ok($$SELECT public.meet_set_discoverable('key-74-a-000000075', true)$$,
+  'P0001', 'ERR_MEET_UNAVAILABLE', 'not show again');
+SELECT lives_ok($$SELECT public.meet_set_privacy('key-74-a-000000076', '{"show_gender": false}')$$,
+  'and can change a privacy switch');
+RESET ROLE;
+DELETE FROM public.meet_age_refusal_devices WHERE device_fingerprint_hash = sha256('phone-a-74');
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$SELECT public.meet_pause('key-74-a-000000077', false)$$, 'with the bar gone, A comes back');
+SELECT lives_ok($$SELECT public.meet_set_discoverable('key-74-a-000000078', true)$$, 'and shows again');
+RESET ROLE;
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 2, 'so B sees A again');
+INSERT INTO public.meet_age_refusal_devices (device_fingerprint_hash, expires_at)
+VALUES (sha256('phone-b-74'), now() + interval '1 day');
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0,
+  'a viewer whose own phone is barred fetches nothing, even of somebody discoverable');
+DELETE FROM public.meet_age_refusal_devices WHERE device_fingerprint_hash = sha256('phone-b-74');
+UPDATE public.remote_config SET value = '2' WHERE key = 'meet.guidelines_version' AND country_code IS NULL;
+UPDATE public.meet_eligibility SET guidelines_version = 2 WHERE user_id = 'b7422222-2222-4222-8222-747474747474';
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0,
+  'somebody who has not accepted the current guidelines is hidden, even from a viewer who has');
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT public.meet_pause('key-74-a-000000079', false)$$,
+  'P0001', 'ERR_MEET_GUIDELINES_OUTDATED', 'A cannot come back in without accepting them');
+SELECT lives_ok($$SELECT public.meet_pause('key-74-a-000000085', true)$$, 'but can still pause');
+RESET ROLE;
+UPDATE public.remote_config SET value = '1' WHERE key = 'meet.guidelines_version' AND country_code IS NULL;
+SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$SELECT public.meet_pause('key-74-a-000000086', false)$$, 'and unpauses once they are current');
+RESET ROLE;
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 2, 'after which B sees A again');
+
+-- Only staff may sign a URL: a signed link works without a session and outlives a block.
+SELECT set_config('storage.operation', 'storage.object.sign', true);
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0,
+  'while Storage is signing a URL, a viewer the policy otherwise admits gets nothing');
+SELECT is(pg_temp.sees('b7411111-1111-4111-8111-747474747474'), 0, 'nor does the owner');
+SELECT is(pg_temp.sees('b7481111-1111-4111-8111-747474747474', 'aal2'), 4,
+  'a moderator in scope still can, for the console''s short-lived links');
+SELECT set_config('storage.operation', 'storage.object.sign_many', true);
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 0, 'signing several at once is refused the same way');
+SELECT set_config('storage.operation', 'storage.object.get_authenticated', true);
+SELECT is(pg_temp.sees('b7422222-2222-4222-8222-747474747474'), 2, 'and the authenticated fetch the app uses is unaffected');
+SELECT set_config('storage.operation', '', true);
+
 INSERT INTO results SELECT 'p0_path', to_jsonb(media_path) FROM public.meet_photos
 WHERE id = (SELECT id FROM ids WHERE name = 'p0');
 SELECT pg_temp.act('b7422222-2222-4222-8222-747474747474');
@@ -840,6 +1016,12 @@ SELECT lives_ok(format('SELECT public.meet_submit_photo(%L, %L, %L, 1)', 'key-74
                        pg_temp.inbox('a5'), pg_temp.inbox('a5t')),
   'and the rejected one''s position takes a new photo too');
 RESET ROLE;
+SELECT ok(
+  (SELECT status = 'removed' FROM public.meet_photos WHERE id = (SELECT id FROM ids WHERE name = 'p1'))
+  AND NOT EXISTS (SELECT 1 FROM private.outbox
+                  WHERE aggregate = 'storage' AND event_type = 'storage.erase_object'
+                    AND payload ->> 'path' LIKE '%' || (SELECT id FROM ids WHERE name = 'p1') || '%'),
+  'the photo it replaced was rejected as appearing under 18: it is marked removed and its files stay, as child-safety evidence (RB-17)');
 UPDATE public.remote_config SET value = '5' WHERE key = 'meet.photos.max' AND country_code IS NULL;
 SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
 SET LOCAL ROLE authenticated;
@@ -915,6 +1097,38 @@ SELECT is(public.meet_get_state() #> '{profile,completeness}', '["photo"]'::json
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
+-- The inbox sweep and the media dispatch.
+-- ---------------------------------------------------------------------------
+UPDATE storage.objects SET created_at = now() - interval '2 days'
+WHERE bucket_id = 'meet-inbox' AND name LIKE 'b7411111-1111-4111-8111-747474747474/%';
+INSERT INTO results SELECT 'outbox_mark', to_jsonb(coalesce(max(id), 0)) FROM private.outbox;
+SELECT is(private.meet_sweep_inbox(), 10,
+  'the daily sweep queues the ten old inbox files no waiting photo needs');
+SELECT set_eq(
+  $$SELECT payload ->> 'path' FROM private.outbox
+    WHERE id > (SELECT (r #>> '{}')::bigint FROM results WHERE name = 'outbox_mark')
+      AND aggregate = 'storage' AND event_type = 'storage.erase_object'
+      AND payload ->> 'bucket' = 'meet-inbox'
+      AND aggregate_id = 'b7411111-1111-4111-8111-747474747474'$$,
+  ARRAY[pg_temp.inbox('a0'), pg_temp.inbox('a0t'), pg_temp.inbox('a1'), pg_temp.inbox('a1t'),
+        pg_temp.inbox('a2'), pg_temp.inbox('a2t'), pg_temp.inbox('a4'), pg_temp.inbox('a4t'),
+        pg_temp.inbox('a6'), pg_temp.inbox('a6t')],
+  'each in the uploader''s own folder: the ingested, failed, removed and never-submitted ones; the three photos still processing keep theirs');
+SELECT CASE WHEN to_regclass('cron.job') IS NULL THEN skip('pg_cron is not installed here', 1)
+  ELSE results_eq(
+    $$SELECT schedule, command FROM cron.job WHERE jobname = 'meet-inbox-sweep'$$,
+    $$VALUES ('25 2 * * *'::text, 'SELECT private.meet_sweep_inbox()'::text)$$,
+    'meet-inbox-sweep runs the sweep daily at 02:25')
+  END;
+SELECT CASE WHEN to_regclass('cron.job') IS NULL THEN skip('pg_cron is not installed here', 1)
+  ELSE results_eq(
+    $$SELECT command ~ 'o\.attempts < 8' AND command ~ 'o\.claimed_at IS NULL' FROM cron.job
+      WHERE jobname = 'meet-media-dispatch'$$,
+    $$VALUES (true)$$,
+    'meet-media-dispatch calls the worker only for an event it could claim')
+  END;
+
+-- ---------------------------------------------------------------------------
 -- Deleting the profile.
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.act('b7411111-1111-4111-8111-747474747474');
@@ -939,6 +1153,40 @@ SELECT set_eq(
   'and both folders are queued for the storage worker to empty, each under its own aggregate');
 SELECT is((SELECT status FROM public.meet_eligibility WHERE user_id = 'b7411111-1111-4111-8111-747474747474'),
   'eligible', 'the eligibility record stays');
+
+-- Somebody Meet has shut out can still delete their profile.
+INSERT INTO public.user_devices (user_id, platform, device_fingerprint_hash)
+VALUES ('b7477777-7777-4777-8777-747474747474', 'android', sha256('phone-f-74'));
+INSERT INTO public.meet_age_refusal_devices (device_fingerprint_hash, expires_at)
+VALUES (sha256('phone-f-74'), now() + interval '1 day');
+SELECT pg_temp.act('b7477777-7777-4777-8777-747474747474');
+SET LOCAL ROLE authenticated;
+SELECT lives_ok($$SELECT public.meet_delete_profile('key-74-f-000000001')$$,
+  'somebody whose phone was barred deletes their Meet profile');
+RESET ROLE;
+SELECT ok(NOT EXISTS (SELECT 1 FROM public.meet_profiles WHERE user_id = 'b7477777-7777-4777-8777-747474747474'),
+  'and it is gone');
+
+-- Account erasure reaches Meet now, not at M1-PR8.
+SELECT lives_ok($$SELECT private.erase_account('b7444444-4444-4444-8444-747474747474')$$, 'D''s account is erased');
+SELECT ok(
+  NOT EXISTS (SELECT 1 FROM public.meet_profiles WHERE user_id = 'b7444444-4444-4444-8444-747474747474')
+  AND NOT EXISTS (SELECT 1 FROM public.meet_photos WHERE profile_id = (SELECT id FROM ids WHERE name = 'd'))
+  AND NOT EXISTS (SELECT 1 FROM public.meet_discovery_prefs WHERE user_id = 'b7444444-4444-4444-8444-747474747474'),
+  'which removes the Meet profile, its photos and "show me"');
+SELECT is((SELECT count(*)::int FROM public.meet_eligibility WHERE user_id = 'b7444444-4444-4444-8444-747474747474'), 0,
+  'and the eligibility row with the birth date');
+SELECT set_eq(
+  $$SELECT payload ->> 'bucket' || ' ' || (payload ->> 'prefix') FROM private.outbox
+    WHERE aggregate = 'storage' AND event_type = 'storage.erase_prefix'
+      AND aggregate_id IN ((SELECT id FROM ids WHERE name = 'd')::text, 'b7444444-4444-4444-8444-747474747474')$$,
+  ARRAY['meet-media ' || (SELECT id FROM ids WHERE name = 'd') || '/',
+        'meet-inbox b7444444-4444-4444-8444-747474747474/', 'avatars b7444444-4444-4444-8444-747474747474/'],
+  'and queues both Meet folders for the storage worker, beside the avatar folder');
+SELECT lives_ok($$SELECT private.erase_account('b7455555-5555-4555-8555-747474747474')$$, 'erasing the account refused as a minor');
+SELECT is((SELECT status || coalesce(birth_date::text, '') FROM public.meet_eligibility
+           WHERE user_id = 'b7455555-5555-4555-8555-747474747474'), 'refused_minor',
+  'keeps the refusal, which holds no date and is what bars the phones that account used');
 
 SELECT * FROM finish();
 ROLLBACK;
