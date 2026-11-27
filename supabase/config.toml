@@ -477,6 +477,16 @@ verify_jwt = false
 import_map = "./functions/storage-worker/deno.json"
 entrypoint = "./functions/storage-worker/index.ts"
 
+[functions.meet-media-worker]
+enabled = true
+# Invoked every minute there is a Meet photo waiting (cron meet-media-dispatch through
+# private.invoke_edge_worker), with the same named secret API key as the other workers
+# (withSupabase auth "secret:worker"). Strips metadata and moves photos from meet-inbox to
+# meet-media (Meet v5 design §2.7).
+verify_jwt = false
+import_map = "./functions/meet-media-worker/deno.json"
+entrypoint = "./functions/meet-media-worker/index.ts"
+
 [functions.kyc-document-url]
 enabled = true
 # Called by the admin console. withSupabase auth "user" verifies the JWT inside the function, and

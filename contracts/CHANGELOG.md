@@ -46,6 +46,84 @@ and 1.4.0 calls nothing here.
   planned for the functions still stubbed. `ERR_FEATURE_UNAVAILABLE` and `ERR_COUNTRY_NOT_SET`
   note that the Meet access check raises them too.
 
+- **Identity, eligibility and media built** (`20261126120200_meet_v5_identity`, M1-PR3). Sixteen
+  stubs now have bodies, with the signatures, return shapes and grants unchanged, and lose
+  `not_built`: `meet_get_state`, `meet_check_in`, `meet_accept_guidelines`, `meet_save_profile`,
+  `meet_set_area`, `meet_set_discovery_prefs`, `meet_get_my_profile`, `meet_submit_photo`,
+  `meet_remove_photo`, `meet_reorder_photos`, `meet_save_prompt`, `meet_remove_prompt`,
+  `meet_set_discoverable`, `meet_pause`, `meet_set_privacy` and `meet_delete_profile`. What to
+  build against:
+  - `meet_check_in` returns `{status: 'eligible'|'refused'|'unavailable', age}` and never raises a
+    refusal; map `refused` to `ERR_MEET_UNDER_AGE` and do not offer to re-enter the date. The age is
+    computed in the person's time zone; the date is set once (`ERR_MEET_AGE_ALREADY_SET`).
+  - `meet_get_state` with Meet off returns `{v5: false, ...}` with every other field null or empty,
+    instead of raising. `eligibility` is `none`, `eligible`, `refused` or `unavailable`;
+    `profile.completeness` lists the open steps of `photo`, `area`, `bio`, `interests`, `prompt`;
+    `restrictions`, `suspension` and `unread` are empty or zero until M1-PR4 to M1-PR6 fill them.
+  - `meet_save_profile` returns the owner's profile object (`id`, `first_name`, `bio`, `intent`,
+    `gender`, `show_gender`, `interests`, `area {label, city_code, set_at}`, `status`,
+    `discoverable`, `paused`, `verified`, `held`, `text_moderation`, `completeness`, `version`).
+    NULL leaves a field alone; an empty bio or gender clears it. First name, bio and prompt answers
+    are screened before anything is written: `ERR_MEET_CONTACT_NOT_ALLOWED`,
+    `ERR_MEET_SOLICITATION_NOT_ALLOWED` or `ERR_CONTENT_NOT_ALLOWED`; a hold saves the text with
+    `text_moderation: 'held'`.
+  - `meet_get_my_profile` returns `{profile, photos, prompts, prefs, privacy, catalogue}`. Each photo
+    adds `failure_reason` (`not_found`, `bad_type`, `corrupt`, `animated`, `too_large`,
+    `bad_dimensions`) to the fields of `fixtures/meet/held-photo.json`; `catalogue` is
+    `{interests[], prompts[]}`, the active keys the onboarding offers (labels are l10n keys).
+  - Photos: upload the 1080 px photo and the 320 px thumbnail to `meet-inbox/<uid>/<uuid>.<ext>`,
+    then call `meet_submit_photo`; the answer is `processing`, and `meet_get_my_profile` shows the
+    photo moving to `pending_review` and then `approved` or `rejected`. A taken position is
+    `ERR_MEET_PHOTO_LIMIT` (detail `position taken`); a rejected or failed photo's position takes a
+    new one. Read media with the session bearer from
+    `/storage/v1/object/authenticated/meet-media/<path>`, never a signed or public URL.
+  - `meet_set_area` returns `{area_label, city_code}` and keeps only a ~5 km cell; once every 6 hours
+    (`ERR_MEET_RATE_LIMITED`), with the `location` consent.
+- **Tables, all functions-only** (no client privilege on any): `meet_eligibility`,
+  `meet_age_refusal_devices`, `meet_profiles`, `meet_discovery_prefs`, `meet_photos`,
+  `meet_prompts`, `meet_interest_keys` (30) and `meet_prompt_keys` (20). None appears in
+  `db-types/tables.json`, which lists client-readable tables only.
+- **Buckets** (`storage/buckets.json`): `meet-inbox` (8 MB, upload into your own folder only, never
+  readable), `meet-media` (5 MB, read through the policy, written by the worker only) and
+  `meet-verify` (5 MB JPEG, upload only, with `meet.photo_verification`).
+- **Edge Function `meet-media-worker`** (`edge-functions.openapi.yaml`): worker key only, not
+  callable by an app. `storage-worker` gains the `storage.erase_object` event. The service-role
+  `gateway_meet_media_ingested` and `gateway_meet_media_failed` are its reports.
+- **`legal_documents.type`** gains `meet_guidelines`, `meet_terms`, `meet_reward_rules` and
+  `child_safety`. No row yet: each page gets one when it is live.
+- **Errors**: `ERR_MEET_UNAVAILABLE`, `ERR_MEET_AGE_ALREADY_SET`, `ERR_MEET_GUIDELINES_OUTDATED`,
+  `ERR_MEET_RATE_LIMITED`, `ERR_MEET_PROFILE_INCOMPLETE`, `ERR_MEET_PHOTO_LIMIT`,
+  `ERR_MEET_PHOTO_NOT_FOUND`, `ERR_MEET_CONTACT_NOT_ALLOWED` and `ERR_MEET_SOLICITATION_NOT_ALLOWED`
+  move from planned to implemented. Several come from the access check or the screening trigger,
+  so the per-RPC lists do not show them; each code's description says where it is raised.
+- **From the review of M1-PR3** (same migration, before release), what an app must know:
+  - **The ways out stay open.** `meet_pause(true)`, `meet_set_discoverable(false)`,
+    `meet_set_privacy`, `meet_remove_photo`, `meet_remove_prompt` and `meet_delete_profile` work for
+    somebody every other Meet function refuses with `ERR_MEET_UNAVAILABLE` or
+    `ERR_MEET_GUIDELINES_OUTDATED`. Offer them on those screens (and on the website, D1). Coming
+    back (`meet_pause(false)`, `meet_set_discoverable(true)`) still needs full access. Meanwhile
+    that person is shown to nobody and fetches nobody's photos, so **a new guidelines version hides
+    everybody until they accept it**.
+  - **`meet_check_in` on a barred phone, or one that failed integrity, answers `unavailable` for
+    every date**, an under-18 one included; the refusal is still recorded, so `meet_get_state` then
+    says `refused`. `-infinity` and `infinity` are `ERR_INVALID_ARGUMENT`.
+  - **A signed URL for `meet-media` is refused** to everybody but Meet staff in scope: Storage's
+    sign endpoints answer as if the object did not exist. Read through
+    `/storage/v1/object/authenticated/meet-media/<path>` as before.
+  - **The inbox holds at most `2 × (meet.photos.max + 1)` files per person** (14 by default); a
+    further upload is refused by the bucket policy (Storage's 403). Submit what you upload, and
+    re-use an uploaded path on retry rather than uploading again. Files left unsubmitted are erased
+    after a day.
+  - **A first name may carry up to two combining accents per letter**, so a Yoruba name with a
+    tone over ọ or ẹ is accepted after NFC.
+  - **The interim contact screen** also removes every invisible (default-ignorable) character and
+    treats any punctuation, symbol or emoji between digits as part of the run.
+  - **`storage/buckets.json`** now publishes `allowed_mime_types` for `meet-inbox` and `meet-media`
+    (jpeg, png, webp); the buckets always had them.
+  - **`fixtures/meet/contact_filter_cases.json`** gains 18 vectors (367): invisible characters
+    inside numbers, emails and links (`digits-obfuscated-027` … `-038`, `email-020`, `email-021`,
+    `link-025`), commas and a look-alike letter inside a run (`-039`, `-040`), and one guard
+    (`negative-068`). The mock ports should run them.
 ### Changed
 - **`meet_moderator` is refused by every "any admin" read**: the `countries`, `feature_flags`,
   `remote_config` and `config_changes` policies and `config_change_queue`, `country_pack_readiness`,
@@ -72,6 +150,17 @@ and 1.4.0 calls nothing here.
   exported) and an erasure deletes the tester row. Service role only; nothing an app calls.
 - **`rpc-catalog/index.json`** entries may carry `"not_built": true` (generator), and a stub lists
   `ERR_FEATURE_UNAVAILABLE` among its errors.
+- **`ERR_FEATURE_UNAVAILABLE` from `meet_get_state`** (M1-PR3): it no longer raises; Meet off is
+  `{v5: false}`. Any other Meet function still raises it when Meet is off for the caller.
+- **`private.meet_require_access`** (M1-PR3) is restated whole: after the flag and the country it
+  refuses an account refused as under 18, a barred device (`ERR_MEET_UNAVAILABLE`), no check-in
+  (`ERR_MEET_ELIGIBILITY_REQUIRED`), an outdated guidelines acceptance
+  (`ERR_MEET_GUIDELINES_OUTDATED`) and, where needed, a profile that is not active
+  (`ERR_MEET_PROFILE_INCOMPLETE`). The suspension check arrives with M1-PR4.
+- **`private.invoke_edge_worker`** (M1-PR3) adds `meet-media-worker` to its list. Service side only.
+- **`private.erase_account`** (M1-PR3) is restated again, from M1-PR2's version: an erasure now
+  removes the Meet profile, its photos, prompts, "show me" and stored files, and an adult's
+  eligibility row with the birth date; a refusal's row (no date) stays. Service role only.
 
 **PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
 can call changed: no function, table, enum value or error code was added.

@@ -286,7 +286,8 @@ web-admin: Meet moderation, reports, verifications, readiness and testers (M1); 
 | `meet-sweeps` | `*/5 * * * *` | `meet_expire_matches`, `meet_match_reminders`, `meet_expire_statuses` (emits `storage.erase_object`), `meet_expire_rounds`, `meet_lift_restrictions`, `meet_release_holds_expired` | M1 |
 | `meet-daily` | `10 2 * * *` | Purges past `purge_after`; drops safety-event partitions older than 3 months; daily-set and view-count retention; daily nudges | M1 |
 | `meet-messages-partitions`, `meet-safety-partitions` | `33 3 * * *` | `private.ensure_monthly_partitions(…, 3)` | M1 |
-| `meet-media-dispatch` | `* * * * *` | `invoke_edge_worker('meet-media-worker')` | M1 |
+| `meet-media-dispatch` | `* * * * *` | `invoke_edge_worker('meet-media-worker')`, only when a `meet_media` event is claimable (`claim_outbox`'s predicate: undispatched, fewer than 8 attempts, unclaimed or claimed over 5 minutes ago) | M1 |
+| `meet-inbox-sweep` | `25 2 * * *` | `private.meet_sweep_inbox()`: `storage.erase_object` for `meet-inbox` files over a day old that no `processing` photo references (at most 1,000 a run) | M1 (added in review of M1-PR3) |
 | `outbox-prune` | `47 3 * * *` | `private.prune_outbox()` | M0 |
 | `meet-health` | `*/15 * * * *` | `meet_moderation_sla`, `meet_media_backlog` health checks | M1 |
 | `meet-billing` | `*/10 * * * *` | `invoke_edge_worker('meet-billing-worker')` (hourly voided sweep and daily resync are decided inside) | M2 |
@@ -333,6 +334,8 @@ web-admin: Meet moderation, reports, verifications, readiness and testers (M1); 
 - `meet_moderator` or `super_admin` in country scope.
 
 **How the app reads media.** The app fetches `GET /storage/v1/object/authenticated/meet-media/<path>` with the session bearer, through a path-keyed `ImageProvider`. RLS is evaluated per fetch, so a block applies immediately and there is no shareable URL. The admin console uses `createSignedUrls` with at most a 300 s TTL under the staff branch of the policy.
+
+**As built (review of M1-PR3).** Storage's sign endpoints need only the SELECT this policy grants, take a caller-chosen expiry, and return a URL that works without a session, so "no shareable URL" had to be enforced rather than assumed: `meet_media_visible_to` refuses the owner and viewer branches while `storage.operation` is `storage.object.sign` or `storage.object.sign_many` [S: supabase/storage `migrations/tenant/0024-operation-function.sql` and `src/http/routes/operations.ts`], and `supabase/tests/e2e/meet_storage_e2e.sh` checks it against the real Storage API in CI. Two residual risks stay: the staff branch can sign with any expiry, so the 300 s limit is the console's, not the database's; and a Storage version that stopped setting `storage.operation` would silently re-open signing, which the e2e would catch. The inbox is capped at two files per allowed photo plus one pair per person, and swept daily (§2.5).
 
 **Pipeline:**
 
@@ -503,7 +506,7 @@ Placeholder stamps; each PR takes the next free stamp after `origin/main`'s newe
 | `id` | uuid PK DEFAULT gen_random_uuid(). **The only person id a client sees, and the storage folder** |
 | `user_id` | uuid NOT NULL UNIQUE → auth.users ON DELETE CASCADE |
 | `country_code` | char(2) NOT NULL → countries |
-| `first_name` | text NOT NULL CHECK `first_name ~ '^[[:alpha:]][[:alpha:] ''-]{0,29}$'` (no digits, @, _ or dots, so no handle fits) |
+| `first_name` | text NOT NULL CHECK `first_name ~ '^[[:alpha:]][[:alpha:] ''-]{0,29}$'` (no digits, @, _ or dots, so no handle fits). As built, each character may carry up to two combining accents (U+0300–U+036F less U+034F), because NFC has no single code point for a tone over an underdotted vowel and Yoruba names need one |
 | `bio` | text CHECK length ≤ 300 |
 | `intent` | text NOT NULL DEFAULT 'open' CHECK IN ('love','friendship','hangout','open') |
 | `gender` | text NULL CHECK IN ('woman','man') |
@@ -2114,7 +2117,7 @@ Deterministic SQL; the rules are data. It runs **before** `private.moderate_text
 
 1. **Normalise:**
    - `normalize(text, NFKC)` then `lower()`;
-   - strip zero-width characters (U+200B–U+200D, U+2060, U+FEFF);
+   - strip every Unicode `Default_Ignorable_Code_Point`, not only the zero-width ones: U+00AD, U+034F, U+061C, U+115F–U+1160, U+17B4–U+17B5, U+180B–U+180F, U+200B–U+200F, U+202A–U+202E, U+2060–U+206F, U+3164, U+FE00–U+FE0F, U+FEFF, U+FFA0, U+FFF0–U+FFF8, U+1BCA0–U+1BCA3, U+1D173–U+1D17A, U+E0000–U+E0FFF. Each renders as nothing, so a soft hyphen, a direction mark or isolate, an invisible operator, a filler, a variation selector or a tag character between digits otherwise splits a number that reads whole (review of PR #121; vectors `digits-obfuscated-027` … `-038`, `email-020`, `email-021`, `link-025`). Write the class with `\u`/`\U` regex escapes, never the characters themselves: a migration holding them fails to load under a non-UTF-8 client encoding;
    - map keycap, circled and full-width digits;
    - map Cyrillic and Greek look-alikes to Latin;
    - inside a digit run, `o`/`O`→0 and `l`/`I`/`|`→1.
@@ -2124,7 +2127,7 @@ Deterministic SQL; the rules are data. It runs **before** `private.moderate_text
    - Igbo: efu, otu, abuo, ato, ano, ise, isii, asaa, asato, itoolu;
    - Hausa: sifili, daya, biyu, uku, hudu, biyar, shida, bakwai, takwas, tara.
 
-   All are `[A]` until native speakers review them (OD-50). Ambiguous words (to, too, for, ate, won, o) count only next to at least two unambiguous digit tokens. A run may include spaces, punctuation, emoji and at most one filler word.
+   All are `[A]` until native speakers review them (OD-50). Ambiguous words (to, too, for, ate, won, o) count only next to at least two unambiguous digit tokens. A run may include spaces, punctuation, emoji and at most one filler word: any character that is neither a letter nor a digit separates digits without ending the run (the interim screen uses `[^a-z0-9]`, so an unmapped look-alike letter from another script also separates, failing closed).
 3. **Phone or account number:** block on a longest run of at least 7 digits, or the Nigerian shapes `0[789][01]\d{8}`, `234[789][01]\d{8}`, or a 10-digit NUBAN near "account" or "acct". Times (7:30), ages, prices of up to 6 digits and house numbers do not reach 7.
 4. **Split across messages:** the sender's trailing run (at most 12 digits, kept 10 minutes in `meet_conversation_members.digit_tail`; no content is stored) is joined to the next message's leading run. "0803", then "123", then "4567" is caught on the third message.
 5. **Email:** `handle (@|(at)|[at]| at ) domain (.|(dot)|[dot]| dot ) tld`, or a mail-provider word (gmail, yahoo, ymail, outlook, hotmail, icloud, proton) next to a handle-shaped token.
@@ -2189,7 +2192,7 @@ Deterministic SQL; the rules are data. It runs **before** `private.moderate_text
 - **Upload:** the system picker or camera intent only, with no `CAMERA` or `READ_MEDIA` permission. Client resize to 1080 px plus a 320 px thumb.
 - **Server:** byte-level metadata stripping (`meet-media-worker`), magic-byte and dimension checks, and storage under the **opaque profile id**.
 - **Before anyone sees it:** human review.
-- **Reads:** per request through the authenticated endpoint under `meet_media_visible_to`. No shareable URLs. Staff signed URLs last at most 300 s.
+- **Reads:** per request through the authenticated endpoint under `meet_media_visible_to`. No shareable URLs: the policy refuses Storage's sign operations to everybody but staff (§2.7, as built). Staff signed URLs last at most 300 s, which the console enforces.
 - **Display:** `FLAG_SECURE` on profile, chat, status viewer, verification and Cowries screens; no download or share buttons.
 - **Data saver** loads thumbs and the primary photo only until a tap.
 - **Duplicates:** an exact-duplicate SHA-256 across users raises a flag. Perceptual hashing is unavailable.
@@ -2408,6 +2411,23 @@ RB-17 covers:
   - `73_meet_eligibility_test`: a minor's birth date is never stored; the refusal persists (returned, not raised); device lockout; set-once; guidelines version; integrity fail; the 29 February and time-zone boundary cases; flag off.
   - `74_meet_profiles_media_test`: allow and deny for each RPC; no client table grants; the storage policy matrix (owner, set viewer, blocked, other country, minor, staff in and out of scope); no uid in any viewer-readable path; text screening; photo limits.
   - Deno: `strip_metadata_test` (fixtures with GPS EXIF, PNG text chunks and WebP XMP produce zero metadata bytes), `meet-media-worker/handler_test`, storage-worker `erase_object` allowlist tests (wrong bucket, wrong folder and traversal are refused).
+- **As built (rev. 2026-11-27, `20261126120200_meet_v5_identity`).** What differs from the text above, and why:
+  - **No hash of a date.** The idempotency claim keeps a hash of its arguments for a day, and a hash of one of ~36,000 dates is the date. `meet_check_in` claims over `{adult, guidelines_version}` and `meet_set_area` over the geohash cell, so neither a minor's birth date nor anybody's coordinates are recoverable from the key table.
+  - **`meet_screen_text` is an interim body** (digit runs of seven or more, emails, links, and §8.2's everywhere-blocked terms with the fixture's categories). It returns no holds of its own; `moderate_text` still holds. M1-PR4 replaces it whole, same signature, and opens the `meet_profile` and `meet_photo` cases, which the moderation subject-kind CHECK does not allow until then: a held profile is marked `held` and a reviewed photo waits as `pending_review`.
+  - **Stand-ins for later tables, each replaced whole by the PR that owns the table:** `private.meet_note_safety_event` (checks its arguments, records nothing until M1-PR4's `meet_safety_events`), `private.meet_state_safety` (restrictions and suspension, M1-PR4), `private.meet_state_unread` (M1-PR5, M1-PR6), `private.meet_device_refused` (M1-PR4 adds banned devices), `private.meet_discoverable_to` (M1-PR4 adds suspension) and `private.meet_may_view` (discoverable only, until M1-PR5 adds connected and today's lists). `meet_require_access` gets its suspension check in M1-PR4, as M1-PR2 planned.
+  - **Profile states.** `active` = clean first name and bio, at least one approved photo and an area; `pending_review` = photos but not active; otherwise `draft`. Leaving `active` clears `discoverable` (the design's "makes the profile undiscoverable"); the first activation starts `newcomer_until`. `private.meet_refresh_profile` decides it and M1-PR4's decisions call it.
+  - **Photos.** `meet_photos.failure_reason` (`not_found`, `bad_type`, `corrupt`, `animated`, `too_large`, `bad_dimensions`) is added so the app can say why a file failed; `reason_code` stays a person's decision. Position uniqueness is a deferrable exclusion constraint so one UPDATE can reorder. A taken position is `ERR_MEET_PHOTO_LIMIT` (as the catalogue says); a rejected or failed photo's position takes a new one. The outbox payload carries the inbox paths with `{kind, id}`. `gateway_meet_media_ingested` is idempotent and answers `accepted: false` for a photo removed while it waited, so the worker deletes what it wrote. Animated WebP and APNG are refused, and stripping keeps an allowlist of blocks rather than removing a denylist.
+  - **Reads.** `meet_media_visible_to` also needs `meet.v5` on for a viewer (the kill switch reaches media), shows the owner pending and rejected photos, and shows staff any photo with files. A barred device shuts out an eligible account on it too (§2.3 check 3); device integrity is checked at check-in only (§8.1 L3). A selfie upload needs `meet.photo_verification`.
+  - **Smaller.** `meet_get_my_profile` adds `catalogue {interests, prompts}` (the keys are functions-only reference data). `meet_set_area`'s country test is "the nearest service-area city of any country is in the caller's and within 1,000 km" `[A]`. The Meet tables are revoked from `service_role` as well; only the gateway functions touch them. `meet-media-dispatch` runs every minute only when a photo is waiting.
+- **Review of PR #121 (2026-11-27).** Each is tested in pgTAP 73/74 or the new `meet_storage_e2e.sh`:
+  - **The 18+ gate records a minor first.** `meet_check_in` evaluated a barred phone or failed integrity before the age, so a minor's declaration on such a phone was thrown away and the same account could later check in with an adult's date. Now an under-18 date always writes `refused_minor` and bars every phone, and the answer on a barred or failing phone is the `unavailable` it gives any date. `±infinity` is `ERR_INVALID_ARGUMENT`.
+  - **The device bar follows the refused account.** `meet_device_refused` also refuses a phone registered to an account refused as a minor within `meet.retention.age_refusal_device_days` (anchored on that row's `updated_at`), so a phone the refused account signs in on later is barred too.
+  - **Visibility follows access, and leaving is always possible.** `meet_discoverable_to` requires `meet_access_refusal(…) IS NULL` for both people, and the media viewer branch requires it for the viewer, so somebody shut out (barred phone, outdated guidelines, out of the rollout or testers, revoked) is shown to nobody and fetches nothing. **Consequence:** bumping `meet.guidelines_version` hides everybody until they accept, so a bump is a deliberate act. The verbs that only take somebody out of view (`meet_pause(true)`, `meet_set_discoverable(false)`, `meet_set_privacy`, `meet_remove_photo`, `meet_remove_prompt`, `meet_delete_profile`) use `private.meet_require_exit`, which lets `ERR_MEET_UNAVAILABLE` and `ERR_MEET_GUIDELINES_OUTDATED` through; the flag and the country still apply. M1-PR4 puts the suspension in `meet_access_refusal`, so discovery and media follow it, and decides whether a suspended person may leave the same way. M1-PR5's `meet_may_view` keeps the target's access check on the connected branch too, or says why not.
+  - **The interim screen** strips every default-ignorable code point and treats any non-alphanumeric character as a separator inside a digit run (§8.2 step 1 and 2 updated, 18 vectors added to the fixture). The fixture's allow and hold vectors were re-run: no new false positive, and four block vectors the old class missed now block. Prompt answers are screened by a trigger (`meet_prompts_screen`), so every write path is covered; an unchanged answer keeps its moderation.
+  - **Storage.** Signing is refused to non-staff (§2.7, as built). The inbox is capped at `2 × (meet.photos.max + 1)` live files per person and swept daily (`meet-inbox-sweep`, §2.5). `meet-media-dispatch` uses `claim_outbox`'s claimable predicate. The bucket MIME updates are one statement per bucket so `generate_v1.py` publishes them.
+  - **Evidence.** `meet_erase_photo_files` leaves the files of a photo rejected as `underage_appearance` (the row is still marked removed). Deleting the whole profile still empties its folder, so **M1-PR4's `admin_meet_decide_photo` must copy such a photo into the evidence it keeps (`e/`, outside `erase_prefix` sweeps) at decision time**.
+  - **Erasure.** `private.erase_account` is restated (from M1-PR2's version) to call the new `private.meet_erase_profile`, which `meet_delete_profile` also uses, and to delete an adult's eligibility row with its birth date; a refusal's row (no date) stays. M1-PR8 restates both from these and adds the export, which stays with it as planned.
+  - **First names** may carry up to two combining accents per character (§3.2.1), so a Yoruba name with a tone over ọ or ẹ is accepted; the class leaves out the invisible U+034F.
 
 **M1-PR4: safety (Claude).**
 

@@ -101,6 +101,9 @@ This model concentrates on threats specific to *this* platform — a paid-upfron
 | **I** | EXIF GPS in proof photos reveals a home address | EXIF stripped on the display rendition; original kept for dispute evidence only | L |
 | **T** | Malware or polyglot files uploaded | Size and MIME limits per bucket; malware scan and image re-encode before the object becomes readable (spec) | M |
 | **T** | Path manipulation writing into another user's folder | Server-generated object paths in signed upload URLs; clients never choose paths | L |
+| **I** | A Meet viewer mints a long-lived signed URL to somebody's photo, which works without a session and outlives a block (Meet v5 §8.5) | `meet_media_visible_to` refuses Storage's sign operations (`storage.operation` = `storage.object.sign` / `sign_many`, [S]) to everybody but Meet staff in country scope; apps read per request through the authenticated endpoint; `supabase/tests/e2e/meet_storage_e2e.sh` checks it against the real Storage API, so a Storage version that stopped naming the operation would fail CI rather than silently re-open signing | L |
+| **I** | A Meet staff signed URL lives longer than its review | Staff signing is allowed by design (the console); its 300 s limit is enforced by the console only, because Storage takes the expiry from the caller. Staff are `meet_moderator` or `super_admin`, aal2, country-scoped | L |
+| **D** | Filling the Free plan's 1 GB through the Meet inbox | At most `2 × (meet.photos.max + 1)` inbox files per person at a time; files never submitted are erased after a day (`meet-inbox-sweep`) | L |
 
 ## 8. Edge Functions — payments and webhooks
 

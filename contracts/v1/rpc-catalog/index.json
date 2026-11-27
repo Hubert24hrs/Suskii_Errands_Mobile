@@ -8806,7 +8806,8 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_GUIDELINES_OUTDATED"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -8816,8 +8817,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_answer_daily_question",
@@ -9031,7 +9031,11 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_COUNTRY_NOT_SET",
+        "ERR_FEATURE_UNAVAILABLE",
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_AGE_ALREADY_SET",
+        "ERR_MEET_GUIDELINES_OUTDATED"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -9041,8 +9045,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_conversations",
@@ -9199,9 +9202,7 @@
       "returns": {
         "kind": "none"
       },
-      "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
-      ],
+      "errors": [],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
       "executable_by": [
@@ -9210,8 +9211,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_delete_status",
@@ -9290,9 +9290,7 @@
           "type": "object"
         }
       },
-      "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
-      ],
+      "errors": [],
       "idempotency_key": null,
       "security_definer": true,
       "executable_by": [
@@ -9301,8 +9299,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_get_profile",
@@ -9386,7 +9383,7 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_COUNTRY_NOT_SET"
       ],
       "idempotency_key": null,
       "security_definer": true,
@@ -9396,8 +9393,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_likes_summary",
@@ -9704,7 +9700,8 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PROFILE_INCOMPLETE"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -9714,8 +9711,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_post_status",
@@ -9882,7 +9878,7 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_MEET_PHOTO_NOT_FOUND"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -9892,8 +9888,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_remove_prompt",
@@ -9922,7 +9917,7 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -9932,8 +9927,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_reorder_photos",
@@ -9965,7 +9959,8 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PHOTO_NOT_FOUND"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -9975,8 +9970,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_report",
@@ -10134,7 +10128,8 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_CONSENT_REQUIRED",
+        "ERR_INVALID_ARGUMENT"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10144,8 +10139,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_save_prompt",
@@ -10193,7 +10187,8 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PROFILE_INCOMPLETE"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10203,8 +10198,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_send_message",
@@ -10363,7 +10357,11 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_CONSENT_REQUIRED",
+        "ERR_INVALID_ARGUMENT",
+        "ERR_LOCATION_UNAVAILABLE",
+        "ERR_MEET_PROFILE_INCOMPLETE",
+        "ERR_MEET_RATE_LIMITED"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10373,8 +10371,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_set_discoverable",
@@ -10402,7 +10399,8 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PROFILE_INCOMPLETE"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10412,8 +10410,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_set_discovery_prefs",
@@ -10484,7 +10481,8 @@
         "kind": "none"
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_CONSENT_REQUIRED",
+        "ERR_INVALID_ARGUMENT"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10494,8 +10492,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_set_privacy",
@@ -10526,7 +10523,8 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PROFILE_INCOMPLETE"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10536,8 +10534,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_start_game",
@@ -10721,7 +10718,10 @@
         }
       },
       "errors": [
-        "ERR_FEATURE_UNAVAILABLE"
+        "ERR_INVALID_ARGUMENT",
+        "ERR_MEET_PHOTO_LIMIT",
+        "ERR_MEET_PROFILE_INCOMPLETE",
+        "ERR_UPLOAD_NOT_FOUND"
       ],
       "idempotency_key": "p_idempotency_key",
       "security_definer": true,
@@ -10731,8 +10731,7 @@
       "requires": {
         "authenticated": true
       },
-      "defined_in": "20261126120100_meet_v5_contract.sql",
-      "not_built": true
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "meet_submit_verification",

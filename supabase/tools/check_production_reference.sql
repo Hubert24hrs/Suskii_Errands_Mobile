@@ -65,6 +65,27 @@ BEGIN
     RAISE EXCEPTION 'Meet v5 is not dark on a fresh database';
   END IF;
 
+  -- Meet v5 M1-PR3 (20261126120200): the interest and prompt keys ship as reference data, the three
+  -- Meet buckets exist and are private, and nobody is in Meet: no eligibility record, no barred
+  -- device, no profile and no photo on a database built from migrations alone.
+  IF (SELECT count(*) FROM public.meet_interest_keys WHERE active) <> 30
+     OR (SELECT count(*) FROM public.meet_prompt_keys WHERE active) <> 20 THEN
+    RAISE EXCEPTION 'the Meet interest or prompt keys are missing';
+  END IF;
+  IF (SELECT count(*) FROM storage.buckets
+      WHERE id IN ('meet-inbox', 'meet-media', 'meet-verify') AND NOT public) <> 3 THEN
+    RAISE EXCEPTION 'a Meet bucket is missing or public';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.meet_profiles) OR EXISTS (SELECT 1 FROM public.meet_eligibility)
+     OR EXISTS (SELECT 1 FROM public.meet_age_refusal_devices)
+     OR EXISTS (SELECT 1 FROM public.meet_photos) THEN
+    RAISE EXCEPTION 'the migrations create Meet people';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.legal_documents
+             WHERE type IN ('meet_guidelines', 'meet_terms', 'meet_reward_rules', 'child_safety')) THEN
+    RAISE EXCEPTION 'a Meet legal page is in the migrations before it is live';
+  END IF;
+
   -- Dev-only rows must not reach production.
   IF EXISTS (SELECT 1 FROM public.legal_documents WHERE url LIKE '%.invalid%') THEN
     RAISE EXCEPTION 'a placeholder legal document is in the migrations';

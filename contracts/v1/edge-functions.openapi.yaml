@@ -372,13 +372,39 @@ paths:
       operationId: storageWorker
       security:
         - workerKey: []
-      summary: Remove the storage folders account erasure queued.
+      summary: Remove the storage folders and objects erasure queued.
       description: >
         Drains the `storage` outbox aggregate. Storage refuses direct deletes from
-        storage.objects, so `private.erase_account` queues the user's `avatars` folder and this
-        worker removes it through the Storage API (audit 2026-09-27 Y.30). It acts only on an
-        allowlisted bucket and only on a prefix that is exactly the event's own user folder; an
-        unknown event fails without retry rather than being completed unread.
+        storage.objects, so SQL queues what must go and this worker removes it through the
+        Storage API (audit 2026-09-27 Y.30). `storage.erase_prefix` empties one owner's folder:
+        an account's `avatars` folder, a deleted Meet profile's `meet-media` folder and the
+        person's `meet-inbox` folder. `storage.erase_object` (Meet v5) removes one object: a Meet
+        photo or status taken down or removed, or a verification selfie past its retention. It
+        acts only on an allowlisted bucket (`kyc-docs` is never one), only inside the event's own
+        folder, and for an object only on a path of exactly the shape that bucket stores, so a
+        traversal or a stray segment is refused; an unknown event fails without retry rather
+        than being completed unread.
+      responses:
+        '200': { description: Batch processed. }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /meet-media-worker:
+    post:
+      tags: [worker]
+      operationId: meetMediaWorker
+      security:
+        - workerKey: []
+      summary: Strip, check and store the Meet photos waiting in the inbox.
+      description: >
+        Meet v5 (design §2.7, §8.5). Drains the `meet_media` outbox aggregate that
+        `meet_submit_photo` writes. For each photo it downloads the upload and its thumbnail from
+        `meet-inbox/<uid>/`, checks the magic bytes (JPEG, PNG or WebP; never animated) and the
+        dimensions (320-4096 px a side, the thumbnail 160-480), strips metadata byte by byte
+        (JPEG APP1-APP15 and COM, PNG text, eXIf and tIME chunks, WebP EXIF and XMP), writes
+        both to `meet-media/<profile_id>/p|pt/<photo_id>.<ext>`, a path with no auth uid in it,
+        reports through `gateway_meet_media_ingested` and then deletes the inbox copies. A file
+        it cannot use is reported through `gateway_meet_media_failed` with its reason and not
+        retried; Storage or database trouble is retried. Not callable by an app.
       responses:
         '200': { description: Batch processed. }
         '401': { $ref: '#/components/responses/Error' }

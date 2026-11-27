@@ -128,7 +128,8 @@ SELECT is(
        -- Ask Suskii, the concierge (20261026190000).
        'public.concierge_start', 'public.concierge_begin_turn', 'public.concierge_record_turn',
        -- Meet v5 M1 (20261126120100; matrix §11): every client and admin RPC of design §4.2 and
-       -- §4.3. All but the last four are stubs until their own PR lands.
+       -- §4.3. The skeleton built the last four and M1-PR3 (20261126120200) the first sixteen;
+       -- the rest are stubs until their own PR lands.
        'public.meet_get_state', 'public.meet_check_in', 'public.meet_accept_guidelines',
        'public.meet_save_profile', 'public.meet_set_area', 'public.meet_set_discovery_prefs',
        'public.meet_get_my_profile', 'public.meet_submit_photo', 'public.meet_remove_photo',
@@ -154,6 +155,9 @@ SELECT is(
        'public.admin_meet_decide_verification', 'public.admin_meet_verification_access',
        'public.admin_meet_readiness', 'public.admin_meet_set_readiness',
        'public.admin_meet_testers', 'public.admin_meet_set_tester',
+       -- The meet-media read and Meet upload storage policies (20261126120200); each is a definer
+       -- that answers only for auth.uid().
+       'private.meet_media_visible_to', 'private.meet_upload_allowed',
        'public.open_dispute', 'public.submit_dispute_evidence', 'public.dispute_queue',
        'public.assign_dispute', 'public.resolve_dispute', 'public.withdraw_dispute',
        'private.dispute_scope',

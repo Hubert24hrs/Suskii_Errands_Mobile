@@ -15,7 +15,7 @@ which. Files marked M2 describe the Cowrie economy (ADR-0027, ADR-0028), which s
 | [`held-photo.json`](held-photo.json) | Photos in every review state, and the moderator's queue row | Every photo is approved by a person first (OD-41); only the owner sees the others |
 | [`negative-balance.json`](negative-balance.json) | M2. A refund clawed back below zero | Spends are refused but buying is allowed, and bonus Cowries cannot be spent meanwhile |
 | [`pending-purchase.json`](pending-purchase.json) | M2. A slow payment Play reports as PENDING | Nothing is credited until PURCHASED; prices come only from Play's own strings |
-| [`contact_filter_cases.json`](contact_filter_cases.json) | 349 test vectors and 7 multi-message sequences for `private.meet_screen_text` | pgTAP 75, the Dart mock and the TypeScript mock all load this file by path, which is why its name is the design's and not kebab-case |
+| [`contact_filter_cases.json`](contact_filter_cases.json) | 367 test vectors and 7 multi-message sequences for `private.meet_screen_text` | pgTAP 75, the Dart mock and the TypeScript mock all load this file by path, which is why its name is the design's and not kebab-case |
 
 ## Rules these obey
 
