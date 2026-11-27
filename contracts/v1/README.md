@@ -83,6 +83,10 @@ function's body — treat it as the set your UI must have a message for, not as 
 provider being accepted is still active, say) is not listed, because it is not a precondition the
 app can check.
 
+`"not_built": true` marks a skeleton stub (Meet v5, from 2.7.0): the signature, return shape,
+grants and `requires` are final, and the function raises `ERR_FEATURE_UNAVAILABLE` until the PR
+that builds it lands, when the key disappears. The key is absent on every built function.
+
 ## How an error arrives
 
 | Path | HTTP | Body | Where the code is |

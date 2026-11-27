@@ -248,6 +248,13 @@ web-admin: Meet moderation, reports, verifications, readiness and testers (M1); 
   - `meet.purchases`/`meet.vip`: with `testers_only` the m2_testers items must be done, else every m2 item.
   - A refusal raises a catchable `P0001 'ERR_MEET_NOT_READY'` with DETAIL listing the missing items, so a `review_config_change` apply aborts and the proposal stays pending.
   - **Disabling is never checked**, so the RB-13 kill switch always works.
+- **As built (rev. 2026-11-26, M1-PR2, `20261126120100_meet_v5_contract`).** Six refinements, each tested in pgTAP 72:
+  - The guard is an **AFTER** row trigger, not BEFORE. `apply_config_change` writes flags with `INSERT … ON CONFLICT DO UPDATE`, and a BEFORE INSERT trigger fires on the insert row even when the conflict turns it into an update. A proposal of `{"enabled": true}` builds that row with an empty payload, so a BEFORE guard refused the release step "switch `meet.v5` on, testers-only". An AFTER row trigger sees only what was written and still raises inside the statement.
+  - `meet_readiness` gains `gates text[]`: the enables an item holds back (`m1`, `m2_testers`, `m2`). The plan upgrade and backups are `m1` items gating `m1` and `m2`, which the table above says in words.
+  - `meet.v5` is seeded at `rollout_pct` 0. Testers pass whatever the percentage, and leaving testers takes a deliberate one.
+  - `meet_require_access` answers the flag and the country, then refuses everybody with `ERR_MEET_ELIGIBILITY_REQUIRED` until M1-PR3 restates it with the eligibility record, so it fails closed if called early.
+  - The guard checks a **widening**, not every write: an UPDATE to a row that was already on, under the same key and country, that neither leaves testers-only nor raises `rollout_pct` admits nobody new and passes with items open. The rollout is the brake (risks #1 and #8, RB-17 §8), and `meet_moderators_staffed` goes open by itself when a moderator is disabled or loses their factor, which is exactly when the operator needs to take 100% down to 25%. Inserts, off to on, testers-only to general, a higher rollout and a key or country move are all still checked.
+  - `collect_personal_data` and `erase_account` are restated in this PR for `private.meet_testers` (export `{tester, added_at}`, never the staff note; erasure deletes the row). An erasure updates `auth.users` rather than deleting it, so the table's `ON DELETE CASCADE` never fires, and the row sits outside the §3.2 table lists where M1-PR8 would look.
 
 ### 2.4 Edge Functions and workers
 
@@ -408,8 +415,8 @@ Each is restated **whole** from the latest version named here, in the PR shown, 
 | `notification_preferences` category CHECK | 20260916120600 | Adds `social`, `social_nudges` | M1-PR5 |
 | `private.notification_channels` | 20260921120600 | Reads the category | M1-PR5 |
 | `private.may_join_topic` | 20260918120600 | Adds `meet:` | M1-PR6 |
-| `private.collect_personal_data` | 20261024120100 | Meet tables | M1-PR8, M2-PR9 |
-| `private.erase_account` | 20261026190000_concierge | Meet tables | M1-PR8, M2-PR9 |
+| `private.collect_personal_data` | 20261024120100; from M1-PR2, 20261126120100 | `private.meet_testers` (M1-PR2), then the Meet tables | M1-PR2, M1-PR8, M2-PR9 |
+| `private.erase_account` | 20261026190000_concierge; from M1-PR2, 20261126120100 | `private.meet_testers` (M1-PR2), then the Meet tables | M1-PR2, M1-PR8, M2-PR9 |
 | `private.partition_health` | 20260922120400 | Scans `('public','private','audit','meet_econ')`; `record_partition_health` is unchanged | M2-PR4 |
 | `webhook_events` gateway CHECK | 20260921121000 | Adds `google_play` | M2-PR5 |
 | `private.config_change_levels` | 20260922120100 | `meet.spend_costs`, `meet.cards`, `meet.spin.prizes`, `meet.gifts.caps`, `meet.billing`, `meet.xp` require two signatures | M2-PR5 |
@@ -2373,6 +2380,7 @@ RB-17 covers:
   - flags and config rows;
   - **every M1 client and admin RPC signature** as a stub, with grants;
   - `admin_meet_readiness`, `admin_meet_set_readiness`, `admin_meet_testers`, `admin_meet_set_tester` implemented for real;
+  - `collect_personal_data` and `erase_account` restated for `private.meet_testers` (as built, §2.3);
   - M1 error codes catalogued (status `planned` until implemented).
 - **Tests:** `72_meet_gating_test.sql`:
   - flags exist and are off;
@@ -2380,8 +2388,9 @@ RB-17 covers:
   - `anon` cannot execute;
   - testers-only gating;
   - enabling `meet.v5` without testers-only is refused with `ERR_MEET_NOT_READY`;
-  - disabling always works;
-  - the guard catches a `review_config_change` apply, leaving it pending.
+  - disabling always works, and so does a narrowing (a lower rollout, back to testers-only) with an item open;
+  - the guard catches a `review_config_change` apply, leaving it pending;
+  - an erased tester leaves no tester row.
 - **This unblocks M1-PR10.**
 
 **M1-PR3: identity and media (Claude).**
@@ -2447,12 +2456,13 @@ RB-17 covers:
 
 **M1-PR8: lifecycle (Claude).**
 
-- `…120700_meet_v5_lifecycle.sql`: `collect_personal_data` and `erase_account` restated with the Meet tables; `meet-daily` purges; evidence retention.
+- `…120700_meet_v5_lifecycle.sql`: `collect_personal_data` and `erase_account` restated with the Meet tables, starting from M1-PR2's versions (`20261126120100`), which already carry `private.meet_testers`; `meet-daily` purges; evidence retention.
 - **Tests:** `80_meet_lifecycle_test` plus a `46_account_lifecycle` regression:
   - export includes own Meet data, never the partner's text or anyone's seeking;
   - erasure closes and purges conversations for both;
   - evidence under an open report is kept and pseudonymised;
-  - an under-18 refusal survives profile deletion.
+  - an under-18 refusal survives profile deletion;
+  - an erased tester leaves no `private.meet_testers` row (asserted first in pgTAP 72; keep it when the functions are restated).
 
 **M1-PR9: photo verification (Claude).**
 

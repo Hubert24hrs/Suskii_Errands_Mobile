@@ -125,6 +125,9 @@ CALLER_BINDING = re.compile(
 
 
 STEP_UP = "private.require_recent_mfa("
+# A Meet skeleton stub (20261126120100) calls this and nothing else of substance: it raises
+# ERR_FEATURE_UNAVAILABLE until the PR that builds the function replaces the body.
+NOT_BUILT = "private.meet_not_built("
 
 
 def caller_variables(body: str) -> set[str]:
@@ -186,9 +189,11 @@ def describe(fn: pgparse.Function, enums: dict[str, list[str]]) -> dict:
     errors = set(ERR.findall(fn.body))
     if STEP_UP in fn.body:
         errors.add("ERR_REAUTH_REQUIRED")  # raised inside the helper, not in this body
+    if NOT_BUILT in fn.body:
+        errors.add("ERR_FEATURE_UNAVAILABLE")
     errors = sorted(errors)
     idem = next((a.name for a in fn.args if a.name and "idempotency" in a.name), None)
-    return {
+    entry = {
         "name": fn.name,
         "schema": fn.schema,
         "signature": fn.signature,
@@ -201,6 +206,11 @@ def describe(fn: pgparse.Function, enums: dict[str, list[str]]) -> dict:
         "requires": requirements(fn),
         "defined_in": fn.source,
     }
+    if NOT_BUILT in fn.body:
+        # Final signature and grants, no behaviour yet. Present only on stubs, so building one
+        # shows in the regenerated catalogue as this key disappearing.
+        entry["not_built"] = True
+    return entry
 
 
 def add_enum_value(enums: dict[str, list[str]], match: re.Match, source: str) -> None:

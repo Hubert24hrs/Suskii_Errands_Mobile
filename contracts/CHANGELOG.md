@@ -16,6 +16,35 @@ and 1.4.0 calls nothing here.
   `meet_sensitive_data`. Regenerated into `enums.json`, `notifications.kind`, `record_consent`'s
   `p_kind` and `admin_staff_list`'s `roles`. No row carries a new notification kind until M1-PR5.
   The Meet RPCs record the two consents from M1-PR3, and `record_consent` refuses them (below).
+- **The M1 contract skeleton** (`20261126120100_meet_v5_contract`): all 46 client and 18 admin
+  functions of design §4.2 and §4.3, with their final arguments, return shapes and grants
+  (`authenticated` only). **60 are stubs**: each raises `ERR_FEATURE_UNAVAILABLE` and does nothing
+  else until its PR lands, and its catalogue entry carries `"not_built": true`, which disappears
+  when it is built. Admin stubs already apply their roles and, for a change, the five-minute TOTP
+  step-up, so `requires` is final. Build against the shapes now; treat `ERR_FEATURE_UNAVAILABLE`
+  from any Meet function, `meet_get_state` included, as "Meet v5 is off for this person" and
+  show today's meet-ups page. Row sets that §4 describes field by field are `TABLE` columns, a
+  card being one `profile` object as in `fixtures/meet/expiring-match.json`; the admin queues §4
+  leaves open return `jsonb` rows, fixed by the PR that builds them.
+- **Built for real**: `admin_meet_readiness()` (the m1, m2_testers and m2 checklist, with `gates`
+  saying which enable each item holds back), `admin_meet_set_readiness(p_idempotency_key, p_item,
+  p_done, p_note)`, `admin_meet_testers(p_limit)` and `admin_meet_set_tester(p_idempotency_key,
+  p_user_id, p_on, p_note)`. Super admin, aal2, a fresh TOTP code for a change, audited; an
+  automatic item (`meet_moderators_staffed`, `rtdn_test_received`) cannot be ticked by hand.
+- **Flags**, all off: `meet.v5` (payload `{"testers_only": true}`, rollout 0), `meet.discovery`,
+  `meet.nearby`, `meet.chat`, `meet.statuses`, `meet.games`, `meet.photo_verification`. They
+  appear in `get_bootstrap()`'s `feature_flags`, which evaluates each row alone, without
+  testers-only or the `meet.v5` umbrella: **never gate Meet on bootstrap**; read
+  `meet_get_state().features`. 1.4.0 ignores the keys.
+- **Remote config**: the 23 client-visible M1 keys of design §3.3 (`meet.min_age`,
+  `meet.guidelines_version`, `meet.min_client_version`, the discovery, nearby, limits, match,
+  photo, status and game values) now arrive in `get_bootstrap()`'s `remote_config`.
+- **Errors**: `ERR_MEET_NOT_READY` (implemented: a guarded flag switched on before the readiness
+  checklist allows; the detail lists what is missing) and `ERR_MEET_ELIGIBILITY_REQUIRED`
+  (implemented, from the access check every Meet client RPC runs first, so it is not in the
+  per-RPC lists), `ERR_MEET_UNDER_AGE` (client), and 25 more `ERR_MEET_*` codes reserved as
+  planned for the functions still stubbed. `ERR_FEATURE_UNAVAILABLE` and `ERR_COUNTRY_NOT_SET`
+  note that the Meet access check raises them too.
 
 ### Changed
 - **`meet_moderator` is refused by every "any admin" read**: the `countries`, `feature_flags`,
@@ -30,6 +59,19 @@ and 1.4.0 calls nothing here.
   `ERR_INVALID_ARGUMENT` (an error it already raised). Only the Meet RPCs record them: `meet_terms`
   stands for a passed 18+ check, so a client must not be able to write one for itself. Every other
   kind behaves as before, and no app passes either value.
+- **Switching `meet.v5`, `meet.purchases` or `meet.vip` on is checked by the database** (design
+  D23): `meet.v5` on beyond testers-only before every m1 item is done, and `meet.purchases` /
+  `meet.vip` on at all before the m2_testers items (testers-only) or the m2 items (general) are
+  done, is refused with `ERR_MEET_NOT_READY` on every write path, a `review_config_change` apply
+  included (the proposal stays pending, its signature unspent). What is checked is a widening: a
+  change to a flag that is already on and admits nobody new (a lower rollout, back to
+  testers-only, `client_visible`) is never refused, so the rollout stays a brake while an item has
+  lapsed. Switching any flag off is never refused.
+- **`private.collect_personal_data` and `private.erase_account`** are restated whole, one line
+  each: the export carries `meet_tester` (`{tester, added_at}`, or null; the staff note is not
+  exported) and an erasure deletes the tester row. Service role only; nothing an app calls.
+- **`rpc-catalog/index.json`** entries may carry `"not_built": true` (generator), and a stub lists
+  `ERR_FEATURE_UNAVAILABLE` among its errors.
 
 **PATCH**: Meet v5 M0, authored ahead of the build (ADR-0026, ADR-0027, ADR-0028). Nothing an app
 can call changed: no function, table, enum value or error code was added.

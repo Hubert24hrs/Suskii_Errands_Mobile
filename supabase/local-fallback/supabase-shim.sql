@@ -35,11 +35,15 @@ CREATE TABLE IF NOT EXISTS auth.users (
   raw_app_meta_data  jsonb NOT NULL DEFAULT '{}'::jsonb,
   banned_until       timestamptz,
   deleted_at         timestamptz,
+  last_sign_in_at    timestamptz,
   created_at         timestamptz NOT NULL DEFAULT now()
 );
 
 -- GoTrue's linked sign-in methods and second factors (auth migrations 20221003041349,
--- 20221208132122). Only the columns account erasure deletes by.
+-- 20221208132122). The columns account erasure deletes by, plus the factor's name, status and
+-- update time, which `admin_staff_list` and the Meet staffing check read and test 53 inserts.
+-- GoTrue's status is the enum `auth.factor_status` ('unverified', 'verified'); text compares the
+-- same way here.
 CREATE TABLE IF NOT EXISTS auth.identities (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   provider_id   text NOT NULL,
@@ -50,10 +54,13 @@ CREATE TABLE IF NOT EXISTS auth.identities (
 );
 
 CREATE TABLE IF NOT EXISTS auth.mfa_factors (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
-  factor_type text,
-  created_at  timestamptz DEFAULT now()
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  friendly_name text,
+  factor_type   text,
+  status        text NOT NULL DEFAULT 'unverified' CHECK (status IN ('unverified', 'verified')),
+  created_at    timestamptz DEFAULT now(),
+  updated_at    timestamptz DEFAULT now()
 );
 
 -- Realtime, as the realtime service creates it: the broadcast table, the topic of the
