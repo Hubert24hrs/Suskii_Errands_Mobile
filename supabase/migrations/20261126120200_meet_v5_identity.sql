@@ -500,7 +500,7 @@ SET search_path = ''
 AS $$
 DECLARE
   v_text     text;
-  v_keys     text[] := '{}';
+  v_keys     text[] := ARRAY[]::text[];
   v_category text;
   v_rule     record;
 BEGIN
