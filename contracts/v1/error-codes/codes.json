@@ -269,8 +269,8 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Feature switched off by a flag or not configured (RB-13). Raised by concierge_start when concierge.text is off for the caller's country, and by every Meet v5 client RPC through private.meet_require_access when the Meet flag it needs is off for the caller (meet.v5 testers-only admits private.meet_testers alone, and every meet.* sub-flag also needs meet.v5). Until its own PR lands, every Meet v5 RPC is a skeleton stub that raises this and does nothing else; the catalogue marks those entries not_built.",
-      "client_action": "Hide the entry point; offer the fallback flow. From a Meet function, meet_get_state included, it means Meet v5 is off for this person: show today's meet-ups page."
+      "description": "Feature switched off by a flag or not configured (RB-13). Raised by concierge_start when concierge.text is off for the caller's country, and by every Meet v5 client RPC through private.meet_require_access when the Meet flag it needs is off for the caller (meet.v5 testers-only admits private.meet_testers alone, and every meet.* sub-flag also needs meet.v5). Until its own PR lands, a Meet v5 RPC is a skeleton stub that raises this and does nothing else; the catalogue marks those entries not_built. meet_get_state never raises it: with Meet off it returns {v5: false}.",
+      "client_action": "Hide the entry point; offer the fallback flow. From a Meet function it means Meet v5 is off for this person: show today's meet-ups page. meet_get_state says the same with v5: false."
     },
     {
       "code": "ERR_CONVERSATION_NOT_FOUND",
@@ -720,7 +720,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": true,
-      "description": "A storage path was filed as proof but nothing was uploaded to it. The app uploads to the bucket first and files the path second; the server refuses a path with no object behind it, so a proof requirement cannot be met by a string (audit 2026-09-27 Y.5).",
+      "description": "A storage path was filed as proof but nothing was uploaded to it. The app uploads to the bucket first and files the path second; the server refuses a path with no object behind it, so a proof requirement cannot be met by a string (audit 2026-09-27 Y.5). meet_submit_photo raises it too when the photo or its thumbnail is not in the caller's meet-inbox folder.",
       "client_action": "Upload the file again, then retry the same call with the same idempotency key."
     },
     {
@@ -863,7 +863,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The text names something the platform does not carry (`prohibited_items`, action `block`). Deterministic and explainable: `details` carries the rule key that fired. Only requests are refused; chat and reviews are held for review instead (OD-21 fail-open).",
+      "description": "The text names something the platform does not carry (`prohibited_items`, action `block`). Deterministic and explainable: `details` carries the rule key that fired. Only requests and Meet profile text (first name, bio, prompt answers, which pass the errands screen after the Meet one) are refused; errands chat and reviews are held for review instead (OD-21 fail-open).",
       "client_action": "Name the rule from `details` and let them edit the text. Never retry the same text; a retry produces the same refusal."
     },
     {
@@ -1314,7 +1314,7 @@
       "sqlstate": null,
       "http_status": null,
       "retryable": true,
-      "description": "The Storage API refused or failed a list or remove during account erasure (storage-worker). Retried; the folder is not erased until it succeeds (audit 2026-09-27 Y.30).",
+      "description": "The Storage API refused or failed a list, remove, download or upload: during erasure (storage-worker, storage.erase_prefix and storage.erase_object) or while meet-media-worker moved a photo, or the database did not answer its report. Retried; nothing is erased or reported until it succeeds (audit 2026-09-27 Y.30).",
       "client_action": "Ops, if retries exhaust: RB-12 and the storage-worker logs."
     },
     {
@@ -1479,7 +1479,7 @@
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The caller has not passed Meet's 18+ check-in (meet_check_in), so no Meet feature is open to them. Raised by private.meet_require_access, which every Meet v5 client RPC calls first; the generated per-RPC error lists omit it. Until M1-PR3 builds the eligibility record it refuses everybody the flag admits, so the check fails closed.",
+      "description": "The caller has not passed Meet's 18+ check-in (meet_check_in), so no Meet feature is open to them. Raised by private.meet_require_access, which every Meet v5 client RPC calls first; the generated per-RPC error lists omit it. An account refused as under 18, or on a barred device, gets ERR_MEET_UNAVAILABLE instead.",
       "client_action": "Send the person to the Meet welcome and check-in screen."
     },
     {
@@ -1495,18 +1495,18 @@
     },
     {
       "code": "ERR_MEET_UNAVAILABLE",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Meet is not available on this account or device: a device barred after an under-18 refusal or a ban, or failed device integrity. Indistinguishable on purpose.",
+      "description": "Meet is not available on this account or device: an earlier under-18 refusal on the account, a device barred after an under-18 refusal on any account (meet_age_refusal_devices, 365 days) or, from M1-PR4, a ban, or failed device integrity at check-in. Indistinguishable on purpose. Raised by private.meet_require_access, the check at the top of every Meet v5 client RPC (so not in the per-RPC lists); meet_check_in returns {status: 'unavailable'} instead of raising, because it records a safety event.",
       "client_action": "Show that Meet is not available and point to support; never say why."
     },
     {
       "code": "ERR_MEET_AGE_ALREADY_SET",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
@@ -1517,13 +1517,13 @@
     },
     {
       "code": "ERR_MEET_GUIDELINES_OUTDATED",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The Meet guidelines changed (remote_config meet.guidelines_version) and the caller has not accepted the current version.",
+      "description": "The Meet guidelines changed (remote_config meet.guidelines_version) and the caller has not accepted the current version. Raised by private.meet_require_access before any other Meet function runs (so not in the per-RPC lists), and by meet_check_in and meet_accept_guidelines when the version passed is not the current one.",
       "client_action": "Show the guidelines and call meet_accept_guidelines with the version shown, then retry."
     },
     {
@@ -1550,7 +1550,7 @@
     },
     {
       "code": "ERR_MEET_RATE_LIMITED",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
@@ -1583,29 +1583,29 @@
     },
     {
       "code": "ERR_MEET_PROFILE_INCOMPLETE",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "The action needs an active Meet profile (a clean first name, at least one approved photo, an area). Browsing, and turning discovery on, need one.",
+      "description": "The action needs an active Meet profile (a clean first name and bio, at least one approved photo, an area): browsing, and turning discovery on. An edit that needs a profile to exist (a photo, a prompt, the area, pause, privacy) raises it when there is none yet. Raised by private.meet_require_access where the function needs an active profile, so not always in the per-RPC lists.",
       "client_action": "Send the person to finish their profile; while the first photo is in review show today's question."
     },
     {
       "code": "ERR_MEET_PHOTO_LIMIT",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Six photos at most (remote_config meet.photos.max), or that position is taken.",
+      "description": "Six photos at most (remote_config meet.photos.max, counting those processing, in review and approved), or that position already holds one; the detail says 'position taken' for the second. A position whose photo was rejected or failed is free: submitting there replaces it.",
       "client_action": "Ask the person to remove or replace a photo first."
     },
     {
       "code": "ERR_MEET_PHOTO_NOT_FOUND",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
@@ -1616,24 +1616,24 @@
     },
     {
       "code": "ERR_MEET_CONTACT_NOT_ALLOWED",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Profile text (first name, bio, prompt, status, game answer) contains a phone number, email, link or social handle. Nothing is written. A chat refusal is a returned status instead, never this error.",
+      "description": "Profile text (first name, bio, prompt, status, game answer) contains a phone number, email, link or social handle. Nothing is written. A chat refusal is a returned status instead, never this error. From M1-PR3 for first name, bio and prompt answers (a table trigger, so on every write path); statuses and game answers from M1-PR7. Until M1-PR4 the screen catches digit runs of seven or more, emails and links; handles and number words arrive with it.",
       "client_action": "Keep the text and show the category message; never highlight the matched words."
     },
     {
       "code": "ERR_MEET_SOLICITATION_NOT_ALLOWED",
-      "status": "planned",
+      "status": "implemented",
       "category": "meet",
       "surface": "client",
       "sqlstate": "P0001",
       "http_status": 400,
       "retryable": false,
-      "description": "Profile text asks for money or gifts, or offers paid company. Nothing is written. A chat refusal is a returned status instead.",
+      "description": "Profile text asks for money or gifts, or offers paid company. Nothing is written. A chat refusal is a returned status instead. From M1-PR3 for first name, bio and prompt answers, against the terms design §8.2 blocks everywhere; M1-PR4 moves them into meet_text_rules.",
       "client_action": "Keep the text and show the category message."
     },
     {

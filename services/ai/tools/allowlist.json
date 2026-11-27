@@ -155,7 +155,9 @@
     "admin_meet_user_summary",
     "admin_meet_verification_queue",
     "admin_meet_decide_verification",
-    "admin_meet_verification_access"
+    "admin_meet_verification_access",
+    "gateway_meet_media_ingested",
+    "gateway_meet_media_failed"
   ],
   "deny_rationale": {
     "raise_sos": "An emergency must never depend on a model understanding somebody. The concierge shows the SOS card and the country's emergency numbers; the person presses the button (ai-design 4.2).",
@@ -167,6 +169,6 @@
     "set_saved_place_access_note": "Same as set_request_access_note.",
     "admin_set_ai_enabled": "The assistant's own off switch, budget, allowances and credits are staff controls over what the assistant costs. A model that could reach them could lift its own limits.",
     "select_initial_role": "Choosing how to use the app is the person's first decision, on a screen of its own; a model choosing it for them would be deciding who they are on the platform.",
-    "meet_*, admin_meet_*": "Dating data never reaches Ask Suskii (Meet v5 design 4.1). A Meet profile is a separate identity on purpose (D15), and what somebody likes, who matched them, what they wrote in a private chat, their birth date and their safety reports would all be copies in a transcript nobody can delete. The admin side is Meet trust and safety (D25), decided by a person. Every Meet function is denied by name as it is created, so a rename is caught."
+    "meet_*, admin_meet_*, gateway_meet_*": "Dating data never reaches Ask Suskii (Meet v5 design 4.1). A Meet profile is a separate identity on purpose (D15), and what somebody likes, who matched them, what they wrote in a private chat, their birth date and their safety reports would all be copies in a transcript nobody can delete. The admin side is Meet trust and safety (D25), decided by a person, and the gateway side is the media worker's, which no model is. Every Meet function is denied by name as it is created, so a rename is caught."
   }
 }

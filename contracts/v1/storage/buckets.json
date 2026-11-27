@@ -110,6 +110,51 @@
         }
       ]
     },
+    "meet-inbox": {
+      "id": "meet-inbox",
+      "public": false,
+      "defined_in": "20261126120200_meet_v5_identity.sql",
+      "max_bytes": 8388608,
+      "policies": [
+        {
+          "policy": "meet_inbox_own_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        }
+      ]
+    },
+    "meet-media": {
+      "id": "meet-media",
+      "public": false,
+      "defined_in": "20261126120200_meet_v5_identity.sql",
+      "max_bytes": 5242880,
+      "policies": [
+        {
+          "policy": "meet_media_read",
+          "action": "SELECT",
+          "role": "authenticated",
+          "clause": "USING"
+        }
+      ]
+    },
+    "meet-verify": {
+      "id": "meet-verify",
+      "public": false,
+      "defined_in": "20261126120200_meet_v5_identity.sql",
+      "max_bytes": 5242880,
+      "allowed_mime_types": [
+        "image/jpeg"
+      ],
+      "policies": [
+        {
+          "policy": "meet_verify_own_insert",
+          "action": "INSERT",
+          "role": "authenticated",
+          "clause": "WITH CHECK"
+        }
+      ]
+    },
     "receipts": {
       "id": "receipts",
       "public": false,

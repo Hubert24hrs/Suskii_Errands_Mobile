@@ -6,6 +6,7 @@
     "./device-integrity",
     "./health",
     "./kyc-document-url",
+    "./meet-media-worker",
     "./payments-webhook",
     "./payments-worker",
     "./notifications-worker",

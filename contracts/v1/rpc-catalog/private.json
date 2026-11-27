@@ -1,6 +1,6 @@
 {
   "$comment": "Generated. These are NOT callable by a client: PostgREST exposes only the public schema. They are granted to authenticated because an RLS policy calls them as the invoking role, and a grant with no explanation reads like a mistake. Listed so it does not.",
-  "count": 24,
+  "count": 26,
   "functions": [
     {
       "name": "admin_may_read_countries",
@@ -147,6 +147,22 @@
         "authenticated"
       ],
       "defined_in": "20260918120500_ratings_and_reputation.sql"
+    },
+    {
+      "name": "meet_media_visible_to",
+      "signature": "private.meet_media_visible_to(text, uuid)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20261126120200_meet_v5_identity.sql"
+    },
+    {
+      "name": "meet_upload_allowed",
+      "signature": "private.meet_upload_allowed(text, text)",
+      "executable_by": [
+        "authenticated"
+      ],
+      "defined_in": "20261126120200_meet_v5_identity.sql"
     },
     {
       "name": "moderation_subject_countries",

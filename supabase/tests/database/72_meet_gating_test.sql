@@ -47,7 +47,8 @@ LANGUAGE sql AS $fn$
   SELECT NULL::void;
 $fn$;
 
--- Calls every stub with NULL arguments as the current role and records how each one ended.
+-- Calls every stub with NULL arguments as the current role and records how each one ended. The
+-- sixteen M1-PR3 built (20261126120200) have their own tests in 73 and 74.
 CREATE FUNCTION pg_temp.stub_outcomes()
 RETURNS TABLE (fn text, outcome text)
 LANGUAGE plpgsql AS $fn$
@@ -65,7 +66,13 @@ BEGIN
     WHERE n.nspname = 'public'
       AND (p.proname LIKE 'meet\_%' OR p.proname LIKE 'admin\_meet\_%')
       AND p.proname NOT IN ('admin_meet_readiness', 'admin_meet_set_readiness',
-                            'admin_meet_testers', 'admin_meet_set_tester')
+                            'admin_meet_testers', 'admin_meet_set_tester',
+                            'meet_get_state', 'meet_check_in', 'meet_accept_guidelines',
+                            'meet_save_profile', 'meet_set_area', 'meet_set_discovery_prefs',
+                            'meet_get_my_profile', 'meet_submit_photo', 'meet_remove_photo',
+                            'meet_reorder_photos', 'meet_save_prompt', 'meet_remove_prompt',
+                            'meet_set_discoverable', 'meet_pause', 'meet_set_privacy',
+                            'meet_delete_profile')
     ORDER BY 1
   LOOP
     BEGIN
@@ -186,13 +193,16 @@ SELECT is(
               AND p.prosecdef
               AND 'search_path=""' = ANY (p.proconfig))),
   '{}'::text[], 'authenticated can execute all of them; each is a definer with an empty search_path');
+-- Two storage-policy helpers (20261126120200) are the exception: a policy runs as the requester,
+-- and each is a definer that answers only for auth.uid().
 SELECT is(
   (SELECT coalesce(array_agg(p.proname::text ORDER BY 1), '{}')
    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'private' AND p.proname LIKE 'meet\_%'
      AND (has_function_privilege('authenticated', p.oid, 'EXECUTE')
           OR has_function_privilege('anon', p.oid, 'EXECUTE'))),
-  '{}'::text[], 'no client role can execute a private Meet helper');
+  ARRAY['meet_media_visible_to', 'meet_upload_allowed'],
+  'no client role can execute a private Meet helper but the two storage policies call');
 SELECT ok(NOT has_table_privilege('authenticated', 'private.meet_testers', 'SELECT')
           AND NOT has_table_privilege('authenticated', 'private.meet_readiness', 'SELECT')
           AND NOT has_table_privilege('anon', 'private.meet_testers', 'SELECT')
@@ -229,8 +239,8 @@ SET LOCAL ROLE authenticated;
 INSERT INTO outcomes SELECT 'user', * FROM pg_temp.stub_outcomes();
 RESET ROLE;
 
-SELECT is((SELECT count(*)::int FROM outcomes WHERE who = 'super_admin'), 60,
-  'sixty of the functions are stubs');
+SELECT is((SELECT count(*)::int FROM outcomes WHERE who = 'super_admin'), 44,
+  'forty-four of the functions are still stubs (sixteen were built by M1-PR3)');
 SELECT is(
   (SELECT coalesce(array_agg(fn || ': ' || outcome ORDER BY fn), '{}') FROM outcomes
    WHERE who = 'super_admin' AND outcome <> 'P0001 ERR_FEATURE_UNAVAILABLE'),
@@ -238,7 +248,7 @@ SELECT is(
 SELECT is(
   (SELECT coalesce(array_agg(fn || ': ' || outcome ORDER BY fn), '{}') FROM outcomes
    WHERE who = 'user' AND fn LIKE 'meet\_%' AND outcome <> 'P0001 ERR_FEATURE_UNAVAILABLE'),
-  '{}'::text[], 'a signed-in user gets ERR_FEATURE_UNAVAILABLE from all 46 client stubs');
+  '{}'::text[], 'a signed-in user gets ERR_FEATURE_UNAVAILABLE from all 30 client stubs left');
 SELECT is(
   (SELECT coalesce(array_agg(fn || ': ' || outcome ORDER BY fn), '{}') FROM outcomes
    WHERE who = 'user' AND fn LIKE 'admin\_meet\_%' AND outcome <> '42501 ERR_PERMISSION_DENIED'),
@@ -254,9 +264,10 @@ SELECT set_eq(
 SELECT pg_temp.act('b7222222-2222-4222-8222-727272727272', 'aal1');
 SET LOCAL ROLE authenticated;
 SELECT is(
-  pg_temp.error_detail($$SELECT public.meet_check_in('key-72-stub-0000001', '2001-02-03', 1)$$),
-  'meet_check_in(p_birth_date, p_guidelines_version, p_idempotency_key) is not built yet',
-  'the detail names the arguments and never their values: no birth date reaches a log');
+  pg_temp.error_detail($$SELECT public.meet_send_message('key-72-stub-0000001',
+    '7b3dc018-ca9d-4db6-a8a7-b7b081935da1', 'my number is 0803 123 4567', 'text')$$),
+  'meet_send_message(p_body, p_conversation_id, p_idempotency_key, p_kind) is not built yet',
+  'the detail names the arguments and never their values: no message reaches a log');
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
@@ -313,14 +324,14 @@ SELECT throws_ok(
 SELECT throws_ok(
   $$SELECT private.meet_require_access('b7211111-1111-4111-8111-727272727272', 'meet.v5', true)$$,
   'P0001', 'ERR_MEET_ELIGIBILITY_REQUIRED',
-  'and past both, nobody is eligible before M1-PR3: the check fails closed rather than passing');
+  'and past both, a tester who has not checked in is not eligible: the check fails closed');
 SELECT throws_ok(
   $$SELECT private.meet_require_access('b7211111-1111-4111-8111-727272727272', 'concierge.text', false)$$,
   '22023', 'ERR_INVALID_ARGUMENT', 'a feature that is not a Meet flag is a programming error');
 
 SELECT pg_temp.act('b7211111-1111-4111-8111-727272727272', 'aal1');
 SET LOCAL ROLE authenticated;
-SELECT throws_ok($$SELECT public.meet_get_state()$$, 'P0001', 'ERR_FEATURE_UNAVAILABLE',
+SELECT throws_ok($$SELECT public.meet_daily_set()$$, 'P0001', 'ERR_FEATURE_UNAVAILABLE',
   'with meet.v5 on for them, a tester still gets ERR_FEATURE_UNAVAILABLE from a stub');
 RESET ROLE;
 
